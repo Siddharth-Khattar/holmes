@@ -16,8 +16,11 @@ Establish CI/CD pipeline, database, storage, and skeleton services that all othe
 ### Deployment Strategy
 - Two environments: local development + production only (no staging)
 - Auto-deploy on push to main branch
+- Branching: `development` for work, merge to `main` triggers deploy (no PRs, hackathon mode)
 - Separate Cloud Run services for frontend and backend (independent scaling)
 - Use Cloud Run default URLs (*.run.app) — no custom domain needed initially
+- Cloud Run config: min instances 0, response streaming enabled, `PYTHONUNBUFFERED=1`
+- Docker base: `python:3.12-slim`
 
 ### Monorepo Structure
 - Bun as package manager with plain workspaces (no Turborepo)
@@ -46,14 +49,33 @@ Establish CI/CD pipeline, database, storage, and skeleton services that all othe
 - Generation tool: pydantic2ts (or datamodel-codegen --output-model-type typescript)
 - Generated files are committed to repo (not gitignored) — ensures frontend can build without running generation
 
+### Backend Stack
+- FastAPI 0.128.x with Uvicorn 0.34.x
+- Alembic 1.14+ for migrations
+
+### Frontend Stack
+- Next.js 16.1.x with App Router
+- Tailwind CSS 4.x (CSS-first config)
+- shadcn/ui for components
+- Zustand 5.x for client state
+- TanStack Query 5.x for server state
+
+### SSE Configuration
+- Library: sse-starlette 3.2.x
+- Required headers: `X-Accel-Buffering: no`, `Cache-Control: no-cache, no-transform`
+- Disable GZipMiddleware (incompatible with SSE)
+- Heartbeat comments to prevent Cloud Run idle timeout
+
 ### Database Setup
 - Local development: Docker Compose PostgreSQL
 - Initial schema includes auth tables (users, sessions, accounts) + cases skeleton
 - UUID for all primary keys
 - Migrations via Alembic, auto-run in CI before deploy
-- ORM: SQLAlchemy 2.0
-- Async database access with asyncpg
+- ORM: SQLAlchemy 2.0.45+
+- Async database access with asyncpg 0.30.x
+- Pydantic 2.12+ for data validation
 - snake_case naming convention throughout
+- JSONB strategy: hybrid schema (columns for stable fields, JSONB for variable data, keep under 2KB)
 - PostgreSQL 18 on Cloud SQL
 - Cloud SQL tier: db-f1-micro (cheapest, ~$7/mo)
 - No automatic backups (cost savings for hackathon)

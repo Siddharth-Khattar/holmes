@@ -1,7 +1,7 @@
 # Technology Stack
 
 **Project:** Holmes - Legal Intelligence Platform
-**Researched:** 2026-01-18
+**Researched:** 2026-01-20
 **Overall Confidence:** HIGH (verified with official sources and current documentation)
 
 ---
@@ -24,18 +24,20 @@ This stack is optimized for a multimodal AI legal intelligence platform with rea
 
 | Technology | Version | Purpose | Confidence |
 |------------|---------|---------|------------|
-| **Next.js** | 16.x | React meta-framework with App Router | HIGH |
-| **React** | 19.2 | UI library (bundled with Next.js 16) | HIGH |
-| **TypeScript** | 5.7+ | Type safety | HIGH |
+| **Next.js** | 16.1.x | React meta-framework with App Router | HIGH |
+| **React** | 19.2.x | UI library (bundled with Next.js 16) | HIGH |
+| **TypeScript** | 5.9+ | Type safety | HIGH |
 
-**Rationale:** Next.js 16 (released ahead of Next.js Conf 2025) provides:
+**Rationale:** Next.js 16.1 (December 2025) provides:
 - React 19.2 with View Transitions, `useEffectEvent()`, and Activity components
-- Turbopack as default bundler (2-5x faster builds, 10x faster refresh)
+- Turbopack as stable default bundler (file system caching now stable)
 - Cache Components with explicit `"use cache"` directive
 - `proxy.ts` replacing `middleware.ts` for explicit network boundaries
 - DevTools MCP integration for richer debugging
+- ~20MB smaller installs via simplified caching layer
+- New `next upgrade` command for easier upgrades
 
-**Source:** [Next.js 16 Release](https://nextjs.org/blog/next-16)
+**Source:** [Next.js 16 Release](https://nextjs.org/blog/next-16), [Next.js 16.1 Release](https://nextjs.org/blog/next-16-1)
 
 ### Styling
 
@@ -96,7 +98,7 @@ npx shadcn@latest init
 
 | Technology | Version | Purpose | Confidence |
 |------------|---------|---------|------------|
-| **@xyflow/react** | 12.10.0 | Agent trace visualization, workflow UIs | HIGH |
+| **@xyflow/react** | 12.10.x | Agent trace visualization, workflow UIs | HIGH |
 | **D3.js** | 7.x | Knowledge graph force layouts | MEDIUM |
 
 **Rationale:**
@@ -133,9 +135,9 @@ import '@xyflow/react/dist/style.css';
 
 | Technology | Version | Purpose | Confidence |
 |------------|---------|---------|------------|
-| **Better Auth** | 1.4.x | Authentication framework | MEDIUM |
+| **Better Auth** | 1.4.15+ | Authentication framework | HIGH |
 
-**Rationale:** Better Auth is the official successor to Auth.js with:
+**Rationale:** Better Auth is the most comprehensive authentication framework for TypeScript:
 - Framework-agnostic design
 - Plugin ecosystem (2FA, magic links, admin tools)
 - Stateless sessions option
@@ -172,23 +174,25 @@ import '@xyflow/react/dist/style.css';
 
 | Technology | Version | Purpose | Confidence |
 |------------|---------|---------|------------|
-| **FastAPI** | 0.115.x | Async API framework | HIGH |
+| **FastAPI** | 0.128.x | Async API framework | HIGH |
 | **Uvicorn** | 0.34.x | ASGI server | HIGH |
 | **Python** | 3.12+ | Runtime | HIGH |
 
-**Rationale:** FastAPI 0.115.x (latest stable):
+**Rationale:** FastAPI 0.128.x (latest stable):
 - Async-first design perfect for AI workloads
 - Automatic OpenAPI documentation
 - Pydantic v2 integration (5x faster validation)
 - `StreamingResponse` for SSE
 - Type hints throughout
+- Starlette 0.45.x compatibility
 
-**Key 0.115+ changes:**
+**Key 0.128+ changes:**
 - Python 3.9+ required (dropped 3.8)
-- Pydantic v1 deprecated
+- Pydantic v1 fully deprecated
 - Dependencies with yield run exit code after response sent (good for streaming)
+- python-multipart >=0.0.18, jinja2 >=3.1.5
 
-**Source:** [FastAPI Releases](https://github.com/fastapi/fastapi/releases)
+**Source:** [FastAPI Releases](https://github.com/fastapi/fastapi/releases), [FastAPI PyPI](https://pypi.org/project/fastapi/)
 
 ### Data Validation
 
@@ -215,7 +219,7 @@ import '@xyflow/react/dist/style.css';
 | Technology | Version | Purpose | Confidence |
 |------------|---------|---------|------------|
 | **PostgreSQL** | 17 | Primary database | HIGH |
-| **SQLAlchemy** | 2.0+ | Async ORM | HIGH |
+| **SQLAlchemy** | 2.0.45+ | Async ORM | HIGH |
 | **asyncpg** | 0.30.x | Async PostgreSQL driver | HIGH |
 | **Alembic** | 1.14+ | Database migrations | HIGH |
 
@@ -257,7 +261,7 @@ pip install sqlalchemy[asyncio] asyncpg alembic
 
 | Technology | Version | Purpose | Confidence |
 |------------|---------|---------|------------|
-| **sse-starlette** | 3.1.x | SSE implementation | HIGH |
+| **sse-starlette** | 3.2.x | SSE implementation | HIGH |
 
 **Rationale:** SSE over WebSockets because:
 - Unidirectional (server to client) fits AI response streaming
@@ -296,7 +300,7 @@ return EventSourceResponse(stream_agent_response())
 
 | Technology | Version | Purpose | Confidence |
 |------------|---------|---------|------------|
-| **google-adk** | 1.21.x | Agent Development Kit | HIGH |
+| **google-adk** | 1.22.1+ | Agent Development Kit | HIGH |
 | **Gemini 3 Pro/Flash** | latest | LLM models | HIGH |
 
 **Rationale:** Google ADK (hackathon requirement) provides:
@@ -304,6 +308,13 @@ return EventSourceResponse(stream_agent_response())
 - Model-agnostic but optimized for Gemini
 - Production-ready (v1.0+ stable)
 - Multi-agent orchestration patterns
+- Human-in-the-loop tool confirmation flows (⚠️ InMemorySessionService only)
+- Rewind capability (rewind session to before a previous invocation)
+- GcsArtifactService for versioned file storage
+- Context caching for cost optimization
+- Context compaction for long sessions
+
+**Requirements:** Python >=3.10 (3.11+ strongly recommended)
 
 **ADK Agent Types:**
 1. **LLM Agents** - reasoning with Gemini
@@ -313,50 +324,199 @@ return EventSourceResponse(stream_agent_response())
 **Key Patterns for Holmes:**
 
 1. **Sequential Pipeline** for evidence processing:
-   - Parser Agent → Extractor Agent → Summarizer Agent
+   - Triage Agent → Domain Agents → Synthesis Agent → KG Agent
 
-2. **Parallel Execution** for independent analysis:
-   - Document Agent + Video Agent + Audio Agent running concurrently
+2. **Parallel Execution** for domain analysis:
+   - Financial Agent + Legal Agent + Strategy Agent + Evidence Agent running concurrently
+   - Each agent receives multimodal files directly (Gemini processes all file types natively)
 
 3. **Hierarchical Delegation** for specialized processing:
-   - Coordinator routes to domain specialists
+   - Orchestrator routes files to domain specialists based on triage scores
 
-**Gemini 3 Interactions API (NEW in 1.21.0):**
+4. **Resilient Wrapper Pattern** for graceful degradation:
+   - Primary agent (Pro) with fallback agent (Flash)
+
+**Critical Insight — Domain-Based, Not File-Type Based:**
+Gemini 3 is natively multimodal. We use domain-based agents (Financial, Legal, Strategy, Evidence) rather than file-type agents. A Financial Agent analyzes PDFs, video depositions, and audio recordings together — understanding the full financial context across modalities without separate extraction pipelines.
+
+**ADK Limitations to Design Around:**
+
+| Limitation | Impact | Mitigation |
+|------------|--------|------------|
+| Tool confirmation only with InMemorySessionService | Can't use `require_confirmation` with DatabaseSessionService | Implement confirmation in frontend |
+| Cannot use tools + output_schema together | Agents can't have both | Split into tool-agent → schema-agent |
+| Single parent rule | Agent instance can only have one parent | Factory pattern creates fresh instances |
+| State updates commit after Event yield | Potential race conditions | Use unique output_keys per agent |
+| Temperature must stay at 1.0 | Lower values cause looping | Never override |
+| LoopAgent needs explicit escalate | Won't exit early without it | Add QualityThresholdChecker BaseAgent |
+
+**Thinking Mode Configuration:**
+
+| Agent | Model | Thinking Level | Media Resolution |
+|-------|-------|----------------|------------------|
+| Triage | Flash | low | default |
+| Orchestrator | Pro | high | default |
+| Financial | Pro | medium | high |
+| Legal | Pro | high | high |
+| Strategy | Pro | medium | default |
+| Evidence | Pro | high | high |
+| Synthesis | Pro | high | default |
+| KG Agent | Pro | medium | default |
+| Chat | Pro | medium | default |
+| Verification | Pro | high | high |
+
+**Essential Configuration:**
 ```python
-from google.adk import Agent
-from google.adk.models import Gemini
+from google.genai import types
+from google.adk.agents import LlmAgent
+from google.adk.artifacts import GcsArtifactService
+from google.adk.sessions import DatabaseSessionService
+from google.adk.runners import Runner
 
-agent = Agent(
-    model=Gemini(model="gemini-3-pro-preview", use_interactions_api=True)
+# Session service with PostgreSQL
+session_service = DatabaseSessionService(
+    db_url="postgresql+asyncpg://user:pass@host/holmes_db"
+)
+
+# Artifact service for versioned storage
+artifact_service = GcsArtifactService(bucket_name="holmes-evidence-bucket")
+
+# Agent with proper configuration
+evidence_agent = LlmAgent(
+    name="EvidenceAgent",
+    model="gemini-3-pro-preview",
+    instruction="Analyze evidence for authenticity...",
+    output_key="evidence_findings",
+    generate_content_config=types.GenerateContentConfig(
+        thinking_config=types.ThinkingConfig(
+            thinking_level="high",
+            include_thoughts=True  # Required for Agent Trace Theater
+        ),
+        generation_config={"media_resolution": "high"}  # Dense documents
+    )
+)
+
+# Runner with all services
+runner = Runner(
+    agent=root_agent,
+    app_name="holmes",
+    session_service=session_service,
+    artifact_service=artifact_service
 )
 ```
+
+**Video/Audio Processing:**
+```python
+from google.genai.types import VideoMetadata
+
+# Process specific video segment
+response = client.models.generate_content(
+    model="gemini-3-pro-preview",
+    contents=[
+        types.Part(
+            file_data=types.FileData(file_uri=video_file.uri),
+            video_metadata=VideoMetadata(
+                start_offset="00:15:00",
+                end_offset="00:45:00"
+            )
+        ),
+        "Analyze this deposition segment..."
+    ]
+)
+```
+
+**Context Caching (4x cost reduction):**
+```python
+# Create cache when user opens case
+cache = client.caches.create(
+    model="gemini-3-pro-preview",
+    contents=[*case_evidence_files],
+    ttl="7200s"  # 2 hours
+)
+
+# Query against cache
+response = client.models.generate_content(
+    model="gemini-3-pro-preview",
+    contents="What does the evidence show about...",
+    cached_content=cache.name
+)
+```
+
+**Context Compaction (long sessions):**
+```python
+from google.adk.apps.app import App, EventsCompactionConfig
+from google.adk.apps.llm_event_summarizer import LlmEventSummarizer
+
+app = App(
+    name='holmes-investigation',
+    root_agent=investigation_agent,
+    events_compaction_config=EventsCompactionConfig(
+        compaction_interval=5,
+        overlap_size=2,
+        summarizer=LlmEventSummarizer(llm=Gemini(model="gemini-3-flash-preview"))
+    )
+)
+```
+
+**Deep Research Agent (autonomous research):**
+```python
+# Start background research
+interaction = client.interactions.create(
+    input="Research publicly available information about [subject]",
+    agent='deep-research-pro-preview-12-2025',
+    background=True,
+    stream=True,
+    agent_config={"type": "deep-research", "thinking_summaries": "auto"}
+)
+```
+
+**New in 1.22.x:**
+- AgentEngineSandboxCodeExecutor for Vertex AI Code Execution Sandbox
+- Session rewind capability
+- Improved MCP tool integration
 
 **Best Practice:** Avoid monolithic agents. Build specialized micro-agents that do one thing well.
 
 **Installation:**
 ```bash
-pip install google-adk
+pip install google-adk>=1.22.1
 ```
 
 **Sources:**
 - [ADK Documentation](https://google.github.io/adk-docs/)
 - [Multi-Agent Patterns](https://developers.googleblog.com/developers-guide-to-multi-agent-patterns-in-adk/)
-- [ADK 1.21.0 Release](https://github.com/google/adk-python/releases)
+- [ADK Releases](https://github.com/google/adk-python/releases)
+- [ADK PyPI](https://pypi.org/project/google-adk/)
 
 ### Multimodal Processing
 
 | Technology | Purpose | Notes |
 |------------|---------|-------|
-| **Gemini 3 Pro** | Complex reasoning, legal analysis | Higher capability |
-| **Gemini 3 Flash** | Fast processing, simple extraction | Lower latency, cost |
+| **Gemini 3 Pro** | Complex reasoning, legal analysis, native multimodal | Handles PDF, images, video, audio directly |
+| **Gemini 3 Flash** | Fast processing, triage, simple extraction | Lower latency, cost |
 | **google-cloud-storage** | Evidence file storage | GCP native |
-| **google-cloud-speech** | Audio transcription | If needed beyond Gemini |
-| **google-cloud-vision** | OCR, image analysis | If needed beyond Gemini |
 
-**Multimodal Strategy:**
-- Use Gemini's native multimodal capabilities first
-- Fall back to specialized APIs only if needed
-- Stream large files through Cloud Storage
+**Multimodal Strategy — Gemini-Native Approach:**
+
+Gemini 3 is natively multimodal. It directly processes:
+- **PDFs**: Reads text, tables, images, layouts without OCR pipelines
+- **Images**: Analyzes photos, scanned documents, diagrams directly
+- **Video**: Processes video content, extracts key moments, understands visual context
+- **Audio**: Transcribes and analyzes audio without separate speech-to-text
+
+**What we DON'T need:**
+- ❌ Tesseract or other OCR libraries — Gemini reads images/scans directly
+- ❌ PyPDF/python-docx for text extraction — Gemini reads PDFs directly
+- ❌ Whisper/Cloud Speech for transcription — Gemini transcribes audio natively
+- ❌ Video frame extraction pipelines — Gemini processes video natively
+
+**Architecture simplification:**
+```
+Traditional: File → OCR/Extract → Text → Store → LLM queries text
+Gemini 3:    File → Store in GCS → Gemini directly analyzes file
+```
+
+This dramatically simplifies the pipeline and leverages Gemini's native capabilities.
 
 ---
 
@@ -478,7 +638,7 @@ source .venv/bin/activate
 # Install dependencies
 pip install fastapi uvicorn pydantic pydantic-settings
 pip install sqlalchemy[asyncio] asyncpg alembic
-pip install google-adk sse-starlette
+pip install google-adk>=1.22.1 sse-starlette>=3.2.0
 pip install google-cloud-storage google-cloud-secret-manager
 pip install httpx python-multipart
 
@@ -508,26 +668,26 @@ pip install ruff mypy pytest pytest-asyncio
 
 **requirements.txt (Backend):**
 ```
-fastapi>=0.115.0,<0.116.0
+fastapi>=0.128.0,<0.129.0
 uvicorn>=0.34.0
 pydantic>=2.12.0
-sqlalchemy[asyncio]>=2.0.0
+sqlalchemy[asyncio]>=2.0.45
 asyncpg>=0.30.0
 alembic>=1.14.0
-google-adk>=1.21.0
-sse-starlette>=3.1.0
+google-adk>=1.22.1
+sse-starlette>=3.2.0
 ```
 
 **package.json (Frontend):**
 ```json
 {
   "dependencies": {
-    "next": "^16.0.0",
-    "react": "^19.0.0",
+    "next": "^16.1.0",
+    "react": "^19.2.0",
     "@xyflow/react": "^12.10.0",
     "zustand": "^5.0.0",
     "@tanstack/react-query": "^5.0.0",
-    "better-auth": "^1.4.0"
+    "better-auth": "^1.4.15"
   }
 }
 ```

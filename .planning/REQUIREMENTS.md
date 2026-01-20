@@ -1,0 +1,970 @@
+# Holmes Requirements Specification
+
+**Version:** 1.0
+**Date:** 2026-01-18
+**Status:** DRAFT - Awaiting approval
+
+## Requirements Overview
+
+This document defines formal requirements for Holmes v1. Requirements are derived from PROJECT.md, stakeholder scoping sessions, and research findings.
+
+---
+
+## REQ-INF: Infrastructure & Deployment
+
+### REQ-INF-001: CI/CD Pipeline
+**Priority:** CRITICAL
+**Description:** Automated deployment pipeline that deploys every push to main branch.
+**Acceptance Criteria:**
+- GitHub Actions workflow triggers on push to main
+- Builds and deploys backend to Cloud Run
+- Builds and deploys frontend to Cloud Run (or Vercel)
+- Deployment completes within 10 minutes
+- Failed deployments do not affect production
+**Dependencies:** None (first phase)
+
+### REQ-INF-002: PostgreSQL Database
+**Priority:** CRITICAL
+**Description:** Cloud SQL PostgreSQL instance for all persistent data.
+**Acceptance Criteria:**
+- PostgreSQL 17 on Cloud SQL
+- Hybrid schema: relational tables + JSONB for flexible data
+- Async SQLAlchemy 2.0 for backend access
+- Connection pooling configured
+- Database migrations via Alembic
+**Dependencies:** REQ-INF-001
+
+### REQ-INF-003: Cloud Storage
+**Priority:** CRITICAL
+**Description:** GCS bucket for evidence file storage.
+**Acceptance Criteria:**
+- Dedicated bucket per environment (dev, prod)
+- Files organized by case_id
+- Signed URLs for secure access
+- Maximum file size: 500MB
+- Supported types: PDF, DOCX, MP4, MP3, JPG, PNG, WAV
+**Dependencies:** REQ-INF-001
+
+### REQ-INF-004: SSE Streaming Infrastructure
+**Priority:** HIGH
+**Description:** Server-Sent Events for real-time agent progress updates.
+**Acceptance Criteria:**
+- FastAPI SSE endpoints via sse-starlette
+- Proper headers for Cloud Run (X-Accel-Buffering: no)
+- Heartbeat every 15 seconds to prevent timeout
+- Polling fallback for SSE failures
+- Frontend EventSource with auto-reconnect
+**Dependencies:** REQ-INF-002
+
+---
+
+## REQ-AUTH: Authentication & Authorization
+
+### REQ-AUTH-001: Email/Password Registration
+**Priority:** HIGH
+**Description:** Users can create accounts with email and password.
+**Acceptance Criteria:**
+- Email validation
+- Password strength requirements (8+ chars, mixed case, number)
+- Email verification flow
+- Secure password hashing (bcrypt)
+**Dependencies:** REQ-INF-002
+
+### REQ-AUTH-002: Google OAuth
+**Priority:** HIGH
+**Description:** Users can sign in with Google accounts.
+**Acceptance Criteria:**
+- Google OAuth 2.0 integration
+- Automatic account linking if email exists
+- Profile picture imported
+**Dependencies:** REQ-AUTH-001
+
+### REQ-AUTH-003: Session Management
+**Priority:** HIGH
+**Description:** Persistent sessions across browser refresh.
+**Acceptance Criteria:**
+- JWT-based sessions
+- Session persists in localStorage/cookies
+- Automatic refresh before expiry
+- Backend validates session on every request
+**Dependencies:** REQ-AUTH-001
+
+### REQ-AUTH-004: Case Access Control
+**Priority:** HIGH
+**Description:** Users see only their own cases.
+**Acceptance Criteria:**
+- Cases linked to user_id
+- All case queries filtered by authenticated user
+- No cross-user data leakage
+**Dependencies:** REQ-AUTH-001, REQ-CASE-001
+
+---
+
+## REQ-CASE: Case Management
+
+### REQ-CASE-001: Case Creation
+**Priority:** HIGH
+**Description:** Users can create new investigation cases.
+**Acceptance Criteria:**
+- Case name (required, 3-100 chars)
+- Case description/context (optional, up to 5000 chars)
+- Case type selection (Fraud, Corporate, Civil, Criminal, Other)
+- Case created with DRAFT status
+- Unique case ID generated
+**Dependencies:** REQ-AUTH-001, REQ-INF-002
+
+### REQ-CASE-002: Case List View
+**Priority:** HIGH
+**Description:** Users can view all their cases with status indicators.
+**Acceptance Criteria:**
+- Paginated list (20 per page)
+- Shows: name, type, status, file count, created date, last modified
+- Status indicators: DRAFT, PROCESSING, READY, ERROR
+- Sort by date, name, status
+- Search by name
+**Dependencies:** REQ-CASE-001
+
+### REQ-CASE-003: Case Deletion
+**Priority:** MEDIUM
+**Description:** Users can delete cases with all associated data.
+**Acceptance Criteria:**
+- Confirmation dialog required
+- Cascades to: files, analysis results, knowledge graph, chat history
+- GCS files deleted
+- Soft delete with 30-day recovery window
+**Dependencies:** REQ-CASE-001
+
+### REQ-CASE-004: Evidence Upload
+**Priority:** CRITICAL
+**Description:** Users can upload multiple evidence files to a case.
+**Acceptance Criteria:**
+- Drag-and-drop upload UI
+- Multiple file selection
+- Progress indicator per file
+- Automatic file type detection
+- Supported: PDF, DOCX, MP4, MP3, WAV, JPG, PNG
+- Max 500MB per file
+- Files stored in GCS with metadata in PostgreSQL
+**Dependencies:** REQ-CASE-001, REQ-INF-003
+
+### REQ-CASE-005: Case Library View
+**Priority:** HIGH
+**Description:** Users can view and manage files within a case.
+**Acceptance Criteria:**
+- Grid or list view toggle
+- File thumbnails for images/PDFs
+- File metadata: name, type, size, upload date, processing status
+- Filter by type, status
+- Select files for batch operations
+- Delete individual files
+**Dependencies:** REQ-CASE-004
+
+---
+
+## REQ-AGENT: Agentic Processing Pipeline
+
+### REQ-AGENT-001: Triage Agent
+**Priority:** CRITICAL
+**Description:** Initial agent that classifies files by domain relevance.
+**Acceptance Criteria:**
+- Receives file from GCS (via signed URL or content)
+- Uses Gemini 3 Flash for speed
+- Outputs domain scores: Financial (0-1), Legal (0-1), Strategy (0-1)
+- Outputs complexity score (1-5)
+- Outputs file summary (200 words max)
+- Outputs detected entities (people, orgs, dates, amounts)
+- Processing time < 30 seconds per file
+**Dependencies:** REQ-INF-003, REQ-AGENT-007
+
+### REQ-AGENT-002: Orchestrator Agent
+**Priority:** CRITICAL
+**Description:** Intelligent coordinator that routes files to domain agents.
+**Acceptance Criteria:**
+- LlmAgent with Gemini 3 Pro
+- Receives triage results
+- Routes to 1+ domain agents based on scores (threshold: 0.4)
+- Manages parallel execution of domain agents
+- Aggregates domain outputs for Synthesis Agent
+- Handles agent failures gracefully
+**Dependencies:** REQ-AGENT-001
+
+### REQ-AGENT-003: Financial Analysis Agent
+**Priority:** HIGH
+**Description:** Domain agent specialized in financial document analysis.
+**Acceptance Criteria:**
+- Processes financial records, invoices, statements, receipts
+- Extracts: transactions, amounts, dates, parties, account numbers
+- Identifies: anomalies, patterns, discrepancies
+- Links to other evidence (temporal, entity-based)
+- Outputs structured findings with span-level citations
+- Gemini 3 Pro for deep analysis
+**Dependencies:** REQ-AGENT-002
+
+### REQ-AGENT-004: Legal Analysis Agent
+**Priority:** HIGH
+**Description:** Domain agent specialized in legal document analysis.
+**Acceptance Criteria:**
+- Processes contracts, legal filings, correspondence, regulations
+- Extracts: parties, obligations, dates, clauses, citations
+- Identifies: risks, violations, precedents
+- Links to statutes/regulations mentioned
+- Outputs structured findings with span-level citations
+- Gemini 3 Pro for nuanced legal interpretation
+**Dependencies:** REQ-AGENT-002
+
+### REQ-AGENT-005: Strategy Analysis Agent
+**Priority:** HIGH
+**Description:** Domain agent specialized in strategic implications.
+**Acceptance Criteria:**
+- Synthesizes across financial and legal findings
+- Identifies: case strengths, weaknesses, risks, opportunities
+- Suggests investigation directions
+- Prioritizes evidence by strategic value
+- Outputs strategic recommendations with citations
+- Gemini 3 Pro for complex reasoning
+**Dependencies:** REQ-AGENT-002
+
+### REQ-AGENT-006: Evidence Analysis Agent
+**Priority:** HIGH
+**Description:** Domain agent specialized in critical evidence evaluation, authenticity verification, and forensic analysis.
+**Acceptance Criteria:**
+
+**Core Capabilities:**
+- Processes ALL evidence types natively via Gemini 3 multimodal:
+  - Documents: PDFs, scanned images, contracts, correspondence
+  - Images: Photos, screenshots, diagrams, scanned receipts
+  - Video: Surveillance footage, depositions, recordings
+  - Audio: Phone calls, meetings, voicemails
+
+**Authenticity Analysis:**
+- Evaluates visual authenticity indicators:
+  - Image manipulation detection (splicing, cloning, retouching)
+  - Document alteration signs (font inconsistencies, alignment issues)
+  - Video editing artifacts (jump cuts, frame manipulation)
+- Metadata consistency checking:
+  - Creation/modification timestamps vs claimed dates
+  - Device/software fingerprints
+  - GPS/location data validation
+  - Author/creator information
+
+**Chain of Custody:**
+- Documents evidence provenance trail
+- Identifies gaps in custody documentation
+- Flags evidence with unclear origin
+- Assesses handling and storage conditions
+
+**Corroboration Analysis:**
+- Cross-references evidence against other case materials
+- Identifies supporting evidence for key claims
+- Detects evidence that contradicts other sources
+- Calculates corroboration scores per claim
+
+**Quality Assessment Output:**
+```json
+{
+  "authenticity_score": 0.0-1.0,
+  "authenticity_concerns": ["list of specific concerns"],
+  "custody_chain_complete": true/false,
+  "custody_gaps": ["list of gaps"],
+  "corroboration_status": "strong|moderate|weak|uncorroborated",
+  "corroborating_evidence": ["file_id#location references"],
+  "contradicting_evidence": ["file_id#location references"],
+  "recommendation": "ADMIT|VERIFY|CHALLENGE|EXCLUDE",
+  "confidence": 0.0-1.0
+}
+```
+
+**Technical Configuration:**
+- Model: Gemini 3 Pro with `thinking_level="high"`
+- Media resolution: `"high"` for document forensics
+- `include_thoughts=True` for audit trail
+- Outputs structured findings with span-level citations
+
+**Dependencies:** REQ-AGENT-002, REQ-AGENT-007c
+
+### REQ-AGENT-007: ADK Runner Infrastructure
+**Priority:** CRITICAL
+**Description:** Google ADK integration for agent orchestration.
+**Acceptance Criteria:**
+- ADK 1.22.x integrated with FastAPI
+- DatabaseSessionService with PostgreSQL
+- Fresh agent instances per workflow (ADK constraint: single parent rule)
+- State namespacing per user/case with scope prefixes:
+  - No prefix: Current session (case-specific data)
+  - `user:` prefix: All user sessions (investigator preferences)
+  - `app:` prefix: Global application (system configuration)
+  - `temp:` prefix: Current invocation only (intermediate processing)
+- Tool registration and execution
+- Error handling and retry logic
+- GcsArtifactService for evidence and report storage with versioning
+- Thought signature handling for multi-turn function calling (SDK handles automatically)
+**Dependencies:** REQ-INF-002
+
+### REQ-AGENT-007a: ADK Limitations Documentation
+**Priority:** HIGH
+**Description:** Document and design around known ADK limitations.
+**Acceptance Criteria:**
+- Tool confirmation (`require_confirmation`) only works with InMemorySessionService, NOT DatabaseSessionService
+  - **Mitigation:** Implement confirmation dialogs in frontend instead
+- Cannot use `tools` and `output_schema` together on same agent
+  - **Mitigation:** Split into tool-using agent → schema-constrained agent pipeline
+- Single parent rule: An agent can only be a sub-agent of one parent
+  - **Mitigation:** Agent factory pattern creates fresh instances per workflow
+- State updates only commit after Event is yielded and processed
+  - **Mitigation:** Ensure tool results returned before yielding next event
+- Temperature must stay at 1.0 for Gemini 3 (lower values cause looping)
+  - **Mitigation:** Do not override temperature setting
+- LoopAgent requires explicit `EventActions(escalate=True)` to exit early
+  - **Mitigation:** Add explicit QualityThresholdChecker BaseAgent in loops
+**Dependencies:** REQ-AGENT-007
+
+### REQ-AGENT-007b: Thinking Mode Configuration
+**Priority:** HIGH
+**Description:** Configure appropriate thinking levels per agent type for optimal performance/cost balance.
+**Acceptance Criteria:**
+- All agents include explicit `thinking_config` in `generate_content_config`
+- Thinking level assignments:
+  - **Triage Agent:** `thinking_level="low"` (speed priority, simple classification)
+  - **Orchestrator Agent:** `thinking_level="high"` (complex routing decisions)
+  - **Financial Agent:** `thinking_level="medium"` (balanced analysis)
+  - **Legal Agent:** `thinking_level="high"` (nuanced legal interpretation)
+  - **Strategy Agent:** `thinking_level="medium"` (balanced synthesis)
+  - **Evidence Agent:** `thinking_level="high"` (forensic-level authenticity analysis)
+  - **Synthesis Agent:** `thinking_level="high"` (complex cross-referencing)
+  - **KG Agent:** `thinking_level="medium"` (entity resolution)
+  - **Chat Agent:** `thinking_level="medium"` (responsive Q&A)
+  - **Verification Agent:** `thinking_level="high"` (critical accuracy)
+- All agents set `include_thoughts=True` for Agent Trace Theater transparency
+- Thinking traces captured and stored for display in visualization
+**Dependencies:** REQ-AGENT-007
+
+### REQ-AGENT-007c: Media Resolution Configuration
+**Priority:** HIGH
+**Description:** Configure high media resolution for dense legal document processing.
+**Acceptance Criteria:**
+- All domain agents processing documents use `media_resolution="high"` in generation config
+- Enables accurate extraction of:
+  - Small text and fine print
+  - Signatures and initials
+  - Dense tables and financial figures
+  - Watermarks and annotations
+  - Scanned document details
+- Config applied via `generation_config={"media_resolution": "high"}`
+**Dependencies:** REQ-AGENT-007
+
+### REQ-AGENT-007d: Video/Audio Processing with Metadata
+**Priority:** HIGH
+**Description:** Support precise segment analysis for video and audio evidence.
+**Acceptance Criteria:**
+- Video evidence processed with `VideoMetadata` for timestamp offsets
+- Support for analyzing specific segments: `start_offset`, `end_offset`
+- Audio evidence includes speaker diarization requests
+- Key moments extracted with precise timestamps (MM:SS or HH:MM:SS)
+- Transcripts aligned with timestamps for citation linking
+- Example usage:
+  ```python
+  types.Part(
+      file_data=types.FileData(file_uri=video_file.uri),
+      video_metadata=VideoMetadata(
+          start_offset="00:15:00",
+          end_offset="00:45:00"
+      )
+  )
+  ```
+**Dependencies:** REQ-AGENT-007, REQ-INF-003
+
+### REQ-AGENT-007e: ADK Artifact Service
+**Priority:** HIGH
+**Description:** Use ADK's GcsArtifactService for evidence and report storage with versioning.
+**Acceptance Criteria:**
+- Configure `GcsArtifactService` with dedicated bucket
+- Runner initialized with artifact_service parameter
+- Tools use `tool_context.save_artifact()` for storing:
+  - Generated reports (PDF, DOCX)
+  - Structured findings (JSON)
+  - Extracted evidence snapshots
+- Tools use `tool_context.load_artifact()` for retrieval
+- Versioning enabled for correction/regeneration audit trail
+- Artifact references stored in state for downstream access
+**Dependencies:** REQ-INF-003, REQ-AGENT-007
+
+### REQ-AGENT-007f: Context Caching for Evidence
+**Priority:** MEDIUM
+**Description:** Implement context caching for cost-effective repeated queries against same evidence.
+**Acceptance Criteria:**
+- Create context cache when user opens a case for chat
+- Cache includes all case evidence files
+- TTL set to session duration (default 2 hours)
+- Chat queries use `cached_content` parameter
+- Cost reduction: 4x cheaper for cached queries
+- Cache invalidated when new evidence added
+- Implementation pattern:
+  ```python
+  cache = client.caches.create(
+      model="gemini-3-pro-preview",
+      contents=[*case_evidence_files],
+      ttl="7200s"
+  )
+  ```
+**Dependencies:** REQ-AGENT-007, REQ-CHAT-001
+
+### REQ-AGENT-007g: Context Compaction for Long Sessions
+**Priority:** MEDIUM
+**Description:** Implement context compaction to handle long investigation sessions.
+**Acceptance Criteria:**
+- Configure `EventsCompactionConfig` for long-running investigations
+- Compaction interval: every 5 invocations
+- Overlap size: 2 events preserved in summary
+- Use `LlmEventSummarizer` with Gemini Flash for cost efficiency
+- Prevents context window exhaustion in complex cases
+- Implementation:
+  ```python
+  events_compaction_config=EventsCompactionConfig(
+      compaction_interval=5,
+      overlap_size=2,
+      summarizer=LlmEventSummarizer(llm=Gemini(model="gemini-3-flash-preview"))
+  )
+  ```
+**Dependencies:** REQ-AGENT-007, REQ-CHAT-005
+
+### REQ-AGENT-007h: Resilient Agent Wrapper
+**Priority:** HIGH
+**Description:** Implement graceful degradation with fallback agents.
+**Acceptance Criteria:**
+- Custom `ResilientAgentWrapper` BaseAgent for each domain agent
+- Primary agent: Gemini 3 Pro for full analysis
+- Fallback agent: Gemini 3 Flash for degraded but functional analysis
+- Error logging to state for debugging
+- Graceful error message when both fail
+- Pattern:
+  ```python
+  class ResilientAgentWrapper(BaseAgent):
+      def __init__(self, primary_agent, fallback_agent=None):
+          self.primary_agent = primary_agent
+          self.fallback_agent = fallback_agent
+  ```
+**Dependencies:** REQ-AGENT-007, REQ-ERR-005
+
+### REQ-AGENT-007i: Deep Research Agent Integration
+**Priority:** LOW
+**Description:** Integrate Gemini Deep Research agent for autonomous case background research.
+**Acceptance Criteria:**
+- Use `client.interactions.create()` with `deep-research-pro-preview` agent
+- Run as background task (`background=True`)
+- Stream progress via thinking summaries
+- Research outputs: corporate filings, news articles, legal records
+- Results integrated into case context for domain agents
+- User can trigger: "Research background on [subject]"
+- Implementation:
+  ```python
+  interaction = client.interactions.create(
+      input="Research publicly available information about [subject]",
+      agent='deep-research-pro-preview-12-2025',
+      background=True,
+      stream=True,
+      agent_config={"type": "deep-research", "thinking_summaries": "auto"}
+  )
+  ```
+**Dependencies:** REQ-AGENT-007, REQ-CHAT-003
+
+### REQ-AGENT-008: Synthesis Agent
+**Priority:** HIGH
+**Description:** Agent that cross-references all domain findings.
+**Acceptance Criteria:**
+- Receives outputs from all domain agents
+- Identifies: links between findings, contradictions, gaps
+- Produces: unified findings document, contradiction list, gap list
+- Maintains provenance chain for all assertions
+- Gemini 3 Pro with `thinking_level="high"` for complex synthesis
+- Uses `include_thoughts=True` for transparency
+**Dependencies:** REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006
+
+### REQ-AGENT-009: Knowledge Graph Agent
+**Priority:** HIGH
+**Description:** Agent that builds entity-relationship graph from synthesis.
+**Acceptance Criteria:**
+- Extracts entities: Person, Organization, Event, Document, Location, Amount
+- Identifies relationships with types (e.g., EMPLOYED_BY, SIGNED, WITNESSED)
+- Resolves entity duplicates (fuzzy matching)
+- Incremental updates without full rebuild
+- Stores in PostgreSQL (nodes + edges tables)
+- Links all nodes to source evidence
+**Dependencies:** REQ-AGENT-008
+
+### REQ-AGENT-010: Incremental Processing
+**Priority:** MEDIUM
+**Description:** Pipeline handles new files without full reprocessing.
+**Acceptance Criteria:**
+- New files processed through full pipeline
+- Existing knowledge graph updated incrementally
+- Synthesis Agent re-evaluates with new context
+- Affected entities marked for review
+- No reprocessing of unchanged files
+**Dependencies:** REQ-AGENT-008, REQ-AGENT-009
+
+---
+
+## REQ-VIS: Visualization & UI
+
+### REQ-VIS-001: Agent Trace Theater
+**Priority:** CRITICAL
+**Description:** Real-time visualization of agent execution flow.
+**Acceptance Criteria:**
+- React Flow canvas showing agent nodes
+- Animated edges during data flow
+- Color-coded by agent type
+- Click node to expand details panel
+- Shows: model, input summary, tools called, output summary, duration, thinking traces
+- Updates in real-time via SSE
+- ADK callback-to-SSE mapping:
+  - `before_agent_callback` → `AGENT_SPAWNED` event (node appears)
+  - `after_agent_callback` → `AGENT_COMPLETED` event (node completes)
+  - `before_tool_callback` → `TOOL_INVOKED` event (tool indicator)
+  - `before_model_callback` → `THINKING_UPDATE` event (reasoning trace)
+  - `after_model_callback` → `MODEL_RESPONSE` event (partial output)
+**Dependencies:** REQ-INF-004, REQ-AGENT-002, REQ-AGENT-007b
+
+### REQ-VIS-001a: Human-in-the-Loop Confirmation (Frontend)
+**Priority:** HIGH
+**Description:** Implement confirmation dialogs in frontend for sensitive operations.
+**Acceptance Criteria:**
+- **Note:** ADK's `require_confirmation` only works with InMemorySessionService, not DatabaseSessionService. Therefore, confirmation is implemented in frontend.
+- Confirmation dialog UI component with:
+  - Action description
+  - Affected items preview
+  - Confirm/Cancel buttons
+  - Optional reason input
+- Operations requiring confirmation:
+  - Delete evidence file
+  - Apply correction to knowledge graph
+  - Regenerate stale items (batch)
+  - Clear chat history
+  - Delete case
+- Confirmation state tracked in Zustand store
+- API calls blocked until confirmation received
+- Timeout with auto-cancel (2 minutes)
+- Audit log entry for confirmed actions
+**Dependencies:** REQ-VIS-001
+
+### REQ-VIS-002: Agent Detail View
+**Priority:** HIGH
+**Description:** Detailed view of individual agent execution.
+**Acceptance Criteria:**
+- Full thinking trace (if available)
+- Complete input context
+- Tool calls with inputs/outputs
+- Complete output findings
+- Token usage statistics
+- Execution timeline
+**Dependencies:** REQ-VIS-001
+
+### REQ-VIS-003: Knowledge Graph View
+**Priority:** HIGH
+**Description:** Force-directed graph displaying entities and relationships.
+**Acceptance Criteria:**
+- D3.js force-directed layout
+- Nodes sized by connection count
+- Edges labeled with relationship type
+- Three toggleable layers: Evidence (red), Legal (blue), Strategy (green)
+- Zoom and pan controls
+- Node search and highlight
+- Click node to see details and source links
+**Dependencies:** REQ-AGENT-009
+
+### REQ-VIS-004: Timeline View
+**Priority:** MEDIUM
+**Description:** Chronological view of case events.
+**Acceptance Criteria:**
+- Horizontal timeline with zoom
+- Events plotted by date/time
+- Events linked to source evidence
+- Filter by entity, event type
+- Gaps highlighted visually
+- Click event for details
+**Dependencies:** REQ-AGENT-009
+
+### REQ-VIS-005: Contradictions Panel
+**Priority:** HIGH
+**Description:** Panel showing detected inconsistencies.
+**Acceptance Criteria:**
+- List of contradiction pairs
+- Each shows: claim A, claim B, sources, severity
+- Click to navigate to sources
+- Filter by severity, entity
+- Resolution status tracking
+**Dependencies:** REQ-AGENT-008
+
+### REQ-VIS-006: Evidence Gaps Panel
+**Priority:** HIGH
+**Description:** Panel showing missing evidence.
+**Acceptance Criteria:**
+- List of identified gaps
+- Each shows: what's missing, why needed, related entities
+- Priority ranking
+- Suggestions for finding evidence
+- Resolution status tracking
+**Dependencies:** REQ-AGENT-008
+
+---
+
+## REQ-SOURCE: Source Panel
+
+### REQ-SOURCE-001: PDF Viewer
+**Priority:** HIGH
+**Description:** View PDFs with highlighted excerpts.
+**Acceptance Criteria:**
+- Full PDF rendering (pdf.js or react-pdf)
+- Page navigation
+- Zoom controls
+- Text selection
+- Highlighted excerpts (from citations)
+- Jump to specific page/excerpt
+**Dependencies:** REQ-CASE-004
+
+### REQ-SOURCE-002: Video Player
+**Priority:** HIGH
+**Description:** Video playback with timestamp linking.
+**Acceptance Criteria:**
+- Standard video controls
+- Timestamp markers for key moments
+- Click marker to jump to timestamp
+- Transcript overlay option
+- Frame-level navigation
+**Dependencies:** REQ-CASE-004
+
+### REQ-SOURCE-003: Audio Player
+**Priority:** HIGH
+**Description:** Audio playback with waveform visualization.
+**Acceptance Criteria:**
+- Waveform display (wavesurfer.js)
+- Standard playback controls
+- Transcript sync (highlight current segment)
+- Click waveform to seek
+- Timestamp markers for key moments
+**Dependencies:** REQ-CASE-004
+
+### REQ-SOURCE-004: Image Viewer
+**Priority:** MEDIUM
+**Description:** Image viewing with annotation overlays.
+**Acceptance Criteria:**
+- Zoom and pan controls
+- Bounding box overlays (from agent analysis)
+- Click bounding box for entity details
+- Side-by-side comparison mode
+**Dependencies:** REQ-CASE-004
+
+### REQ-SOURCE-005: Citation Navigation
+**Priority:** CRITICAL
+**Description:** Click any citation to view source at exact location.
+**Acceptance Criteria:**
+- All agent citations are clickable
+- Opens Source Panel with correct viewer
+- Navigates to exact location (page, timestamp, region)
+- Highlights relevant excerpt
+- Source panel remembers last position
+**Dependencies:** REQ-SOURCE-001, REQ-SOURCE-002, REQ-SOURCE-003, REQ-SOURCE-004
+
+---
+
+## REQ-CHAT: Contextual Chat
+
+### REQ-CHAT-001: Chat Interface
+**Priority:** HIGH
+**Description:** Chat UI for asking questions about the case.
+**Acceptance Criteria:**
+- Message input with send button
+- Message history display
+- Streaming response with typing indicator
+- Markdown rendering in responses
+- Code block formatting
+- Mobile-responsive
+**Dependencies:** REQ-VIS-001
+
+### REQ-CHAT-002: Knowledge-First Query
+**Priority:** HIGH
+**Description:** Chat queries Knowledge Graph before escalating.
+**Acceptance Criteria:**
+- Simple questions answered from KG (fast path)
+- Response time < 2 seconds for KG queries
+- Indicates when using cached knowledge
+- Fallback to agent escalation for novel questions
+**Dependencies:** REQ-AGENT-009, REQ-CHAT-001
+
+### REQ-CHAT-003: Agent Escalation
+**Priority:** HIGH
+**Description:** Complex questions escalate to Orchestrator.
+**Acceptance Criteria:**
+- Detects when KG is insufficient
+- Routes to Orchestrator for domain agent analysis
+- User sees "Analyzing with agents..." indicator
+- Full agent trace available during processing
+- Results added to KG for future queries
+**Dependencies:** REQ-AGENT-002, REQ-CHAT-002
+
+### REQ-CHAT-004: Inline Citations
+**Priority:** CRITICAL
+**Description:** Responses include clickable citations to sources.
+**Acceptance Criteria:**
+- Every factual claim has citation
+- Citations formatted as [1], [2], etc.
+- Hover shows source preview
+- Click opens Source Panel
+- Citation list at response end
+**Dependencies:** REQ-SOURCE-005, REQ-CHAT-001
+
+### REQ-CHAT-005: Chat History
+**Priority:** MEDIUM
+**Description:** Chat history persists across sessions.
+**Acceptance Criteria:**
+- History stored in PostgreSQL
+- Loads on case open
+- Searchable history
+- Export chat as document
+**Dependencies:** REQ-CHAT-001, REQ-INF-002
+
+---
+
+## REQ-CORR: Correction & Regeneration
+
+### REQ-CORR-001: Error Flagging
+**Priority:** MEDIUM
+**Description:** Users can flag errors in findings or graph.
+**Acceptance Criteria:**
+- Flag button on any finding/node
+- Error description input
+- Suggested correction (optional)
+- Flags stored for review
+**Dependencies:** REQ-VIS-003, REQ-VIS-005
+
+### REQ-CORR-002: Verification Agent
+**Priority:** MEDIUM
+**Description:** Agent validates corrections against original sources.
+**Acceptance Criteria:**
+- Receives flagged item and correction
+- Re-analyzes relevant sources
+- Confirms or refutes correction
+- Provides reasoning for decision
+- Gemini 3 Pro for verification accuracy
+**Dependencies:** REQ-CORR-001, REQ-AGENT-007
+
+### REQ-CORR-003: Knowledge Graph Updates
+**Priority:** MEDIUM
+**Description:** Confirmed corrections update the graph.
+**Acceptance Criteria:**
+- Verified corrections applied to KG
+- Affected nodes/edges updated
+- Provenance updated with correction info
+- Downstream items marked STALE
+**Dependencies:** REQ-CORR-002, REQ-AGENT-009
+
+### REQ-CORR-004: Stale Item Management
+**Priority:** LOW
+**Description:** Track and regenerate stale items.
+**Acceptance Criteria:**
+- Stale items visually indicated
+- List of stale items in UI
+- One-click regeneration
+- Batch regeneration option
+**Dependencies:** REQ-CORR-003
+
+---
+
+## REQ-MEM: Memory Service (Post-MVP)
+
+### REQ-MEM-001: Cross-Case Memory Service
+**Priority:** LOW (Post-MVP)
+**Description:** Long-term memory across cases for pattern recognition and learning.
+**Acceptance Criteria:**
+- Integrate `VertexAiMemoryBankService` for persistent memory
+- Memory bank stores:
+  - Entity patterns (common fraud indicators, legal precedents)
+  - Investigation patterns (successful approaches)
+  - User preferences and custom rules
+- `PreloadMemoryTool` auto-loads relevant memory at agent start
+- Search past cases: `memory_service.search_memory(query)`
+- Memory isolation per user (no cross-user data leakage)
+- Opt-in: User explicitly enables memory storage per case
+- Implementation:
+  ```python
+  memory_service = VertexAiMemoryBankService(
+      project="your-project-id",
+      location="us-central1",
+      agent_engine_id="holmes-memory"
+  )
+
+  # After investigation completes
+  await memory_service.add_session_to_memory(session)
+
+  # In Chat Agent
+  tools=[PreloadMemoryTool()]  # Auto-loads relevant memory
+  ```
+**Dependencies:** REQ-AGENT-007 (MVP complete first)
+**Migration Path:** Enable after moving to Agent Engine post-hackathon
+
+---
+
+## REQ-WOW: WOW Capabilities
+
+### REQ-WOW-001: Cross-Modal Evidence Linking
+**Priority:** HIGH
+**Description:** Automatically surface temporal correlations across modalities.
+**Acceptance Criteria:**
+- Links video timestamps to document dates
+- Links audio mentions to document entities
+- Links image content to textual descriptions
+- Displays cross-modal links in KG view
+- Confidence scores for each link
+**Dependencies:** REQ-AGENT-008, REQ-VIS-003
+
+### REQ-WOW-002: Contradiction Detection
+**Priority:** HIGH
+**Description:** Find inconsistencies between claims and evidence.
+**Acceptance Criteria:**
+- Detects factual contradictions (dates, amounts, statements)
+- Detects testimony inconsistencies
+- Severity classification (minor, significant, critical)
+- Source citations for both sides
+- Displayed in Contradictions Panel
+**Dependencies:** REQ-AGENT-008, REQ-VIS-005
+
+### REQ-WOW-003: Gap Analysis
+**Priority:** HIGH
+**Description:** Identify missing evidence needed to prove case elements.
+**Acceptance Criteria:**
+- Identifies unaddressed case elements
+- Identifies missing time periods
+- Identifies uncorroborated claims
+- Suggests what evidence would fill gap
+- Priority ranking by case impact
+**Dependencies:** REQ-AGENT-008, REQ-VIS-006
+
+### REQ-WOW-004: Narrative Generation
+**Priority:** MEDIUM
+**Description:** One-click generation of case briefs with citations.
+**Acceptance Criteria:**
+- Generate executive summary
+- Generate detailed narrative
+- Generate timeline narrative
+- Inline citations throughout
+- Export as PDF or DOCX
+- Customizable sections
+**Dependencies:** REQ-AGENT-008, REQ-SOURCE-005
+
+---
+
+## REQ-ERR: Error Handling Strategy
+
+### REQ-ERR-001: Retry Policy
+**Priority:** HIGH
+**Description:** Automatic retry for transient failures.
+**Acceptance Criteria:**
+- Gemini API calls: 3 retries, exponential backoff (1s, 2s, 4s)
+- GCS operations: 3 retries, linear backoff (500ms)
+- PostgreSQL writes: 3 retries, exponential backoff
+- Tool executions: 2 retries, no backoff
+- Mark agent as FAILED and continue others on exhausted retries
+**Dependencies:** REQ-AGENT-007
+
+### REQ-ERR-002: Error Propagation
+**Priority:** HIGH
+**Description:** Graceful error handling that preserves partial results.
+**Acceptance Criteria:**
+- Critical errors (Orchestrator/KG): Mark job FAILED, notify user immediately
+- Non-critical errors (Domain worker): Mark specific files as PARTIAL, continue with remaining agents
+- Partial results shown with clear warnings
+- User can manually retry failed items via UI
+**Dependencies:** REQ-ERR-001
+
+### REQ-ERR-003: Error Categories
+**Priority:** HIGH
+**Description:** Structured error classification for appropriate handling.
+**Acceptance Criteria:**
+- `TRANSIENT`: Auto-retry with backoff, no user impact if resolved
+- `FILE_CORRUPT`: Mark file ERROR, skip processing, user notified
+- `AGENT_TIMEOUT`: Retry once with reduced context, then PARTIAL
+- `QUOTA_EXCEEDED`: Pause processing, notify user, processing delayed
+- `SYSTEM_ERROR`: Log, alert, fail gracefully, user sees error state
+**Dependencies:** REQ-ERR-001
+
+### REQ-ERR-004: Error Response Format
+**Priority:** MEDIUM
+**Description:** Consistent JSON error response structure.
+**Acceptance Criteria:**
+- All API errors return consistent JSON structure
+- Fields: code, message, details (file_id, agent_id, last_error, attempts)
+- Fields: recoverable (boolean), suggested_action
+- Standard codes: VALIDATION_ERROR, FILE_CORRUPT, PROCESSING_FAILED, AGENT_TIMEOUT, QUOTA_EXCEEDED, CONFLICT_DETECTED, SYSTEM_ERROR
+**Dependencies:** REQ-INF-001
+
+### REQ-ERR-005: Graceful Degradation
+**Priority:** HIGH
+**Description:** System remains usable when components fail.
+**Acceptance Criteria:**
+- Partial file processing: Show results for successful files, mark failed with retry button
+- Model unavailable: Attempt fallback Gemini 3 Pro → Gemini 3 Flash for simpler analysis
+- SSE disconnection: Show "Reconnecting..." with auto-retry (exponential backoff)
+- Stale data: Display last-known-good state with timestamp, show refresh prompt
+- KG build fails: Preserve domain findings, allow access to raw findings without graph
+**Dependencies:** REQ-INF-004, REQ-AGENT-007
+
+---
+
+## Traceability Matrix
+
+| Requirement ID | PROJECT.md Reference | Research Source |
+|---------------|---------------------|-----------------|
+| REQ-INF-* | Infrastructure & Auth | STACK.md, PITFALLS.md |
+| REQ-AUTH-* | Infrastructure & Auth | STACK.md (Better Auth) |
+| REQ-CASE-* | Case Management | FEATURES.md |
+| REQ-AGENT-* | Agentic Processing Pipeline | ARCHITECTURE.md |
+| REQ-VIS-* | Agent Trace Theater, Knowledge Graph | FEATURES.md |
+| REQ-SOURCE-* | Source Panel | FEATURES.md |
+| REQ-CHAT-* | Contextual Chat | ARCHITECTURE.md |
+| REQ-CORR-* | Correction & Regeneration | FEATURES.md |
+| REQ-WOW-* | WOW Capabilities | FEATURES.md, SUMMARY.md |
+| REQ-ERR-* | Error Handling | PRD Section 8, PITFALLS.md |
+
+---
+
+## Requirement Statistics
+
+| Category | Count | Critical | High | Medium | Low |
+|----------|-------|----------|------|--------|-----|
+| Infrastructure | 4 | 3 | 1 | 0 | 0 |
+| Authentication | 4 | 0 | 4 | 0 | 0 |
+| Case Management | 5 | 1 | 3 | 1 | 0 |
+| Agents (Core) | 10 | 3 | 6 | 1 | 0 |
+| Agents (ADK Config) | 10 | 0 | 6 | 3 | 1 |
+| Visualization | 7 | 1 | 4 | 1 | 1 |
+| Source Panel | 5 | 1 | 3 | 1 | 0 |
+| Chat | 5 | 1 | 3 | 1 | 0 |
+| Corrections | 4 | 0 | 0 | 3 | 1 |
+| WOW | 4 | 0 | 3 | 1 | 0 |
+| Error Handling | 5 | 0 | 4 | 1 | 0 |
+| Memory (Post-MVP) | 1 | 0 | 0 | 0 | 1 |
+| **TOTAL** | **64** | **10** | **37** | **12** | **4** |
+
+---
+
+## ADK-Specific Requirements Summary
+
+| Requirement | Priority | Purpose |
+|-------------|----------|---------|
+| REQ-AGENT-007 | CRITICAL | Core ADK infrastructure with session service, artifact service |
+| REQ-AGENT-007a | HIGH | Document and mitigate ADK limitations |
+| REQ-AGENT-007b | HIGH | Thinking mode configuration per agent |
+| REQ-AGENT-007c | HIGH | Media resolution for dense documents |
+| REQ-AGENT-007d | HIGH | Video/audio metadata for precise timestamps |
+| REQ-AGENT-007e | HIGH | ADK artifact service with versioning |
+| REQ-AGENT-007f | MEDIUM | Context caching for cost optimization |
+| REQ-AGENT-007g | MEDIUM | Context compaction for long sessions |
+| REQ-AGENT-007h | HIGH | Resilient agent wrapper for graceful degradation |
+| REQ-AGENT-007i | LOW | Deep Research agent for background research |
+| REQ-VIS-001a | HIGH | Frontend HITL confirmation (ADK limitation workaround) |
+| REQ-MEM-001 | LOW | Memory service (post-MVP) |
+
+---
+
+*Generated: 2026-01-18*
+*Updated: 2026-01-20*
+*Status: Complete - ADK requirements expanded*

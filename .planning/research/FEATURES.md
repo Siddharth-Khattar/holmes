@@ -1,7 +1,7 @@
 # Feature Landscape: Legal Intelligence Platform
 
 **Domain:** Legal intelligence, e-discovery, investigation support
-**Researched:** 2026-01-18
+**Researched:** 2026-01-20
 **Confidence:** HIGH (multiple authoritative sources cross-referenced)
 
 ## Table Stakes
@@ -21,7 +21,7 @@ Features users expect. Missing any of these = product feels incomplete or unusab
 | **Security & Compliance** | Legal data is sensitive; SOC-II, encryption mandatory | High | Infrastructure | AWS-backed, end-to-end encryption, audit trails; non-negotiable |
 | **User Access Controls** | Different roles (attorney, paralegal, client) need different permissions | Medium | User management | Role-based access, matter-level permissions |
 | **Audit Trail** | Courts require defensible process; who did what when | Low | All features | Comprehensive logging for every user action |
-| **OCR (Optical Character Recognition)** | Many legal docs are scanned images; must be searchable | Low | Document processing | Standard in all major platforms |
+| **Scanned Document Processing** | Many legal docs are scanned images; must be analyzable | Low | Gemini native multimodal | Gemini 3 reads scans directly — no separate OCR pipeline needed |
 | **Cloud-Based Access** | Remote work is standard; browser access expected | Medium | Infrastructure | RelativityOne, Everlaw, Logikcull all cloud-native |
 
 ## Differentiators
@@ -37,7 +37,7 @@ Features that set a product apart. Not expected by default, but highly valued wh
 | **Contradiction Detection** | Flag inconsistencies across testimony, documents; huge litigation value | High | NLP, cross-document analysis | LegalWiz framework emerging; Deposely does real-time deposition contradictions; technically hard |
 | **Evidence Gap Identification** | "What events do no witnesses address?" - direct case strategy value | Medium | Knowledge graph, timeline analysis | Requires comprehensive entity/event extraction first |
 | **Cross-Modal Evidence Linking** | Connect video testimony to document claims; multimodal intelligence | Very High | Video/audio processing, transcript alignment | Almost no competitors do this well; VIDIZMO offers basic version |
-| **Domain-Specialized AI Agents** | Financial analysis agent, Legal precedent agent, Strategy agent | High | Agent framework, domain training | Harvey has domain-specific models; Holmes proposes specialized agents |
+| **Domain-Specialized AI Agents** | Financial, Legal, Strategy, Evidence agents (multimodal analysis) | High | Agent framework, domain training | Harvey has domain-specific models; Holmes proposes specialized agents including Evidence Agent for authenticity/chain of custody |
 
 ### Tier 2: Emerging Differentiators (Competitive advantage, some adoption)
 
@@ -84,71 +84,78 @@ Features to explicitly NOT build. Common mistakes in this domain.
 ## Feature Dependencies
 
 ```
-[Document Processing] ─────────────────────────────────────────────────────┐
-       │                                                                    │
-       ├──> [Text Extraction] ──> [Full-Text Search]                       │
-       │                                                                    │
-       ├──> [Metadata Extraction] ──> [Audit Trail]                        │
-       │                                                                    │
-       ├──> [Deduplication]                                                 │
-       │                                                                    │
-       └──> [OCR] ──> [Text Extraction]                                    │
-                                                                            │
-[Entity Extraction] <───────────────────────────────────────────────────────┤
-       │                                                                    │
-       ├──> [Knowledge Graph] ──> [Relationship Visualization]             │
-       │          │                                                         │
-       │          ├──> [Contradiction Detection]                           │
-       │          │                                                         │
-       │          └──> [Evidence Gap Identification]                       │
-       │                                                                    │
-       └──> [Timeline Construction]                                        │
-                                                                            │
-[LLM Integration] <─────────────────────────────────────────────────────────┤
-       │                                                                    │
-       ├──> [Document Summarization]                                       │
-       │                                                                    │
-       ├──> [Natural Language Querying (RAG)]                              │
-       │                                                                    │
-       ├──> [AI Reasoning Traces] ──> [Agent Trace Theater]                │
-       │                                                                    │
-       └──> [Domain-Specialized Agents]                                    │
-                                                                            │
-[Video/Audio Processing] ──> [Transcription] ──> [Text Extraction] ────────┘
-       │
-       └──> [Cross-Modal Evidence Linking]
+[File Storage (GCS)] ─────────────────────────────────────────────────────┐
+       │                                                                   │
+       └──> [Gemini Native Multimodal Processing] ────────────────────────┤
+                    │                                                      │
+                    │  Gemini 3 directly processes:                       │
+                    │  - PDFs (text, tables, images)                      │
+                    │  - Scanned documents (no OCR needed)                │
+                    │  - Video (visual + audio)                           │
+                    │  - Audio (transcription + analysis)                 │
+                    │  - Images (photos, diagrams)                        │
+                    │                                                      │
+                    ├──> [Full-Text Search] (indexed from Gemini output)  │
+                    ├──> [Metadata Extraction]                            │
+                    └──> [Deduplication]                                  │
+                                                                           │
+[Entity Extraction] <──────────────────────────────────────────────────────┤
+       │                                                                   │
+       ├──> [Knowledge Graph] ──> [Relationship Visualization]            │
+       │          │                                                        │
+       │          ├──> [Contradiction Detection]                          │
+       │          │                                                        │
+       │          └──> [Evidence Gap Identification]                      │
+       │                                                                   │
+       └──> [Timeline Construction]                                       │
+                                                                           │
+[Domain Agents (Gemini 3 Pro)] <───────────────────────────────────────────┤
+       │                                                                   │
+       ├──> [Document Summarization]                                      │
+       │                                                                   │
+       ├──> [Natural Language Querying]                                   │
+       │                                                                   │
+       ├──> [AI Reasoning Traces] ──> [Agent Trace Theater]               │
+       │                                                                   │
+       └──> [Cross-Modal Evidence Linking]                                │
+           (Gemini sees all modalities together — no post-hoc stitching)
 ```
+
+**Key Insight:** Gemini 3's native multimodal capability eliminates traditional pipelines:
+- No separate OCR → Gemini reads scanned docs directly
+- No separate transcription → Gemini processes audio natively
+- No separate video frame extraction → Gemini analyzes video directly
+- Cross-modal linking happens naturally within domain context
 
 ## MVP Recommendation
 
 For MVP, prioritize based on Holmes's core value proposition: **Transparent multimodal intelligence**.
 
 ### Phase 1: Core Foundation (Table Stakes)
-1. **Document Processing & Ingestion** - Handle PDF, docx, txt; foundation for everything
-2. **Text Extraction + OCR** - Make content searchable
-3. **Full-Text Search** - Users must find things
+1. **File Storage & Ingestion** - Store PDF, DOCX, images, video, audio in GCS
+2. **Gemini Multimodal Processing** - Gemini 3 directly analyzes all file types (no separate OCR/extraction)
+3. **Full-Text Search** - Index Gemini's extracted content for search
 4. **Source Citations** - Every AI output linked to source document + location
 5. **Basic Security** - Auth, access controls, audit logging
 
-**Rationale:** Without these, the product is not usable for any legal workflow.
+**Rationale:** Gemini handles multimodal natively — no need for separate text extraction/OCR pipelines. This dramatically simplifies Phase 1.
 
 ### Phase 2: Intelligence Layer (First Differentiator)
-1. **Entity Extraction** - People, organizations, dates, amounts
-2. **Knowledge Graph** - Visualize relationships
-3. **AI Reasoning Traces (Agent Trace Theater)** - Holmes's unique differentiator
-4. **Document Summarization** - Quick understanding of long docs
+1. **Domain Agents** - Financial, Legal, Strategy, Evidence agents with Gemini 3 Pro
+2. **Entity Extraction** - People, organizations, dates, amounts
+3. **Knowledge Graph** - Visualize relationships
+4. **AI Reasoning Traces (Agent Trace Theater)** - Holmes's unique differentiator
 5. **Natural Language Querying** - Ask questions of corpus
 
-**Rationale:** This is where Holmes differentiates. Transparency + knowledge graph is unique combination.
+**Rationale:** Domain agents receive multimodal files directly — no preprocessing needed. Evidence Agent evaluates authenticity and chain of custody — critical for legal. Transparency + knowledge graph is unique combination.
 
-### Phase 3: Multimodal & Advanced (Full Differentiator)
-1. **Video/Audio Transcription** - Process depositions, recordings
-2. **Cross-Modal Evidence Linking** - Connect AV to documents
-3. **Contradiction Detection** - Flag inconsistencies
-4. **Evidence Gap Identification** - What's missing?
-5. **Domain-Specialized Agents** - Financial, Legal, Strategy
+### Phase 3: Cross-Modal Intelligence (Full Differentiator)
+1. **Cross-Modal Evidence Linking** - Gemini sees all modalities together (not post-hoc stitching)
+2. **Contradiction Detection** - Flag inconsistencies across sources
+3. **Evidence Gap Identification** - What's missing?
+4. **Synthesis Agent** - Cross-reference all domain findings
 
-**Rationale:** Full multimodal intelligence with specialized analysis. This is the vision.
+**Rationale:** Full multimodal intelligence. Because Gemini processes all modalities natively, cross-modal linking happens naturally within domain context.
 
 ### Defer to Post-MVP
 - **Custom Workflow Builder**: Enterprise feature; adds complexity

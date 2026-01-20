@@ -25,9 +25,9 @@
 | 2 | Authentication & Case Shell | Auth system, Case CRUD, basic UI shell | REQ-AUTH-*, REQ-CASE-001/002/003 |
 | 3 | File Ingestion | Upload, storage, file management | REQ-CASE-004/005, REQ-SOURCE-* (basic) |
 | 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Callbacks | REQ-AGENT-001/002/007/007a/007b/007e |
-| 5 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Resilient wrappers | REQ-AGENT-003/004/005/006/007c/007d/007h |
-| 6 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, graph storage | REQ-AGENT-008/009, REQ-VIS-003 (basic) |
-| 7 | Agent Trace Theater | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 |
+| 5 | Agent Trace Theater | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 |
+| 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Resilient wrappers | REQ-AGENT-003/004/005/006/007c/007d/007h |
+| 7 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, graph storage | REQ-AGENT-008/009, REQ-VIS-003 (basic) |
 | 8 | Intelligence Layer | Contradictions, Gaps, Cross-modal linking | REQ-WOW-001/002/003, REQ-VIS-005/006 |
 | 9 | Chat Interface | Chat UI, Context caching, Context compaction | REQ-CHAT-*, REQ-AGENT-007f/007g, REQ-SOURCE-005 |
 | 10 | Source Panel & Polish | Full source viewers, Timeline, Narrative gen | REQ-SOURCE-*, REQ-VIS-004, REQ-WOW-004 |
@@ -170,7 +170,48 @@
 
 ---
 
-## Phase 5: Domain Agents
+## Phase 5: Agent Trace Theater
+
+**Goal:** Real-time visualization of agent execution with full transparency.
+
+**Requirements:** REQ-VIS-001, REQ-VIS-001a, REQ-VIS-002, REQ-INF-004 (complete)
+
+**Deliverables:**
+- React Flow canvas for agent visualization
+- Agent nodes with type-based styling
+- Animated edges during data flow
+- Real-time updates via SSE with callback mapping:
+  - `before_agent_callback` → AGENT_SPAWNED (node appears)
+  - `after_agent_callback` → AGENT_COMPLETED (node completes)
+  - `before_tool_callback` → TOOL_INVOKED (tool indicator)
+  - `before_model_callback` → THINKING_UPDATE (reasoning started)
+  - `after_model_callback` → MODEL_RESPONSE (thinking traces available)
+- Click-to-expand agent detail panel
+- Detail view: model, input, tools, output, duration, thinking traces
+- Token usage display
+- Execution timeline
+- Human-in-the-loop confirmation dialogs (frontend implementation)
+  - Confirmation component with action preview
+  - Operations: delete file, apply correction, regenerate, delete case
+  - Timeout with auto-cancel (2 minutes)
+
+**Technical Notes:**
+- React Flow 12 (@xyflow/react)
+- Memoization critical for performance
+- Async queue for callback → SSE event translation
+- Thinking traces from `include_thoughts=True` configuration
+- Frontend confirmation dialogs (ADK limitation: require_confirmation only works with InMemorySessionService)
+
+**Exit Criteria:**
+- Real-time agent flow visible during processing
+- Click any node for full details
+- Thinking traces displayed correctly
+- SSE connection stable with reconnection
+- Confirmation dialogs work for sensitive operations
+
+---
+
+## Phase 6: Domain Agents
 
 **Goal:** Implement all four domain analysis agents with proper thinking configuration.
 
@@ -214,7 +255,7 @@
 
 ---
 
-## Phase 6: Synthesis & Knowledge Graph
+## Phase 7: Synthesis & Knowledge Graph
 
 **Goal:** Cross-reference findings and build entity-relationship graph.
 
@@ -245,46 +286,6 @@
 - Basic graph visualization works
 - New files update graph incrementally
 
----
-
-## Phase 7: Agent Trace Theater
-
-**Goal:** Real-time visualization of agent execution with full transparency.
-
-**Requirements:** REQ-VIS-001, REQ-VIS-001a, REQ-VIS-002, REQ-INF-004 (complete)
-
-**Deliverables:**
-- React Flow canvas for agent visualization
-- Agent nodes with type-based styling
-- Animated edges during data flow
-- Real-time updates via SSE with callback mapping:
-  - `before_agent_callback` → AGENT_SPAWNED (node appears)
-  - `after_agent_callback` → AGENT_COMPLETED (node completes)
-  - `before_tool_callback` → TOOL_INVOKED (tool indicator)
-  - `before_model_callback` → THINKING_UPDATE (reasoning started)
-  - `after_model_callback` → MODEL_RESPONSE (thinking traces available)
-- Click-to-expand agent detail panel
-- Detail view: model, input, tools, output, duration, thinking traces
-- Token usage display
-- Execution timeline
-- Human-in-the-loop confirmation dialogs (frontend implementation)
-  - Confirmation component with action preview
-  - Operations: delete file, apply correction, regenerate, delete case
-  - Timeout with auto-cancel (2 minutes)
-
-**Technical Notes:**
-- React Flow 12 (@xyflow/react)
-- Memoization critical for performance
-- Async queue for callback → SSE event translation
-- Thinking traces from `include_thoughts=True` configuration
-- Frontend confirmation dialogs (ADK limitation: require_confirmation only works with InMemorySessionService)
-
-**Exit Criteria:**
-- Real-time agent flow visible during processing
-- Click any node for full details
-- Thinking traces displayed correctly
-- SSE connection stable with reconnection
-- Confirmation dialogs work for sensitive operations
 
 ---
 

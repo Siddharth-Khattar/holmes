@@ -21,8 +21,12 @@ Establish CI/CD pipeline, database, storage, and skeleton services that all othe
 
 ### Monorepo Structure
 - Bun as package manager with plain workspaces (no Turborepo)
-- Structure: `/frontend` (Next.js), `/backend` (FastAPI), `/packages` (shared TS)
-- Shared packages include: types, validation (Zod schemas), and utilities
+- Structure: `/frontend` (Next.js), `/backend` (FastAPI), `/packages` (generated TS types)
+- **Python as source of truth:** Pydantic models in backend define all API schemas
+- **Type generation:** CI runs pydantic2ts or datamodel-codegen to generate TypeScript interfaces
+- **Generation flow:** backend/app/schemas/*.py → CI generates → packages/types/src/generated/*.ts
+- **Validation:** Pydantic handles validation in backend; frontend uses generated types for type-safety only
+- No hand-written shared types — all derived from Python models
 - Convenience alias scripts in root package.json (e.g., `bun dev:frontend`)
 - Python backend lives inside monorepo at `/backend`
 - Python dependency management via uv
@@ -32,6 +36,15 @@ Establish CI/CD pipeline, database, storage, and skeleton services that all othe
 - Makefile at root for cross-language orchestration
 - Git hooks via Lefthook (lint/format on commit)
 - TypeScript strict mode with relaxation: allow unused variables during development
+
+### Type Generation Pipeline
+- Pydantic models in `/backend/app/schemas/` are the single source of truth
+- CI job runs after backend changes: generates TS types before frontend build
+- Generated types output to `/packages/types/src/generated/`
+- Frontend imports from `@holmes/types` workspace package
+- Makefile target: `make generate-types` for local development
+- Generation tool: pydantic2ts (or datamodel-codegen --output-model-type typescript)
+- Generated files are committed to repo (not gitignored) — ensures frontend can build without running generation
 
 ### Database Setup
 - Local development: Docker Compose PostgreSQL

@@ -47,6 +47,16 @@
 
 **Requirements:** REQ-INF-001, REQ-INF-002, REQ-INF-003, REQ-INF-004 (partial)
 
+**Plans:** 6 plans in 3 waves
+
+Plans:
+- [ ] 01-01-PLAN.md — Monorepo scaffolding (workspaces, tooling, Docker Compose)
+- [ ] 01-02-PLAN.md — Terraform infrastructure (Cloud SQL, GCS, Cloud Run, WIF)
+- [ ] 01-03-PLAN.md — Type generation pipeline (Pydantic to TypeScript)
+- [ ] 01-04-PLAN.md — Backend skeleton (FastAPI, health, SSE, Alembic)
+- [ ] 01-05-PLAN.md — Frontend skeleton (Next.js, home page, Dockerfile)
+- [ ] 01-06-PLAN.md — CI/CD pipeline (GitHub Actions, deployment verification)
+
 **Deliverables:**
 - GitHub Actions CI/CD pipeline deploying to Cloud Run
 - PostgreSQL on Cloud SQL with initial schema
@@ -570,4 +580,4 @@ For 2 developers working simultaneously:
 ---
 
 *Roadmap Version: 1.0*
-*Next: Plan Phase 1 in detail*
+*Phase 1 planned: 2026-01-20*

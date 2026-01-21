@@ -1,14 +1,15 @@
 # Holmes Project State
 
 **Last Updated:** 2026-01-21
-**Current Phase:** Not started
+**Current Phase:** 1 of 12 (Foundation Infrastructure)
+**Current Plan:** 01-01 complete, 01-02 next
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
 
 | Phase | Name | Status | Started | Completed |
 |-------|------|--------|---------|-----------|
-| 1 | Foundation Infrastructure | NOT_STARTED | - | - |
+| 1 | Foundation Infrastructure | IN_PROGRESS | 2026-01-21 | - |
 | 2 | Authentication & Case Shell | NOT_STARTED | - | - |
 | 3 | File Ingestion | NOT_STARTED | - | - |
 | 4 | Core Agent System | NOT_STARTED | - | - |
@@ -24,19 +25,17 @@
 ## Current Context
 
 **What was just completed:**
-- Project initialization via /gsd:new-project
-- Research phase completed (STACK.md, FEATURES.md, ARCHITECTURE.md, PITFALLS.md, SUMMARY.md)
-- Requirements scoping completed (REQUIREMENTS.md with 100 requirements)
-- Roadmap created (ROADMAP.md with 12 phases)
-- **INTEGRATION.md features incorporated** (2026-01-21)
-  - Hypothesis-driven investigation system
-  - Geospatial intelligence with Earth Engine
-  - Research/Discovery agent pipeline
-  - Investigation task system
+- **01-01-PLAN.md executed** (2026-01-21)
+  - Bun workspaces with frontend and packages/* references
+  - Python backend with FastAPI, SQLAlchemy, asyncpg
+  - Makefile for cross-language orchestration
+  - Docker Compose for PostgreSQL 17
+  - Lefthook git hooks for linting
+  - @holmes/types package for TypeScript generation
 
 **What's next:**
-- Plan Phase 1 (Foundation Infrastructure) in detail
-- Execute Phase 1
+- Execute 01-02-PLAN.md (CI/CD, Terraform, Skeletons)
+- Complete Phase 1 Foundation Infrastructure
 
 ## Active Decisions
 

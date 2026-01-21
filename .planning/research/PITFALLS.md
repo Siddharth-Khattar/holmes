@@ -1,7 +1,7 @@
 # Domain Pitfalls: Legal Intelligence Platform with Multi-Agent AI
 
 **Domain:** Legal intelligence, multimodal evidence processing, multi-agent orchestration
-**Researched:** 2026-01-18
+**Researched:** 2026-01-18 (Updated: 2026-01-21 with integration features)
 **Confidence:** HIGH (verified through multiple authoritative sources)
 
 ---
@@ -593,13 +593,158 @@ Mistakes that cause delays, technical debt, or require focused refactoring.
 
 ---
 
+### Pitfall 14: Google Earth Engine Approval Delay
+
+**Severity:** MEDIUM
+
+**What goes wrong:** Earth Engine API access requires GCP project approval, which can take days or weeks. Development blocked waiting for approval.
+
+**Why it happens:**
+- Earth Engine requires separate approval beyond standard GCP APIs
+- Approval process involves manual review by Google
+- Commercial vs non-commercial use affects approval timeline
+- API quotas require explicit increase requests
+
+**Consequences:**
+- Geospatial features delayed or blocked
+- Demo preparation impacted if approval pending
+- Feature cut from MVP if approval not received in time
+
+**Warning Signs:**
+- Approval status still "pending" after initial request
+- No response from Earth Engine team
+- Approval request rejected due to incorrect use case description
+
+**Prevention:**
+1. **Apply immediately:** Request Earth Engine access during Phase 1, not when needed
+2. **Clear use case:** Describe investigative/verification use case in approval request
+3. **Fallback plan:** Design Geospatial Agent to work without satellite imagery if needed
+4. **Mock data:** Prepare mock satellite imagery for demos if approval delayed
+5. **Commercial consideration:** Ensure GCP project is set up correctly for commercial use
+
+**Phase Mapping:**
+- Phase 1 (Infrastructure): Submit Earth Engine approval request immediately
+- Phase 8 (Geospatial): Have fallback plan if approval still pending
+
+---
+
+### Pitfall 15: Geocoding Accuracy for Historical/Ambiguous Locations
+
+**Severity:** MEDIUM
+
+**What goes wrong:** Geocoding fails for ambiguous place names, historical locations, or informal references. Location extraction produces false confidence.
+
+**Why it happens:**
+- "Springfield" exists in multiple states/countries
+- Historical addresses may no longer exist
+- Informal names ("the warehouse on 5th") can't be geocoded
+- OCR errors in scanned documents produce invalid addresses
+
+**Consequences:**
+- Incorrect location markers on map
+- False movement patterns detected
+- User loses trust in geospatial features
+- Satellite imagery retrieved for wrong location
+
+**Warning Signs:**
+- High geocoding confidence for clearly ambiguous names
+- Locations clustering in unexpected areas
+- Movement patterns that defy physics
+
+**Prevention:**
+1. **Context-aware disambiguation:** Use case context to disambiguate (case in Texas → prefer Texas Springfield)
+2. **Confidence thresholds:** Surface low-confidence geocodes for user review
+3. **Multiple candidates:** Show multiple location candidates when ambiguous
+4. **Historical geocoding:** Consider historical address databases for old cases
+5. **User confirmation:** Require user confirmation for locations used in movement analysis
+
+**Phase Mapping:**
+- Phase 8 (Geospatial): Implement disambiguation logic
+- Phase 9 (UI): Surface uncertain locations for user review
+
+---
+
+### Pitfall 16: Hypothesis Explosion
+
+**Severity:** MEDIUM
+
+**What goes wrong:** Agents generate too many hypotheses, overwhelming users. Hypothesis view becomes unusable with dozens of competing theories.
+
+**Why it happens:**
+- Agents optimized to propose hypotheses, not filter them
+- No deduplication of similar hypotheses
+- Low threshold for hypothesis creation
+- Each domain agent generates independently
+
+**Consequences:**
+- Users ignore hypothesis feature due to noise
+- Important hypotheses buried among trivial ones
+- Confidence scoring becomes meaningless with too many hypotheses
+- Investigation tasks pile up for hypothesis verification
+
+**Warning Signs:**
+- More than 10 hypotheses for simple cases
+- Many hypotheses at PENDING status without progress
+- Users never interacting with hypothesis view
+- Duplicate or near-duplicate hypotheses
+
+**Prevention:**
+1. **Quality thresholds:** Only create hypotheses meeting minimum confidence
+2. **Deduplication:** Merge similar hypotheses before presenting
+3. **Hierarchical organization:** Group related hypotheses
+4. **User curation prompt:** Prompt users to accept/reject initial hypotheses
+5. **Priority ranking:** Surface highest-confidence hypotheses first
+
+**Phase Mapping:**
+- Phase 7 (Hypothesis System): Implement deduplication and thresholds
+- Phase 9 (Hypothesis View): Design for manageable hypothesis counts
+
+---
+
+### Pitfall 17: Investigation Task Noise
+
+**Severity:** LOW
+
+**What goes wrong:** Too many investigation tasks generated, creating alert fatigue. Tasks become ignored rather than actioned.
+
+**Why it happens:**
+- Multiple agents generating tasks without coordination
+- No deduplication of similar tasks
+- Tasks created for minor issues alongside critical ones
+- No priority differentiation
+
+**Consequences:**
+- Critical tasks buried among trivial ones
+- Users disable or ignore task panel
+- Investigation workflow breaks down
+- Task completion rate drops
+
+**Warning Signs:**
+- More than 20 pending tasks for typical case
+- Many tasks never completed
+- Duplicate tasks for same issue
+- Users not engaging with task panel
+
+**Prevention:**
+1. **Agent coordination:** Agents check existing tasks before creating
+2. **Priority tiers:** Clearly differentiate critical vs optional tasks
+3. **Task consolidation:** Merge related tasks
+4. **Completion incentives:** Gamify task completion
+5. **Smart filtering:** Default to high-priority tasks only
+
+**Phase Mapping:**
+- Phase 7 (Task Generation): Implement coordination and deduplication
+- Phase 10 (Task Panel): Design for focused attention
+
+---
+
 ## Minor Pitfalls
 
 Mistakes that cause annoyance but are recoverable with focused effort.
 
 ---
 
-### Pitfall 14: ADK Debugging Loss with Custom Agents
+### Pitfall 18: ADK Debugging Loss with Custom Agents
 
 **Severity:** MINOR
 
@@ -614,7 +759,7 @@ Mistakes that cause annoyance but are recoverable with focused effort.
 
 ---
 
-### Pitfall 15: Session State Race Conditions
+### Pitfall 19: Session State Race Conditions
 
 **Severity:** MINOR
 
@@ -633,11 +778,13 @@ Mistakes that cause annoyance but are recoverable with focused effort.
 
 | Phase | Likely Pitfalls | Mitigation Focus |
 |-------|-----------------|------------------|
-| Phase 1: Core Infrastructure | Cloud Run config, JSONB schema, SSE setup | Design async architecture, hybrid schema, streaming config |
+| Phase 1: Core Infrastructure | Cloud Run config, JSONB schema, SSE setup, Earth Engine approval | Design async architecture, hybrid schema, streaming config, submit EE request early |
 | Phase 2: Agent System | ADK limitations, multi-agent failures, rate limiting | Orchestrator pattern, deterministic workflows, request batching |
 | Phase 3: Evidence Processing | Context window limits, processing timeouts, citation accuracy | Chunking strategy, Cloud Run Jobs, span-level verification |
 | Phase 4: Knowledge Graph | Entity resolution scaling, React Flow performance | Incremental ER, virtualization, memoization |
 | Phase 5: Production | SSE proxy issues, SSR bottlenecks, rate limit spikes | Fallback patterns, streaming SSR, tier planning |
+| Phase 7: Hypothesis System | Hypothesis explosion, task noise | Deduplication, quality thresholds, agent coordination |
+| Phase 8: Geospatial | Earth Engine approval delay, geocoding accuracy | Fallback plan, disambiguation logic, user confirmation |
 
 ---
 

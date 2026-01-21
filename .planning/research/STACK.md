@@ -1,7 +1,7 @@
 # Technology Stack
 
 **Project:** Holmes - Legal Intelligence Platform
-**Researched:** 2026-01-20
+**Researched:** 2026-01-20 (Updated: 2026-01-21 with integration features)
 **Overall Confidence:** HIGH (verified with official sources and current documentation)
 
 ---
@@ -115,6 +115,12 @@ npx shadcn@latest init
 - Force-directed layouts for entity relationships
 - Can combine with React Flow for hybrid approach
 - Better for large datasets (<10k elements use D3/SVG)
+
+**Alternative: vis-network** (evaluate during Phase 7 implementation):
+- ForceAtlas2 physics engine (better clustering)
+- Built-in hierarchical layouts
+- Canvas-based (better performance for large graphs)
+- Decision: Choose between D3.js and vis-network during Phase 7
 
 **Installation:**
 ```bash
@@ -495,6 +501,8 @@ pip install google-adk>=1.22.1
 | **Gemini 3 Pro** | Complex reasoning, legal analysis, native multimodal | Handles PDF, images, video, audio directly |
 | **Gemini 3 Flash** | Fast processing, triage, simple extraction | Lower latency, cost |
 | **google-cloud-storage** | Evidence file storage | GCP native |
+| **Gemini Web Search** | Research Agent source discovery | Dynamic source discovery via API |
+| **Google Earth Engine** | Satellite imagery for geospatial verification | Approval may take days/weeks; historical imagery, change detection |
 
 **Multimodal Strategy — Gemini-Native Approach:**
 
@@ -531,6 +539,8 @@ This dramatically simplifies the pipeline and leverages Gemini's native capabili
 | **Cloud Storage** | Evidence files | Standard class |
 | **Artifact Registry** | Container images | Docker format |
 | **Secret Manager** | API keys, credentials | Required |
+| **Earth Engine** | Satellite imagery verification | Requires approval (days/weeks) |
+| **Mapbox** (tentative) | Map display, geocoding | Evaluate alternatives during implementation |
 
 ### Cloud Run Configuration
 
@@ -641,9 +651,69 @@ pip install sqlalchemy[asyncio] asyncpg alembic
 pip install google-adk>=1.22.1 sse-starlette>=3.2.0
 pip install google-cloud-storage google-cloud-secret-manager
 pip install httpx python-multipart
+pip install ee  # Google Earth Engine
 
 # Dev dependencies
 pip install ruff mypy pytest pytest-asyncio
+```
+
+### Database Tables (Integration Features)
+```sql
+-- Hypothesis system (simplified 3-state)
+CREATE TABLE case_hypotheses (
+    id UUID PRIMARY KEY,
+    case_id UUID REFERENCES cases(id),
+    claim TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL,  -- PENDING, SUPPORTED, REFUTED
+    resolved BOOLEAN DEFAULT FALSE,  -- user marks when investigation complete
+    confidence FLOAT,
+    source_agent VARCHAR(50),
+    reasoning JSONB,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE hypothesis_evidence (
+    id UUID PRIMARY KEY,
+    hypothesis_id UUID REFERENCES case_hypotheses(id),
+    finding_id UUID REFERENCES findings(id),
+    evidence_type VARCHAR(20) NOT NULL,  -- SUPPORTING, CONTRADICTING
+    weight FLOAT NOT NULL,
+    excerpt TEXT,
+    location JSONB,
+    reasoning TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Investigation tasks
+CREATE TABLE investigation_tasks (
+    id UUID PRIMARY KEY,
+    case_id UUID REFERENCES cases(id),
+    task_type VARCHAR(30) NOT NULL,  -- resolve_contradiction, obtain_evidence, etc.
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    priority VARCHAR(10),
+    status VARCHAR(20) DEFAULT 'pending',
+    source_agent VARCHAR(50),
+    related_entities JSONB,
+    completion_notes JSONB,
+    created_at TIMESTAMP DEFAULT NOW(),
+    completed_at TIMESTAMP
+);
+
+-- Locations for geospatial
+CREATE TABLE locations (
+    id UUID PRIMARY KEY,
+    case_id UUID REFERENCES cases(id),
+    finding_id UUID REFERENCES findings(id),
+    place_name VARCHAR(255),
+    latitude FLOAT,
+    longitude FLOAT,
+    location_type VARCHAR(50),
+    metadata JSONB,
+    associated_time TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW()
+);
 ```
 
 ---

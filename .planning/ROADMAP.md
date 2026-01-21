@@ -24,15 +24,15 @@
 | 1 | Foundation Infrastructure | CI/CD, Database, Storage, SSE skeleton | REQ-INF-* |
 | 2 | Authentication & Case Shell | Auth system, Case CRUD, basic UI shell | REQ-AUTH-*, REQ-CASE-001/002/003 |
 | 3 | File Ingestion | Upload, storage, file management | REQ-CASE-004/005, REQ-SOURCE-* (basic) |
-| 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Callbacks | REQ-AGENT-001/002/007/007a/007b/007e |
+| 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e |
 | 5 | Agent Trace Theater | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 |
-| 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Resilient wrappers | REQ-AGENT-003/004/005/006/007c/007d/007h |
-| 7 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, graph storage | REQ-AGENT-008/009, REQ-VIS-003 (basic) |
-| 8 | Intelligence Layer | Contradictions, Gaps, Cross-modal linking | REQ-WOW-001/002/003, REQ-VIS-005/006 |
-| 9 | Chat Interface | Chat UI, Context caching, Context compaction | REQ-CHAT-*, REQ-AGENT-007f/007g, REQ-SOURCE-005 |
-| 10 | Source Panel & Polish | Full source viewers, Timeline, Narrative gen | REQ-SOURCE-*, REQ-VIS-004, REQ-WOW-004 |
+| 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 |
+| 7 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, Hypothesis system, Task generation, 5-layer KG | REQ-AGENT-008/009, REQ-VIS-003, REQ-HYPO-001/004/005/006, REQ-TASK-001/002 |
+| 8 | Intelligence Layer & Geospatial | Contradictions, Gaps, Geospatial Agent, Map View, Earth Engine | REQ-WOW-*, REQ-VIS-005/006, REQ-GEO-* |
+| 9 | Chat Interface & Research | Chat UI, Research/Discovery (Chat + Orchestrator-triggered), Hypothesis View, Context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 |
+| 10 | Agent Trace Theater & Source Panel | Full source viewers, Task Panel, Timeline | REQ-SOURCE-*, REQ-VIS-*, REQ-TASK-003/004/005/006/007 |
 | 11 | Corrections & Refinement | Error flagging, Verification, Regeneration | REQ-CORR-* |
-| 12 | Demo Preparation | Demo case, Performance tuning, Deep Research demo | Demo readiness, REQ-AGENT-007i (optional) |
+| 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i |
 
 **Post-MVP:**
 | Phase | Name | Focus | Requirements |
@@ -157,6 +157,8 @@ Plans:
 - Triage Agent implementation with `thinking_level="low"`
 - Triage outputs: domain scores, complexity, summary, entities
 - Orchestrator Agent skeleton with `thinking_level="high"`
+- **Orchestrator routing stubs for Research/Discovery agents** (future phases)
+- **Orchestrator → Research trigger logic** (with user confirmation SSE event)
 - Agent execution logging to database
 - Callback-to-SSE mapping for visualization
 - ADK limitations documented and mitigated
@@ -169,6 +171,7 @@ Plans:
 - Configure `include_thoughts=True` for all agents
 - Implement all 6 ADK callbacks for real-time visualization
 - Tool confirmation NOT available with DatabaseSessionService (use frontend)
+- Orchestrator routing logic prepared for Research/Discovery invocation
 
 **Exit Criteria:**
 - Triage Agent processes uploaded files
@@ -225,17 +228,23 @@ Plans:
 
 **Goal:** Implement all four domain analysis agents with proper thinking configuration.
 
-**Requirements:** REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006, REQ-AGENT-007b, REQ-AGENT-007c, REQ-AGENT-007d, REQ-AGENT-007h, REQ-AGENT-002 (complete)
+**Requirements:** REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006, REQ-AGENT-007b, REQ-AGENT-007c, REQ-AGENT-007d, REQ-AGENT-007h, REQ-AGENT-002 (complete), REQ-HYPO-002, REQ-HYPO-003
 
 **Deliverables:**
 - Financial Analysis Agent (`thinking_level="medium"`, `media_resolution="high"`)
+  - **Full entity taxonomy for financial domain** (monetary_amount, account, transaction, asset)
 - Legal Analysis Agent (`thinking_level="high"`, `media_resolution="high"`)
+  - **Full entity taxonomy for legal domain** (statute, case_citation, contract, legal_term, court)
 - Strategy Analysis Agent (`thinking_level="medium"`)
 - Evidence Analysis Agent (`thinking_level="high"`, `media_resolution="high"`)
   - Authenticity analysis (manipulation detection, metadata consistency)
   - Chain of custody documentation
   - Corroboration scoring
   - Quality assessment output schema
+  - **Full entity taxonomy for evidence domain** (communication, alias, vehicle, property, timestamp)
+- **Hypothesis evaluation in all domain agent prompts**
+  - Agents evaluate findings against existing hypotheses
+  - Output includes hypothesis_evaluations and new_hypotheses
 - Parallel execution via ADK ParallelAgent
 - ResilientAgentWrapper for each domain agent (Pro → Flash fallback)
 - Domain-specific tool definitions
@@ -253,6 +262,7 @@ Plans:
 - Video segments: use `VideoMetadata(start_offset, end_offset)`
 - Audio: request speaker diarization in prompts
 - ResilientAgentWrapper catches failures and falls back to Flash model
+- **Domain agent prompts include: "Evaluate findings against existing hypotheses"**
 
 **Exit Criteria:**
 - All four domain agents process files
@@ -261,26 +271,41 @@ Plans:
 - Video/audio processed with timestamp extraction
 - Graceful degradation works (fallback to Flash)
 - Structured findings with citations output
+- **Hypothesis evaluations included in agent output**
+- **Domain-specific entity taxonomy extracted**
 - Outputs aggregated for next phase
 
 ---
 
 ## Phase 7: Synthesis & Knowledge Graph
 
-**Goal:** Cross-reference findings and build entity-relationship graph.
+**Goal:** Cross-reference findings, build entity-relationship graph, and implement hypothesis system.
 
-**Requirements:** REQ-AGENT-008, REQ-AGENT-009, REQ-AGENT-010, REQ-VIS-003 (basic)
+**Requirements:** REQ-AGENT-008, REQ-AGENT-009, REQ-AGENT-010, REQ-VIS-003 (basic), REQ-HYPO-001, REQ-HYPO-004, REQ-HYPO-005, REQ-HYPO-006, REQ-TASK-001, REQ-TASK-002
 
 **Deliverables:**
 - Synthesis Agent implementation
 - Cross-referencing logic for links, contradictions, gaps
+- **Hypothesis system integration:**
+  - `case_hypotheses` database table
+  - `hypothesis_evidence` database table
+  - Hypothesis status calculation (deterministic base + AI override)
+  - Hypothesis confidence scoring
+  - SSE events for hypothesis updates
+- **Investigation task generation from synthesis:**
+  - `investigation_tasks` database table
+  - Task creation for contradictions (resolve_contradiction)
+  - Task creation for gaps (obtain_evidence)
+  - SSE events for task creation
 - Knowledge Graph Agent implementation
-- Entity extraction (Person, Org, Event, Document, Location, Amount)
+- **Full entity taxonomy extraction** (domain-specific types)
+- **Entity resolution: auto-merge with flag for >85% matches**
 - Relationship extraction with types
-- Entity resolution (fuzzy matching, deduplication)
 - PostgreSQL schema for graph (nodes, edges tables)
+- **5-layer Knowledge Graph:** Evidence (red), Legal (blue), Strategy (green), Temporal (amber), Hypothesis (pink)
 - Graph query APIs
-- Basic D3.js force-directed visualization
+- **Evaluate graph library: vis-network vs D3.js** (choose during implementation)
+- Basic force-directed visualization
 - Incremental graph updates
 
 **Technical Notes:**
@@ -288,22 +313,30 @@ Plans:
 - Entity resolution via fuzzy string matching + LLM confirmation
 - Graph layers stored as node properties
 - Synthesis outputs feed KG Agent
+- **Simplified hypothesis lifecycle: PENDING → SUPPORTED/REFUTED (user marks RESOLVED)**
+- **Task types: resolve_contradiction, obtain_evidence, verify_hypothesis, etc.**
+- **Task list injected into agent context for deduplication (no complex coordination)**
+- vis-network offers ForceAtlas2 physics, better interactivity; D3.js offers more customization
 
 **Exit Criteria:**
 - Synthesis Agent produces unified findings
 - Contradictions and gaps identified
+- **Hypothesis system functional with status updates via SSE**
+- **Investigation tasks generated from synthesis**
 - Knowledge Graph populated with entities and relationships
+- **5 layers toggleable in visualization**
+- **Entity resolution auto-merges >85% matches**
 - Basic graph visualization works
 - New files update graph incrementally
 
 
 ---
 
-## Phase 8: Intelligence Layer
+## Phase 8: Intelligence Layer & Geospatial
 
-**Goal:** Implement WOW capabilities - cross-modal linking, contradictions, gaps.
+**Goal:** Implement WOW capabilities and Geospatial Agent.
 
-**Requirements:** REQ-WOW-001, REQ-WOW-002, REQ-WOW-003, REQ-VIS-005, REQ-VIS-006
+**Requirements:** REQ-WOW-001, REQ-WOW-002, REQ-WOW-003, REQ-VIS-005, REQ-VIS-006, REQ-GEO-001, REQ-GEO-002, REQ-GEO-003, REQ-GEO-004, REQ-GEO-005, REQ-GEO-006, REQ-GEO-007, REQ-GEO-008, REQ-GEO-009, REQ-GEO-011
 
 **Deliverables:**
 - Cross-modal linking logic (video timestamp ↔ document date)
@@ -315,26 +348,47 @@ Plans:
 - Evidence Gaps Panel UI
 - Cross-modal links visible in KG view
 - Confidence scores for all intelligence outputs
+- **Geospatial Agent implementation:**
+  - Location extraction and enrichment
+  - Geocoding via mapping API (Mapbox tentative, evaluate alternatives)
+  - Movement pattern detection
+  - `locations` database table
+  - ResilientAgentWrapper (Pro → Flash fallback)
+- **Google Earth Engine integration:**
+  - Historical imagery retrieval
+  - Side-by-side change detection comparison
+  - Location verification workflow
+- **Map View tab:**
+  - Interactive map component
+  - Location markers styled by type
+  - Route visualization for movement patterns
+  - Fullscreen capability
+- Evidence Agent coordination with Geospatial Agent for verification
 
 **Technical Notes:**
 - Cross-modal links from temporal/entity alignment
 - Contradictions from Synthesis Agent, refined here
 - Gaps from comparing case requirements vs available evidence
 - Intelligence outputs stored in dedicated tables
+- **Geospatial Agent triggered post-synthesis when location data exists**
+- **Earth Engine API approval may take days/weeks — start early**
 
 **Exit Criteria:**
 - Cross-modal links detected and displayed
 - Contradictions with severity shown
 - Evidence gaps with priorities shown
 - All linked to source evidence
+- **Geospatial Agent working with Earth Engine**
+- **Map View displays locations with movement patterns**
+- **Location verification workflow functional**
 
 ---
 
-## Phase 9: Chat Interface
+## Phase 9: Chat Interface & Research
 
-**Goal:** Contextual chat with knowledge-first querying, context caching, and inline citations.
+**Goal:** Contextual chat with knowledge-first querying, Research/Discovery on-demand, and hypothesis view.
 
-**Requirements:** REQ-CHAT-001, REQ-CHAT-002, REQ-CHAT-003, REQ-CHAT-004, REQ-CHAT-005, REQ-AGENT-007f, REQ-AGENT-007g, REQ-SOURCE-005 (complete)
+**Requirements:** REQ-CHAT-001, REQ-CHAT-002, REQ-CHAT-003, REQ-CHAT-004, REQ-CHAT-005, REQ-AGENT-007f, REQ-AGENT-007g, REQ-SOURCE-005 (complete), REQ-RESEARCH-001, REQ-RESEARCH-002, REQ-RESEARCH-003, REQ-RESEARCH-005, REQ-RESEARCH-006, REQ-RESEARCH-007, REQ-RESEARCH-008, REQ-RESEARCH-009, REQ-HYPO-007, REQ-HYPO-008, REQ-GEO-010
 
 **Deliverables:**
 - Chat UI with message history
@@ -342,6 +396,18 @@ Plans:
 - Knowledge-first query pattern (KG lookup first)
 - Agent escalation for novel questions
 - Chat Agent implementation with `thinking_level="medium"`
+- **Research/Discovery invocation:**
+  - Research Agent invocable from chat ("Research [subject]")
+  - **Orchestrator-triggered Research** when evidence gaps detected (with user confirmation)
+  - Discovery Agent synthesizes external research
+  - Suggest-then-confirm flow for source retrieval
+  - Binary access classification (ACCESSIBLE / REQUIRES_ACTION)
+  - ResilientAgentWrapper for Research/Discovery
+- **Hypothesis View:**
+  - Dedicated hypothesis view (separate from KG)
+  - Hypothesis cards with status, confidence, evidence counts
+  - Fullscreen capability
+- **Optional temporal sync between Map View and Timeline**
 - **Context caching for cost optimization:**
   - Create evidence cache when user opens case
   - 2-hour TTL (session duration)
@@ -363,11 +429,15 @@ Plans:
 - Citations formatted as [1], [2] with footer list
 - Context cache created via `client.caches.create()`
 - Cached queries use `cached_content=cache.name`
+- **Research Agent uses Gemini web search for source discovery**
+- **Dynamic source discovery (no curated source list)**
 
 **Exit Criteria:**
 - Chat answers questions about case
 - Simple questions answered from KG (fast)
 - Complex questions escalate to agents
+- **Research/Discovery invocable from chat**
+- **Hypothesis View functional with fullscreen**
 - Context caching working (verify cost reduction)
 - Long sessions don't exhaust context
 - All responses have citations
@@ -375,11 +445,11 @@ Plans:
 
 ---
 
-## Phase 10: Source Panel & Polish
+## Phase 10: Agent Trace Theater & Source Panel
 
-**Goal:** Full-featured source viewers and remaining visualizations.
+**Goal:** Full-featured source viewers, Agent Trace Theater refinements, and task panel.
 
-**Requirements:** REQ-SOURCE-001 (complete), REQ-SOURCE-002 (complete), REQ-SOURCE-003 (complete), REQ-SOURCE-004 (complete), REQ-VIS-004, REQ-WOW-004
+**Requirements:** REQ-SOURCE-001 (complete), REQ-SOURCE-002 (complete), REQ-SOURCE-003 (complete), REQ-SOURCE-004 (complete), REQ-VIS-001, REQ-VIS-001a, REQ-VIS-002, REQ-VIS-004, REQ-VIS-007, REQ-WOW-004, REQ-TASK-003, REQ-TASK-004, REQ-TASK-005, REQ-TASK-006, REQ-TASK-007
 
 **Deliverables:**
 - PDF viewer with excerpt highlighting
@@ -390,6 +460,24 @@ Plans:
 - Timeline view with events
 - Narrative generation (executive summary, detailed)
 - Export as PDF/DOCX
+- **Agent Trace Theater refinements:**
+  - React Flow agent pipeline visualization
+  - Custom node components per agent type
+  - Agent color coding (defer specific colors to design)
+  - **Task count badges on agent nodes** (shows pending tasks per agent)
+  - Thinking overlay with streaming thoughts
+  - Interactive time-scrubbing
+  - Pause/resume workflow
+  - Workflow playback with speed control
+  - Frontend confirmation dialogs for sensitive operations
+  - Fullscreen mode
+- **Investigation Task Panel:**
+  - Bottom drawer UI
+  - Filter/sort by priority, agent, type
+  - Task completion with type-dependent rules
+  - Task deduplication (agents check before creating)
+  - SSE streaming for task events
+  - Fullscreen capability
 
 **Technical Notes:**
 - PDF: react-pdf or pdf.js
@@ -397,12 +485,16 @@ Plans:
 - Video: native HTML5 with custom controls
 - Timeline: D3.js or vis-timeline
 - Narrative: Gemini generates from Synthesis output
+- **Task count badges update in real-time via SSE**
 
 **Exit Criteria:**
 - All source types viewable with full features
 - Citations navigate to exact locations
 - Timeline shows chronological events
 - Narrative generation works with citations
+- **Task panel shows pending investigation tasks**
+- **Task count badges visible on agent nodes**
+- **Task completion workflow functional**
 
 ---
 
@@ -438,9 +530,9 @@ Plans:
 
 ## Phase 12: Demo Preparation
 
-**Goal:** Prepare compelling demo with fraud case, Deep Research showcase, and documentation.
+**Goal:** Prepare compelling demo with fraud case, showcasing all integration features.
 
-**Requirements:** Demo readiness (non-functional), REQ-AGENT-007i (optional)
+**Requirements:** Demo readiness (non-functional), REQ-AGENT-007i (optional), REQ-RESEARCH-004
 
 **Deliverables:**
 - Fraud demo case dataset
@@ -450,6 +542,13 @@ Plans:
   - Images (photos, scans)
   - Legal documents (contracts, filings)
   - Planted contradictions and gaps
+  - **Location data for geospatial demo** (addresses, GPS coordinates)
+  - **Multiple hypotheses to demonstrate lifecycle**
+- **Integration features showcase:**
+  - **Hypothesis system demo:** Show PENDING → SUPPORTED → CONFIRMED lifecycle
+  - **Map View demo:** Location extraction, movement patterns, satellite imagery
+  - **Investigation Tasks demo:** Tasks from contradictions/gaps, bottom drawer interaction
+  - **Research/Discovery demo:** On-demand research via chat
 - **Deep Research Agent demo (optional WOW feature):**
   - Integration with `deep-research-pro-preview-12-2025`
   - Background autonomous research on case subjects
@@ -470,11 +569,15 @@ Plans:
 - Demo dataset designed to showcase all WOW features
 - Pre-process demo case for faster demo (context cache pre-created)
 - Deep Research runs in background while demoing other features
+- **Demo flow includes: upload → analysis → hypotheses → map → tasks → chat**
 - Rehearse demo flow multiple times
 
 **Exit Criteria:**
 - Demo case runs end-to-end smoothly
 - All WOW features demonstrated
+- **Demo showcases hypotheses with status updates**
+- **Demo showcases map view with locations**
+- **Demo showcases investigation tasks**
 - Deep Research demo shows autonomous research capability (optional)
 - No errors during demo flow
 - Compelling narrative from demo
@@ -579,5 +682,6 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 1.0*
+*Roadmap Version: 1.1*
+*Updated: 2026-01-21 (Integration features incorporated)*
 *Phase 1 planned: 2026-01-20*

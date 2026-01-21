@@ -1,7 +1,7 @@
 # Feature Landscape: Legal Intelligence Platform
 
 **Domain:** Legal intelligence, e-discovery, investigation support
-**Researched:** 2026-01-20
+**Researched:** 2026-01-20 (Updated: 2026-01-21 with integration features)
 **Confidence:** HIGH (multiple authoritative sources cross-referenced)
 
 ## Table Stakes
@@ -38,6 +38,8 @@ Features that set a product apart. Not expected by default, but highly valued wh
 | **Evidence Gap Identification** | "What events do no witnesses address?" - direct case strategy value | Medium | Knowledge graph, timeline analysis | Requires comprehensive entity/event extraction first |
 | **Cross-Modal Evidence Linking** | Connect video testimony to document claims; multimodal intelligence | Very High | Video/audio processing, transcript alignment | Almost no competitors do this well; VIDIZMO offers basic version |
 | **Domain-Specialized AI Agents** | Financial, Legal, Strategy, Evidence agents (multimodal analysis) | High | Agent framework, domain training | Harvey has domain-specific models; Holmes proposes specialized agents including Evidence Agent for authenticity/chain of custody |
+| **Hypothesis-Driven Investigation** | Track, evaluate, and visualize investigation hypotheses with evidence support | High | Knowledge graph, agent orchestration | Simple 3-state: PENDING → SUPPORTED/REFUTED; agents propose, users curate and resolve |
+| **Geospatial Intelligence** | Location extraction, movement patterns, satellite verification via Earth Engine | High | Mapping API, Earth Engine API | Post-synthesis utility agent; autonomous when location data exists; core for investigations with location data |
 
 ### Tier 2: Emerging Differentiators (Competitive advantage, some adoption)
 
@@ -51,6 +53,8 @@ Features that set a product apart. Not expected by default, but highly valued wh
 | **Video/Audio Transcription** | Turn hours of AV into searchable text | Medium | Speech-to-text APIs | Relativity, VIDIZMO offer; essential for multimodal evidence |
 | **PII/PHI Detection & Redaction** | Automated identification of sensitive data | Medium | NLP, regex patterns | Relativity aiR, Logikcull; compliance requirement for production |
 | **Deposition Preparation AI** | Generate deposition topics and questions from case facts | Medium | LLM, case context | Casetext CoCounsel, Deposely; high value for litigators |
+| **Investigation Task System** | Agent-generated actionable tasks from contradictions, gaps, hypotheses | Medium | Synthesis Agent, agent orchestration | Bottom drawer UI; task-type-dependent completion rules; SSE streaming |
+| **External Research Discovery** | Gemini web search + Deep Research for external source discovery | High | Gemini web search API, Deep Research Agent | Chat-invoked or Orchestrator-triggered (with confirmation); Research → Discovery → Synthesis |
 
 ### Tier 3: Nice-to-Have Differentiators
 
@@ -118,7 +122,25 @@ Features to explicitly NOT build. Common mistakes in this domain.
        ├──> [AI Reasoning Traces] ──> [Agent Trace Theater]               │
        │                                                                   │
        └──> [Cross-Modal Evidence Linking]                                │
-           (Gemini sees all modalities together — no post-hoc stitching)
+           (Gemini sees all modalities together — no post-hoc stitching)  │
+                                                                           │
+[Research Agent (Gemini Web Search)] ──────────────────────────────────────┤
+       │                                                                   │
+       └──> [Deep Research Agent] ──> [Discovery Agent] ──> [Synthesis]   │
+                                                                           │
+[Hypothesis System] ───────────────────────────────────────────────────────┤
+       │                                                                   │
+       └──> [Hypothesis View] ──> [Evidence Links]                        │
+                                                                           │
+[Investigation Tasks] ─────────────────────────────────────────────────────┤
+       │                                                                   │
+       └──> [Task Panel (Bottom Drawer)]                                   │
+                                                                           │
+[Geospatial Agent (Post-Synthesis)] ───────────────────────────────────────┤
+       │                                                                   │
+       ├──> [Location Extraction + Geocoding]                              │
+       ├──> [Earth Engine] ──> [Satellite Imagery]                        │
+       └──> [Map View] ──> [Movement Patterns]                            │
 ```
 
 **Key Insight:** Gemini 3's native multimodal capability eliminates traditional pipelines:
@@ -154,8 +176,17 @@ For MVP, prioritize based on Holmes's core value proposition: **Transparent mult
 2. **Contradiction Detection** - Flag inconsistencies across sources
 3. **Evidence Gap Identification** - What's missing?
 4. **Synthesis Agent** - Cross-reference all domain findings
+5. **Hypothesis System** - Track and evaluate investigation hypotheses
+6. **Investigation Tasks** - Agent-generated actionable tasks from gaps/contradictions
 
-**Rationale:** Full multimodal intelligence. Because Gemini processes all modalities natively, cross-modal linking happens naturally within domain context.
+**Rationale:** Full multimodal intelligence. Because Gemini processes all modalities natively, cross-modal linking happens naturally within domain context. Hypothesis-driven investigation adds structured investigation methodology.
+
+### Phase 4: Extended Intelligence (Post-MVP Differentiators)
+1. **Geospatial Intelligence** - Location extraction, Earth Engine satellite imagery, movement patterns
+2. **Research/Discovery Agents** - External source discovery via Gemini web search
+3. **Deep Research Integration** - Background autonomous research on subjects
+
+**Rationale:** These features extend intelligence beyond uploaded evidence to external sources and geospatial verification.
 
 ### Defer to Post-MVP
 - **Custom Workflow Builder**: Enterprise feature; adds complexity

@@ -483,9 +483,14 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 **Priority:** HIGH
 **Description:** Agent that builds entity-relationship graph from synthesis.
 **Acceptance Criteria:**
-- Extracts entities: Person, Organization, Event, Document, Location, Amount
+- Extracts entities with full domain-specific taxonomy
+- Core types: Person, Organization, Event, Document, Location, Amount
+- Legal types: statute, case_citation, contract, legal_term, court
+- Financial types: monetary_amount, account, transaction, asset
+- Evidence types: communication, alias, vehicle, property, timestamp
 - Identifies relationships with types (e.g., EMPLOYED_BY, SIGNED, WITNESSED)
-- Resolves entity duplicates (fuzzy matching)
+- Entity resolution: auto-merge with flag for >85% similarity matches
+- Domain-dependent metadata depth per entity type
 - Incremental updates without full rebuild
 - Stores in PostgreSQL (nodes + edges tables)
 - Links all nodes to source evidence
@@ -562,13 +567,15 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 **Priority:** HIGH
 **Description:** Force-directed graph displaying entities and relationships.
 **Acceptance Criteria:**
-- D3.js force-directed layout
+- Graph library: evaluate vis-network vs D3.js during Phase 7 implementation
 - Nodes sized by connection count
 - Edges labeled with relationship type
-- Three toggleable layers: Evidence (red), Legal (blue), Strategy (green)
+- Five toggleable layers: Evidence (red), Legal (blue), Strategy (green), Temporal (amber), Hypothesis (pink)
 - Zoom and pan controls
 - Node search and highlight
 - Click node to see details and source links
+- Fullscreen capability with maximize button
+- Basic analytics: node count, edge count, most connected entities
 **Dependencies:** REQ-AGENT-009
 
 ### REQ-VIS-004: Timeline View
@@ -769,6 +776,393 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ---
 
+## REQ-RESEARCH: Research & Discovery System
+
+### REQ-RESEARCH-001: Research Agent
+**Priority:** HIGH
+**Description:** Research Agent discovers where relevant evidence might exist using Gemini web search.
+**Acceptance Criteria:**
+- Analyzes query intent and determines research domain (corporate, litigation, criminal, regulatory)
+- Executes web search via Gemini to discover potential sources
+- Scores and classifies each source by relevance
+- Outputs structured source map with access metadata
+- Gemini 3 Pro with `thinking_level="medium"`
+**Dependencies:** REQ-AGENT-007
+
+### REQ-RESEARCH-002: Binary Access Classification
+**Priority:** MEDIUM
+**Description:** Sources classified with simplified binary access levels.
+**Acceptance Criteria:**
+- `ACCESSIBLE` — Can be retrieved and processed automatically
+- `REQUIRES_ACTION` — User action needed (subscription, physical visit, FOIA, etc.)
+- Access instructions provided for REQUIRES_ACTION sources
+**Dependencies:** REQ-RESEARCH-001
+
+### REQ-RESEARCH-003: Automatic Research Domain Detection
+**Priority:** MEDIUM
+**Description:** Research Agent automatically detects appropriate research domain from query.
+**Acceptance Criteria:**
+- Detects domain: corporate, litigation, criminal, regulatory
+- Adjusts search strategy based on domain
+- No manual domain selection required
+**Dependencies:** REQ-RESEARCH-001
+
+### REQ-RESEARCH-004: Deep Research Agent Integration
+**Priority:** LOW
+**Description:** Integration with Gemini Deep Research Agent for autonomous background research.
+**Acceptance Criteria:**
+- Uses `deep-research-pro-preview` agent for comprehensive research
+- Runs as background task (`background=True`)
+- Streams progress via thinking summaries
+- Results integrated into case context for domain agents
+**Dependencies:** REQ-AGENT-007i
+
+### REQ-RESEARCH-005: Discovery Agent
+**Priority:** HIGH
+**Description:** Discovery Agent synthesizes external research into actionable intelligence.
+**Acceptance Criteria:**
+- Consumes Research Agent output (source map)
+- Prioritizes sources by relevance and accessibility
+- Processes ACCESSIBLE sources first
+- Generates hypotheses from findings
+- Links findings to supporting evidence
+- Gemini 3 Pro with `thinking_level="medium"`
+**Dependencies:** REQ-RESEARCH-001
+
+### REQ-RESEARCH-006: Discovery-Synthesis Integration
+**Priority:** HIGH
+**Description:** Discovery Agent findings feed into Synthesis Agent pipeline.
+**Acceptance Criteria:**
+- Discovery output stored in session state with unique output_key
+- Synthesis Agent consumes discovery findings alongside domain findings
+- External research incorporated into knowledge graph
+**Dependencies:** REQ-RESEARCH-005, REQ-AGENT-008
+
+### REQ-RESEARCH-007: Source Retrieval Flow
+**Priority:** MEDIUM
+**Description:** Suggest-then-confirm flow for source retrieval.
+**Acceptance Criteria:**
+- Research Agent suggests sources with relevance scores
+- User confirms which sources to retrieve
+- Discovery Agent processes only confirmed sources
+- User can add/remove sources before retrieval
+**Dependencies:** REQ-RESEARCH-001, REQ-VIS-001a
+
+### REQ-RESEARCH-008: Resilient Research Wrapper
+**Priority:** HIGH
+**Description:** Apply resilient wrapper pattern to Research and Discovery agents.
+**Acceptance Criteria:**
+- Primary: Gemini 3 Pro for full analysis
+- Fallback: Gemini 3 Flash for degraded but functional analysis
+- Error logging to state for debugging
+- Graceful error message when both fail
+**Dependencies:** REQ-AGENT-007h
+
+### REQ-RESEARCH-009: Orchestrator-Triggered Research
+**Priority:** HIGH
+**Description:** Orchestrator can trigger Research Agent when evidence gaps detected.
+**Acceptance Criteria:**
+- Orchestrator detects research need when:
+  - Triage shows low confidence (<0.5) for key domains
+  - Synthesis reports critical evidence gaps
+  - Hypothesis stuck at PENDING with no new evidence
+- Orchestrator proposes research via SSE event (RESEARCH_SUGGESTED)
+- User must confirm before Research Agent invoked (frontend dialog)
+- Research results feed back into Discovery → Synthesis pipeline
+- User can decline research suggestion
+**Dependencies:** REQ-AGENT-002, REQ-RESEARCH-001, REQ-VIS-001a
+
+---
+
+## REQ-HYPO: Hypothesis System
+
+### REQ-HYPO-001: Hypothesis Lifecycle
+**Priority:** HIGH
+**Description:** Hypotheses follow simplified 3-state lifecycle.
+**Acceptance Criteria:**
+- Status values: PENDING, SUPPORTED, REFUTED
+- Lifecycle: PENDING → SUPPORTED/REFUTED → (optionally marked RESOLVED by user)
+- SUPPORTED: Evidence weight favors hypothesis (confidence >0.6)
+- REFUTED: Evidence weight contradicts hypothesis (confidence <0.4)
+- PENDING: Insufficient evidence to determine (0.4-0.6 confidence)
+- Status stored in `case_hypotheses` table
+**Dependencies:** REQ-INF-002
+
+### REQ-HYPO-002: Hypothesis Creation
+**Priority:** HIGH
+**Description:** Agents propose hypotheses, users can modify.
+**Acceptance Criteria:**
+- Domain agents suggest new hypotheses from findings
+- Synthesis Agent generates hypotheses from cross-domain patterns
+- Users can accept, reject, modify, or add hypotheses
+- Initial hypotheses fully agent-driven (no pre-seeding)
+**Dependencies:** REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006
+
+### REQ-HYPO-003: Hypothesis Evaluation
+**Priority:** HIGH
+**Description:** Domain agents evaluate findings against all hypotheses.
+**Acceptance Criteria:**
+- Each finding evaluated against existing hypotheses
+- Evidence type assigned: SUPPORTING or CONTRADICTING
+- Weight assigned (0.0-1.0) based on evidence strength
+- Reasoning provided for evaluation
+- Stored in `hypothesis_evidence` table
+**Dependencies:** REQ-HYPO-001, REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006
+
+### REQ-HYPO-004: Confidence Calculation
+**Priority:** MEDIUM
+**Description:** Simple deterministic confidence with optional user override.
+**Acceptance Criteria:**
+- Calculation: sum(supporting_weights) / sum(all_weights)
+- Result maps to status: >0.6 = SUPPORTED, <0.4 = REFUTED, else PENDING
+- User can manually override status with reason
+- Override stored in hypothesis record
+**Dependencies:** REQ-HYPO-003, REQ-AGENT-008
+
+### REQ-HYPO-005: Hypothesis Evidence Linking
+**Priority:** HIGH
+**Description:** Evidence linked to hypotheses with weights.
+**Acceptance Criteria:**
+- Each evidence link has: evidence_type, weight, excerpt, location, reasoning
+- Supporting evidence displayed in green
+- Contradicting evidence displayed in red
+- Evidence links clickable to Source Panel
+**Dependencies:** REQ-HYPO-001, REQ-SOURCE-005
+
+### REQ-HYPO-006: SSE Hypothesis Updates
+**Priority:** HIGH
+**Description:** Real-time updates for hypothesis status changes.
+**Acceptance Criteria:**
+- SSE event types: HYPOTHESIS_CREATED, HYPOTHESIS_UPDATED, HYPOTHESIS_EVALUATED
+- Events include: hypothesis_id, new_status, confidence, change_reason
+- Frontend updates hypothesis cards in real-time
+**Dependencies:** REQ-INF-004, REQ-HYPO-001
+
+### REQ-HYPO-007: Hypothesis View
+**Priority:** HIGH
+**Description:** Dedicated Hypothesis View separate from Knowledge Graph.
+**Acceptance Criteria:**
+- Hypothesis cards in list view
+- Shows: claim, status badge, confidence meter, evidence counts
+- Click to expand detailed view
+- Not integrated into Knowledge Graph visualization
+**Dependencies:** REQ-HYPO-001
+
+### REQ-HYPO-008: Hypothesis Fullscreen
+**Priority:** MEDIUM
+**Description:** Fullscreen capability for Hypothesis View.
+**Acceptance Criteria:**
+- Maximize button in corner
+- Full-window hypothesis display
+- All controls remain accessible
+- ESC or button to exit
+**Dependencies:** REQ-HYPO-007
+
+### REQ-HYPO-009: Hypothesis-Gap Relationship
+**Priority:** MEDIUM
+**Description:** Hypothesis system complements (not replaces) contradiction/gap detection.
+**Acceptance Criteria:**
+- Contradictions remain as separate feature
+- Evidence gaps remain as separate feature
+- Hypothesis status can trigger gap/contradiction creation
+- All three features linked but independent
+**Dependencies:** REQ-HYPO-001, REQ-WOW-002, REQ-WOW-003
+
+---
+
+## REQ-GEO: Geospatial Intelligence
+
+### REQ-GEO-001: Geospatial Agent
+**Priority:** HIGH
+**Description:** Dedicated Geospatial Agent for location intelligence.
+**Acceptance Criteria:**
+- Extracts and enriches location entities from case findings
+- Disambiguates ambiguous place names
+- Geocodes locations to coordinates
+- Identifies movement patterns and spatial relationships
+- Flags locations needing satellite imagery analysis
+- Gemini 3 Pro with `thinking_level="medium"`
+**Dependencies:** REQ-AGENT-007
+
+### REQ-GEO-002: Geospatial Agent Invocation
+**Priority:** HIGH
+**Description:** Geospatial Agent operates as post-synthesis utility.
+**Acceptance Criteria:**
+- Autonomous invocation when location data exists in synthesis results
+- On-demand invocation via Chat interface
+- Triggered by Orchestrator after Synthesis completes
+**Dependencies:** REQ-GEO-001, REQ-AGENT-002, REQ-AGENT-008
+
+### REQ-GEO-003: Dual Location Extraction
+**Priority:** MEDIUM
+**Description:** Both Domain Agents and Geospatial Agent extract locations.
+**Acceptance Criteria:**
+- Domain Agents: baseline location extraction during analysis
+- Geospatial Agent: deeper location analysis post-synthesis
+- Locations merged and deduplicated
+- Geospatial Agent enriches with coordinates and context
+**Dependencies:** REQ-GEO-001
+
+### REQ-GEO-004: Location Verification Coordination
+**Priority:** MEDIUM
+**Description:** Evidence Agent coordinates location verification.
+**Acceptance Criteria:**
+- Evidence Agent identifies location claims needing verification
+- Evidence Agent invokes Geospatial Agent for verification
+- Verification results feed back to Evidence Agent assessment
+**Dependencies:** REQ-AGENT-006, REQ-GEO-001
+
+### REQ-GEO-005: Google Earth Engine Integration
+**Priority:** HIGH
+**Description:** Integration with Google Earth Engine for satellite imagery.
+**Acceptance Criteria:**
+- GCP project with Earth Engine API enabled
+- Historical imagery retrieval for verification
+- Change detection between two dates
+- Thumbnail generation with metadata
+- Note: Approval process may take days/weeks
+**Dependencies:** External API setup
+
+### REQ-GEO-006: Map Display API
+**Priority:** HIGH
+**Description:** Map display using mapping library.
+**Acceptance Criteria:**
+- Interactive map component (Mapbox tentative, evaluate alternatives)
+- Location markers styled by type
+- Route visualization for movement patterns
+- Heatmaps for activity concentration
+- Click interactions for location details
+**Dependencies:** REQ-GEO-001
+
+### REQ-GEO-007: Movement Pattern Detection
+**Priority:** HIGH
+**Description:** Core capability to detect movement patterns.
+**Acceptance Criteria:**
+- Connects locations showing movement over time
+- Temporal associations on each location
+- Route visualization (dashed for inferred, solid for confirmed)
+- Anomaly detection for unusual patterns
+**Dependencies:** REQ-GEO-001, REQ-GEO-006
+
+### REQ-GEO-008: Change Detection Comparison
+**Priority:** MEDIUM
+**Description:** Side-by-side satellite imagery comparison.
+**Acceptance Criteria:**
+- Before/after imagery display
+- Change indicators highlighted
+- Metadata for each image (date, cloud cover, satellite)
+- Significant changes flagged
+**Dependencies:** REQ-GEO-005
+
+### REQ-GEO-009: Map View Tab
+**Priority:** HIGH
+**Description:** Map View as separate tab with fullscreen.
+**Acceptance Criteria:**
+- Map View as dedicated tab alongside Knowledge Graph
+- Not integrated into Knowledge Graph visualization
+- Fullscreen capability with maximize button
+- All controls remain accessible in fullscreen
+**Dependencies:** REQ-GEO-006
+
+### REQ-GEO-010: Optional Temporal Sync
+**Priority:** LOW
+**Description:** Optional synchronization with other temporal views.
+**Acceptance Criteria:**
+- Map filter syncs with Timeline view when enabled
+- Sync is opt-in, not default
+- Date range slider available
+- Quick presets: All time, Last year, Case period
+**Dependencies:** REQ-GEO-009, REQ-VIS-004
+
+### REQ-GEO-011: Resilient Geospatial Wrapper
+**Priority:** HIGH
+**Description:** Apply resilient wrapper pattern to Geospatial Agent.
+**Acceptance Criteria:**
+- Primary: Gemini 3 Pro for full analysis
+- Fallback: Gemini 3 Flash for degraded but functional analysis
+- Error logging to state for debugging
+**Dependencies:** REQ-AGENT-007h
+
+---
+
+## REQ-TASK: Investigation Task System
+
+### REQ-TASK-001: Multi-Agent Task Generation
+**Priority:** HIGH
+**Description:** Multiple agents generate investigation tasks.
+**Acceptance Criteria:**
+- Synthesis Agent: tasks from contradictions, gaps
+- Discovery Agent: tasks from external research needs
+- Hypothesis system: tasks from pending/insufficient hypotheses
+- Tasks stored in `investigation_tasks` table
+**Dependencies:** REQ-INF-002
+
+### REQ-TASK-002: Task Types
+**Priority:** HIGH
+**Description:** Standardized task type categorization.
+**Acceptance Criteria:**
+- `resolve_contradiction` — Two pieces of evidence conflict
+- `obtain_evidence` — Missing evidence identified
+- `verify_hypothesis` — Hypothesis needs more evidence
+- `follow_up_interview` — Person identified for questioning
+- `document_retrieval` — Specific document needed
+- `external_research` — Research beyond current evidence
+- `cross_reference` — Need to compare multiple sources
+- `expert_consultation` — Domain expertise needed
+**Dependencies:** REQ-TASK-001
+
+### REQ-TASK-003: Bottom Drawer UI
+**Priority:** HIGH
+**Description:** Task panel located in bottom drawer.
+**Acceptance Criteria:**
+- Collapsible bottom drawer
+- Pending count badge in header
+- Filter/sort controls
+- Task grouping by priority, agent, or type
+**Dependencies:** REQ-TASK-001
+
+### REQ-TASK-004: Task-Type Completion Rules
+**Priority:** MEDIUM
+**Description:** Completion rules depend on task type.
+**Acceptance Criteria:**
+- `resolve_contradiction`: Resolved when one source chosen or manual merge
+- `obtain_evidence`: Resolved when file uploaded or marked unobtainable
+- `verify_hypothesis`: Resolved when evidence added or hypothesis status updated
+- Completion notes required
+**Dependencies:** REQ-TASK-002
+
+### REQ-TASK-005: Task Awareness via Shared Context
+**Priority:** MEDIUM
+**Description:** Agents receive existing task list in context to avoid duplicates.
+**Acceptance Criteria:**
+- Current task list loaded into agent context at invocation start
+- Task list format: `[{type, title, related_entities, status}]` (compact JSON)
+- Agents instructed in prompt: "Review existing tasks before proposing new ones"
+- Simple string matching on title + related_entities for deduplication
+- No complex coordination protocol - just context injection
+**Dependencies:** REQ-TASK-001
+
+### REQ-TASK-006: SSE Task Streaming
+**Priority:** HIGH
+**Description:** Real-time task events via SSE.
+**Acceptance Criteria:**
+- Event types: TASK_CREATED, TASK_UPDATED, TASK_COMPLETED
+- Events include: task_id, title, type, priority, source_agent
+- Frontend updates task panel in real-time
+**Dependencies:** REQ-INF-004, REQ-TASK-001
+
+### REQ-TASK-007: Task Fullscreen
+**Priority:** LOW
+**Description:** Fullscreen capability for task panel.
+**Acceptance Criteria:**
+- Maximize button in corner
+- Full-window task display
+- All controls remain accessible
+- ESC or button to exit
+**Dependencies:** REQ-TASK-003
+
+---
+
 ## REQ-MEM: Memory Service (Post-MVP)
 
 ### REQ-MEM-001: Cross-Case Memory Service
@@ -923,6 +1317,10 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 | REQ-CORR-* | Correction & Regeneration | FEATURES.md |
 | REQ-WOW-* | WOW Capabilities | FEATURES.md, SUMMARY.md |
 | REQ-ERR-* | Error Handling | PRD Section 8, PITFALLS.md |
+| REQ-RESEARCH-* | Research & Discovery | INTEGRATION.md |
+| REQ-HYPO-* | Hypothesis-Driven Investigation | INTEGRATION.md |
+| REQ-GEO-* | Geospatial Intelligence | INTEGRATION.md |
+| REQ-TASK-* | Investigation Task System | INTEGRATION.md |
 
 ---
 
@@ -941,8 +1339,12 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 | Corrections | 4 | 0 | 0 | 3 | 1 |
 | WOW | 4 | 0 | 3 | 1 | 0 |
 | Error Handling | 5 | 0 | 4 | 1 | 0 |
+| Research & Discovery | 9 | 0 | 6 | 2 | 1 |
+| Hypothesis System | 9 | 0 | 5 | 4 | 0 |
+| Geospatial Intelligence | 11 | 0 | 6 | 4 | 1 |
+| Investigation Tasks | 7 | 0 | 4 | 2 | 1 |
 | Memory (Post-MVP) | 1 | 0 | 0 | 0 | 1 |
-| **TOTAL** | **64** | **10** | **37** | **12** | **4** |
+| **TOTAL** | **100** | **10** | **58** | **24** | **6** |
 
 ---
 
@@ -963,8 +1365,17 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 | REQ-VIS-001a | HIGH | Frontend HITL confirmation (ADK limitation workaround) |
 | REQ-MEM-001 | LOW | Memory service (post-MVP) |
 
+## New Agent Configuration Summary
+
+| Agent | Thinking Level | Model | Notes |
+|-------|----------------|-------|-------|
+| Research Agent | medium | Gemini 3 Pro | Source discovery via web search |
+| Discovery Agent | medium | Gemini 3 Pro | Synthesizes external research |
+| Geospatial Agent | medium | Gemini 3 Pro | Location intelligence, post-synthesis |
+| All new agents | — | Pro + Flash fallback | Resilient wrapper pattern applied |
+
 ---
 
 *Generated: 2026-01-18*
-*Updated: 2026-01-20*
-*Status: Complete - ADK requirements expanded*
+*Updated: 2026-01-21*
+*Status: Complete - Integration features added (REQ-RESEARCH, REQ-HYPO, REQ-GEO, REQ-TASK)*

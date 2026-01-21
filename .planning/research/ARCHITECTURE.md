@@ -1,7 +1,7 @@
 # Architecture Patterns
 
 **Domain:** Legal intelligence platform with multi-agent AI
-**Researched:** 2026-01-20
+**Researched:** 2026-01-20 (Updated: 2026-01-21 with integration features)
 **Confidence:** HIGH (verified with Google ADK documentation, official sources, and existing PRD)
 
 ## Executive Summary
@@ -52,6 +52,16 @@ graph TB
             VERIFY[Verification Agent<br/>LlmAgent - Pro]
             MERGE[Merge Agent<br/>LlmAgent - Pro]
         end
+
+        subgraph "Research & Discovery"
+            RESEARCH[Research Agent<br/>LlmAgent - Pro<br/>Gemini Web Search]
+            DEEPRES[Deep Research Agent<br/>Background Research]
+            DISCO[Discovery Agent<br/>LlmAgent - Pro]
+        end
+
+        subgraph "Utility Agents"
+            GEO[Geospatial Agent<br/>LlmAgent - Pro<br/>Post-Synthesis]
+        end
     end
 
     subgraph "Storage Layer"
@@ -77,6 +87,13 @@ graph TB
     VERIFY --> MERGE --> PG
     ORCH <--> PG
     ORCH <--> GCS
+    CHAT -->|invoke| RESEARCH
+    ORCH -->|trigger with confirmation| RESEARCH
+    RESEARCH --> DEEPRES
+    DEEPRES --> DISCO
+    DISCO --> SYNTH
+    SYNTH --> GEO
+    GEO --> PG
 ```
 
 ### Component Boundaries
@@ -95,6 +112,9 @@ graph TB
 | **Chat Agent** | Knowledge-first Q&A, escalation | PostgreSQL, Orchestrator | LlmAgent - Gemini 3 Pro |
 | **Verification Agent** | Validates user corrections | Source files, Merge Agent | LlmAgent - Gemini 3 Pro |
 | **Merge Agent** | Incremental KG updates, conflict detection | PostgreSQL | LlmAgent - Gemini 3 Pro |
+| **Research Agent** | External source discovery via Gemini web search | Discovery Agent, Orchestrator | LlmAgent - Gemini 3 Pro |
+| **Discovery Agent** | Synthesizes external research into case context | Synthesis Agent (output_key) | LlmAgent - Gemini 3 Pro |
+| **Geospatial Agent** | Location intelligence, movement patterns, Earth Engine | PostgreSQL, Evidence Agent | LlmAgent - Gemini 3 Pro (post-synthesis) |
 | **PostgreSQL** | All persistent data, session state | All services | Cloud SQL PostgreSQL 15 |
 | **Cloud Storage** | Evidence files, artifacts | FastAPI, Domain Agents | GCS |
 
@@ -203,6 +223,24 @@ AGENT_THINKING_CONFIGS = {
     "verification": types.GenerateContentConfig(
         thinking_config=types.ThinkingConfig(
             thinking_level="high",     # Critical accuracy
+            include_thoughts=True
+        )
+    ),
+    "research": types.GenerateContentConfig(
+        thinking_config=types.ThinkingConfig(
+            thinking_level="medium",   # Source discovery
+            include_thoughts=True
+        )
+    ),
+    "discovery": types.GenerateContentConfig(
+        thinking_config=types.ThinkingConfig(
+            thinking_level="medium",   # External synthesis
+            include_thoughts=True
+        )
+    ),
+    "geospatial": types.GenerateContentConfig(
+        thinking_config=types.ThinkingConfig(
+            thinking_level="medium",   # Location analysis
             include_thoughts=True
         )
     ),
@@ -897,6 +935,11 @@ sequenceDiagram
 | 6 | Chat | `knowledge_graph`, `*_findings` | `chat_response` | Query answering |
 | 7 | Verification | `correction_request` | `verification_result` | Validate corrections |
 | 8 | Merge | `new_findings`, `knowledge_graph` | `merge_plan` | Incremental updates |
+| 9 | Research | `research_query` | `source_map` | External source discovery |
+| 10 | Discovery | `source_map` | `discovery_findings` | Synthesize external research |
+| 11 | Geospatial | `synthesis_results` | `locations`, `movement_patterns` | Location intelligence |
+| - | All Domain Agents | `hypotheses` | `hypothesis_evaluations`, `new_hypotheses` | Hypothesis evaluation |
+| - | Synthesis | `*_findings`, `hypotheses` | `investigation_tasks` | Task generation |
 
 ### Real-Time Event Flow (SSE)
 
@@ -1061,7 +1104,16 @@ type SSEEventType =
   | "PROCESSING_COMPLETED"
   | "PROCESSING_FAILED"
   | "RESEARCH_PROGRESS"  // Deep Research agent progress
-  | "RESEARCH_COMPLETE"; // Deep Research finished
+  | "RESEARCH_COMPLETE" // Deep Research finished
+  | "RESEARCH_SUGGESTED"  // Orchestrator suggests research (user confirmation needed)
+  | "HYPOTHESIS_CREATED"  // New hypothesis proposed
+  | "HYPOTHESIS_UPDATED"  // Hypothesis status changed
+  | "HYPOTHESIS_EVALUATED"  // Evidence linked to hypothesis
+  | "TASK_CREATED"  // Investigation task generated
+  | "TASK_UPDATED"  // Task status changed
+  | "TASK_COMPLETED"  // Task marked complete
+  | "LOCATION_EXTRACTED"  // Geospatial Agent found location
+  | "MOVEMENT_DETECTED";  // Movement pattern identified
 
 // Frontend event handler mapping
 const SSE_TO_UI_HANDLERS = {
@@ -1655,6 +1707,63 @@ erDiagram
 
     findings ||--o{ corrections : receives
     knowledge_graphs ||--o{ corrections : receives
+    cases ||--o{ case_hypotheses : has
+    case_hypotheses ||--o{ hypothesis_evidence : has
+    cases ||--o{ investigation_tasks : has
+    cases ||--o{ locations : has
+
+    case_hypotheses {
+        uuid id PK
+        uuid case_id FK
+        text claim
+        varchar status "-- PENDING, SUPPORTED, REFUTED"
+        boolean resolved "-- user marked resolved"
+        float confidence
+        varchar source_agent
+        jsonb reasoning
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    hypothesis_evidence {
+        uuid id PK
+        uuid hypothesis_id FK
+        uuid finding_id FK
+        varchar evidence_type
+        float weight
+        text excerpt
+        jsonb location
+        text reasoning
+        timestamp created_at
+    }
+
+    investigation_tasks {
+        uuid id PK
+        uuid case_id FK
+        varchar task_type
+        varchar title
+        text description
+        varchar priority
+        varchar status
+        varchar source_agent
+        jsonb related_entities
+        jsonb completion_notes
+        timestamp created_at
+        timestamp completed_at
+    }
+
+    locations {
+        uuid id PK
+        uuid case_id FK
+        uuid finding_id FK
+        varchar place_name
+        float latitude
+        float longitude
+        varchar location_type
+        jsonb metadata
+        timestamp associated_time
+        timestamp created_at
+    }
 ```
 
 ### Key JSONB Schemas

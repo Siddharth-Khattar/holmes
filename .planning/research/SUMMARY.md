@@ -65,10 +65,14 @@ Gemini 3 directly processes PDFs, scanned documents, video, and audio without se
 
 **Should have (differentiators):**
 - AI Reasoning Traces / Agent Trace Theater (Holmes core differentiator)
-- Knowledge Graph / Entity Relationships
+- Knowledge Graph / Entity Relationships (5 layers: Evidence, Legal, Strategy, Temporal, Hypothesis)
+- Hypothesis-Driven Investigation (3-state: PENDING → SUPPORTED/REFUTED, agents propose, users curate)
+- Geospatial Intelligence (location extraction, movement patterns, Earth Engine verification)
 - Natural Language Querying (RAG)
 - Document Summarization
 - Entity Extraction
+- Investigation Task System (agent-generated actionable tasks)
+- Research & Discovery System (Gemini web search, Deep Research integration)
 
 **Defer (v2+):**
 - Judge Simulation (requires verdict history data)
@@ -95,11 +99,13 @@ Gemini 3 directly processes PDFs, scanned documents, video, and audio without se
 Holmes uses a hierarchical multi-agent architecture with an intelligent Orchestrator (LlmAgent with Gemini 3 Pro) that routes to specialized domain agents. The key insight: domain-based agents (Financial, Legal, Strategy, Evidence) handle all file types within their domain, leveraging Gemini 3's native multimodal capabilities rather than artificial file-type boundaries. The Evidence Agent evaluates authenticity, chain of custody, and provenance — critical for legal work.
 
 **Major components:**
-1. **Frontend Layer**: Next.js 16 with React Flow for Agent Trace Theater, D3.js for Knowledge Graph
+1. **Frontend Layer**: Next.js 16 with React Flow for Agent Trace Theater, D3.js/vis-network for Knowledge Graph, Map View for geospatial, Hypothesis View
 2. **API Layer**: FastAPI with SSE streaming for real-time progress updates
 3. **Agent Layer**: ADK Runner with Orchestrator, Triage, Domain Agents (parallel), Synthesis, KG Agent
 4. **Query-Time Agents**: Chat Agent (knowledge-first with escalation), Verification Agent, Merge Agent
-5. **Storage Layer**: PostgreSQL (all persistent data + sessions), GcsArtifactService (evidence files with versioning)
+5. **Research Agents**: Research Agent (web search), Discovery Agent (synthesize external research)
+6. **Utility Agents**: Geospatial Agent (post-synthesis, location intelligence)
+7. **Storage Layer**: PostgreSQL (all persistent data + sessions + hypotheses + tasks + locations), GcsArtifactService (evidence files with versioning)
 
 **Key patterns:**
 - Sequential Pipeline: Triage → Domain → Synthesis → KG
@@ -123,6 +129,9 @@ Holmes uses a hierarchical multi-agent architecture with an intelligent Orchestr
 | Synthesis | high | Complex cross-referencing |
 | Chat | medium | Responsive Q&A |
 | Verification | high | Critical accuracy |
+| Research | medium | Source discovery |
+| Discovery | medium | External synthesis |
+| Geospatial | medium | Location analysis |
 
 **Media Resolution:** Set to `"high"` for Financial, Legal, Evidence agents processing dense documents with signatures, fine print, and tables.
 
@@ -260,6 +269,9 @@ Phases with standard patterns (skip research-phase):
 - **Memory service migration:** VertexAiMemoryBankService requires Agent Engine; plan post-hackathon migration path
 - **Frontend confirmation UX:** Design confirmation dialog patterns for sensitive operations (ADK limitation workaround)
 - **Callback performance:** Monitor async queue performance for real-time visualization at scale
+- **Earth Engine API approval:** Submit approval request immediately in Phase 1; may take days/weeks
+- **Map display library:** Mapbox tentative; evaluate alternatives during implementation
+- **Graph library evaluation:** vis-network vs D3.js decision during Phase 7 implementation
 
 ## Sources
 
@@ -286,4 +298,5 @@ Phases with standard patterns (skip research-phase):
 *Research completed: 2026-01-18*
 *Updated: 2026-01-20*
 *ADK optimization pass: 2026-01-20*
+*Integration features added: 2026-01-21*
 *Ready for roadmap: yes*

@@ -37,6 +37,9 @@ Holmes is a legal intelligence platform that processes multimodal evidence (docu
 - [ ] Synthesis Agent cross-references findings for links, contradictions, gaps
 - [ ] Knowledge Graph Agent builds entity-relationship graph from synthesis results
 - [ ] Pipeline handles incremental file additions without full reprocessing
+- [ ] Research Agent discovers external sources via Gemini web search
+- [ ] Discovery Agent synthesizes external research into case context
+- [ ] Geospatial Agent analyzes location intelligence post-synthesis
 
 **Agent Trace Theater**
 - [ ] Real-time visualization shows agent execution flow during processing
@@ -46,11 +49,42 @@ Holmes is a legal intelligence platform that processes multimodal evidence (docu
 
 **Knowledge Graph & Visualizations**
 - [ ] Force-directed graph displays entities and relationships
-- [ ] Three toggleable layers: Evidence (red), Legal (blue), Strategy (green)
+- [ ] Five toggleable layers: Evidence (red), Legal (blue), Strategy (green), Temporal (amber), Hypothesis (pink)
 - [ ] Timeline view shows events chronologically with source links
 - [ ] Cross-modal links visible (e.g., video timestamp matches receipt)
 - [ ] Contradictions panel shows detected inconsistencies with evidence
 - [ ] Evidence gaps panel shows what's missing to prove the case
+- [ ] Map View displays geospatial intelligence with movement patterns
+- [ ] Hypothesis View tracks investigation hypotheses with evidence support
+
+**Hypothesis-Driven Investigation**
+- [ ] Agents propose hypotheses from case analysis
+- [ ] Users can accept, reject, modify, or add hypotheses
+- [ ] Evidence linked to hypotheses with supporting/contradicting weights
+- [ ] Simple 3-state lifecycle: PENDING → SUPPORTED/REFUTED (user can mark RESOLVED)
+- [ ] Real-time hypothesis status updates via SSE
+
+**Research & Discovery**
+- [ ] Research Agent discovers where evidence might exist (Gemini web search)
+- [ ] Orchestrator can trigger Research when evidence gaps detected (with user confirmation)
+- [ ] Deep Research Agent integration for autonomous background research
+- [ ] Discovery Agent synthesizes external research findings
+- [ ] Binary access classification (ACCESSIBLE vs REQUIRES_ACTION)
+- [ ] Suggest-then-confirm flow for source retrieval
+
+**Investigation Task System**
+- [ ] Agents generate actionable investigation tasks
+- [ ] Task types: resolve_contradiction, obtain_evidence, verify_hypothesis, etc.
+- [ ] Task list injected into agent context to avoid duplicates (simple approach)
+- [ ] Tasks displayed in bottom drawer panel with priority indicators
+- [ ] SSE streaming for task events (TASK_CREATED, TASK_UPDATED, etc.)
+
+**Geospatial Intelligence**
+- [ ] Geospatial Agent as post-synthesis utility agent
+- [ ] Google Earth Engine integration for historical imagery and verification
+- [ ] Location extraction and geocoding from evidence
+- [ ] Movement pattern detection across timeline
+- [ ] Side-by-side change detection comparison
 
 **Source Panel**
 - [ ] PDF viewer with highlighted excerpts and page navigation
@@ -88,6 +122,8 @@ Holmes is a legal intelligence platform that processes multimodal evidence (docu
 - **Third-party integrations (Gmail, Google Drive)** — Focus on direct upload; import features are v2+
 - **Offline mode** — Cloud-dependent architecture; offline adds significant complexity
 - **Custom domain agents** — Fixed three domains (Financial, Legal, Strategy) for v1; extensibility designed in AND exposed via APIs
+- **FOIA Request Generation** — Deferred to v2; complex legal templates and agency-specific requirements
+- **Curated Source Configuration** — Replaced by dynamic source discovery via Gemini web search
 
 ## Context
 
@@ -129,4 +165,4 @@ Holmes is a legal intelligence platform that processes multimodal evidence (docu
 | GitHub Actions over Cloud Build | Faster setup, better debugging, sufficient GCP integration | — Pending |
 
 ---
-*Last updated: 2026-01-18 after initialization*
+*Last updated: 2026-01-21 after INTEGRATION.md feature incorporation*

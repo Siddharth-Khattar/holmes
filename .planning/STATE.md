@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-21
 **Current Phase:** 1 of 12 (Foundation Infrastructure)
-**Current Plan:** 01-01 complete, 01-02 next
+**Current Plan:** 01-02 complete, 01-03 next
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -25,16 +25,17 @@
 ## Current Context
 
 **What was just completed:**
-- **01-01-PLAN.md executed** (2026-01-21)
-  - Bun workspaces with frontend and packages/* references
-  - Python backend with FastAPI, SQLAlchemy, asyncpg
-  - Makefile for cross-language orchestration
-  - Docker Compose for PostgreSQL 17
-  - Lefthook git hooks for linting
-  - @holmes/types package for TypeScript generation
+- **01-02-PLAN.md executed** (2026-01-21)
+  - Terraform configuration for complete GCP infrastructure
+  - Cloud SQL PostgreSQL 17 instance (db-g1-small tier)
+  - GCS bucket for evidence storage with CORS
+  - Cloud Run services for backend and frontend (placeholder images)
+  - Artifact Registry for Docker images
+  - Workload Identity Federation for GitHub Actions CI/CD
+  - Service accounts with appropriate IAM bindings
 
 **What's next:**
-- Execute 01-02-PLAN.md (CI/CD, Terraform, Skeletons)
+- Execute 01-03-PLAN.md (GitHub Actions CI/CD pipelines)
 - Complete Phase 1 Foundation Infrastructure
 
 ## Active Decisions
@@ -59,6 +60,9 @@
 | Confidence calculation | Deterministic vs AI-only | Deterministic (user override) | Simpler; sum(supporting)/sum(all), user can override |
 | Research invocation | Chat-only vs Orchestrator-triggered | Both | Orchestrator suggests when gaps detected; user confirms |
 | Task deduplication | Complex coordination vs Context injection | Context injection | Task list in agent context; simple approach |
+| Cloud SQL tier | db-f1-micro vs db-g1-small | db-g1-small | Better cost/performance, 1.7GB RAM vs 0.6GB |
+| Cloud Run initial images | Wait for CI/CD vs Placeholder | Placeholder hello image | Bypasses chicken-and-egg; CI/CD replaces |
+| Cloud SQL networking | Private vs Public IP | Public IP | Hackathon simplicity; would use private in prod |
 
 ## Blockers
 

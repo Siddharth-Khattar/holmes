@@ -18,7 +18,7 @@ stop-db:
 
 # Generate TypeScript types from Pydantic models
 generate-types:
-	cd backend && uv run pydantic2ts --module app.schemas --output ../packages/types/src/generated/api.ts
+	cd backend && uv run pydantic2ts --module app.schemas --output ../packages/types/src/generated/api.ts --json2ts-cmd ../node_modules/.bin/json2ts
 
 # Run linting for all projects
 lint:

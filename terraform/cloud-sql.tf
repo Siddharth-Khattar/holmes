@@ -1,0 +1,58 @@
+# ABOUTME: Cloud SQL PostgreSQL instance configuration for Holmes.
+# ABOUTME: Defines database instance, database, and user resources.
+
+# Random password for database user
+resource "random_password" "db_password" {
+  length  = 32
+  special = false
+}
+
+# Cloud SQL PostgreSQL instance
+resource "google_sql_database_instance" "main" {
+  name             = "holmes-db-${var.environment}"
+  database_version = "POSTGRES_17"
+  region           = var.region
+  project          = var.project_id
+
+  settings {
+    tier              = "db-f1-micro" # Cheapest tier per CONTEXT.md
+    availability_type = "ZONAL"       # Single zone for cost savings
+    disk_size         = 10            # Minimum disk size in GB
+    disk_type         = "PD_SSD"
+
+    ip_configuration {
+      ipv4_enabled    = true # Enable public IP for simplicity in hackathon
+      private_network = null
+    }
+
+    backup_configuration {
+      enabled = false # No backups per CONTEXT.md (hackathon)
+    }
+
+    database_flags {
+      name  = "max_connections"
+      value = "100"
+    }
+  }
+
+  deletion_protection = false # Hackathon mode
+
+  depends_on = [
+    google_project_service.sqladmin,
+  ]
+}
+
+# Database within the instance
+resource "google_sql_database" "holmes" {
+  name     = "holmes"
+  instance = google_sql_database_instance.main.name
+  project  = var.project_id
+}
+
+# Database user for backend
+resource "google_sql_user" "backend" {
+  name     = "backend"
+  instance = google_sql_database_instance.main.name
+  password = random_password.db_password.result
+  project  = var.project_id
+}

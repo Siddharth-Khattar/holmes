@@ -1,0 +1,16 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "holmes",
+    },
+    "frontend": {
+      "name": "@holmes/frontend",
+      "version": "0.1.0",
+    },
+  },
+  "packages": {
+    "@holmes/frontend": ["@holmes/frontend@workspace:frontend"],
+  }
+}

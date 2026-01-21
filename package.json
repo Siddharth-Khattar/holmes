@@ -1,0 +1,19 @@
+{
+  "name": "holmes",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:frontend": "bun --cwd frontend dev",
+    "build:frontend": "bun --cwd frontend build",
+    "generate-types": "cd backend && uv run pydantic2ts --module app.schemas --output ../packages/types/src/generated/api.ts",
+    "lint": "bun run lint:frontend && bun run lint:backend",
+    "lint:frontend": "bun --cwd frontend lint",
+    "lint:backend": "cd backend && uv run ruff check .",
+    "format": "bun run format:frontend && bun run format:backend",
+    "format:frontend": "bun --cwd frontend prettier --write .",
+    "format:backend": "cd backend && uv run ruff format ."
+  }
+}

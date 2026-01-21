@@ -15,5 +15,8 @@
     "format": "bun run format:frontend && bun run format:backend",
     "format:frontend": "bun --cwd frontend prettier --write .",
     "format:backend": "cd backend && uv run ruff format ."
+  },
+  "devDependencies": {
+    "lefthook": "^2.0.15"
   }
 }

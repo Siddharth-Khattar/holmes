@@ -1461,7 +1461,7 @@ graph TB
         end
         
         subgraph "Cloud SQL"
-            PG[(PostgreSQL 15<br/>db-f1-micro)]
+            PG[(PostgreSQL 17<br/>db-g1-small)]
         end
         
         subgraph "Cloud Storage"

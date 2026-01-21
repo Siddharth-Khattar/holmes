@@ -65,7 +65,7 @@ graph TB
     end
 
     subgraph "Storage Layer"
-        PG[(PostgreSQL 15<br/>JSONB + pgvector)]
+        PG[(PostgreSQL 17<br/>JSONB + pgvector)]
         GCS[(Cloud Storage<br/>Evidence Files)]
     end
 
@@ -115,7 +115,7 @@ graph TB
 | **Research Agent** | External source discovery via Gemini web search | Discovery Agent, Orchestrator | LlmAgent - Gemini 3 Pro |
 | **Discovery Agent** | Synthesizes external research into case context | Synthesis Agent (output_key) | LlmAgent - Gemini 3 Pro |
 | **Geospatial Agent** | Location intelligence, movement patterns, Earth Engine | PostgreSQL, Evidence Agent | LlmAgent - Gemini 3 Pro (post-synthesis) |
-| **PostgreSQL** | All persistent data, session state | All services | Cloud SQL PostgreSQL 15 |
+| **PostgreSQL** | All persistent data, session state | All services | Cloud SQL PostgreSQL 17 |
 | **Cloud Storage** | Evidence files, artifacts | FastAPI, Domain Agents | GCS |
 
 ---
@@ -1529,7 +1529,7 @@ graph TB
         end
 
         subgraph "Cloud SQL"
-            PG[(PostgreSQL 17<br/>db-f1-micro)]
+            PG[(PostgreSQL 17<br/>db-g1-small)]
         end
 
         subgraph "Cloud Storage"

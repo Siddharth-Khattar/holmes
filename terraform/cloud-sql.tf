@@ -15,7 +15,8 @@ resource "google_sql_database_instance" "main" {
   project          = var.project_id
 
   settings {
-    tier              = "db-f1-micro" # Cheapest tier per CONTEXT.md
+    tier              = "db-g1-small" # 1 shared vCPU, 1.7GB RAM (Cost/Performance sweet spot)
+    edition           = "ENTERPRISE"  # Required for db-g1-small tier
     availability_type = "ZONAL"       # Single zone for cost savings
     disk_size         = 10            # Minimum disk size in GB
     disk_type         = "PD_SSD"

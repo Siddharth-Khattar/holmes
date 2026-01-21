@@ -20,7 +20,9 @@ resource "google_cloud_run_v2_service" "backend" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.holmes.repository_id}/backend:latest"
+      # Placeholder image for initial deployment (Chicken-and-egg fix)
+      image = "us-docker.pkg.dev/cloudrun/container/hello" 
+      # image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.holmes.repository_id}/backend:latest"
 
       ports {
         container_port = 8080
@@ -96,7 +98,9 @@ resource "google_cloud_run_v2_service" "frontend" {
     }
 
     containers {
-      image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.holmes.repository_id}/frontend:latest"
+      # Placeholder image for initial deployment (Chicken-and-egg fix)
+      image = "us-docker.pkg.dev/cloudrun/container/hello"
+      # image = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.holmes.repository_id}/frontend:latest"
 
       ports {
         container_port = 3000

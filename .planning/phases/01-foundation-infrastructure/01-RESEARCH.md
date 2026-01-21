@@ -665,7 +665,7 @@ resource "google_sql_database_instance" "main" {
   project          = var.project_id
 
   settings {
-    tier = "db-f1-micro"  # Cheapest tier per CONTEXT.md
+    tier = "db-g1-small"  # Safest tier per CONTEXT.md
 
     ip_configuration {
       ipv4_enabled = false

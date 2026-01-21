@@ -6,13 +6,17 @@ pre-commit:
   commands:
     ruff-check:
       glob: "backend/**/*.py"
-      run: cd backend && uv run ruff check {staged_files}
+      root: "backend/"
+      run: uv run ruff check {staged_files}
     ruff-format:
       glob: "backend/**/*.py"
-      run: cd backend && uv run ruff format --check {staged_files}
+      root: "backend/"
+      run: uv run ruff format --check {staged_files}
     eslint:
       glob: "frontend/**/*.{js,ts,tsx}"
-      run: bun --cwd frontend eslint {staged_files}
+      root: "frontend/"
+      run: bun eslint {staged_files}
     prettier:
       glob: "frontend/**/*.{js,ts,tsx,json,css,md}"
-      run: bun --cwd frontend prettier --check {staged_files}
+      root: "frontend/"
+      run: bun prettier --check {staged_files}

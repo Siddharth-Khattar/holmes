@@ -17,9 +17,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "ruff>=0.8.6",
-    "mypy>=1.14.0",
-    "pydantic2-to-typescript>=0.0.1",
+    "ruff>=0.14.13",
+    "mypy>=1.19.0",
+    "pydantic-to-typescript2>=1.0.6",
 ]
 
 [build-system]

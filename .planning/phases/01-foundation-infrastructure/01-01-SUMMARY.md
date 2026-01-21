@@ -56,7 +56,7 @@ key-files:
 
 key-decisions:
   - "Used pydantic-settings for environment configuration with comma-separated CORS parsing"
-  - "Fixed pydantic2-to-typescript version to 0.0.1 (only available version)"
+  - "Fixed pydantic-to-typescript2 version to 0.0.1 (only available version)"
   - "Added hatch.build.targets.wheel config for proper package structure"
 
 patterns-established:
@@ -116,7 +116,7 @@ Each task was committed atomically:
 
 ## Decisions Made
 
-1. **Fixed pydantic2-to-typescript version:** Plan specified >=0.1.0 but only 0.0.1 exists on PyPI. Used 0.0.1.
+1. **Fixed pydantic-to-typescript2 version:** Plan specified >=0.1.0 but only 0.0.1 exists on PyPI. Used 0.0.1.
 
 2. **Added hatch build configuration:** Hatchling requires explicit package location. Added `[tool.hatch.build.targets.wheel]` with `packages = ["app"]`.
 
@@ -126,9 +126,9 @@ Each task was committed atomically:
 
 ### Auto-fixed Issues
 
-**1. [Rule 3 - Blocking] Fixed pydantic2-to-typescript version constraint**
+**1. [Rule 3 - Blocking] Fixed pydantic-to-typescript2 version constraint**
 - **Found during:** Task 2 (Python backend setup)
-- **Issue:** Plan specified pydantic2-to-typescript>=0.1.0 but only 0.0.1 exists
+- **Issue:** Plan specified pydantic-to-typescript2>=0.1.0 but only 0.0.1 exists
 - **Fix:** Changed version constraint to >=0.0.1
 - **Files modified:** backend/pyproject.toml
 - **Verification:** uv sync succeeds

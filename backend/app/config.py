@@ -1,36 +1,63 @@
 # ABOUTME: Application configuration using pydantic-settings.
 # ABOUTME: Loads settings from environment variables with type validation.
 
-from pydantic_settings import BaseSettings
+from functools import cached_property
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     database_url: str
-    cors_origins: list[str] = []
+    cors_origins_raw: str = ""
     debug: bool = False
     gcs_bucket: str | None = None
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        # Map CORS_ORIGINS env var to cors_origins_raw field
+        env_prefix="",
+        extra="ignore",
+    )
 
     @classmethod
-    def parse_cors_origins(cls, v: str | list[str]) -> list[str]:
-        """Parse comma-separated CORS origins into a list."""
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+    def model_customise_sources(
+        cls,
+        settings_cls,
+        init_settings,
+        env_settings,
+        dotenv_settings,
+        file_secret_settings,
+    ):
+        """Customize settings sources."""
+        return (
+            init_settings,
+            env_settings,
+            dotenv_settings,
+            file_secret_settings,
+        )
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # Handle comma-separated CORS origins from environment
-        if isinstance(self.cors_origins, str):
-            object.__setattr__(
-                self,
-                "cors_origins",
-                [o.strip() for o in self.cors_origins.split(",") if o.strip()],
-            )
+    @cached_property
+    def cors_origins(self) -> list[str]:
+        """Parse CORS origins from comma-separated or JSON string."""
+        value = self.cors_origins_raw.strip()
+        if not value:
+            return []
+        # Try JSON array first
+        if value.startswith("["):
+            try:
+                import json
+
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return [str(o).strip() for o in parsed if str(o).strip()]
+            except Exception:
+                pass
+        # Fall back to comma-separated
+        return [o.strip() for o in value.split(",") if o.strip()]
 
 
-settings = Settings()
+# Required fields are loaded from environment variables at runtime
+settings = Settings()  # type: ignore[call-arg]

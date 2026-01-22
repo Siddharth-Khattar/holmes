@@ -85,8 +85,10 @@ jobs:
 
       - name: Build and push backend image
         run: |
-          docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:${{ github.sha }} ./backend
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:${{ github.sha }}
+          IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend
+          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest ./backend
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
 
       - name: Deploy backend to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
@@ -137,12 +139,15 @@ jobs:
 
       - name: Build and push frontend image
         run: |
+          IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend
           docker build \
             --build-arg NEXT_PUBLIC_API_URL=${{ steps.backend-url.outputs.url }} \
             -f frontend/Dockerfile \
-            -t ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:${{ github.sha }} \
+            -t $IMAGE:${{ github.sha }} \
+            -t $IMAGE:latest \
             .
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:${{ github.sha }}
+          docker push $IMAGE:${{ github.sha }}
+          docker push $IMAGE:latest
 
       - name: Deploy frontend to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2

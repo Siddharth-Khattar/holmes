@@ -77,10 +77,20 @@ COPY package.json ./  # Needed for monorepo resolution
 
 ## Terraform / GCP
 
-### Chicken-and-Egg: Cloud Run + Artifact Registry
-- Cloud Run needs an image to deploy
-- CI/CD pushes images to Artifact Registry
-- **Solution:** Use placeholder images in Terraform, CI/CD replaces them
+### Docker Image Tagging Strategy
+- **Push both SHA and `:latest` tags** — traceability + stable reference
+- SHA tag: rollback capability, audit trail
+- Latest tag: Terraform can reference stable path
+```yaml
+docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
+docker push $IMAGE:${{ github.sha }}
+docker push $IMAGE:latest
+```
+
+### Chicken-and-Egg: Cloud Run + Artifact Registry (Initial Setup Only)
+- First `terraform apply`: Use placeholder images (real images don't exist yet)
+- After first CI/CD run: Update Terraform to use real image paths with `:latest`
+- Subsequent applies use the real images
 
 ### WIF Provider Path
 - Uses project NUMBER (numeric), not project ID (string)

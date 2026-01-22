@@ -1,14 +1,15 @@
 # Holmes Project State
 
-**Last Updated:** 2026-01-21
-**Current Phase:** Not started
+**Last Updated:** 2026-01-22
+**Current Phase:** 2 of 12 (Authentication & Case Shell)
+**Current Plan:** Phase 2 not yet planned
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
 
 | Phase | Name | Status | Started | Completed |
 |-------|------|--------|---------|-----------|
-| 1 | Foundation Infrastructure | NOT_STARTED | - | - |
+| 1 | Foundation Infrastructure | COMPLETE | 2026-01-21 | 2026-01-22 |
 | 2 | Authentication & Case Shell | NOT_STARTED | - | - |
 | 3 | File Ingestion | NOT_STARTED | - | - |
 | 4 | Core Agent System | NOT_STARTED | - | - |
@@ -24,19 +25,19 @@
 ## Current Context
 
 **What was just completed:**
-- Project initialization via /gsd:new-project
-- Research phase completed (STACK.md, FEATURES.md, ARCHITECTURE.md, PITFALLS.md, SUMMARY.md)
-- Requirements scoping completed (REQUIREMENTS.md with 100 requirements)
-- Roadmap created (ROADMAP.md with 12 phases)
-- **INTEGRATION.md features incorporated** (2026-01-21)
-  - Hypothesis-driven investigation system
-  - Geospatial intelligence with Earth Engine
-  - Research/Discovery agent pipeline
-  - Investigation task system
+- **Phase 1: Foundation Infrastructure COMPLETE** (2026-01-22)
+  - 01-01: Monorepo structure with Bun workspaces
+  - 01-02: Terraform GCP infrastructure (Cloud SQL, GCS, Cloud Run, WIF)
+  - 01-03: Type generation pipeline (Pydantic → TypeScript)
+  - 01-04: FastAPI backend with health endpoints, SSE, Alembic
+  - 01-05: Next.js frontend with home page and Dockerfile
+  - 01-06: GitHub Actions CI/CD with WIF authentication
+
+**Verification:** All 4 exit criteria verified (see 01-VERIFICATION.md)
 
 **What's next:**
-- Plan Phase 1 (Foundation Infrastructure) in detail
-- Execute Phase 1
+- Plan Phase 2: Authentication & Case Shell
+- Better Auth integration, case CRUD, protected routes
 
 ## Active Decisions
 
@@ -60,6 +61,11 @@
 | Confidence calculation | Deterministic vs AI-only | Deterministic (user override) | Simpler; sum(supporting)/sum(all), user can override |
 | Research invocation | Chat-only vs Orchestrator-triggered | Both | Orchestrator suggests when gaps detected; user confirms |
 | Task deduplication | Complex coordination vs Context injection | Context injection | Task list in agent context; simple approach |
+| Cloud SQL tier | db-f1-micro vs db-g1-small | db-g1-small | Better cost/performance, 1.7GB RAM vs 0.6GB |
+| Cloud Run initial images | Wait for CI/CD vs Placeholder | Placeholder hello image | Bypasses chicken-and-egg; CI/CD replaces |
+| Cloud SQL networking | Private vs Public IP | Public IP | Hackathon simplicity; would use private in prod |
+| Frontend Docker build | Bun runtime vs Node runtime | Bun build + Node runtime | Bun faster for build, Node slim more stable for production |
+| SQLAlchemy async | Implicit vs Explicit greenlet | Explicit greenlet dependency | Required for async operations, must be explicit in pyproject.toml |
 
 ## Blockers
 

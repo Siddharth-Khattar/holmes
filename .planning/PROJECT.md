@@ -136,7 +136,7 @@ Holmes is a legal intelligence platform that processes multimodal evidence (docu
 - Frontend: Next.js 16, React 19, TailwindCSS 4, Zustand, React Flow, D3.js
 - Backend: Python 3.13, FastAPI, Google ADK, SQLAlchemy 2.x (async)
 - AI: Gemini 3 Pro (complex reasoning), Gemini 3 Flash (triage)
-- Infrastructure: GCP Cloud Run, Cloud SQL (PostgreSQL 15), Cloud Storage
+- Infrastructure: GCP Cloud Run, Cloud SQL (PostgreSQL 17), Cloud Storage
 - Auth: Better Auth (runs in Next.js API routes, shared PostgreSQL)
 - CI/CD: GitHub Actions with Workload Identity Federation
 

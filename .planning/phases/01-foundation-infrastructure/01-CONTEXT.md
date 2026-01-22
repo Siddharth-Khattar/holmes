@@ -76,8 +76,8 @@ Establish CI/CD pipeline, database, storage, and skeleton services that all othe
 - Pydantic 2.12+ for data validation
 - snake_case naming convention throughout
 - JSONB strategy: hybrid schema (columns for stable fields, JSONB for variable data, keep under 2KB)
-- PostgreSQL 18 on Cloud SQL
-- Cloud SQL tier: db-f1-micro (cheapest, ~$7/mo)
+- PostgreSQL 17 on Cloud SQL
+- Cloud SQL tier: db-g1-small (safest, ~$50/mo)
 - No automatic backups (cost savings for hackathon)
 
 ### Environment Management

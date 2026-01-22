@@ -61,7 +61,7 @@ The established libraries/tools for this domain:
 
 | Tool | Version | Purpose | Why Standard |
 |------|---------|---------|--------------|
-| pydantic2-to-typescript | latest | Pydantic -> TS | Pydantic v2 support |
+| pydantic-to-typescript2 | latest | Pydantic -> TS | Pydantic v2 support |
 | datamodel-codegen | latest | Alternative generator | More flexible, CI/CD ready |
 
 ### Alternatives Considered
@@ -665,7 +665,7 @@ resource "google_sql_database_instance" "main" {
   project          = var.project_id
 
   settings {
-    tier = "db-f1-micro"  # Cheapest tier per CONTEXT.md
+    tier = "db-g1-small"  # Safest tier per CONTEXT.md
 
     ip_configuration {
       ipv4_enabled = false
@@ -871,7 +871,7 @@ Things that couldn't be fully resolved:
 ### Secondary (MEDIUM confidence)
 - [Cloud Run Streaming Blog](https://cloud.google.com/blog/products/serverless/cloud-run-now-supports-http-grpc-server-streaming) - SSE support announcement
 - [Lefthook GitHub](https://github.com/evilmartians/lefthook) - Git hooks documentation
-- [pydantic2-to-typescript](https://github.com/mukul-mehta/pydantic2-to-typescript) - Type generation tool
+- [pydantic-to-typescript2](https://github.com/mukul-mehta/pydantic-to-typescript2) - Type generation tool
 - [Deploy Next.js to Cloud Run Guide](https://dev.to/rushi-patel/deploy-next-js-app-to-google-cloud-run-with-github-actions-cicd-a-complete-guide-l29) - CI/CD patterns
 
 ### Tertiary (LOW confidence)

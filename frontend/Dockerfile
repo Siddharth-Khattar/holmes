@@ -6,7 +6,7 @@ FROM oven/bun:latest AS deps
 WORKDIR /app
 
 # Copy workspace root files for proper resolution
-COPY package.json bun.lockb ./
+COPY package.json bun.lock ./
 COPY packages/types/package.json ./packages/types/
 COPY frontend/package.json ./frontend/
 
@@ -21,6 +21,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
 COPY --from=deps /app/packages ./packages
+
+# Copy workspace root package.json for monorepo resolution
+COPY package.json ./
 
 # Copy source code
 COPY frontend ./frontend

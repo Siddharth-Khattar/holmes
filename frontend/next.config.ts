@@ -6,6 +6,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Standalone output for Docker deployment
   output: "standalone",
+
+  // Turbopack config for monorepo Docker builds
+  turbopack: {
+    root: "..",
+  },
 };
 
 export default nextConfig;

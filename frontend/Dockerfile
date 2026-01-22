@@ -1,0 +1,51 @@
+# ABOUTME: Production Dockerfile for Holmes frontend
+# ABOUTME: Multi-stage build using Bun for deps/build, Node for runtime
+
+# Dependencies stage - install all workspace dependencies
+FROM oven/bun:latest AS deps
+WORKDIR /app
+
+# Copy workspace root files for proper resolution
+COPY package.json bun.lockb ./
+COPY packages/types/package.json ./packages/types/
+COPY frontend/package.json ./frontend/
+
+# Install dependencies (includes workspace packages)
+RUN cd frontend && bun install --frozen-lockfile
+
+# Builder stage - build the Next.js application
+FROM oven/bun:latest AS builder
+WORKDIR /app
+
+# Copy installed dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
+COPY --from=deps /app/packages ./packages
+
+# Copy source code
+COPY frontend ./frontend
+COPY packages/types ./packages/types
+
+# Build the application
+WORKDIR /app/frontend
+RUN bun run build
+
+# Runner stage - minimal Node.js runtime
+FROM node:20-slim AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
+# Copy standalone output (monorepo structure puts it in frontend/ subdirectory)
+COPY --from=builder /app/frontend/.next/standalone ./
+
+# Copy static assets (not included in standalone output)
+COPY --from=builder /app/frontend/.next/static ./frontend/.next/static
+COPY --from=builder /app/frontend/public ./frontend/public
+
+EXPOSE 3000
+
+# Run the Next.js server from the frontend subdirectory
+CMD ["node", "frontend/server.js"]

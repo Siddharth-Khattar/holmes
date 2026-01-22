@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-22
 **Current Phase:** 1 of 12 (Foundation Infrastructure)
-**Current Plan:** 01-05 complete, 01-04 or 01-06 next
+**Current Plan:** 01-04 complete, 01-06 next
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -25,20 +25,20 @@
 ## Current Context
 
 **What was just completed:**
-- **01-05-PLAN.md executed** (2026-01-22)
-  - Next.js 16.1 frontend with App Router and Tailwind v4
-  - Holmes home page with branding and auth placeholders
-  - Production Dockerfile with multi-stage build
-  - @holmes/types integration verified
-  - TypeScript strict mode enabled
+- **01-04-PLAN.md executed** (2026-01-22)
+  - Verified FastAPI backend with health endpoints
+  - Alembic async migrations configured
+  - Production Dockerfile with uv
+  - Fixed greenlet dependency for async SQLAlchemy
 
 **Previous completions:**
 - 01-01: Monorepo structure with Bun workspaces
 - 01-02: Terraform GCP infrastructure
 - 01-03: Type generation pipeline (pydantic2ts)
+- 01-05: Next.js frontend with home page and Dockerfile
 
 **What's next:**
-- Execute 01-04-PLAN.md (FastAPI skeleton) or 01-06-PLAN.md (GitHub Actions CI/CD)
+- Execute 01-06-PLAN.md (GitHub Actions CI/CD)
 - Complete Phase 1 Foundation Infrastructure
 
 ## Active Decisions
@@ -67,6 +67,7 @@
 | Cloud Run initial images | Wait for CI/CD vs Placeholder | Placeholder hello image | Bypasses chicken-and-egg; CI/CD replaces |
 | Cloud SQL networking | Private vs Public IP | Public IP | Hackathon simplicity; would use private in prod |
 | Frontend Docker build | Bun runtime vs Node runtime | Bun build + Node runtime | Bun faster for build, Node slim more stable for production |
+| SQLAlchemy async | Implicit vs Explicit greenlet | Explicit greenlet dependency | Required for async operations, must be explicit in pyproject.toml |
 
 ## Blockers
 

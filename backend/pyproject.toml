@@ -13,6 +13,7 @@ dependencies = [
     "alembic>=1.14.0",
     "sse-starlette>=2.2.0",
     "google-cloud-storage>=2.19.0",
+    "greenlet>=3.3.0",
 ]
 
 [project.optional-dependencies]

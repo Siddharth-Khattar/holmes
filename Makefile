@@ -6,7 +6,7 @@
 # Install all dependencies
 install:
 	bun install
-	cd backend && uv sync --all-extras
+	cd backend && uv sync --dev
 
 # Start local PostgreSQL database
 dev-db:

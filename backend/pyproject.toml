@@ -16,7 +16,7 @@ dependencies = [
     "greenlet>=3.3.0",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "ruff>=0.14.13",
     "mypy>=1.19.0",

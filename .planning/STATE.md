@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-01-21
+**Last Updated:** 2026-01-22
 **Current Phase:** 1 of 12 (Foundation Infrastructure)
-**Current Plan:** 01-02 complete, 01-03 next
+**Current Plan:** 01-05 complete, 01-04 or 01-06 next
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -25,17 +25,20 @@
 ## Current Context
 
 **What was just completed:**
-- **01-02-PLAN.md executed** (2026-01-21)
-  - Terraform configuration for complete GCP infrastructure
-  - Cloud SQL PostgreSQL 17 instance (db-g1-small tier)
-  - GCS bucket for evidence storage with CORS
-  - Cloud Run services for backend and frontend (placeholder images)
-  - Artifact Registry for Docker images
-  - Workload Identity Federation for GitHub Actions CI/CD
-  - Service accounts with appropriate IAM bindings
+- **01-05-PLAN.md executed** (2026-01-22)
+  - Next.js 16.1 frontend with App Router and Tailwind v4
+  - Holmes home page with branding and auth placeholders
+  - Production Dockerfile with multi-stage build
+  - @holmes/types integration verified
+  - TypeScript strict mode enabled
+
+**Previous completions:**
+- 01-01: Monorepo structure with Bun workspaces
+- 01-02: Terraform GCP infrastructure
+- 01-03: Type generation pipeline (pydantic2ts)
 
 **What's next:**
-- Execute 01-03-PLAN.md (GitHub Actions CI/CD pipelines)
+- Execute 01-04-PLAN.md (FastAPI skeleton) or 01-06-PLAN.md (GitHub Actions CI/CD)
 - Complete Phase 1 Foundation Infrastructure
 
 ## Active Decisions
@@ -63,6 +66,7 @@
 | Cloud SQL tier | db-f1-micro vs db-g1-small | db-g1-small | Better cost/performance, 1.7GB RAM vs 0.6GB |
 | Cloud Run initial images | Wait for CI/CD vs Placeholder | Placeholder hello image | Bypasses chicken-and-egg; CI/CD replaces |
 | Cloud SQL networking | Private vs Public IP | Public IP | Hackathon simplicity; would use private in prod |
+| Frontend Docker build | Bun runtime vs Node runtime | Bun build + Node runtime | Bun faster for build, Node slim more stable for production |
 
 ## Blockers
 

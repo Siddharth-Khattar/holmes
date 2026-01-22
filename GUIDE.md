@@ -1,0 +1,141 @@
+# Holmes Quick Start Guide
+
+## Prerequisites
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Bun | latest | JS package manager & runtime |
+| uv | latest | Python package manager |
+| Docker | latest | Local PostgreSQL |
+| Python | 3.12 | Backend runtime |
+| Terraform | >= 1.9 | Infrastructure (optional) |
+| gcloud | latest | GCP CLI (optional) |
+
+## Quick Setup
+
+1. Clone the repository
+   ```bash
+   git clone git@github.com:Siddharth-Khattar/holmes.git && cd holmes
+   ```
+
+2. Copy environment files
+   ```bash
+   cp .env.example .env
+   cp frontend/.env.example frontend/.env.local
+   ```
+
+3. Install dependencies
+   ```bash
+   make install
+   ```
+
+4. Start database and run migrations
+   ```bash
+   make dev-db
+   make migrate
+   ```
+
+5. Run services (separate terminals)
+   ```bash
+   make dev-backend   # Terminal 1: http://localhost:8080
+   make dev-frontend  # Terminal 2: http://localhost:3000
+   ```
+
+## Development Commands
+
+| Command | Description |
+|---------|-------------|
+| `make install` | Install all dependencies (bun + uv) |
+| `make dev-db` | Start local PostgreSQL via Docker |
+| `make stop-db` | Stop local PostgreSQL |
+| `make migrate` | Run Alembic database migrations |
+| `make dev-backend` | Start FastAPI dev server (port 8080) |
+| `make dev-frontend` | Start Next.js dev server (port 3000) |
+| `make lint` | Run linters (ESLint + Ruff) |
+| `make format` | Format code (Prettier + Ruff) |
+| `make generate-types` | Generate TS types from Pydantic models |
+
+## Project Structure
+
+```
+holmes/
+├── backend/           # FastAPI (Python 3.12, uv)
+│   ├── app/           # Application code
+│   └── alembic/       # Database migrations
+├── frontend/          # Next.js 16 (React 19, Bun)
+│   └── src/           # Application code
+├── packages/types/    # Shared TypeScript types (auto-generated)
+├── terraform/         # GCP infrastructure (Cloud Run, Cloud SQL)
+├── docker-compose.yml # Local PostgreSQL
+└── Makefile           # Development commands
+```
+
+## Environment Variables
+
+### Backend (`.env`)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://postgres:postgres@localhost:5432/holmes` |
+| `CORS_ORIGINS` | Allowed origins (comma-separated) | `http://localhost:3000` |
+| `DEBUG` | Enable debug mode | `true` |
+| `GCS_BUCKET` | GCS bucket for file storage | (optional) |
+
+### Frontend (`frontend/.env.local`)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_API_URL` | Backend API URL | `http://localhost:8080` |
+
+## Deployment
+
+### Triggers
+
+Push to these branches triggers automatic deployment:
+- `main` - Production
+- `development` - Development
+- `test-deployment` - Testing
+
+Manual trigger available via GitHub Actions workflow dispatch.
+
+### Pipeline
+
+```
+Push → GitHub Actions → Lint/Types → Build Docker → Artifact Registry → Cloud Run
+```
+
+### Terraform Commands
+
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply
+```
+
+## Common Operations
+
+### Create a new migration
+```bash
+cd backend
+uv run alembic revision --autogenerate -m "description"
+```
+
+### Sync TypeScript types after schema changes
+```bash
+make generate-types
+```
+
+### Build for production
+```bash
+# Backend
+cd backend && docker build -t holmes-backend .
+
+# Frontend
+docker build -f frontend/Dockerfile -t holmes-frontend .
+```
+
+### Run backend directly with uvicorn
+```bash
+cd backend && uv run uvicorn app.main:app --reload --port 8080
+```

@@ -1,15 +1,15 @@
 # Holmes Project State
 
 **Last Updated:** 2026-01-22
-**Current Phase:** 1 of 12 (Foundation Infrastructure)
-**Current Plan:** 01-04 complete, 01-06 next
+**Current Phase:** 2 of 12 (Authentication & Case Shell)
+**Current Plan:** Phase 2 not yet planned
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
 
 | Phase | Name | Status | Started | Completed |
 |-------|------|--------|---------|-----------|
-| 1 | Foundation Infrastructure | IN_PROGRESS | 2026-01-21 | - |
+| 1 | Foundation Infrastructure | COMPLETE | 2026-01-21 | 2026-01-22 |
 | 2 | Authentication & Case Shell | NOT_STARTED | - | - |
 | 3 | File Ingestion | NOT_STARTED | - | - |
 | 4 | Core Agent System | NOT_STARTED | - | - |
@@ -25,21 +25,19 @@
 ## Current Context
 
 **What was just completed:**
-- **01-04-PLAN.md executed** (2026-01-22)
-  - Verified FastAPI backend with health endpoints
-  - Alembic async migrations configured
-  - Production Dockerfile with uv
-  - Fixed greenlet dependency for async SQLAlchemy
+- **Phase 1: Foundation Infrastructure COMPLETE** (2026-01-22)
+  - 01-01: Monorepo structure with Bun workspaces
+  - 01-02: Terraform GCP infrastructure (Cloud SQL, GCS, Cloud Run, WIF)
+  - 01-03: Type generation pipeline (Pydantic → TypeScript)
+  - 01-04: FastAPI backend with health endpoints, SSE, Alembic
+  - 01-05: Next.js frontend with home page and Dockerfile
+  - 01-06: GitHub Actions CI/CD with WIF authentication
 
-**Previous completions:**
-- 01-01: Monorepo structure with Bun workspaces
-- 01-02: Terraform GCP infrastructure
-- 01-03: Type generation pipeline (pydantic2ts)
-- 01-05: Next.js frontend with home page and Dockerfile
+**Verification:** All 4 exit criteria verified (see 01-VERIFICATION.md)
 
 **What's next:**
-- Execute 01-06-PLAN.md (GitHub Actions CI/CD)
-- Complete Phase 1 Foundation Infrastructure
+- Plan Phase 2: Authentication & Case Shell
+- Better Auth integration, case CRUD, protected routes
 
 ## Active Decisions
 

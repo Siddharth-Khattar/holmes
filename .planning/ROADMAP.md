@@ -10,7 +10,7 @@
 
 **Success Criteria:**
 - End-to-end demo: Upload fraud case files → Agentic analysis → Knowledge Graph → Chat with citations
-- Agent Trace Theater shows full reasoning transparency
+- Agent Flow shows full reasoning transparency
 - Contradictions and gaps detected and displayed
 - All findings have source citations
 - Deployed and accessible via public URL
@@ -25,12 +25,12 @@
 | 2 | Authentication & Case Shell | Auth system, Case CRUD, basic UI shell | REQ-AUTH-*, REQ-CASE-001/002/003 |
 | 3 | File Ingestion | Upload, storage, file management | REQ-CASE-004/005, REQ-SOURCE-* (basic) |
 | 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e |
-| 5 | Agent Trace Theater | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 |
+| 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 |
 | 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 |
 | 7 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, Hypothesis system, Task generation, 5-layer KG | REQ-AGENT-008/009, REQ-VIS-003, REQ-HYPO-001/004/005/006, REQ-TASK-001/002 |
 | 8 | Intelligence Layer & Geospatial | Contradictions, Gaps, Geospatial Agent, Map View, Earth Engine | REQ-WOW-*, REQ-VIS-005/006, REQ-GEO-* |
 | 9 | Chat Interface & Research | Chat UI, Research/Discovery (Chat + Orchestrator-triggered), Hypothesis View, Context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 |
-| 10 | Agent Trace Theater & Source Panel | Full source viewers, Task Panel, Timeline | REQ-SOURCE-*, REQ-VIS-*, REQ-TASK-003/004/005/006/007 |
+| 10 | Agent Flow & Source Panel | Full source viewers, Task Panel, Timeline | REQ-SOURCE-*, REQ-VIS-*, REQ-TASK-003/004/005/006/007 |
 | 11 | Corrections & Refinement | Error flagging, Verification, Regeneration | REQ-CORR-* |
 | 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i |
 
@@ -183,7 +183,7 @@ Plans:
 
 ---
 
-## Phase 5: Agent Trace Theater
+## Phase 5: Agent Flow
 
 **Goal:** Real-time visualization of agent execution with full transparency.
 
@@ -445,9 +445,9 @@ Plans:
 
 ---
 
-## Phase 10: Agent Trace Theater & Source Panel
+## Phase 10: Agent Flow & Source Panel
 
-**Goal:** Full-featured source viewers, Agent Trace Theater refinements, and task panel.
+**Goal:** Full-featured source viewers, Agent Flow refinements, and task panel.
 
 **Requirements:** REQ-SOURCE-001 (complete), REQ-SOURCE-002 (complete), REQ-SOURCE-003 (complete), REQ-SOURCE-004 (complete), REQ-VIS-001, REQ-VIS-001a, REQ-VIS-002, REQ-VIS-004, REQ-VIS-007, REQ-WOW-004, REQ-TASK-003, REQ-TASK-004, REQ-TASK-005, REQ-TASK-006, REQ-TASK-007
 
@@ -460,7 +460,7 @@ Plans:
 - Timeline view with events
 - Narrative generation (executive summary, detailed)
 - Export as PDF/DOCX
-- **Agent Trace Theater refinements:**
+- **Agent Flow refinements:**
   - React Flow agent pipeline visualization
   - Custom node components per agent type
   - Agent color coding (defer specific colors to design)
@@ -625,7 +625,7 @@ Phase 1 (Foundation)
     │                               │
     │                               └── Phase 6 (Synthesis & KG)
     │                                       │
-    │                                       ├── Phase 7 (Agent Trace Theater)
+    │                                       ├── Phase 7 (Agent Flow)
     │                                       │
     │                                       ├── Phase 8 (Intelligence Layer)
     │                                       │

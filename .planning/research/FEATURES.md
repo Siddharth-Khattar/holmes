@@ -32,7 +32,7 @@ Features that set a product apart. Not expected by default, but highly valued wh
 
 | Feature | Value Proposition | Complexity | Dependencies | Notes |
 |---------|-------------------|------------|--------------|-------|
-| **AI Transparency / Reasoning Traces** | "Courtroom-grade AI requires explainability" - Gartner: 30% higher ROI with transparent AI | High | AI layer, UI for visualization | Holmes "Agent Trace Theater" - unique in market; emerging regulatory requirement |
+| **AI Transparency / Reasoning Traces** | "Courtroom-grade AI requires explainability" - Gartner: 30% higher ROI with transparent AI | High | AI layer, UI for visualization | Holmes "Agent Flow" - unique in market; emerging regulatory requirement |
 | **Knowledge Graph / Entity Relationships** | Visualize connections humans miss; uncover hidden links and patterns | High | Entity extraction, NLP, graph DB | Cognyte uses for law enforcement; Neo4j advocates for legal; rare in e-discovery tools |
 | **Contradiction Detection** | Flag inconsistencies across testimony, documents; huge litigation value | High | NLP, cross-document analysis | LegalWiz framework emerging; Deposely does real-time deposition contradictions; technically hard |
 | **Evidence Gap Identification** | "What events do no witnesses address?" - direct case strategy value | Medium | Knowledge graph, timeline analysis | Requires comprehensive entity/event extraction first |
@@ -119,7 +119,7 @@ Features to explicitly NOT build. Common mistakes in this domain.
        │                                                                   │
        ├──> [Natural Language Querying]                                   │
        │                                                                   │
-       ├──> [AI Reasoning Traces] ──> [Agent Trace Theater]               │
+       ├──> [AI Reasoning Traces] ──> [Agent Flow]               │
        │                                                                   │
        └──> [Cross-Modal Evidence Linking]                                │
            (Gemini sees all modalities together — no post-hoc stitching)  │
@@ -166,7 +166,7 @@ For MVP, prioritize based on Holmes's core value proposition: **Transparent mult
 1. **Domain Agents** - Financial, Legal, Strategy, Evidence agents with Gemini 3 Pro
 2. **Entity Extraction** - People, organizations, dates, amounts
 3. **Knowledge Graph** - Visualize relationships
-4. **AI Reasoning Traces (Agent Trace Theater)** - Holmes's unique differentiator
+4. **AI Reasoning Traces (Agent Flow)** - Holmes's unique differentiator
 5. **Natural Language Querying** - Ask questions of corpus
 
 **Rationale:** Domain agents receive multimodal files directly — no preprocessing needed. Evidence Agent evaluates authenticity and chain of custody — critical for legal. Transparency + knowledge graph is unique combination.

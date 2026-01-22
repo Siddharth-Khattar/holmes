@@ -492,7 +492,7 @@ Navigation: [← Prev Moment] "Moment 1 of 4" [Next Moment →]
 | Action Era | Autonomous agent spawning, tool calls, multi-step execution |
 
 **Key Differentiators**:
-1. **Agent Trace Theater** — Full AI decision transparency
+1. **Agent Flow** — Full AI decision transparency
 2. **Cross-Modal Evidence Linking** — AI connects dots across file types
 3. **Proactive Contradiction Detection** — AI catches lies without being asked
 4. **Gap Analysis** — AI tells you what evidence you're missing

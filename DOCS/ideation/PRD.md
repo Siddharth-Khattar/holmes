@@ -9,7 +9,7 @@
 **Core Differentiators**:
 
 - Domain-based multi-agent orchestration
-- Agent Trace Theater - Full AI decision transparency with reasoning and agent heirarchy traces
+- Agent Flow - Full AI decision transparency with reasoning and agent heirarchy traces
 - Multimodal evidence (documents, video, audio, images) linking, contradiction detection, and gap analysis
 - Gemini 3's native multimodal processing within domain context
 
@@ -1682,7 +1682,7 @@ New domain agents added by:
 | Styling | TailwindCSS | 4.x | |
 | State Management | Zustand | 5.x | |
 | Graph Visualization | D3.js | 7.9.x | Knowledge graph |
-| Flow Visualization | React Flow | Latest | Agent Trace Theater |
+| Flow Visualization | React Flow | Latest | Agent Flow |
 | Type Generation | Hey API | Latest | OpenAPI → TypeScript |
 | **Backend** | | | |
 | Framework | FastAPI | 0.121+ | Async, OpenAPI |
@@ -1711,7 +1711,7 @@ New domain agents added by:
 | Term | Definition |
 |------|------------|
 | **ADK** | Agent Development Kit - Google's framework for building AI agents |
-| **Agent Trace Theater** | UI visualization showing agent execution flow, reasoning, and decision transparency |
+| **Agent Flow** | UI visualization showing agent execution flow, reasoning, and decision transparency |
 | **Contradiction** | Conflicting information detected across evidence sources (e.g., alibi vs. location proof) |
 | **Domain Agent** | Specialized agent for a specific analysis domain (Financial, Legal, Strategy) |
 | **Evidence Gap** | Missing information needed to prove/disprove a case element |

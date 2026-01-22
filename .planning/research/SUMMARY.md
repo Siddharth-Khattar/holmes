@@ -9,7 +9,7 @@
 
 Holmes is a multimodal AI legal intelligence platform that must prioritize **transparency, accuracy, and source attribution** above all else. The research confirms that legal AI has a critical hallucination problem (58-88% for general LLMs, 17-34% even for purpose-built legal RAG), making verification architecture non-negotiable from day one. The platform should use domain-based agents (Financial, Legal, Strategy, Evidence) rather than file-type agents, leveraging Gemini 3's native multimodal capabilities. Google ADK provides the orchestration layer with specific constraints that must be designed around upfront.
 
-The recommended approach is a hierarchical multi-agent architecture with an intelligent Orchestrator coordinating specialized domain agents. The stack centers on Next.js 16 + FastAPI + PostgreSQL + Google ADK, deployed on GCP Cloud Run. Real-time transparency is delivered via SSE streaming, with React Flow powering the "Agent Trace Theater" visualization that differentiates Holmes from competitors.
+The recommended approach is a hierarchical multi-agent architecture with an intelligent Orchestrator coordinating specialized domain agents. The stack centers on Next.js 16 + FastAPI + PostgreSQL + Google ADK, deployed on GCP Cloud Run. Real-time transparency is delivered via SSE streaming, with React Flow powering the "Agent Flow" visualization that differentiates Holmes from competitors.
 
 The key risks are: (1) LLM hallucination requiring multi-agent verification and span-level citation, (2) multi-agent system failures (41-86.7% failure rate in research) requiring clear boundaries and orchestrator patterns, (3) ADK production limitations requiring fresh agent instances and state namespacing, and (4) SSE streaming failures in production requiring proper headers and fallback patterns. Mitigation requires building verification, monitoring, and fallback patterns from the foundation phase, not bolting them on later.
 
@@ -64,7 +64,7 @@ Gemini 3 directly processes PDFs, scanned documents, video, and audio without se
 - ❌ Video frame extraction
 
 **Should have (differentiators):**
-- AI Reasoning Traces / Agent Trace Theater (Holmes core differentiator)
+- AI Reasoning Traces / Agent Flow (Holmes core differentiator)
 - Knowledge Graph / Entity Relationships (5 layers: Evidence, Legal, Strategy, Temporal, Hypothesis)
 - Hypothesis-Driven Investigation (3-state: PENDING → SUPPORTED/REFUTED, agents propose, users curate)
 - Geospatial Intelligence (location extraction, movement patterns, Earth Engine verification)
@@ -99,7 +99,7 @@ Gemini 3 directly processes PDFs, scanned documents, video, and audio without se
 Holmes uses a hierarchical multi-agent architecture with an intelligent Orchestrator (LlmAgent with Gemini 3 Pro) that routes to specialized domain agents. The key insight: domain-based agents (Financial, Legal, Strategy, Evidence) handle all file types within their domain, leveraging Gemini 3's native multimodal capabilities rather than artificial file-type boundaries. The Evidence Agent evaluates authenticity, chain of custody, and provenance — critical for legal work.
 
 **Major components:**
-1. **Frontend Layer**: Next.js 16 with React Flow for Agent Trace Theater, D3.js/vis-network for Knowledge Graph, Map View for geospatial, Hypothesis View
+1. **Frontend Layer**: Next.js 16 with React Flow for Agent Flow, D3.js/vis-network for Knowledge Graph, Map View for geospatial, Hypothesis View
 2. **API Layer**: FastAPI with SSE streaming for real-time progress updates
 3. **Agent Layer**: ADK Runner with Orchestrator, Triage, Domain Agents (parallel), Synthesis, KG Agent
 4. **Query-Time Agents**: Chat Agent (knowledge-first with escalation), Verification Agent, Merge Agent
@@ -223,9 +223,9 @@ Based on research, suggested phase structure:
 **Avoids:** Re-analysis costs (knowledge-first pattern)
 
 ### Phase 8: Visualization and UI
-**Rationale:** Agent Trace Theater and Knowledge Graph view are Holmes differentiators. Depend on working agent system.
+**Rationale:** Agent Flow and Knowledge Graph view are Holmes differentiators. Depend on working agent system.
 **Delivers:** React Flow agent trace, D3.js knowledge graph view, source panel, chat panel
-**Addresses:** AI Transparency / Agent Trace Theater (core differentiator)
+**Addresses:** AI Transparency / Agent Flow (core differentiator)
 **Avoids:** React Flow performance issues (memoization, virtualization from start)
 
 ### Phase Ordering Rationale

@@ -13,12 +13,12 @@
 | 2 | Authentication & Case Shell | NOT_STARTED | - | - |
 | 3 | File Ingestion | NOT_STARTED | - | - |
 | 4 | Core Agent System | NOT_STARTED | - | - |
-| 5 | Agent Trace Theater | NOT_STARTED | - | - |
+| 5 | Agent Flow | NOT_STARTED | - | - |
 | 6 | Domain Agents | NOT_STARTED | - | - |
 | 7 | Synthesis & Knowledge Graph | NOT_STARTED | - | - |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - |
 | 9 | Chat Interface & Research | NOT_STARTED | - | - |
-| 10 | Agent Trace Theater & Source Panel | NOT_STARTED | - | - |
+| 10 | Agent Flow & Source Panel | NOT_STARTED | - | - |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - |
 | 12 | Demo Preparation | NOT_STARTED | - | - |
 

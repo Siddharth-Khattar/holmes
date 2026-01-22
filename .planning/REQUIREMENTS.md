@@ -334,7 +334,7 @@ This document defines formal requirements for Holmes v1. Requirements are derive
   - **KG Agent:** `thinking_level="medium"` (entity resolution)
   - **Chat Agent:** `thinking_level="medium"` (responsive Q&A)
   - **Verification Agent:** `thinking_level="high"` (critical accuracy)
-- All agents set `include_thoughts=True` for Agent Trace Theater transparency
+- All agents set `include_thoughts=True` for Agent Flow transparency
 - Thinking traces captured and stored for display in visualization
 **Dependencies:** REQ-AGENT-007
 
@@ -511,7 +511,7 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ## REQ-VIS: Visualization & UI
 
-### REQ-VIS-001: Agent Trace Theater
+### REQ-VIS-001: Agent Flow
 **Priority:** CRITICAL
 **Description:** Real-time visualization of agent execution flow.
 **Acceptance Criteria:**
@@ -1311,7 +1311,7 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 | REQ-AUTH-* | Infrastructure & Auth | STACK.md (Better Auth) |
 | REQ-CASE-* | Case Management | FEATURES.md |
 | REQ-AGENT-* | Agentic Processing Pipeline | ARCHITECTURE.md |
-| REQ-VIS-* | Agent Trace Theater, Knowledge Graph | FEATURES.md |
+| REQ-VIS-* | Agent Flow, Knowledge Graph | FEATURES.md |
 | REQ-SOURCE-* | Source Panel | FEATURES.md |
 | REQ-CHAT-* | Contextual Chat | ARCHITECTURE.md |
 | REQ-CORR-* | Correction & Regeneration | FEATURES.md |

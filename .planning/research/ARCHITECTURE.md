@@ -21,7 +21,7 @@ graph TB
     subgraph "Client Layer"
         UI[Next.js 16 Frontend]
         AUTH[Better Auth Library API Routes]
-        RF[React Flow - Agent Trace Theater]
+        RF[React Flow - Agent Flow]
         D3[D3.js - Knowledge Graph]
     end
 
@@ -1063,7 +1063,7 @@ def after_model_callback(
         "type": "MODEL_RESPONSE",
         "node_id": callback_context.invocation_id,
         "agent": callback_context.agent_name,
-        "thinking_traces": thinking_traces,  # For Agent Trace Theater
+        "thinking_traces": thinking_traces,  # For Agent Flow
         "response_preview": response_text[:300] if response_text else None,
         "timestamp": time.time()
     }))
@@ -1397,7 +1397,7 @@ Based on component dependencies, the recommended build order is:
 
 ### Layer 6: Frontend Visualizations (Depends on Layer 4-5)
 ```
-19. Agent Trace Theater (React Flow)
+19. Agent Flow (React Flow)
 20. Knowledge Graph View (D3.js)
 21. Source Panel (PDF, video, audio viewers)
 22. Chat Panel with citations

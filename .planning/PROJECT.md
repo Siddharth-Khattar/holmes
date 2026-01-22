@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Holmes is a legal intelligence platform that processes multimodal evidence (documents, video, audio, images) through domain-specialized AI agents powered by Gemini 3. It generates knowledge graphs, timeline visualizations, and enables contextual chat — all with full transparency into AI decision-making via "Agent Trace Theater." Built for the Gemini 3 Global Hackathon, targeting legal professionals and investigators who spend 60%+ of their time on manual evidence review.
+Holmes is a legal intelligence platform that processes multimodal evidence (documents, video, audio, images) through domain-specialized AI agents powered by Gemini 3. It generates knowledge graphs, timeline visualizations, and enables contextual chat — all with full transparency into AI decision-making via "Agent Flow." Built for the Gemini 3 Global Hackathon, targeting legal professionals and investigators who spend 60%+ of their time on manual evidence review.
 
 ## Core Value
 
@@ -41,7 +41,7 @@ Holmes is a legal intelligence platform that processes multimodal evidence (docu
 - [ ] Discovery Agent synthesizes external research into case context
 - [ ] Geospatial Agent analyzes location intelligence post-synthesis
 
-**Agent Trace Theater**
+**Agent Flow**
 - [ ] Real-time visualization shows agent execution flow during processing
 - [ ] User can click any agent node to see: model used, input context, tools called, output findings
 - [ ] Thinking traces captured and displayed for transparency

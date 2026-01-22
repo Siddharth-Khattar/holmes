@@ -109,7 +109,7 @@ npx shadcn@latest init
 - Built-in dark mode with `colorMode` prop
 - CSS variables for theming
 - Nodes are React components (full customization)
-- Perfect for "Agent Trace Theater" visualization
+- Perfect for "Agent Flow" visualization
 
 **D3.js** for knowledge graphs:
 - Force-directed layouts for entity relationships
@@ -396,7 +396,7 @@ evidence_agent = LlmAgent(
     generate_content_config=types.GenerateContentConfig(
         thinking_config=types.ThinkingConfig(
             thinking_level="high",
-            include_thoughts=True  # Required for Agent Trace Theater
+            include_thoughts=True  # Required for Agent Flow
         ),
         generation_config={"media_resolution": "high"}  # Dense documents
     )

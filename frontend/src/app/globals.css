@@ -1,24 +1,119 @@
 @import "tailwindcss";
 
-:root {
-  --background: #fafafa;
-  --foreground: #18181b;
+/* ============================================================
+   DESIGN TOKENS - Holmes Design System
+   ============================================================
+   Core color palette, typography, and glass effect tokens.
+   Uses Tailwind v4's @theme directive for native utility generation.
+   ============================================================ */
+
+@theme {
+  /* Core Color Palette */
+  --color-charcoal: #121218;
+  --color-jet: #22333b;
+  --color-smoke: #f2f4f3;
+  --color-taupe: #a9927d;
+  --color-stone: #5e503f;
+
+  /* Glass Effect Colors */
+  --color-glass-light: rgba(242, 244, 243, 0.08);
+  --color-glass-dark: rgba(18, 18, 24, 0.6);
+
+  /* Glass Shadows */
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-glass-hover: 0 12px 40px rgba(0, 0, 0, 0.16);
+  --shadow-glow-taupe: 0 0 40px rgba(169, 146, 125, 0.15);
+
+  /* Typography */
+  --font-serif: var(--font-fraunces);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
-}
+/* ============================================================
+   FRAUNCES VARIABLE FONT AXIS UTILITIES
+   ============================================================
+   Fraunces supports WONK (quirkiness) and SOFT (softness) axes.
+   These utilities expose those axes for fine-grained control.
+   ============================================================ */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #09090b;
-    --foreground: #fafafa;
+@layer utilities {
+  /* Activate optical wonkiness - adds character to letters */
+  .font-wonky {
+    font-variation-settings: "WONK" 1;
+  }
+
+  /* Maximum softness - rounded, approachable feel */
+  .font-soft {
+    font-variation-settings: "SOFT" 100;
+  }
+
+  /* No softness - sharp, precise letterforms */
+  .font-sharp {
+    font-variation-settings: "SOFT" 0;
+  }
+
+  /* Editorial preset - balanced for headings and display text */
+  .font-editorial {
+    font-variation-settings:
+      "WONK" 1,
+      "SOFT" 50;
+    font-optical-sizing: auto;
   }
 }
 
+/* ============================================================
+   GLASS COMPONENT UTILITIES
+   ============================================================
+   Reusable glass panel styles for cards and navigation.
+   Subtle elegance - glass is felt more than seen.
+   ============================================================ */
+
+@layer components {
+  /* Light glass for cards and content panels */
+  .glass-panel {
+    background: var(--color-glass-light);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-glass);
+    transition:
+      box-shadow 0.3s ease,
+      transform 0.3s ease;
+  }
+
+  .glass-panel:hover {
+    box-shadow: var(--shadow-glass-hover);
+  }
+
+  /* Darker glass for navigation and overlays */
+  .glass-nav {
+    background: var(--color-glass-dark);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: var(--shadow-glass);
+  }
+}
+
+/* ============================================================
+   ACCESSIBILITY - REDUCED MOTION
+   ============================================================
+   Respect user preferences for reduced motion.
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: var(--color-charcoal);
+  color: var(--color-smoke);
 }

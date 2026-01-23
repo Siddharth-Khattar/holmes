@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-01-22
-**Current Phase:** 2 of 12 (Authentication & Case Shell)
-**Current Plan:** Phase 2 not yet planned
+**Last Updated:** 2026-01-23
+**Current Phase:** 1.1 of 12 (Frontend Design Foundation)
+**Current Plan:** Phase 1.1 not yet planned
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -10,6 +10,7 @@
 | Phase | Name | Status | Started | Completed |
 |-------|------|--------|---------|-----------|
 | 1 | Foundation Infrastructure | COMPLETE | 2026-01-21 | 2026-01-22 |
+| 1.1 | Frontend Design Foundation (INSERTED) | NOT_STARTED | - | - |
 | 2 | Authentication & Case Shell | NOT_STARTED | - | - |
 | 3 | File Ingestion | NOT_STARTED | - | - |
 | 4 | Core Agent System | NOT_STARTED | - | - |
@@ -36,8 +37,15 @@
 **Verification:** All 4 exit criteria verified (see 01-VERIFICATION.md)
 
 **What's next:**
-- Plan Phase 2: Authentication & Case Shell
-- Better Auth integration, case CRUD, protected routes
+- Plan Phase 1.1: Frontend Design Foundation
+- Design system, Liquid Glass styling, landing page
+
+## Roadmap Evolution
+
+- **Phase 1.1 inserted after Phase 1:** Frontend Design Foundation (URGENT)
+  - Reason: Establish robust frontend design foundation before subsequent phases build upon it
+  - Reference: DOCS/UI/LANDING-INIT.md for landing page requirements
+  - Note: Use frontend-design skill during planning for design refinement
 
 ## Active Decisions
 

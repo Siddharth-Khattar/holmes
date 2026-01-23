@@ -87,24 +87,28 @@ Plans:
 
 **Requirements:** None (foundational work for UX quality)
 
-**Plans:** 0 plans
+**Plans:** 5 plans in 3 waves
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 1.1 to break down)
+- [ ] 01.1-01-PLAN.md — Design tokens, typography, Motion library setup
+- [ ] 01.1-02-PLAN.md — UI primitives (GlassCard, AnimatedSection) and animation utilities
+- [ ] 01.1-03-PLAN.md — Above-the-fold sections (Navigation, Hero, Problem)
+- [ ] 01.1-04-PLAN.md — Core content sections (Solution, How It Works, Feature Highlights)
+- [ ] 01.1-05-PLAN.md — Final sections (Trust, CTA, Footer) and page assembly
 
 **Deliverables:**
 - Design system and component library foundation
 - Liquid Glass design language implementation
 - Dark theme with professional aesthetic
 - Impressive landing page following DOCS/UI/LANDING-INIT.md specification
-- Framer Motion animations and scroll interactions
+- Motion animations and scroll interactions
 - Responsive design (desktop-first, mobile-optimized)
 
 **Technical Notes:**
 - Reference: DOCS/UI/LANDING-INIT.md for landing page requirements
-- Use frontend-design skill for design refinement during planning
-- Tailwind CSS with custom Liquid Glass utility classes
-- Framer Motion for animations
+- Motion library (v12+) for animations, not framer-motion
+- Fraunces font via next/font for distinctive typography
+- Tailwind CSS v4 with @theme directive for design tokens
 - Detective noir meets modern AI aesthetic
 
 **Exit Criteria:**
@@ -720,6 +724,7 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 1.1*
-*Updated: 2026-01-21 (Integration features incorporated)*
+*Roadmap Version: 1.2*
+*Updated: 2026-01-23 (Phase 1.1 planned)*
 *Phase 1 planned: 2026-01-20*
+*Phase 1.1 planned: 2026-01-23*

@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-23
 **Current Phase:** 1.1 of 12 (Frontend Design Foundation)
-**Current Plan:** Phase 1.1 not yet planned
+**Current Plan:** Plan 01 of 3 complete (Design Tokens & Typography)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -10,7 +10,7 @@
 | Phase | Name | Status | Started | Completed |
 |-------|------|--------|---------|-----------|
 | 1 | Foundation Infrastructure | COMPLETE | 2026-01-21 | 2026-01-22 |
-| 1.1 | Frontend Design Foundation (INSERTED) | NOT_STARTED | - | - |
+| 1.1 | Frontend Design Foundation (INSERTED) | IN_PROGRESS | 2026-01-23 | - |
 | 2 | Authentication & Case Shell | NOT_STARTED | - | - |
 | 3 | File Ingestion | NOT_STARTED | - | - |
 | 4 | Core Agent System | NOT_STARTED | - | - |
@@ -26,19 +26,13 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 1: Foundation Infrastructure COMPLETE** (2026-01-22)
-  - 01-01: Monorepo structure with Bun workspaces
-  - 01-02: Terraform GCP infrastructure (Cloud SQL, GCS, Cloud Run, WIF)
-  - 01-03: Type generation pipeline (Pydantic → TypeScript)
-  - 01-04: FastAPI backend with health endpoints, SSE, Alembic
-  - 01-05: Next.js frontend with home page and Dockerfile
-  - 01-06: GitHub Actions CI/CD with WIF authentication
-
-**Verification:** All 4 exit criteria verified (see 01-VERIFICATION.md)
+- **Phase 1.1 Plan 01: Design Tokens & Typography** (2026-01-23)
+  - 01.1-01: Motion library installed, design tokens configured, Fraunces font setup
+  - Design system foundation ready for UI component development
 
 **What's next:**
-- Plan Phase 1.1: Frontend Design Foundation
-- Design system, Liquid Glass styling, landing page
+- Execute Phase 1.1 Plan 02: Hero Section
+- Execute Phase 1.1 Plan 03: Landing Page Sections
 
 ## Roadmap Evolution
 
@@ -74,6 +68,9 @@
 | Cloud SQL networking | Private vs Public IP | Public IP | Hackathon simplicity; would use private in prod |
 | Frontend Docker build | Bun runtime vs Node runtime | Bun build + Node runtime | Bun faster for build, Node slim more stable for production |
 | SQLAlchemy async | Implicit vs Explicit greenlet | Explicit greenlet dependency | Required for async operations, must be explicit in pyproject.toml |
+| Design tokens approach | CSS variables vs Tailwind @theme | Tailwind v4 @theme | Native utility generation, cleaner integration |
+| Animation library | framer-motion vs motion | motion@12 | Canonical package name for v12+, React 19 compatible |
+| Variable font control | Preset weights vs Axis utilities | Axis utilities | Fine-grained WONK/SOFT control for Fraunces |
 
 ## Blockers
 

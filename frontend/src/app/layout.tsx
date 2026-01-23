@@ -2,17 +2,19 @@
 // ABOUTME: Sets up global fonts, metadata, and base styling
 
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Fraunces } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const fraunces = Fraunces({
   subsets: ["latin"],
+  variable: "--font-fraunces",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Holmes",
-  description: "AI-Powered Legal Intelligence Platform",
+  title: "Holmes | AI-Powered Legal Intelligence",
+  description:
+    "Deduce. Discover. Decide. Transform complex legal cases into actionable insights with intelligent evidence analysis and knowledge synthesis.",
 };
 
 export default function RootLayout({
@@ -21,8 +23,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased`}>
+    <html lang="en" className={fraunces.variable}>
+      <body className="font-serif bg-charcoal text-smoke antialiased">
         {children}
       </body>
     </html>

@@ -15,34 +15,17 @@ export function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLDivElement>(null);
 
-  // Track scroll progress relative to entire section for parallax
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end start"],
-  });
-
   // Track video element for scale animation - completes when video is centered
   const { scrollYProgress: videoProgress } = useScroll({
     target: videoRef,
     offset: ["start end", "center center"],
   });
 
-  // Parallax transforms for background
-  const backgroundY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
-
   // Video scale - starts normal, enlarges to 1.4x when centered in viewport
   const videoScale = useTransform(videoProgress, [0, 1], [1, 1.4]);
 
   return (
     <section ref={sectionRef} className="relative">
-      {/* Parallax Background Gradient */}
-      <motion.div
-        className="absolute inset-0 -z-10 overflow-hidden"
-        style={{ y: backgroundY }}
-      >
-        <div className="h-[130%] w-full bg-linear-to-b from-charcoal via-charcoal to-jet" />
-      </motion.div>
-
       {/* Text content */}
       <div className="relative z-10 flex flex-col items-center px-4 pt-52 pb-32 text-center sm:px-6 sm:pt-64 sm:pb-40 lg:px-8">
         {/* Primary Tagline */}
@@ -91,7 +74,7 @@ export function Hero() {
       <div className="relative z-20 flex justify-center px-4 pb-40 sm:px-6 sm:pb-52 lg:px-8">
         <motion.div
           ref={videoRef}
-          className="glass-panel relative aspect-video w-full max-w-4xl overflow-hidden rounded-2xl border border-smoke/10"
+          className="relative aspect-video w-full max-w-4xl overflow-hidden rounded-2xl border border-smoke/10"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut", delay: 0.9 }}

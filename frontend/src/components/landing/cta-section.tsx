@@ -16,7 +16,7 @@ export function CTASection() {
   return (
     <section className="relative py-24 sm:py-32">
       {/* Top border gradient for visual separation */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-accent/30 to-transparent" />
 
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         {/* Glass panel container */}

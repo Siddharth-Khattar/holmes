@@ -10,21 +10,41 @@ import { FeatureHighlights } from "@/components/landing/feature-highlights";
 import { TrustSection } from "@/components/landing/trust-section";
 import { CTASection } from "@/components/landing/cta-section";
 import { Footer } from "@/components/landing/footer";
+import { EtherealShadow } from "@/components/landing/ethereal-shadow";
+import { SectionDivider } from "@/components/landing/section-divider";
 
 export default function Home() {
   return (
     <>
-      <Navigation />
-      <main className="min-h-screen bg-charcoal">
-        <Hero />
-        <ProblemSection />
-        <SolutionSection />
-        <HowItWorks />
-        <FeatureHighlights />
-        <TrustSection />
-        <CTASection />
-      </main>
-      <Footer />
+      {/* Fixed background - doesn't scroll */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <EtherealShadow
+          color="rgba(128, 128, 128, 1)"
+          noise={{ opacity: 0.6, scale: 1.2 }}
+          sizing="fill"
+        />
+      </div>
+
+      {/* All content scrolls above the background */}
+      <div className="relative z-10">
+        <Navigation />
+        <main className="relative min-h-screen">
+          <Hero />
+          <SectionDivider />
+          <ProblemSection />
+          <SectionDivider />
+          <SolutionSection />
+          <SectionDivider />
+          <HowItWorks />
+          <SectionDivider />
+          <FeatureHighlights />
+          <SectionDivider />
+          <TrustSection />
+          <SectionDivider />
+          <CTASection />
+        </main>
+        <Footer />
+      </div>
     </>
   );
 }

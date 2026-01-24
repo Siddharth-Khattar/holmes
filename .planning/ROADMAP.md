@@ -133,6 +133,16 @@ Plans:
 
 **Requirements:** REQ-AUTH-001, REQ-AUTH-002, REQ-AUTH-003, REQ-AUTH-004, REQ-CASE-001, REQ-CASE-002, REQ-CASE-003
 
+**Plans:** 6 plans in 4 waves
+
+Plans:
+- [ ] 02-01-PLAN.md — Backend auth infrastructure (models, session validation, migration)
+- [ ] 02-02-PLAN.md — Backend case CRUD endpoints
+- [ ] 02-03-PLAN.md — Frontend Better Auth setup (config, middleware, client)
+- [ ] 02-04-PLAN.md — Auth UI (login/signup page with forms)
+- [ ] 02-05-PLAN.md — App shell (sidebar, layout, user menu)
+- [ ] 02-06-PLAN.md — Case list and creation UI
+
 **Deliverables:**
 - Better Auth integration in Next.js
 - Email/password signup and login
@@ -731,8 +741,9 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 1.3*
-*Updated: 2026-01-24 (Phase 1.1 complete)*
+*Roadmap Version: 1.4*
+*Updated: 2026-01-24 (Phase 2 planned)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
+*Phase 2 planned: 2026-01-24*

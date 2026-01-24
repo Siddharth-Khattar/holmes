@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-01-24
+**Last Updated:** 2026-01-25
 **Current Phase:** 2 of 12 (Authentication & Case Shell)
-**Current Plan:** 7 of 7 in Phase 2 (Auth Deployment Infrastructure)
+**Current Plan:** 1 of 7 in Phase 2 (Backend Auth Infrastructure)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -26,14 +26,15 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 2 Plan 07: Auth Deployment Infrastructure** (2026-01-24)
-  - Secret Manager resources for Better Auth secrets
-  - Frontend Cloud Run with Cloud SQL access and secret injection
-  - Backend FRONTEND_URL for JWKS verification
-  - CI/CD Alembic migrations via Cloud SQL Proxy
+- **Phase 2 Plan 01: Backend Auth Infrastructure** (2026-01-25)
+  - Read-only SQLAlchemy models for Better Auth tables (User, Session, Account, Verification, Jwks)
+  - Case model with CaseStatus/CaseType enums and soft delete
+  - JWKS-based JWT validation via PyJWKClient
+  - /api/auth/me endpoint for testing authenticated requests
+  - Alembic migration for cases table only
 
 **What's next:**
-- Phase 2 Plans 01-06: Better Auth implementation, auth pages, app shell, case management
+- Phase 2 Plan 02: Backend case CRUD endpoints
 
 ## Roadmap Evolution
 

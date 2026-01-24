@@ -211,11 +211,12 @@ export function GoogleGeminiEffect({
         </div>
       )}
 
-      {/* Button centered on the path convergence point - offset down to match SVG convergence */}
-      <div className="absolute inset-0 flex items-center justify-center z-30 mt-32">
+      {/* Button centered vertically on the gemini effect */}
+      <div className="absolute inset-0 flex items-center justify-center z-30 mt-24">
         <button
           type="button"
-          className="bg-smoke/95 hover:bg-smoke px-8 py-4 text-lg font-medium text-charcoal rounded-full transition-colors"
+          className="bg-smoke/95 hover:bg-smoke px-8 py-4 text-lg font-medium text-charcoal rounded-full transition-colors cursor-pointer"
+          onClick={() => console.log("Button clicked!")}
         >
           Start Your Investigation
         </button>
@@ -225,7 +226,7 @@ export function GoogleGeminiEffect({
         height="890"
         viewBox="0 0 1440 890"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full max-h-[70vh]"
+        className="w-full max-h-[70vh] pointer-events-none"
       >
         {/* Media type labels - positioned at path start points (desktop only via CSS) */}
         <g className="hidden lg:block">

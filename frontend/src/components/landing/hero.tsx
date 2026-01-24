@@ -3,8 +3,37 @@
 
 "use client";
 
-import { useRef } from "react";
+import { forwardRef, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { motion, useScroll, useTransform } from "motion/react";
+
+interface VideoPlayerProps {
+  src: string;
+  onEnded: () => void;
+}
+
+/**
+ * Client-only video player component.
+ * Wrapped with forwardRef to allow parent to control playback.
+ */
+const VideoPlayerBase = forwardRef<HTMLVideoElement, VideoPlayerProps>(
+  function VideoPlayerBase({ src, onEnded }, ref) {
+    return (
+      <video
+        ref={ref}
+        className="absolute inset-0 h-full w-full object-cover"
+        src={src}
+        playsInline
+        onEnded={onEnded}
+      />
+    );
+  },
+);
+
+// Dynamically import with SSR disabled to prevent hydration mismatch
+const VideoPlayer = dynamic(() => Promise.resolve(VideoPlayerBase), {
+  ssr: false,
+});
 
 /**
  * Hero section with parallax scroll effect and brand messaging.
@@ -13,11 +42,31 @@ import { motion, useScroll, useTransform } from "motion/react";
  */
 export function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
-  const videoRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const handlePlayClick = () => {
+    if (videoRef.current) {
+      videoRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const handlePauseClick = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleVideoEnd = () => {
+    setIsPlaying(false);
+  };
 
   // Track video element for scale animation - completes when video is centered
   const { scrollYProgress: videoProgress } = useScroll({
-    target: videoRef,
+    target: containerRef,
     offset: ["start end", "center center"],
   });
 
@@ -73,32 +122,71 @@ export function Hero() {
       {/* Video section - normal scroll with scale animation */}
       <div className="relative z-20 flex justify-center px-4 pb-40 sm:px-6 sm:pb-52 lg:px-8">
         <motion.div
-          ref={videoRef}
+          ref={containerRef}
           className="relative aspect-video w-full max-w-4xl overflow-hidden rounded-2xl border border-smoke/10"
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut", delay: 0.9 }}
           style={{ scale: videoScale }}
         >
-          {/* Play Button Overlay */}
-          <div className="absolute inset-0 flex items-center justify-center bg-jet">
+          {/* Video Element - client-only to avoid hydration mismatch */}
+          <VideoPlayer
+            ref={videoRef}
+            src="/video.mp4"
+            onEnded={handleVideoEnd}
+          />
+
+          {/* Play Button Overlay - shown when not playing */}
+          {!isPlaying && (
+            <motion.div
+              className="absolute inset-0 flex items-center justify-center bg-charcoal/40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <button
+                type="button"
+                className="group relative flex h-14 items-center gap-3 px-6 sm:h-16 sm:gap-4 sm:px-8"
+                aria-label="Play demo video"
+                onClick={handlePlayClick}
+              >
+                {/* Outer border with glow */}
+                <span className="absolute inset-0 rounded-xl border border-smoke/20 transition-all duration-300 group-hover:border-smoke/40 group-hover:shadow-[0_0_30px_rgba(248,247,244,0.15)]" />
+
+                {/* Glass background */}
+                <span className="absolute inset-[1px] rounded-xl bg-smoke/10 backdrop-blur-sm transition-all duration-300 group-hover:bg-smoke/15" />
+
+                {/* Play icon */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="relative z-10 h-5 w-5 text-smoke sm:h-6 sm:w-6"
+                >
+                  <path
+                    d="M8 5.5v13l10-6.5L8 5.5z"
+                    fill="currentColor"
+                    opacity="0.9"
+                  />
+                </svg>
+
+                {/* Label */}
+                <span className="relative z-10 text-sm font-medium text-smoke sm:text-base">
+                  Play Video
+                </span>
+              </button>
+            </motion.div>
+          )}
+
+          {/* Pause Overlay - shown when playing, click to pause */}
+          {isPlaying && (
             <button
               type="button"
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/90 text-charcoal transition-all hover:scale-110 hover:bg-accent sm:h-20 sm:w-20"
-              aria-label="Play demo video"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="h-8 w-8 translate-x-0.5 sm:h-10 sm:w-10"
-              >
-                <path d="M8 5.14v14l11-7-11-7z" />
-              </svg>
-            </button>
-          </div>
-          {/* Gradient overlay for depth */}
-          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-charcoal/50 to-transparent" />
+              className="absolute inset-0 cursor-pointer"
+              aria-label="Pause video"
+              onClick={handlePauseClick}
+            />
+          )}
         </motion.div>
       </div>
     </section>

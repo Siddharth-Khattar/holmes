@@ -32,3 +32,29 @@ resource "google_storage_bucket" "evidence" {
     google_project_service.storage,
   ]
 }
+
+# Media storage bucket for static assets (videos, images)
+resource "google_storage_bucket" "media" {
+  name          = "${var.project_id}-media"
+  location      = var.region
+  project       = var.project_id
+  force_destroy = true
+
+  uniform_bucket_level_access = true
+
+  cors {
+    origin          = ["*"]
+    method          = ["GET", "HEAD"]
+    response_header = ["Content-Type", "Content-Length", "Content-Range"]
+    max_age_seconds = 3600
+  }
+
+  depends_on = [google_project_service.storage]
+}
+
+# Public read access for media bucket
+resource "google_storage_bucket_iam_member" "media_public" {
+  bucket = google_storage_bucket.media.name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}

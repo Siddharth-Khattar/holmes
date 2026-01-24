@@ -74,7 +74,7 @@ export function Footer() {
         {/* Copyright */}
         <div className="mt-10 border-t border-smoke/10 pt-6 text-center">
           <p className="text-base text-smoke/40">
-            &copy; 2025 Holmes. All rights reserved.
+            &copy; 2026 Holmes. All rights reserved.
           </p>
         </div>
       </div>

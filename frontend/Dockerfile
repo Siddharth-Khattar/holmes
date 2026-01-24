@@ -17,6 +17,14 @@ RUN cd frontend && bun install --frozen-lockfile
 FROM oven/bun:latest AS builder
 WORKDIR /app
 
+# Build arguments for Next.js public env vars (inlined at build time)
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_VIDEO_URL
+
+# Make build args available as env vars during build
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_VIDEO_URL=$NEXT_PUBLIC_VIDEO_URL
+
 # Copy installed dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/frontend/node_modules ./frontend/node_modules

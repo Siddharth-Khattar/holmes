@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-24
 **Current Phase:** 2 of 12 (Authentication & Case Shell)
-**Current Plan:** Ready to start Phase 2
+**Current Plan:** 7 of 7 in Phase 2 (Auth Deployment Infrastructure)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -11,7 +11,7 @@
 |-------|------|--------|---------|-----------|
 | 1 | Foundation Infrastructure | COMPLETE | 2026-01-21 | 2026-01-22 |
 | 1.1 | Frontend Design Foundation (INSERTED) | COMPLETE | 2026-01-23 | 2026-01-24 |
-| 2 | Authentication & Case Shell | NOT_STARTED | - | - |
+| 2 | Authentication & Case Shell | IN_PROGRESS | 2026-01-24 | - |
 | 3 | File Ingestion | NOT_STARTED | - | - |
 | 4 | Core Agent System | NOT_STARTED | - | - |
 | 5 | Agent Flow | NOT_STARTED | - | - |
@@ -26,13 +26,14 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 1.1: Frontend Design Foundation** (2026-01-23 → 2026-01-24)
-  - All 5 plans complete: Design tokens, UI primitives, Above-the-fold, Core content, Final assembly
-  - Complete landing page with 13 components, Liquid Glass design system, video player, ethereal background
-  - Hero video hosted on GCS bucket for production
+- **Phase 2 Plan 07: Auth Deployment Infrastructure** (2026-01-24)
+  - Secret Manager resources for Better Auth secrets
+  - Frontend Cloud Run with Cloud SQL access and secret injection
+  - Backend FRONTEND_URL for JWKS verification
+  - CI/CD Alembic migrations via Cloud SQL Proxy
 
 **What's next:**
-- Phase 2: Authentication & Case Shell
+- Phase 2 Plans 01-06: Better Auth implementation, auth pages, app shell, case management
 
 ## Roadmap Evolution
 
@@ -71,6 +72,9 @@
 | Design tokens approach | CSS variables vs Tailwind @theme | Tailwind v4 @theme | Native utility generation, cleaner integration |
 | Animation library | framer-motion vs motion | motion@12 | Canonical package name for v12+, React 19 compatible |
 | Variable font control | Preset weights vs Axis utilities | Axis utilities | Fine-grained WONK/SOFT control for Fraunces |
+| CI/CD migrations | Cloud Run job vs Cloud SQL Proxy | Cloud SQL Proxy | More reliable, no separate job infrastructure needed |
+| Secret management | Values in terraform vs References only | References only | Security best practice; values added manually via GCP Console |
+| Cross-service URLs | Build-time vs Post-deploy update | Post-deploy update | Solves chicken-and-egg URL problem with update-env job |
 
 ## Blockers
 

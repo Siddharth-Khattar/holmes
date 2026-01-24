@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
+import Image from "next/image";
 
 /**
  * Fixed navigation bar with Liquid Glass effect.
@@ -19,6 +20,30 @@ export function Navigation() {
   // Transform glass opacity based on scroll position
   // Starts visible (0.7), becomes fully opaque after ~100px scroll
   const backgroundOpacity = useTransform(scrollY, [0, 100], [0.7, 1]);
+
+  // Letter-by-letter animation for "Holmes" - H fades first, then o, l, m, e, s
+  // Each letter slides left into the logo as it fades
+  const letter0Opacity = useTransform(scrollY, [50, 170], [1, 0]); // H - first to fade
+  const letter0X = useTransform(scrollY, [50, 170], [0, -24]);
+  const letter1Opacity = useTransform(scrollY, [80, 200], [1, 0]); // o
+  const letter1X = useTransform(scrollY, [80, 200], [0, -24]);
+  const letter2Opacity = useTransform(scrollY, [110, 230], [1, 0]); // l
+  const letter2X = useTransform(scrollY, [110, 230], [0, -24]);
+  const letter3Opacity = useTransform(scrollY, [140, 260], [1, 0]); // m
+  const letter3X = useTransform(scrollY, [140, 260], [0, -24]);
+  const letter4Opacity = useTransform(scrollY, [170, 290], [1, 0]); // e
+  const letter4X = useTransform(scrollY, [170, 290], [0, -24]);
+  const letter5Opacity = useTransform(scrollY, [200, 320], [1, 0]); // s - last to fade
+  const letter5X = useTransform(scrollY, [200, 320], [0, -24]);
+
+  const letterTransforms = [
+    { opacity: letter0Opacity, x: letter0X },
+    { opacity: letter1Opacity, x: letter1X },
+    { opacity: letter2Opacity, x: letter2X },
+    { opacity: letter3Opacity, x: letter3X },
+    { opacity: letter4Opacity, x: letter4X },
+    { opacity: letter5Opacity, x: letter5X },
+  ];
 
   // Close mobile menu on escape key
   useEffect(() => {
@@ -67,16 +92,37 @@ export function Navigation() {
       </motion.div>
 
       <div className="mx-auto grid h-18 w-full grid-cols-[auto_1fr_auto] items-center px-6 sm:px-10 lg:px-16 md:grid-cols-3">
-        {/* Logo - Serif font, bigger and bolder */}
+        {/* Logo with icon and animated text */}
         <a
           href="#"
           onClick={(e) => {
             e.preventDefault();
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
-          className="justify-self-start font-serif text-3xl font-medium tracking-tight text-accent transition-colors hover:text-smoke"
+          className="flex items-center justify-self-start transition-colors hover:opacity-80"
         >
-          Holmes
+          <Image
+            src="/logo.png"
+            alt="Holmes logo"
+            width={56}
+            height={56}
+            className="h-14 w-14 object-contain"
+            priority
+          />
+          <span className="ml-2 flex whitespace-nowrap font-serif text-3xl font-medium tracking-tight text-accent">
+            {"Holmes".split("").map((letter, index) => (
+              <motion.span
+                key={index}
+                style={{
+                  opacity: letterTransforms[index].opacity,
+                  x: letterTransforms[index].x,
+                  display: "inline-block",
+                }}
+              >
+                {letter}
+              </motion.span>
+            ))}
+          </span>
         </a>
 
         {/* Desktop Navigation Links - Sans-serif, centered */}

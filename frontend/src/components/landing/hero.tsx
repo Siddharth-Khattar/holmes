@@ -154,7 +154,7 @@ export function Hero() {
                 <span className="absolute inset-0 rounded-xl border border-smoke/20 transition-all duration-300 group-hover:border-smoke/40 group-hover:shadow-[0_0_30px_rgba(248,247,244,0.15)]" />
 
                 {/* Glass background */}
-                <span className="absolute inset-[1px] rounded-xl bg-smoke/10 backdrop-blur-sm transition-all duration-300 group-hover:bg-smoke/15" />
+                <span className="absolute inset-px rounded-xl bg-smoke/10 backdrop-blur-sm transition-all duration-300 group-hover:bg-smoke/15" />
 
                 {/* Play icon */}
                 <svg

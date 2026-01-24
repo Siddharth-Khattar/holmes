@@ -72,3 +72,23 @@ class CaseListQuery(BaseModel):
         default="desc",
         description="Sort order",
     )
+
+
+class CaseUpdate(BaseModel):
+    """Request body for updating an existing case.
+
+    Only name and description are user-editable. Type and status are
+    managed by the system (status changes via processing pipeline).
+    """
+
+    name: str | None = Field(
+        default=None,
+        min_length=3,
+        max_length=100,
+        description="Updated name of the case",
+    )
+    description: str | None = Field(
+        default=None,
+        max_length=5000,
+        description="Updated description of the case",
+    )

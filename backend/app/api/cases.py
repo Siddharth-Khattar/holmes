@@ -16,6 +16,7 @@ from app.schemas.case import (
     CaseCreate,
     CaseListResponse,
     CaseResponse,
+    CaseUpdate,
 )
 
 router = APIRouter(prefix="/api/cases", tags=["cases"])
@@ -88,7 +89,7 @@ async def list_cases(
     cases = list(result.scalars().all())
 
     return CaseListResponse(
-        cases=cases,
+        cases=[CaseResponse.model_validate(c) for c in cases],
         total=total,
         page=page,
         per_page=per_page,
@@ -152,3 +153,54 @@ async def delete_case(
 
     case.deleted_at = datetime.now(UTC)
     await db.commit()
+
+
+@router.patch(
+    "/{case_id}",
+    response_model=CaseResponse,
+    summary="Update a case",
+)
+async def update_case(
+    case_id: UUID,
+    case_update: CaseUpdate,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> Case:
+    """Update a case's name and/or description.
+
+    At least one field must be provided. Type and status are not user-editable.
+    """
+    # Validate that at least one field is provided
+    update_data = case_update.model_dump(exclude_unset=True)
+    if not update_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least one field must be provided for update",
+        )
+
+    # Fetch the case
+    result = await db.execute(
+        select(Case).where(
+            Case.id == case_id,
+            Case.user_id == current_user.id,
+            Case.deleted_at.is_(None),
+        )
+    )
+    case = result.scalar_one_or_none()
+
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found",
+        )
+
+    # Apply updates
+    for field, value in update_data.items():
+        setattr(case, field, value)
+
+    # Update timestamp
+    case.updated_at = datetime.now(UTC)
+
+    await db.commit()
+    await db.refresh(case)
+    return case

@@ -26,7 +26,7 @@ export function CTASection() {
         >
           {/* Primary Tagline */}
           <motion.h2
-            className="font-serif text-4xl font-bold tracking-tight text-smoke sm:text-5xl"
+            className="font-serif text-4xl font-medium tracking-tight text-smoke sm:text-5xl"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}

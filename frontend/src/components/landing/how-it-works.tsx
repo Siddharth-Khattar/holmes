@@ -51,7 +51,11 @@ export function HowItWorks() {
   const isInView = useInView(containerRef, { once: true, margin: "-100px" });
 
   return (
-    <section className="relative py-24 sm:py-32" ref={containerRef}>
+    <section
+      id="how-it-works"
+      className="relative py-24 sm:py-32"
+      ref={containerRef}
+    >
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <motion.div
@@ -60,10 +64,10 @@ export function HowItWorks() {
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <h2 className="font-serif text-3xl font-bold tracking-tight text-smoke sm:text-4xl font-editorial">
+          <h2 className="font-serif text-3xl font-medium tracking-tight text-smoke sm:text-4xl ">
             How It Works
           </h2>
-          <p className="mt-4 text-lg text-smoke/70">
+          <p className="mt-4 text-xl text-smoke/70">
             From raw evidence to connected insights in five steps.
           </p>
         </motion.div>
@@ -82,7 +86,7 @@ export function HowItWorks() {
                   {/* Connection Line (not for last item) */}
                   {index < WORKFLOW_STEPS.length - 1 && (
                     <motion.div
-                      className="absolute left-1/2 top-8 h-0.5 w-full origin-left bg-gradient-to-r from-taupe to-stone"
+                      className="absolute left-1/2 top-8 h-0.5 w-full origin-left bg-linear-to-r from-taupe to-stone"
                       initial={{ scaleX: 0 }}
                       animate={isInView ? { scaleX: 1 } : { scaleX: 0 }}
                       transition={{
@@ -109,7 +113,7 @@ export function HowItWorks() {
                       delay: index * 0.3,
                     }}
                   >
-                    <span className="text-xl font-semibold text-taupe">
+                    <span className="text-xl font-medium text-taupe">
                       {step.number}
                     </span>
                   </motion.div>
@@ -127,8 +131,8 @@ export function HowItWorks() {
                       ease: "easeOut",
                     }}
                   >
-                    <h3 className="font-semibold text-smoke">{step.title}</h3>
-                    <p className="mt-1 text-sm text-smoke/60">
+                    <h3 className="font-medium text-smoke">{step.title}</h3>
+                    <p className="mt-1 text-base text-smoke/60">
                       {step.description}
                     </p>
                   </motion.div>
@@ -145,7 +149,7 @@ export function HowItWorks() {
                   {/* Vertical Connection Line (not for last item) */}
                   {index < WORKFLOW_STEPS.length - 1 && (
                     <motion.div
-                      className="absolute left-8 top-16 h-16 w-0.5 origin-top bg-gradient-to-b from-taupe to-stone"
+                      className="absolute left-8 top-16 h-16 w-0.5 origin-top bg-linear-to-b from-taupe to-stone"
                       initial={{ scaleY: 0 }}
                       animate={isInView ? { scaleY: 1 } : { scaleY: 0 }}
                       transition={{
@@ -174,7 +178,7 @@ export function HowItWorks() {
                         delay: index * 0.3,
                       }}
                     >
-                      <span className="text-xl font-semibold text-taupe">
+                      <span className="text-xl font-medium text-taupe">
                         {step.number}
                       </span>
                     </motion.div>
@@ -191,8 +195,8 @@ export function HowItWorks() {
                         ease: "easeOut",
                       }}
                     >
-                      <h3 className="font-semibold text-smoke">{step.title}</h3>
-                      <p className="mt-1 text-sm text-smoke/60">
+                      <h3 className="font-medium text-smoke">{step.title}</h3>
+                      <p className="mt-1 text-base text-smoke/60">
                         {step.description}
                       </p>
                     </motion.div>

@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
 
 /**
@@ -27,10 +27,24 @@ export function Navigation() {
     return () => document.removeEventListener("keydown", handleEscape);
   }, []);
 
+  // Smooth scroll handler for anchor links
+  const handleNavClick = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+      e.preventDefault();
+      const targetId = href.replace("#", "");
+      const element = document.getElementById(targetId);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      setMobileMenuOpen(false);
+    },
+    [],
+  );
+
   const navLinks = [
     { href: "#platform", label: "Platform" },
-    { href: "#features", label: "Features" },
     { href: "#how-it-works", label: "How It Works" },
+    { href: "#features", label: "Features" },
   ];
 
   return (
@@ -46,39 +60,44 @@ export function Navigation() {
         style={{ opacity: backgroundOpacity }}
       />
 
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Logo */}
+      <div className="mx-auto grid h-18 w-full grid-cols-[auto_1fr_auto] items-center px-6 sm:px-10 lg:px-16 md:grid-cols-3">
+        {/* Logo - Serif font, bigger and bolder */}
         <a
           href="#"
-          className="font-serif text-2xl font-bold tracking-tight text-taupe transition-colors hover:text-smoke"
+          onClick={(e) => {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          className="justify-self-start font-serif text-3xl font-medium tracking-tight text-taupe transition-colors hover:text-smoke"
         >
           Holmes
         </a>
 
-        {/* Desktop Navigation Links */}
-        <div className="hidden items-center gap-8 md:flex">
+        {/* Desktop Navigation Links - Sans-serif, centered */}
+        <nav className="hidden items-center justify-center gap-10 md:flex">
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-smoke/80 transition-colors hover:text-taupe"
+              onClick={(e) => handleNavClick(e, link.href)}
+              className="text-base font-medium text-smoke/80 transition-colors hover:text-taupe"
             >
               {link.label}
             </a>
           ))}
-        </div>
+        </nav>
 
         {/* Desktop CTA Buttons */}
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center justify-end gap-4 md:flex">
           <button
             type="button"
-            className="rounded-lg px-4 py-2 text-sm font-medium text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke"
+            className="rounded-lg px-5 py-2.5 text-base font-medium text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke"
           >
             Login
           </button>
           <button
             type="button"
-            className="rounded-lg bg-taupe px-4 py-2 text-sm font-medium text-charcoal transition-all hover:brightness-110"
+            className="rounded-lg bg-taupe px-5 py-2.5 text-base font-medium text-charcoal transition-all hover:brightness-110"
           >
             Get Started
           </button>
@@ -87,7 +106,7 @@ export function Navigation() {
         {/* Mobile Menu Button */}
         <button
           type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-lg text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke md:hidden"
+          className="justify-self-end flex h-10 w-10 items-center justify-center rounded-lg text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke md:hidden"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileMenuOpen}
@@ -140,8 +159,8 @@ export function Navigation() {
               <a
                 key={link.href}
                 href={link.href}
-                className="block rounded-lg px-3 py-2 text-sm font-medium text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke"
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={(e) => handleNavClick(e, link.href)}
+                className="block rounded-lg px-3 py-2 text-base font-medium text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke"
               >
                 {link.label}
               </a>
@@ -149,13 +168,13 @@ export function Navigation() {
             <div className="flex flex-col gap-2 pt-3">
               <button
                 type="button"
-                className="rounded-lg px-3 py-2 text-sm font-medium text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke"
+                className="rounded-lg px-3 py-2 text-base font-medium text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke"
               >
                 Login
               </button>
               <button
                 type="button"
-                className="rounded-lg bg-taupe px-3 py-2 text-sm font-medium text-charcoal transition-all hover:brightness-110"
+                className="rounded-lg bg-taupe px-3 py-2 text-base font-medium text-charcoal transition-all hover:brightness-110"
               >
                 Get Started
               </button>

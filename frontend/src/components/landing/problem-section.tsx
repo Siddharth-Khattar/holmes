@@ -52,10 +52,10 @@ export function ProblemSection() {
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
         >
-          <h2 className="font-serif text-3xl font-bold tracking-tight text-smoke sm:text-4xl">
+          <h2 className="font-serif text-3xl font-medium tracking-tight text-smoke sm:text-4xl">
             The Investigation Challenge
           </h2>
-          <p className="mt-4 text-lg text-smoke/70">
+          <p className="mt-4 text-xl text-smoke/70">
             Modern investigations generate overwhelming amounts of data across
             multiple formats. Traditional tools fall short.
           </p>
@@ -75,8 +75,8 @@ export function ProblemSection() {
               className="rounded-xl border border-smoke/10 bg-charcoal/30 p-6"
               variants={fadeInUp}
             >
-              <h3 className="text-xl font-semibold text-smoke">{item.title}</h3>
-              <p className="mt-3 text-smoke/70">{item.description}</p>
+              <h3 className="text-xl font-medium text-smoke">{item.title}</h3>
+              <p className="mt-3 text-lg text-smoke/70">{item.description}</p>
             </motion.div>
           ))}
         </motion.div>

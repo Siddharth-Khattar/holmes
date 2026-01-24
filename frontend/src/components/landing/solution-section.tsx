@@ -109,7 +109,7 @@ const SOLUTION_PILLARS: SolutionPillar[] = [
  */
 export function SolutionSection() {
   return (
-    <section className="relative py-24 sm:py-32">
+    <section id="platform" className="relative py-24 sm:py-32">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <motion.div
@@ -119,10 +119,10 @@ export function SolutionSection() {
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
         >
-          <h2 className="font-serif text-3xl font-bold tracking-tight text-smoke sm:text-4xl font-editorial">
+          <h2 className="font-serif text-3xl font-medium tracking-tight text-smoke sm:text-4xl ">
             Holmes: Your AI Investigation Partner
           </h2>
-          <p className="mt-4 text-lg text-smoke/70">
+          <p className="mt-4 text-xl text-smoke/70">
             A unified platform where AI reasoning is transparent, evidence is
             connected, and insights are always traceable to their source.
           </p>
@@ -140,10 +140,12 @@ export function SolutionSection() {
             <motion.div key={pillar.title} variants={fadeInUp}>
               <GlassCard className="h-full">
                 <div className="mb-4">{pillar.icon}</div>
-                <h3 className="text-xl font-semibold text-smoke">
+                <h3 className="text-xl font-medium text-smoke">
                   {pillar.title}
                 </h3>
-                <p className="mt-3 text-smoke/70">{pillar.description}</p>
+                <p className="mt-3 text-lg text-smoke/70">
+                  {pillar.description}
+                </p>
               </GlassCard>
             </motion.div>
           ))}

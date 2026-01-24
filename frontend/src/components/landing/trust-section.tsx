@@ -36,7 +36,7 @@ export function TrustSection() {
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <AnimatedSection className="text-center">
-          <h2 className="font-serif text-2xl font-semibold tracking-tight text-smoke sm:text-3xl font-editorial">
+          <h2 className="font-serif text-2xl font-medium tracking-tight text-smoke sm:text-3xl">
             Built Different
           </h2>
         </AnimatedSection>
@@ -50,8 +50,8 @@ export function TrustSection() {
               delay={index * 0.15}
               className="text-center"
             >
-              <h3 className="text-lg font-semibold text-taupe">{item.title}</h3>
-              <p className="mt-3 text-sm leading-relaxed text-smoke/70">
+              <h3 className="text-lg font-medium text-taupe">{item.title}</h3>
+              <p className="mt-3 text-base leading-relaxed text-smoke/70">
                 {item.description}
               </p>
             </AnimatedSection>

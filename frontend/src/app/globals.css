@@ -24,39 +24,30 @@
   --shadow-glass-hover: 0 12px 40px rgba(0, 0, 0, 0.16);
   --shadow-glow-taupe: 0 0 40px rgba(169, 146, 125, 0.15);
 
-  /* Typography */
-  --font-serif: var(--font-fraunces);
+  /* Typography - Font Families */
+  --font-family-serif: var(--font-playfair);
+  --font-family-sans: var(--font-dm-sans);
+
+  /* Letter Spacing */
+  --tracking-body: 0.025em;
+  --tracking-tight: -0.01em;
+  --tracking-wide: 0.05em;
 }
 
 /* ============================================================
-   FRAUNCES VARIABLE FONT AXIS UTILITIES
+   TYPOGRAPHY UTILITIES
    ============================================================
-   Fraunces supports WONK (quirkiness) and SOFT (softness) axes.
-   These utilities expose those axes for fine-grained control.
+   Custom letter-spacing and font size utilities.
    ============================================================ */
 
 @layer utilities {
-  /* Activate optical wonkiness - adds character to letters */
-  .font-wonky {
-    font-variation-settings: "WONK" 1;
+  /* Letter spacing presets */
+  .tracking-body {
+    letter-spacing: var(--tracking-body);
   }
 
-  /* Maximum softness - rounded, approachable feel */
-  .font-soft {
-    font-variation-settings: "SOFT" 100;
-  }
-
-  /* No softness - sharp, precise letterforms */
-  .font-sharp {
-    font-variation-settings: "SOFT" 0;
-  }
-
-  /* Editorial preset - balanced for headings and display text */
-  .font-editorial {
-    font-variation-settings:
-      "WONK" 1,
-      "SOFT" 50;
-    font-optical-sizing: auto;
+  .tracking-wide {
+    letter-spacing: var(--tracking-wide);
   }
 }
 
@@ -116,4 +107,7 @@
 body {
   background-color: var(--color-charcoal);
   color: var(--color-smoke);
+  font-size: 18px;
+  line-height: 1.6;
+  letter-spacing: var(--tracking-body);
 }

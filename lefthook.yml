@@ -15,8 +15,8 @@ pre-commit:
     eslint:
       glob: "frontend/**/*.{js,ts,tsx}"
       root: "frontend/"
-      run: bun eslint {staged_files}
+      run: npx eslint {staged_files}
     prettier:
       glob: "frontend/**/*.{js,ts,tsx,json,css,md}"
       root: "frontend/"
-      run: bun prettier --check {staged_files}
+      run: npx prettier --check {staged_files}

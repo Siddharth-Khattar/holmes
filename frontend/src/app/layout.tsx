@@ -2,12 +2,21 @@
 // ABOUTME: Sets up global fonts, metadata, and base styling
 
 import type { Metadata } from "next";
-import { Fraunces } from "next/font/google";
+import { Playfair_Display, DM_Sans } from "next/font/google";
 import "./globals.css";
 
-const fraunces = Fraunces({
+const playfairDisplay = Playfair_Display({
   subsets: ["latin"],
-  variable: "--font-fraunces",
+  weight: ["400", "500", "600", "700", "800", "900"],
+  style: ["normal", "italic"],
+  variable: "--font-playfair",
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-dm-sans",
   display: "swap",
 });
 
@@ -23,8 +32,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={fraunces.variable}>
-      <body className="font-serif bg-charcoal text-smoke antialiased">
+    <html
+      lang="en"
+      className={`${playfairDisplay.variable} ${dmSans.variable}`}
+    >
+      <body className="font-sans bg-charcoal text-smoke antialiased">
         {children}
       </body>
     </html>

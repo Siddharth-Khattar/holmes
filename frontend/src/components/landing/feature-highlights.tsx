@@ -109,7 +109,7 @@ const FEATURES: Feature[] = [
  */
 export function FeatureHighlights() {
   return (
-    <section className="relative py-24 sm:py-32">
+    <section id="features" className="relative py-24 sm:py-32">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <motion.div
@@ -119,10 +119,10 @@ export function FeatureHighlights() {
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
         >
-          <h2 className="font-serif text-3xl font-bold tracking-tight text-smoke sm:text-4xl font-editorial">
+          <h2 className="font-serif text-3xl font-medium tracking-tight text-smoke sm:text-4xl ">
             Built for Real Investigations
           </h2>
-          <p className="mt-4 text-lg text-smoke/70">
+          <p className="mt-4 text-xl text-smoke/70">
             Every feature designed to surface truth faster and with complete
             transparency.
           </p>
@@ -140,13 +140,15 @@ export function FeatureHighlights() {
             <motion.div key={feature.title} variants={fadeInUp}>
               <GlassCard className="h-full p-8">
                 <div className="mb-4">{feature.icon}</div>
-                <h3 className="text-xl font-semibold text-smoke">
+                <h3 className="text-xl font-medium text-smoke">
                   {feature.title}
                 </h3>
-                <p className="mt-1 text-sm font-medium text-taupe">
+                <p className="mt-1 text-base font-medium text-taupe">
                   {feature.subtitle}
                 </p>
-                <p className="mt-4 text-smoke/70">{feature.description}</p>
+                <p className="mt-4 text-lg text-smoke/70">
+                  {feature.description}
+                </p>
               </GlassCard>
             </motion.div>
           ))}

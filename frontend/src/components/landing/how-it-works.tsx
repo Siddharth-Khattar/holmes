@@ -64,7 +64,7 @@ export function HowItWorks() {
           animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <h2 className="font-serif text-3xl font-medium tracking-tight text-smoke sm:text-4xl ">
+          <h2 className="font-serif text-3xl font-medium tracking-tight text-smoke sm:text-4xl lg:text-5xl">
             How It Works
           </h2>
           <p className="mt-4 text-xl text-smoke/70">

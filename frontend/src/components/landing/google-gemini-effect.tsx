@@ -212,7 +212,7 @@ export function GoogleGeminiEffect({
       )}
 
       {/* Button centered vertically on the gemini effect */}
-      <div className="absolute inset-0 flex items-center justify-center z-30 mt-24">
+      <div className="absolute inset-0 flex items-center justify-center z-30 -mt-10">
         <button
           type="button"
           className="bg-smoke/95 hover:bg-smoke px-8 py-4 text-lg font-medium text-charcoal rounded-full transition-colors cursor-pointer"

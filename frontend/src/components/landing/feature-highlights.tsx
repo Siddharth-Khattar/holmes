@@ -119,7 +119,7 @@ export function FeatureHighlights() {
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
         >
-          <h2 className="font-serif text-3xl font-medium tracking-tight text-smoke sm:text-4xl ">
+          <h2 className="font-serif text-3xl font-medium tracking-tight text-smoke sm:text-4xl lg:text-5xl">
             Built for Real Investigations
           </h2>
           <p className="mt-4 text-xl text-smoke/70">

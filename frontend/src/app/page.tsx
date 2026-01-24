@@ -19,7 +19,7 @@ export default function Home() {
       {/* Fixed background - doesn't scroll */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <EtherealShadow
-          color="rgba(128, 128, 128, 1)"
+          color="rgba(60, 58, 54, 0.85)"
           noise={{ opacity: 0.6, scale: 1.2 }}
           sizing="fill"
         />

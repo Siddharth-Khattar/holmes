@@ -36,7 +36,7 @@ export function TrustSection() {
       <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <AnimatedSection className="text-center">
-          <h2 className="font-serif text-2xl font-medium tracking-tight text-smoke sm:text-3xl">
+          <h2 className="font-serif text-3xl font-medium tracking-tight text-smoke sm:text-4xl lg:text-5xl">
             Built Different
           </h2>
         </AnimatedSection>

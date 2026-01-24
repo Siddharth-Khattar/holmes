@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-01-22
-**Current Phase:** 2 of 12 (Authentication & Case Shell)
-**Current Plan:** Phase 2 not yet planned
+**Last Updated:** 2026-01-23
+**Current Phase:** 1.1 of 12 (Frontend Design Foundation)
+**Current Plan:** Plan 04 of 5 complete (Core Content Sections)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -10,6 +10,7 @@
 | Phase | Name | Status | Started | Completed |
 |-------|------|--------|---------|-----------|
 | 1 | Foundation Infrastructure | COMPLETE | 2026-01-21 | 2026-01-22 |
+| 1.1 | Frontend Design Foundation (INSERTED) | IN_PROGRESS | 2026-01-23 | - |
 | 2 | Authentication & Case Shell | NOT_STARTED | - | - |
 | 3 | File Ingestion | NOT_STARTED | - | - |
 | 4 | Core Agent System | NOT_STARTED | - | - |
@@ -25,19 +26,19 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 1: Foundation Infrastructure COMPLETE** (2026-01-22)
-  - 01-01: Monorepo structure with Bun workspaces
-  - 01-02: Terraform GCP infrastructure (Cloud SQL, GCS, Cloud Run, WIF)
-  - 01-03: Type generation pipeline (Pydantic → TypeScript)
-  - 01-04: FastAPI backend with health endpoints, SSE, Alembic
-  - 01-05: Next.js frontend with home page and Dockerfile
-  - 01-06: GitHub Actions CI/CD with WIF authentication
-
-**Verification:** All 4 exit criteria verified (see 01-VERIFICATION.md)
+- **Phase 1.1 Plan 04: Core Content Sections** (2026-01-23)
+  - 01.1-04: Solution section with glass cards, How It Works workflow diagram, Feature Highlights
+  - Core content sections complete with animated workflow and capability cards
 
 **What's next:**
-- Plan Phase 2: Authentication & Case Shell
-- Better Auth integration, case CRUD, protected routes
+- Phase 1.1 Plan 05: CTA Section & Footer (then Phase 2: Authentication & Case Shell)
+
+## Roadmap Evolution
+
+- **Phase 1.1 inserted after Phase 1:** Frontend Design Foundation (URGENT)
+  - Reason: Establish robust frontend design foundation before subsequent phases build upon it
+  - Reference: DOCS/UI/LANDING-INIT.md for landing page requirements
+  - Note: Use frontend-design skill during planning for design refinement
 
 ## Active Decisions
 
@@ -66,6 +67,9 @@
 | Cloud SQL networking | Private vs Public IP | Public IP | Hackathon simplicity; would use private in prod |
 | Frontend Docker build | Bun runtime vs Node runtime | Bun build + Node runtime | Bun faster for build, Node slim more stable for production |
 | SQLAlchemy async | Implicit vs Explicit greenlet | Explicit greenlet dependency | Required for async operations, must be explicit in pyproject.toml |
+| Design tokens approach | CSS variables vs Tailwind @theme | Tailwind v4 @theme | Native utility generation, cleaner integration |
+| Animation library | framer-motion vs motion | motion@12 | Canonical package name for v12+, React 19 compatible |
+| Variable font control | Preset weights vs Axis utilities | Axis utilities | Fine-grained WONK/SOFT control for Fraunces |
 
 ## Blockers
 

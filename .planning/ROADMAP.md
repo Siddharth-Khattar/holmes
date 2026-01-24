@@ -22,6 +22,7 @@
 | Phase | Name | Focus | Requirements Covered |
 |-------|------|-------|---------------------|
 | 1 | Foundation Infrastructure | CI/CD, Database, Storage, SSE skeleton | REQ-INF-* |
+| 1.1 | Frontend Design Foundation (INSERTED) | Design system, Liquid Glass, Landing page | UX quality (foundational) |
 | 2 | Authentication & Case Shell | Auth system, Case CRUD, basic UI shell | REQ-AUTH-*, REQ-CASE-001/002/003 |
 | 3 | File Ingestion | Upload, storage, file management | REQ-CASE-004/005, REQ-SOURCE-* (basic) |
 | 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e |
@@ -77,6 +78,45 @@ Plans:
 - `/health` endpoint returns 200 from Cloud Run URL
 - Database connection verified
 - GCS bucket accessible from backend
+
+---
+
+## Phase 1.1: Frontend Design Foundation (INSERTED)
+
+**Goal:** Establish frontend design system and create an impressive landing page before building upon the frontend in subsequent phases.
+
+**Requirements:** None (foundational work for UX quality)
+
+**Plans:** 5 plans in 3 waves
+
+Plans:
+- [ ] 01.1-01-PLAN.md — Design tokens, typography, Motion library setup
+- [ ] 01.1-02-PLAN.md — UI primitives (GlassCard, AnimatedSection) and animation utilities
+- [ ] 01.1-03-PLAN.md — Above-the-fold sections (Navigation, Hero, Problem)
+- [ ] 01.1-04-PLAN.md — Core content sections (Solution, How It Works, Feature Highlights)
+- [ ] 01.1-05-PLAN.md — Final sections (Trust, CTA, Footer) and page assembly
+
+**Deliverables:**
+- Design system and component library foundation
+- Liquid Glass design language implementation
+- Dark theme with professional aesthetic
+- Impressive landing page following DOCS/UI/LANDING-INIT.md specification
+- Motion animations and scroll interactions
+- Responsive design (desktop-first, mobile-optimized)
+
+**Technical Notes:**
+- Reference: DOCS/UI/LANDING-INIT.md for landing page requirements
+- Motion library (v12+) for animations, not framer-motion
+- Fraunces font via next/font for distinctive typography
+- Tailwind CSS v4 with @theme directive for design tokens
+- Detective noir meets modern AI aesthetic
+
+**Exit Criteria:**
+- Landing page implemented with all sections from LANDING-INIT.md
+- Liquid Glass design elements functional
+- Scroll-triggered animations working
+- Responsive across desktop and mobile
+- Dark theme polished and consistent
 
 ---
 
@@ -615,9 +655,11 @@ Plans:
 ```
 Phase 1 (Foundation)
     │
-    ├── Phase 2 (Auth & Case)
-    │       │
-    │       └── Phase 3 (File Ingestion)
+    ├── Phase 1.1 (Frontend Design Foundation) ← INSERTED
+    │
+    └── Phase 2 (Auth & Case)
+            │
+            └── Phase 3 (File Ingestion)
     │               │
     │               └── Phase 4 (Core Agent System)
     │                       │
@@ -682,6 +724,7 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 1.1*
-*Updated: 2026-01-21 (Integration features incorporated)*
+*Roadmap Version: 1.2*
+*Updated: 2026-01-23 (Phase 1.1 planned)*
 *Phase 1 planned: 2026-01-20*
+*Phase 1.1 planned: 2026-01-23*

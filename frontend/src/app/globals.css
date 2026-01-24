@@ -1,24 +1,338 @@
 @import "tailwindcss";
 
-:root {
-  --background: #fafafa;
-  --foreground: #18181b;
+/* ============================================================
+   DESIGN TOKENS - Holmes Design System
+   ============================================================
+   Core color palette, typography, and glass effect tokens.
+   Uses Tailwind v4's @theme directive for native utility generation.
+   ============================================================ */
+
+@theme {
+  /* Core Color Palette */
+  --color-charcoal: #050505;
+  --color-jet: #111111;
+  --color-smoke: #f8f7f4;
+  --color-stone: #8a8a82;
+
+  /* Cream Accent */
+  --color-accent: #f5f4ef;
+  --color-accent-muted: #d4d3ce;
+
+  /* Glass Effect Colors */
+  --color-glass-light: rgba(248, 247, 244, 0.06);
+  --color-glass-dark: rgba(5, 5, 5, 0.8);
+
+  /* Shadows */
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.25);
+  --shadow-glass-hover: 0 12px 40px rgba(0, 0, 0, 0.3);
+  --shadow-glow-accent: 0 0 40px rgba(248, 247, 244, 0.08);
+
+  /* Ethereal Shadow */
+  --color-shadow: rgba(70, 68, 64, 0.85);
+
+  /* Typography - Font Families */
+  --font-family-serif: var(--font-playfair);
+  --font-family-sans: var(--font-dm-sans);
+
+  /* Letter Spacing */
+  --tracking-body: 0.025em;
+  --tracking-tight: -0.01em;
+  --tracking-wide: 0.05em;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
-}
+/* ============================================================
+   TYPOGRAPHY UTILITIES
+   ============================================================
+   Custom letter-spacing and font size utilities.
+   ============================================================ */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #09090b;
-    --foreground: #fafafa;
+@layer utilities {
+  /* Letter spacing presets */
+  .tracking-body {
+    letter-spacing: var(--tracking-body);
+  }
+
+  .tracking-wide {
+    letter-spacing: var(--tracking-wide);
   }
 }
 
+/* ============================================================
+   GLASS COMPONENT UTILITIES
+   ============================================================
+   Reusable glass panel styles for cards and navigation.
+   Subtle elegance - glass is felt more than seen.
+   ============================================================ */
+
+@layer components {
+  /* Light glass for cards and content panels */
+  .glass-panel {
+    background: var(--color-glass-light);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-glass);
+    transition:
+      box-shadow 0.3s ease,
+      transform 0.3s ease;
+  }
+
+  .glass-panel:hover {
+    box-shadow: var(--shadow-glass-hover);
+  }
+
+  /* Darker glass for navigation and overlays */
+  .glass-nav {
+    background: var(--color-glass-dark);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: var(--shadow-glass);
+  }
+
+  /* --------------------------------------------------------
+     Liquid Glass Effect - Apple-inspired layered glass
+     --------------------------------------------------------
+     Layers: filter → overlay → specular → content
+     Creates depth through layered blur, tint, and highlights.
+     -------------------------------------------------------- */
+
+  .liquid-glass {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Layer 1: Backdrop blur with saturation boost */
+  .liquid-glass-filter {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    backdrop-filter: blur(24px) saturate(180%) brightness(1.1);
+    -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.1);
+  }
+
+  /* Layer 2: Semi-transparent tinted overlay */
+  .liquid-glass-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    background: linear-gradient(
+      180deg,
+      rgba(248, 247, 244, 0.08) 0%,
+      rgba(5, 5, 5, 0.7) 100%
+    );
+  }
+
+  /* Layer 3: Specular highlights (edge shine via inset shadows only) */
+  .liquid-glass-specular {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: inherit;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+    pointer-events: none;
+  }
+
+  /* Layer 4: Content sits on top */
+  .liquid-glass-content {
+    position: relative;
+    z-index: 4;
+  }
+
+  /* --------------------------------------------------------
+     Liquid Glass Variants
+     --------------------------------------------------------
+     Different intensities for cards, modals, and subtle UI.
+     -------------------------------------------------------- */
+
+  /* Card glass - frosted liquid glass effect for content cards */
+  .liquid-glass-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 24px;
+    border: none;
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      0 2px 8px rgba(0, 0, 0, 0.15);
+    transition:
+      box-shadow 0.4s ease,
+      transform 0.4s ease;
+  }
+
+  .liquid-glass-card:hover {
+    box-shadow:
+      0 12px 48px rgba(0, 0, 0, 0.35),
+      0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .liquid-glass-card > .liquid-glass-filter {
+    backdrop-filter: blur(40px) saturate(200%) brightness(1.15) contrast(1.05);
+    -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.15)
+      contrast(1.05);
+  }
+
+  .liquid-glass-card > .liquid-glass-overlay {
+    background:
+      radial-gradient(
+        ellipse 80% 50% at 50% -20%,
+        rgba(255, 255, 255, 0.15) 0%,
+        transparent 50%
+      ),
+      linear-gradient(
+        175deg,
+        rgba(255, 255, 255, 0.12) 0%,
+        rgba(180, 180, 180, 0.06) 20%,
+        rgba(40, 40, 40, 0.88) 100%
+      );
+    filter: url(#liquid-glass-filter);
+  }
+
+  .liquid-glass-card > .liquid-glass-specular {
+    background: radial-gradient(
+      ellipse 100% 40% at 50% 0%,
+      rgba(255, 255, 255, 0.08) 0%,
+      transparent 60%
+    );
+    box-shadow: none;
+  }
+
+  /* Modal glass - more prominent for dialogs and overlays */
+  .liquid-glass-modal {
+    position: relative;
+    overflow: hidden;
+    border-radius: 24px;
+    border: none;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  }
+
+  .liquid-glass-modal > .liquid-glass-filter {
+    backdrop-filter: blur(32px) saturate(200%) brightness(1.15);
+    -webkit-backdrop-filter: blur(32px) saturate(200%) brightness(1.15);
+  }
+
+  .liquid-glass-modal > .liquid-glass-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(248, 247, 244, 0.06) 0%,
+      rgba(5, 5, 5, 0.85) 100%
+    );
+  }
+
+  .liquid-glass-modal > .liquid-glass-specular {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  /* Nav glass - for navigation bars */
+  .liquid-glass-nav {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .liquid-glass-nav > .liquid-glass-filter {
+    backdrop-filter: blur(24px) saturate(180%) brightness(1.1);
+    -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.1);
+  }
+
+  .liquid-glass-nav > .liquid-glass-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(248, 247, 244, 0.08) 0%,
+      rgba(5, 5, 5, 0.7) 100%
+    );
+  }
+
+  /* Subtle glass - minimal, for small UI elements like tooltips/dropdowns */
+  .liquid-glass-subtle {
+    position: relative;
+    background: rgba(248, 247, 244, 0.03);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: none;
+    border-radius: 8px;
+  }
+
+  /* Animated glass panels need will-change for performance */
+  .liquid-glass-animated {
+    will-change: transform;
+  }
+}
+
+/* ============================================================
+   LIQUID GLASS BUTTON
+   ============================================================
+   Premium glass button with layered effect and glow.
+   Placed outside @layer for proper specificity.
+   ============================================================ */
+
+.liquid-glass-button {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(
+    180deg,
+    rgba(248, 247, 244, 0.12) 0%,
+    rgba(248, 247, 244, 0.06) 100%
+  );
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.2s ease,
+    background 0.3s ease;
+}
+
+.liquid-glass-button:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(248, 247, 244, 0.18) 0%,
+    rgba(248, 247, 244, 0.1) 100%
+  );
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.25),
+    0 0 32px rgba(248, 247, 244, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.liquid-glass-button:active {
+  transform: scale(0.98);
+}
+
+/* ============================================================
+   ACCESSIBILITY - REDUCED MOTION
+   ============================================================
+   Respect user preferences for reduced motion.
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: var(--color-charcoal);
+  color: var(--color-smoke);
+  font-size: 18px;
+  line-height: 1.6;
+  letter-spacing: var(--tracking-body);
 }

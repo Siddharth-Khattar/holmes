@@ -3,6 +3,7 @@
 
 "use client";
 
+import Link from "next/link";
 import { motion } from "motion/react";
 import { GlassCard } from "@/components/ui";
 import { AnimatedSection } from "./animated-section";
@@ -56,14 +57,12 @@ export function CTASection() {
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.3 }}
             >
-              <motion.button
-                type="button"
-                className="liquid-glass-button px-8 py-4 text-lg font-medium text-smoke"
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.98 }}
+              <Link
+                href="/login"
+                className="liquid-glass-button inline-block px-8 py-4 text-lg font-medium text-smoke transition-transform hover:scale-[1.03] active:scale-[0.98]"
               >
                 Start Your Investigation
-              </motion.button>
+              </Link>
             </motion.div>
           </GlassCard>
         </AnimatedSection>

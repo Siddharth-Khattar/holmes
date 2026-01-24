@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-25
 **Current Phase:** 2 of 12 (Authentication & Case Shell)
-**Current Plan:** 3 of 7 in Phase 2 (Frontend Authentication Setup)
+**Current Plan:** 4 of 7 in Phase 2 (Auth UI Components)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -26,13 +26,14 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 2 Plan 03: Frontend Authentication Setup** (2026-01-25)
-  - Better Auth server configured with JWT plugin (issueTokensOnSignIn: true)
-  - Email/password and Google OAuth providers enabled
-  - JWKS endpoint at /api/auth/jwks for backend verification
-  - Client-side auth hooks (signIn, signUp, signOut, useSession) with token retrieval
-  - API client with automatic JWT Authorization header injection
-  - Edge middleware protecting /cases/* routes
+- **Phase 2 Plan 02: Case CRUD API** (2026-01-25)
+  - Case Pydantic schemas (CaseCreate, CaseResponse, CaseUpdate, CaseListResponse, CaseListQuery)
+  - POST /api/cases - Create case with user ownership
+  - GET /api/cases - Paginated list with sorting
+  - GET /api/cases/{id} - Single case retrieval
+  - PATCH /api/cases/{id} - Partial update (name/description only)
+  - DELETE /api/cases/{id} - Soft delete via deleted_at
+  - User ownership enforcement: 404 for non-owned cases (prevents enumeration)
 
 **What's next:**
 - Phase 2 Plan 04: Auth UI Components (login/signup forms)

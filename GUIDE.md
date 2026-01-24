@@ -86,6 +86,7 @@ holmes/
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `NEXT_PUBLIC_API_URL` | Backend API URL | `http://localhost:8080` |
+| `NEXT_PUBLIC_VIDEO_URL` | Hero video URL (GCS in prod) | `/video.mp4` |
 
 ## Deployment
 
@@ -139,3 +140,26 @@ docker build -f frontend/Dockerfile -t holmes-frontend .
 ```bash
 cd backend && uv run uvicorn app.main:app --reload --port 8080
 ```
+
+### Replace Hero Video
+
+The landing page video is served from GCS (not the repo) because Next.js standalone mode doesn't serve `/public` files.
+
+**Bucket:** `gs://{project-id}-media/video.mp4`
+
+**To replace the video:**
+
+1. Upload via GCP Console:
+   - Go to https://console.cloud.google.com/storage/browser
+   - Open the `{project-id}-media` bucket
+   - Upload your new `video.mp4` (overwrites existing)
+
+2. Or via CLI:
+   ```bash
+   gsutil cp path/to/new-video.mp4 gs://holmes-gemini-3-hack-media/video.mp4
+   gsutil setmeta -h "Cache-Control:public, max-age=31536000" gs://holmes-gemini-3-hack-media/video.mp4
+   ```
+
+3. Clear browser cache or wait for CDN propagation
+
+**Local development:** Place video at `frontend/public/video.mp4` (gitignored). The app falls back to this when `NEXT_PUBLIC_VIDEO_URL` is unset.

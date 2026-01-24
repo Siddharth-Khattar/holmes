@@ -107,6 +107,11 @@ resource "google_cloud_run_v2_service" "frontend" {
         value = "" # Will be updated after backend deploys
       }
 
+      env {
+        name  = "NEXT_PUBLIC_VIDEO_URL"
+        value = "https://storage.googleapis.com/${google_storage_bucket.media.name}/video.mp4"
+      }
+
       resources {
         limits = {
           cpu    = "1"

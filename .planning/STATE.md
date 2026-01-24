@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-25
 **Current Phase:** 2 of 12 (Authentication & Case Shell)
-**Current Plan:** 5 of 7 in Phase 2 (Case List Page)
+**Current Plan:** 6 of 7 in Phase 2 (Case List & Creation UI)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -26,16 +26,15 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 2 Plan 04: Auth UI Components** (2026-01-25)
-  - Zod validation schemas for login (email/password) and signup (name/email/password with strength rules)
-  - LoginForm component with react-hook-form, inline validation errors, loading state
-  - SignupForm component with password strength hints
-  - OAuthButtons component with Google sign-in using liquid-glass-button styling
-  - Auth layout with centered, minimal design
-  - Login page at /login with tabbed Sign In / Create Account interface
+- **Phase 2 Plan 05: App Shell** (2026-01-25)
+  - Logout hook with multi-tab sync via BroadcastChannel
+  - AuthListener component for cross-tab session sync
+  - Collapsible sidebar with hover-expand (64px collapsed, 240px expanded)
+  - UserMenu with avatar (image or initials), name display, and logout dropdown
+  - App layout with server-side session validation and defense-in-depth redirect
 
 **What's next:**
-- Phase 2 Plan 05: Case List Page (cases overview UI)
+- Phase 2 Plan 06: Case List & Creation UI (case management pages)
 
 ## Roadmap Evolution
 

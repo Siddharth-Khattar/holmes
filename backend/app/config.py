@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     cors_origins_raw: str = ""
     debug: bool = False
     gcs_bucket: str | None = None
+    frontend_url: str = "http://localhost:3000"  # For JWKS endpoint
 
     model_config = SettingsConfigDict(
         env_file=".env",

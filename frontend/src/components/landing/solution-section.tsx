@@ -1,11 +1,14 @@
 // ABOUTME: Solution section presenting Holmes as the answer to investigation challenges.
-// ABOUTME: Displays four solution pillars using GlassCard components with staggered reveal.
+// ABOUTME: Desktop shows animated path effect on scroll; mobile shows glass card pillars.
 
 "use client";
 
-import { motion } from "motion/react";
+import { useRef } from "react";
+import { motion, useScroll, useTransform } from "motion/react";
 import { GlassCard } from "@/components/ui";
 import { staggerContainer, fadeInUp } from "@/lib/animations";
+import { GoogleGeminiEffect } from "@/components/landing/google-gemini-effect";
+import { useIsDesktop } from "@/hooks";
 
 interface SolutionPillar {
   title: string;
@@ -102,12 +105,51 @@ const SOLUTION_PILLARS: SolutionPillar[] = [
 ];
 
 /**
- * SolutionSection introduces Holmes as the answer to the investigation challenges
- * presented in the Problem section.
- *
- * Features four solution pillars displayed in glass cards with staggered reveal.
+ * Desktop version with animated path effect.
+ * Creates a tall scroll container with sticky animated paths converging on CTA.
  */
-export function SolutionSection() {
+function DesktopSolutionSection() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end start"],
+  });
+
+  // Staggered path animations - each starts slightly later than the previous
+  const pathLengthFirst = useTransform(scrollYProgress, [0, 0.8], [0.2, 1.2]);
+  const pathLengthSecond = useTransform(scrollYProgress, [0, 0.8], [0.15, 1.2]);
+  const pathLengthThird = useTransform(scrollYProgress, [0, 0.8], [0.1, 1.2]);
+  const pathLengthFourth = useTransform(scrollYProgress, [0, 0.8], [0.05, 1.2]);
+  const pathLengthFifth = useTransform(scrollYProgress, [0, 0.8], [0, 1.2]);
+
+  return (
+    <section
+      id="platform"
+      ref={containerRef}
+      className="relative h-[400vh] w-full overflow-clip"
+    >
+      {/* Single sticky container with title and animated paths */}
+      <GoogleGeminiEffect
+        title="Holmes: Your AI Investigation Partner"
+        description="A unified platform where AI reasoning is transparent, evidence is connected, and insights are always traceable to their source."
+        pathLengths={[
+          pathLengthFirst,
+          pathLengthSecond,
+          pathLengthThird,
+          pathLengthFourth,
+          pathLengthFifth,
+        ]}
+      />
+    </section>
+  );
+}
+
+/**
+ * Mobile version with glass card grid.
+ * Displays solution pillars as interactive cards with staggered reveal.
+ */
+function MobileSolutionSection() {
   return (
     <section id="platform" className="relative py-24 sm:py-32">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -153,4 +195,22 @@ export function SolutionSection() {
       </div>
     </section>
   );
+}
+
+/**
+ * SolutionSection introduces Holmes as the answer to the investigation challenges.
+ *
+ * - Desktop: Animated path effect with scroll-linked SVG paths converging on CTA
+ * - Mobile: Glass card grid displaying the four solution pillars
+ */
+export function SolutionSection() {
+  const isDesktop = useIsDesktop();
+
+  // Render mobile version during SSR and initial load to prevent layout shift
+  // Desktop version will mount after hydration when media query resolves
+  if (isDesktop) {
+    return <DesktopSolutionSection />;
+  }
+
+  return <MobileSolutionSection />;
 }

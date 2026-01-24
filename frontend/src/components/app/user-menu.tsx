@@ -13,7 +13,7 @@ interface UserMenuProps {
     id: string;
     name: string | null;
     email: string;
-    image: string | null;
+    image?: string | null;
   };
   collapsed?: boolean;
 }

@@ -15,7 +15,7 @@ interface SidebarProps {
     id: string;
     name: string | null;
     email: string;
-    image: string | null;
+    image?: string | null;
   };
 }
 

@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health, sse
+from app.api import auth, health, sse
 from app.config import settings
 
 # DO NOT import GZipMiddleware - incompatible with SSE
@@ -44,3 +44,4 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router, tags=["health"])
 app.include_router(sse.router, tags=["sse"])
+app.include_router(auth.router, tags=["auth"])

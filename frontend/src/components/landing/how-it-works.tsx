@@ -86,7 +86,7 @@ export function HowItWorks() {
                   {/* Connection Line (not for last item) */}
                   {index < WORKFLOW_STEPS.length - 1 && (
                     <motion.div
-                      className="absolute left-1/2 top-8 h-0.5 w-full origin-left bg-linear-to-r from-taupe to-stone"
+                      className="absolute left-1/2 top-8 h-0.5 w-full origin-left bg-linear-to-r from-accent to-stone"
                       initial={{ scaleX: 0 }}
                       animate={isInView ? { scaleX: 1 } : { scaleX: 0 }}
                       transition={{
@@ -113,7 +113,7 @@ export function HowItWorks() {
                       delay: index * 0.3,
                     }}
                   >
-                    <span className="text-xl font-medium text-taupe">
+                    <span className="text-xl font-medium text-accent">
                       {step.number}
                     </span>
                   </motion.div>
@@ -149,7 +149,7 @@ export function HowItWorks() {
                   {/* Vertical Connection Line (not for last item) */}
                   {index < WORKFLOW_STEPS.length - 1 && (
                     <motion.div
-                      className="absolute left-8 top-16 h-16 w-0.5 origin-top bg-linear-to-b from-taupe to-stone"
+                      className="absolute left-8 top-16 h-16 w-0.5 origin-top bg-linear-to-b from-accent to-stone"
                       initial={{ scaleY: 0 }}
                       animate={isInView ? { scaleY: 1 } : { scaleY: 0 }}
                       transition={{
@@ -178,7 +178,7 @@ export function HowItWorks() {
                         delay: index * 0.3,
                       }}
                     >
-                      <span className="text-xl font-medium text-taupe">
+                      <span className="text-xl font-medium text-accent">
                         {step.number}
                       </span>
                     </motion.div>

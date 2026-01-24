@@ -9,20 +9,26 @@
 
 @theme {
   /* Core Color Palette */
-  --color-charcoal: #121218;
-  --color-jet: #22333b;
-  --color-smoke: #f2f4f3;
-  --color-taupe: #a9927d;
-  --color-stone: #5e503f;
+  --color-charcoal: #050505;
+  --color-jet: #111111;
+  --color-smoke: #f8f7f4;
+  --color-stone: #8a8a82;
+
+  /* Cream Accent */
+  --color-accent: #f5f4ef;
+  --color-accent-muted: #d4d3ce;
 
   /* Glass Effect Colors */
-  --color-glass-light: rgba(242, 244, 243, 0.08);
-  --color-glass-dark: rgba(18, 18, 24, 0.6);
+  --color-glass-light: rgba(248, 247, 244, 0.06);
+  --color-glass-dark: rgba(5, 5, 5, 0.8);
 
-  /* Glass Shadows */
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.12);
-  --shadow-glass-hover: 0 12px 40px rgba(0, 0, 0, 0.16);
-  --shadow-glow-taupe: 0 0 40px rgba(169, 146, 125, 0.15);
+  /* Shadows */
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.25);
+  --shadow-glass-hover: 0 12px 40px rgba(0, 0, 0, 0.3);
+  --shadow-glow-accent: 0 0 40px rgba(248, 247, 244, 0.08);
+
+  /* Ethereal Shadow */
+  --color-shadow: rgba(70, 68, 64, 0.85);
 
   /* Typography - Font Families */
   --font-family-serif: var(--font-playfair);
@@ -81,6 +87,209 @@
     -webkit-backdrop-filter: blur(16px);
     box-shadow: var(--shadow-glass);
   }
+
+  /* --------------------------------------------------------
+     Liquid Glass Effect - Apple-inspired layered glass
+     --------------------------------------------------------
+     Layers: filter → overlay → specular → content
+     Creates depth through layered blur, tint, and highlights.
+     -------------------------------------------------------- */
+
+  .liquid-glass {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Layer 1: Backdrop blur with saturation boost */
+  .liquid-glass-filter {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    backdrop-filter: blur(24px) saturate(180%) brightness(1.1);
+    -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.1);
+  }
+
+  /* Layer 2: Semi-transparent tinted overlay */
+  .liquid-glass-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    background: linear-gradient(
+      180deg,
+      rgba(248, 247, 244, 0.08) 0%,
+      rgba(5, 5, 5, 0.7) 100%
+    );
+  }
+
+  /* Layer 3: Specular highlights (edge shine via inset shadows only) */
+  .liquid-glass-specular {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: inherit;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+    pointer-events: none;
+  }
+
+  /* Layer 4: Content sits on top */
+  .liquid-glass-content {
+    position: relative;
+    z-index: 4;
+  }
+
+  /* --------------------------------------------------------
+     Liquid Glass Variants
+     --------------------------------------------------------
+     Different intensities for cards, modals, and subtle UI.
+     -------------------------------------------------------- */
+
+  /* Card glass - lighter, more transparent for content cards */
+  .liquid-glass-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+    border: none;
+    box-shadow: var(--shadow-glass);
+    transition:
+      box-shadow 0.3s ease,
+      transform 0.3s ease;
+  }
+
+  .liquid-glass-card:hover {
+    box-shadow: var(--shadow-glass-hover);
+  }
+
+  .liquid-glass-card > .liquid-glass-filter {
+    backdrop-filter: blur(16px) saturate(150%) brightness(1.05);
+    -webkit-backdrop-filter: blur(16px) saturate(150%) brightness(1.05);
+  }
+
+  .liquid-glass-card > .liquid-glass-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(248, 247, 244, 0.04) 0%,
+      rgba(17, 17, 17, 0.6) 100%
+    );
+  }
+
+  .liquid-glass-card > .liquid-glass-specular {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  /* Modal glass - more prominent for dialogs and overlays */
+  .liquid-glass-modal {
+    position: relative;
+    overflow: hidden;
+    border-radius: 24px;
+    border: none;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  }
+
+  .liquid-glass-modal > .liquid-glass-filter {
+    backdrop-filter: blur(32px) saturate(200%) brightness(1.15);
+    -webkit-backdrop-filter: blur(32px) saturate(200%) brightness(1.15);
+  }
+
+  .liquid-glass-modal > .liquid-glass-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(248, 247, 244, 0.06) 0%,
+      rgba(5, 5, 5, 0.85) 100%
+    );
+  }
+
+  .liquid-glass-modal > .liquid-glass-specular {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  /* Nav glass - for navigation bars */
+  .liquid-glass-nav {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .liquid-glass-nav > .liquid-glass-filter {
+    backdrop-filter: blur(24px) saturate(180%) brightness(1.1);
+    -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.1);
+  }
+
+  .liquid-glass-nav > .liquid-glass-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(248, 247, 244, 0.08) 0%,
+      rgba(5, 5, 5, 0.7) 100%
+    );
+  }
+
+  /* Subtle glass - minimal, for small UI elements like tooltips/dropdowns */
+  .liquid-glass-subtle {
+    position: relative;
+    background: rgba(248, 247, 244, 0.03);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: none;
+    border-radius: 8px;
+  }
+
+  /* Animated glass panels need will-change for performance */
+  .liquid-glass-animated {
+    will-change: transform;
+  }
+}
+
+/* ============================================================
+   LIQUID GLASS BUTTON
+   ============================================================
+   Premium glass button with layered effect and glow.
+   Placed outside @layer for proper specificity.
+   ============================================================ */
+
+.liquid-glass-button {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(
+    180deg,
+    rgba(248, 247, 244, 0.12) 0%,
+    rgba(248, 247, 244, 0.06) 100%
+  );
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.2s ease,
+    background 0.3s ease;
+}
+
+.liquid-glass-button:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(248, 247, 244, 0.18) 0%,
+    rgba(248, 247, 244, 0.1) 100%
+  );
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.25),
+    0 0 32px rgba(248, 247, 244, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.liquid-glass-button:active {
+  transform: scale(0.98);
 }
 
 /* ============================================================

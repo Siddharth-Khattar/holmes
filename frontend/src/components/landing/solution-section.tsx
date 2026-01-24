@@ -20,7 +20,7 @@ const SOLUTION_PILLARS: SolutionPillar[] = [
       "Every document, video, and audio file in one intelligent workspace. No more tab juggling.",
     icon: (
       <svg
-        className="h-8 w-8 text-taupe"
+        className="h-8 w-8 text-accent"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -40,7 +40,7 @@ const SOLUTION_PILLARS: SolutionPillar[] = [
       "See exactly how Holmes reaches its conclusions. Every step visible, every decision traceable.",
     icon: (
       <svg
-        className="h-8 w-8 text-taupe"
+        className="h-8 w-8 text-accent"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -65,7 +65,7 @@ const SOLUTION_PILLARS: SolutionPillar[] = [
       "Every insight links directly to its source. Click any finding to see the evidence.",
     icon: (
       <svg
-        className="h-8 w-8 text-taupe"
+        className="h-8 w-8 text-accent"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -85,7 +85,7 @@ const SOLUTION_PILLARS: SolutionPillar[] = [
       "Entities, relationships, and patterns visualized. See the connections others miss.",
     icon: (
       <svg
-        className="h-8 w-8 text-taupe"
+        className="h-8 w-8 text-accent"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -138,7 +138,7 @@ export function SolutionSection() {
         >
           {SOLUTION_PILLARS.map((pillar) => (
             <motion.div key={pillar.title} variants={fadeInUp}>
-              <GlassCard className="h-full">
+              <GlassCard className="h-full" contentClassName="p-6">
                 <div className="mb-4">{pillar.icon}</div>
                 <h3 className="text-xl font-medium text-smoke">
                   {pillar.title}

@@ -50,7 +50,7 @@ export function TrustSection() {
               delay={index * 0.15}
               className="text-center"
             >
-              <h3 className="text-lg font-medium text-taupe">{item.title}</h3>
+              <h3 className="text-lg font-medium text-accent">{item.title}</h3>
               <p className="mt-3 text-base leading-relaxed text-smoke/70">
                 {item.description}
               </p>

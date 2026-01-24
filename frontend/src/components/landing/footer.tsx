@@ -47,7 +47,7 @@ export function Footer() {
           <a
             href="#"
             onClick={(e) => handleNavClick(e, "#")}
-            className="justify-self-center font-serif text-xl font-medium tracking-tight text-taupe transition-colors hover:text-smoke md:justify-self-start"
+            className="justify-self-center font-serif text-xl font-medium tracking-tight text-accent transition-colors hover:text-smoke md:justify-self-start"
           >
             Holmes
           </a>

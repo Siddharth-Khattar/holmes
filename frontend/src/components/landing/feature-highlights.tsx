@@ -22,7 +22,7 @@ const FEATURES: Feature[] = [
       "Watch Holmes think. Every agent's reasoning process visualized in real-time. See which documents were analyzed, what patterns were found, and how conclusions were reached.",
     icon: (
       <svg
-        className="h-8 w-8 text-taupe"
+        className="h-8 w-8 text-accent"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -43,7 +43,7 @@ const FEATURES: Feature[] = [
       "Entities and relationships mapped visually. Toggle between five layers: Evidence, Legal, Strategy, Temporal, and Hypothesis. Find connections invisible to linear document review.",
     icon: (
       <svg
-        className="h-8 w-8 text-taupe"
+        className="h-8 w-8 text-accent"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -64,7 +64,7 @@ const FEATURES: Feature[] = [
       "A timestamp in a video matches a date in a contract. A voice appears across multiple recordings. Holmes surfaces these connections automatically.",
     icon: (
       <svg
-        className="h-8 w-8 text-taupe"
+        className="h-8 w-8 text-accent"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -85,7 +85,7 @@ const FEATURES: Feature[] = [
       "When evidence conflicts, Holmes flags it. When evidence is missing, Holmes identifies the gap. No more surprises in the courtroom.",
     icon: (
       <svg
-        className="h-8 w-8 text-taupe"
+        className="h-8 w-8 text-accent"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -138,12 +138,12 @@ export function FeatureHighlights() {
         >
           {FEATURES.map((feature) => (
             <motion.div key={feature.title} variants={fadeInUp}>
-              <GlassCard className="h-full p-8">
+              <GlassCard className="h-full" contentClassName="p-8">
                 <div className="mb-4">{feature.icon}</div>
                 <h3 className="text-xl font-medium text-smoke">
                   {feature.title}
                 </h3>
-                <p className="mt-1 text-base font-medium text-taupe">
+                <p className="mt-1 text-base font-medium text-accent">
                   {feature.subtitle}
                 </p>
                 <p className="mt-4 text-lg text-smoke/70">

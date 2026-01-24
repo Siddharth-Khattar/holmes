@@ -1,5 +1,5 @@
-// ABOUTME: Fixed navigation bar with Liquid Glass styling for the landing page.
-// ABOUTME: Features scroll-triggered opacity enhancement and responsive mobile layout.
+// ABOUTME: Fixed navigation bar with Liquid Glass effect for the landing page.
+// ABOUTME: Features layered glass (blur, overlay, specular) with scroll-triggered opacity.
 
 "use client";
 
@@ -7,16 +7,18 @@ import { useCallback, useEffect, useState } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
 
 /**
- * Fixed navigation bar with glass morphism effect.
- * Glass opacity increases after scrolling past the hero section.
+ * Fixed navigation bar with Liquid Glass effect.
+ *
+ * Uses layered glass structure (filter → overlay → specular → content)
+ * for Apple-inspired depth. Glass opacity increases on scroll.
  */
 export function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { scrollY } = useScroll();
 
   // Transform glass opacity based on scroll position
-  // Starts transparent, becomes glass-nav after ~100px scroll
-  const backgroundOpacity = useTransform(scrollY, [0, 100], [0, 1]);
+  // Starts visible (0.7), becomes fully opaque after ~100px scroll
+  const backgroundOpacity = useTransform(scrollY, [0, 100], [0.7, 1]);
 
   // Close mobile menu on escape key
   useEffect(() => {
@@ -54,11 +56,15 @@ export function Navigation() {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
     >
-      {/* Glass background layer with dynamic opacity */}
+      {/* Liquid Glass background layers with dynamic opacity */}
       <motion.div
-        className="glass-nav absolute inset-0 -z-10"
+        className="liquid-glass-nav absolute inset-0 -z-10"
         style={{ opacity: backgroundOpacity }}
-      />
+      >
+        <div className="liquid-glass-filter" />
+        <div className="liquid-glass-overlay" />
+        <div className="liquid-glass-specular" />
+      </motion.div>
 
       <div className="mx-auto grid h-18 w-full grid-cols-[auto_1fr_auto] items-center px-6 sm:px-10 lg:px-16 md:grid-cols-3">
         {/* Logo - Serif font, bigger and bolder */}
@@ -68,7 +74,7 @@ export function Navigation() {
             e.preventDefault();
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
-          className="justify-self-start font-serif text-3xl font-medium tracking-tight text-taupe transition-colors hover:text-smoke"
+          className="justify-self-start font-serif text-3xl font-medium tracking-tight text-accent transition-colors hover:text-smoke"
         >
           Holmes
         </a>
@@ -80,7 +86,7 @@ export function Navigation() {
               key={link.href}
               href={link.href}
               onClick={(e) => handleNavClick(e, link.href)}
-              className="text-base font-medium text-smoke/80 transition-colors hover:text-taupe"
+              className="text-base font-medium text-smoke/80 transition-colors hover:text-accent"
             >
               {link.label}
             </a>
@@ -91,13 +97,13 @@ export function Navigation() {
         <div className="hidden items-center justify-end gap-4 md:flex">
           <button
             type="button"
-            className="rounded-lg px-5 py-2.5 text-base font-medium text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke"
+            className="cursor-pointer rounded-lg px-5 py-2.5 text-base font-medium text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke"
           >
             Login
           </button>
           <button
             type="button"
-            className="rounded-lg bg-taupe px-5 py-2.5 text-base font-medium text-charcoal transition-all hover:brightness-110"
+            className="liquid-glass-button px-5 py-2.5 text-base font-medium text-smoke"
           >
             Get Started
           </button>
@@ -149,12 +155,15 @@ export function Navigation() {
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <motion.div
-          className="glass-nav border-t border-smoke/10 md:hidden"
+          className="liquid-glass border-t border-smoke/10 md:hidden"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
         >
-          <div className="space-y-1 px-4 py-4">
+          <div className="liquid-glass-filter" />
+          <div className="liquid-glass-overlay" />
+          <div className="liquid-glass-specular" />
+          <div className="liquid-glass-content space-y-1 px-4 py-4">
             {navLinks.map((link) => (
               <a
                 key={link.href}
@@ -168,13 +177,13 @@ export function Navigation() {
             <div className="flex flex-col gap-2 pt-3">
               <button
                 type="button"
-                className="rounded-lg px-3 py-2 text-base font-medium text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke"
+                className="cursor-pointer rounded-lg px-3 py-2 text-base font-medium text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke"
               >
                 Login
               </button>
               <button
                 type="button"
-                className="rounded-lg bg-taupe px-3 py-2 text-base font-medium text-charcoal transition-all hover:brightness-110"
+                className="liquid-glass-button px-3 py-2 text-base font-medium text-smoke"
               >
                 Get Started
               </button>

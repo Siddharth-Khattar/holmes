@@ -66,7 +66,7 @@ export function Hero() {
             &ldquo;When you have eliminated the impossible, whatever remains,
             however improbable, must be the truth.&rdquo;
           </p>
-          <footer className="mt-4 text-base font-medium text-taupe">
+          <footer className="mt-4 text-base font-medium text-accent">
             — Sherlock Holmes
           </footer>
         </motion.blockquote>
@@ -80,7 +80,7 @@ export function Hero() {
         >
           <button
             type="button"
-            className="rounded-lg bg-taupe px-8 py-4 text-lg font-medium text-charcoal transition-all hover:brightness-110 hover:shadow-glow-taupe"
+            className="liquid-glass-button px-8 py-4 text-lg font-medium text-smoke"
           >
             Start Your Investigation
           </button>
@@ -101,7 +101,7 @@ export function Hero() {
           <div className="absolute inset-0 flex items-center justify-center bg-jet">
             <button
               type="button"
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-taupe/90 text-charcoal transition-all hover:scale-110 hover:bg-taupe sm:h-20 sm:w-20"
+              className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/90 text-charcoal transition-all hover:scale-110 hover:bg-accent sm:h-20 sm:w-20"
               aria-label="Play demo video"
             >
               <svg

@@ -16,7 +16,7 @@ export function CTASection() {
   return (
     <section className="relative py-24 sm:py-32">
       {/* Top border gradient for visual separation */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-taupe/30 to-transparent" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
 
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         {/* Glass panel container */}
@@ -56,11 +56,8 @@ export function CTASection() {
           >
             <motion.button
               type="button"
-              className="rounded-lg bg-taupe px-8 py-4 text-lg font-medium text-charcoal transition-colors hover:brightness-110"
-              whileHover={{
-                scale: 1.03,
-                boxShadow: "0 0 24px 4px rgba(193, 179, 159, 0.35)",
-              }}
+              className="liquid-glass-button px-8 py-4 text-lg font-medium text-smoke"
+              whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.98 }}
             >
               Start Your Investigation

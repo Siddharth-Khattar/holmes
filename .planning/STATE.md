@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-25
 **Current Phase:** 2 of 12 (Authentication & Case Shell)
-**Current Plan:** 4 of 7 in Phase 2 (Auth UI Components)
+**Current Plan:** 5 of 7 in Phase 2 (Case List Page)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -26,17 +26,16 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 2 Plan 02: Case CRUD API** (2026-01-25)
-  - Case Pydantic schemas (CaseCreate, CaseResponse, CaseUpdate, CaseListResponse, CaseListQuery)
-  - POST /api/cases - Create case with user ownership
-  - GET /api/cases - Paginated list with sorting
-  - GET /api/cases/{id} - Single case retrieval
-  - PATCH /api/cases/{id} - Partial update (name/description only)
-  - DELETE /api/cases/{id} - Soft delete via deleted_at
-  - User ownership enforcement: 404 for non-owned cases (prevents enumeration)
+- **Phase 2 Plan 04: Auth UI Components** (2026-01-25)
+  - Zod validation schemas for login (email/password) and signup (name/email/password with strength rules)
+  - LoginForm component with react-hook-form, inline validation errors, loading state
+  - SignupForm component with password strength hints
+  - OAuthButtons component with Google sign-in using liquid-glass-button styling
+  - Auth layout with centered, minimal design
+  - Login page at /login with tabbed Sign In / Create Account interface
 
 **What's next:**
-- Phase 2 Plan 04: Auth UI Components (login/signup forms)
+- Phase 2 Plan 05: Case List Page (cases overview UI)
 
 ## Roadmap Evolution
 

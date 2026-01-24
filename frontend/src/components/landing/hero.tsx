@@ -132,7 +132,7 @@ export function Hero() {
           {/* Video Element - client-only to avoid hydration mismatch */}
           <VideoPlayer
             ref={videoRef}
-            src="/video.mp4"
+            src={process.env.NEXT_PUBLIC_VIDEO_URL ?? "/video.mp4"}
             onEnded={handleVideoEnd}
           />
 

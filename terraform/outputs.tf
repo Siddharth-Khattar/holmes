@@ -35,3 +35,13 @@ output "artifact_registry_repository" {
   description = "Artifact Registry repository URL"
   value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.holmes.repository_id}"
 }
+
+output "media_bucket_name" {
+  description = "GCS bucket name for media storage"
+  value       = google_storage_bucket.media.name
+}
+
+output "media_bucket_url" {
+  description = "Base URL for media bucket"
+  value       = "https://storage.googleapis.com/${google_storage_bucket.media.name}"
+}

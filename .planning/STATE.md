@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-01-25
 **Current Phase:** 2 of 12 (Authentication & Case Shell)
-**Current Plan:** 6 of 7 in Phase 2 (Case List & Creation UI)
+**Current Plan:** 6 of 7 in Phase 2 - COMPLETE (Case List & Creation UI)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -26,15 +26,16 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 2 Plan 05: App Shell** (2026-01-25)
-  - Logout hook with multi-tab sync via BroadcastChannel
-  - AuthListener component for cross-tab session sync
-  - Collapsible sidebar with hover-expand (64px collapsed, 240px expanded)
-  - UserMenu with avatar (image or initials), name display, and logout dropdown
-  - App layout with server-side session validation and defense-in-depth redirect
+- **Phase 2 Plan 06: Case List & Creation UI** (2026-01-25)
+  - Case types and Zod validation schemas matching backend API
+  - CaseList component with grid/list toggle, sort dropdown, pagination
+  - CaseCard with status badges (Draft/Processing/Ready/Error), delete functionality
+  - CreateCaseModal with react-hook-form + Zod validation
+  - EmptyState component for reusable empty collection displays
+  - /cases page and /cases/[id] page shell ready for Phase 3 file upload
 
 **What's next:**
-- Phase 2 Plan 06: Case List & Creation UI (case management pages)
+- Phase 2 Plan 07: Integration & E2E testing (final plan of Phase 2)
 
 ## Roadmap Evolution
 

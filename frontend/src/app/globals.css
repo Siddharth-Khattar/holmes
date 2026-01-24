@@ -8,7 +8,7 @@
    ============================================================ */
 
 @theme {
-  /* Core Color Palette */
+  /* Core Color Palette - Dark Mode (Default) */
   --color-charcoal: #050505;
   --color-jet: #111111;
   --color-smoke: #f8f7f4;
@@ -30,6 +30,15 @@
   /* Ethereal Shadow */
   --color-shadow: rgba(70, 68, 64, 0.85);
 
+  /* Light Mode Palette - Warm, professional alternative for app UI */
+  --color-light-bg: #faf9f7;
+  --color-light-bg-subtle: #f5f4f1;
+  --color-light-text: #1a1918;
+  --color-light-text-muted: #6b6a66;
+  --color-light-border: #e8e7e3;
+  --color-light-accent: #2a2825;
+  --color-light-accent-hover: #3d3a36;
+
   /* Typography - Font Families */
   --font-family-serif: var(--font-playfair);
   --font-family-sans: var(--font-dm-sans);
@@ -38,6 +47,86 @@
   --tracking-body: 0.025em;
   --tracking-tight: -0.01em;
   --tracking-wide: 0.05em;
+}
+
+/* ============================================================
+   SHADCN/UI CSS VARIABLE MAPPING
+   ============================================================
+   Maps Holmes tokens to Shadcn/ui's expected CSS variable format.
+   These are semantic aliases for component theming.
+   ============================================================ */
+
+:root {
+  /* Background */
+  --background: var(--color-charcoal);
+  --foreground: var(--color-smoke);
+
+  /* Card */
+  --card: var(--color-jet);
+  --card-foreground: var(--color-smoke);
+
+  /* Popover */
+  --popover: var(--color-jet);
+  --popover-foreground: var(--color-smoke);
+
+  /* Primary */
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-charcoal);
+
+  /* Secondary */
+  --secondary: var(--color-stone);
+  --secondary-foreground: var(--color-smoke);
+
+  /* Muted */
+  --muted: var(--color-jet);
+  --muted-foreground: var(--color-stone);
+
+  /* Accent */
+  --accent: var(--color-accent-muted);
+  --accent-foreground: var(--color-charcoal);
+
+  /* Destructive */
+  --destructive: #ef4444;
+  --destructive-foreground: var(--color-smoke);
+
+  /* Border / Input / Ring */
+  --border: rgba(248, 247, 244, 0.1);
+  --input: rgba(248, 247, 244, 0.1);
+  --ring: var(--color-accent);
+
+  /* Radius */
+  --radius: 0.5rem;
+}
+
+/* Light mode variant for application UI */
+.light {
+  --background: var(--color-light-bg);
+  --foreground: var(--color-light-text);
+
+  --card: var(--color-light-bg-subtle);
+  --card-foreground: var(--color-light-text);
+
+  --popover: var(--color-light-bg);
+  --popover-foreground: var(--color-light-text);
+
+  --primary: var(--color-light-accent);
+  --primary-foreground: var(--color-light-bg);
+
+  --secondary: var(--color-light-bg-subtle);
+  --secondary-foreground: var(--color-light-text);
+
+  --muted: var(--color-light-bg-subtle);
+  --muted-foreground: var(--color-light-text-muted);
+
+  --accent: var(--color-light-bg-subtle);
+  --accent-foreground: var(--color-light-text);
+
+  --destructive: #dc2626;
+  --destructive-foreground: var(--color-light-bg);
+
+  --border: var(--color-light-border);
+  --input: var(--color-light-border);
+  --ring: var(--color-light-accent);
 }
 
 /* ============================================================

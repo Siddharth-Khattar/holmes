@@ -90,19 +90,23 @@ Plans:
 **Plans:** 5 plans in 3 waves
 
 Plans:
-- [ ] 01.1-01-PLAN.md — Design tokens, typography, Motion library setup
-- [ ] 01.1-02-PLAN.md — UI primitives (GlassCard, AnimatedSection) and animation utilities
-- [ ] 01.1-03-PLAN.md — Above-the-fold sections (Navigation, Hero, Problem)
-- [ ] 01.1-04-PLAN.md — Core content sections (Solution, How It Works, Feature Highlights)
-- [ ] 01.1-05-PLAN.md — Final sections (Trust, CTA, Footer) and page assembly
+- [x] 01.1-01-PLAN.md — Design tokens, typography, Motion library setup
+- [x] 01.1-02-PLAN.md — UI primitives (GlassCard, AnimatedSection) and animation utilities
+- [x] 01.1-03-PLAN.md — Above-the-fold sections (Navigation, Hero, Problem)
+- [x] 01.1-04-PLAN.md — Core content sections (Solution, How It Works, Feature Highlights)
+- [x] 01.1-05-PLAN.md — Final sections (Trust, CTA, Footer) and page assembly
 
-**Deliverables:**
+**Deliverables:** ✓ COMPLETE
 - Design system and component library foundation
-- Liquid Glass design language implementation
+- Liquid Glass design language implementation (premium cream palette)
 - Dark theme with professional aesthetic
-- Impressive landing page following DOCS/UI/LANDING-INIT.md specification
+- Impressive landing page with all 9 sections from LANDING-INIT.md
 - Motion animations and scroll interactions
 - Responsive design (desktop-first, mobile-optimized)
+- Inline video player with play/pause controls
+- Ethereal shadow background effect
+- Logo with scroll-based letter fade animation
+- Hero video hosted on GCS bucket for production
 
 **Technical Notes:**
 - Reference: DOCS/UI/LANDING-INIT.md for landing page requirements
@@ -110,8 +114,9 @@ Plans:
 - Fraunces font via next/font for distinctive typography
 - Tailwind CSS v4 with @theme directive for design tokens
 - Detective noir meets modern AI aesthetic
+- Video loaded via NEXT_PUBLIC_VIDEO_URL env var (GCS in production)
 
-**Exit Criteria:**
+**Exit Criteria:** ✓ ALL MET
 - Landing page implemented with all sections from LANDING-INIT.md
 - Liquid Glass design elements functional
 - Scroll-triggered animations working
@@ -724,7 +729,8 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 1.2*
-*Updated: 2026-01-23 (Phase 1.1 planned)*
+*Roadmap Version: 1.3*
+*Updated: 2026-01-24 (Phase 1.1 complete)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
+*Phase 1.1 complete: 2026-01-24*

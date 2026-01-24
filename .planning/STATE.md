@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-01-25
-**Current Phase:** 2 of 12 (Authentication & Case Shell)
-**Current Plan:** 6 of 7 in Phase 2 - COMPLETE (Case List & Creation UI)
+**Current Phase:** 3 of 12 (File Ingestion)
+**Current Plan:** Ready to start Phase 3
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -11,7 +11,7 @@
 |-------|------|--------|---------|-----------|
 | 1 | Foundation Infrastructure | COMPLETE | 2026-01-21 | 2026-01-22 |
 | 1.1 | Frontend Design Foundation (INSERTED) | COMPLETE | 2026-01-23 | 2026-01-24 |
-| 2 | Authentication & Case Shell | IN_PROGRESS | 2026-01-24 | - |
+| 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 |
 | 3 | File Ingestion | NOT_STARTED | - | - |
 | 4 | Core Agent System | NOT_STARTED | - | - |
 | 5 | Agent Flow | NOT_STARTED | - | - |
@@ -26,16 +26,15 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 2 Plan 06: Case List & Creation UI** (2026-01-25)
-  - Case types and Zod validation schemas matching backend API
-  - CaseList component with grid/list toggle, sort dropdown, pagination
-  - CaseCard with status badges (Draft/Processing/Ready/Error), delete functionality
-  - CreateCaseModal with react-hook-form + Zod validation
-  - EmptyState component for reusable empty collection displays
-  - /cases page and /cases/[id] page shell ready for Phase 3 file upload
+- **Phase 2: Authentication & Case Shell** (2026-01-24 → 2026-01-25)
+  - 7 plans across 5 waves completed
+  - Backend: Auth models, JWT validation via JWKS, Case CRUD with ownership
+  - Frontend: Better Auth with JWT plugin, login/signup UI, app shell with sidebar
+  - Infrastructure: Secret Manager, Cloud SQL for frontend, CI/CD with migrations
+  - All 7 requirements satisfied (REQ-AUTH-001-004, REQ-CASE-001-003)
 
 **What's next:**
-- Phase 2 Plan 07: Integration & E2E testing (final plan of Phase 2)
+- Phase 3: File Ingestion
 
 ## Roadmap Evolution
 

@@ -133,17 +133,18 @@ Plans:
 
 **Requirements:** REQ-AUTH-001, REQ-AUTH-002, REQ-AUTH-003, REQ-AUTH-004, REQ-CASE-001, REQ-CASE-002, REQ-CASE-003
 
-**Plans:** 6 plans in 4 waves
+**Plans:** 7 plans in 5 waves
 
 Plans:
-- [ ] 02-01-PLAN.md — Backend auth infrastructure (models, session validation, migration)
-- [ ] 02-02-PLAN.md — Backend case CRUD endpoints
-- [ ] 02-03-PLAN.md — Frontend Better Auth setup (config, middleware, client)
-- [ ] 02-04-PLAN.md — Auth UI (login/signup page with forms)
-- [ ] 02-05-PLAN.md — App shell (sidebar, layout, user menu)
-- [ ] 02-06-PLAN.md — Case list and creation UI
+- [x] 02-01-PLAN.md — Backend auth infrastructure (models, session validation, migration)
+- [x] 02-02-PLAN.md — Backend case CRUD endpoints
+- [x] 02-03-PLAN.md — Frontend Better Auth setup (config, middleware, client)
+- [x] 02-04-PLAN.md — Auth UI (login/signup page with forms)
+- [x] 02-05-PLAN.md — App shell (sidebar, layout, user menu)
+- [x] 02-06-PLAN.md — Case list and creation UI
+- [x] 02-07-PLAN.md — Infrastructure deployment updates (secrets, Cloud SQL, CI/CD)
 
-**Deliverables:**
+**Deliverables:** ✓ COMPLETE
 - Better Auth integration in Next.js
 - Email/password signup and login
 - Google OAuth login
@@ -160,7 +161,7 @@ Plans:
 - User ID from session used for all case queries
 - Database schema: users, sessions, accounts, cases tables
 
-**Exit Criteria:**
+**Exit Criteria:** ✓ ALL MET
 - User can register, login, logout
 - Google OAuth works
 - Session persists across refresh

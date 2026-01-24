@@ -102,12 +102,13 @@ export function Navigation() {
           className="flex items-center justify-self-start transition-colors hover:opacity-80"
         >
           <Image
-            src="/logo.png"
+            src="/logo-2x.png"
             alt="Holmes logo"
             width={56}
             height={56}
             className="h-14 w-14 object-contain"
             priority
+            unoptimized
           />
           <span className="ml-2 flex whitespace-nowrap font-serif text-3xl font-medium tracking-tight text-accent">
             {"Holmes".split("").map((letter, index) => (

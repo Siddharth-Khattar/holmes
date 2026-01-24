@@ -40,6 +40,8 @@
 |-------|------|-------|--------------|
 | 13 | Memory Service | Cross-case learning, pattern recognition | REQ-MEM-001 |
 
+
+> NOTE: Use the design guide in DOCS/UI/DESIGN-SYSTEM.md to align yourself for the UI.
 ---
 
 ## Phase 1: Foundation Infrastructure

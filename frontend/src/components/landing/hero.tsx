@@ -139,41 +139,39 @@ export function Hero() {
           {/* Play Button Overlay - shown when not playing */}
           {!isPlaying && (
             <motion.div
-              className="absolute inset-0 flex items-center justify-center bg-charcoal/40"
+              className="absolute inset-0 flex items-center justify-center"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
             >
               <button
                 type="button"
-                className="group relative flex h-14 items-center gap-3 px-6 sm:h-16 sm:gap-4 sm:px-8"
+                className="group relative flex h-12 w-12 cursor-pointer items-center justify-center rounded-full sm:h-14 sm:w-14"
                 aria-label="Play demo video"
                 onClick={handlePlayClick}
               >
-                {/* Outer border with glow */}
-                <span className="absolute inset-0 rounded-xl border border-smoke/20 transition-all duration-300 group-hover:border-smoke/40 group-hover:shadow-[0_0_30px_rgba(248,247,244,0.15)]" />
+                {/* Glass blur layer */}
+                <span className="absolute inset-0 rounded-full backdrop-blur-xl backdrop-saturate-150 backdrop-brightness-110 transition-all duration-300" />
 
-                {/* Glass background */}
-                <span className="absolute inset-px rounded-xl bg-smoke/10 backdrop-blur-sm transition-all duration-300 group-hover:bg-smoke/15" />
+                {/* Glass overlay with gradient */}
+                <span className="absolute inset-0 rounded-full bg-linear-to-br from-white/25 via-white/15 to-white/5 transition-all duration-300 group-hover:from-white/35 group-hover:via-white/20 group-hover:to-white/10" />
+
+                {/* Subtle top highlight */}
+                <span className="absolute inset-0 rounded-full bg-linear-to-b from-white/15 to-transparent opacity-60" />
+
+                {/* Outer glow on hover */}
+                <span className="absolute inset-0 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.3)] transition-all duration-300 group-hover:shadow-[0_4px_24px_rgba(248,247,244,0.2)]" />
 
                 {/* Play icon */}
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="none"
-                  className="relative z-10 h-5 w-5 text-smoke sm:h-6 sm:w-6"
+                  className="relative z-10 ml-0.5 h-5 w-5 text-stone drop-shadow-sm sm:h-6 sm:w-6"
                 >
-                  <path
-                    d="M8 5.5v13l10-6.5L8 5.5z"
-                    fill="currentColor"
-                    opacity="0.9"
-                  />
+                  <path d="M8 5.5v13l10-6.5L8 5.5z" fill="currentColor" />
                 </svg>
-
-                {/* Label */}
-                <span className="relative z-10 text-sm font-medium text-smoke sm:text-base">
-                  Play Video
-                </span>
               </button>
             </motion.div>
           )}

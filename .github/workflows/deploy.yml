@@ -134,6 +134,17 @@ jobs:
           URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} --region=${{ env.REGION }} --format='value(status.url)')
           echo "url=$URL" >> $GITHUB_OUTPUT
 
+      - name: Get frontend URL
+        id: frontend-url
+        run: |
+          # Try to get actual URL from existing service, fall back to empty for first deploy
+          ACTUAL_URL=$(gcloud run services describe holmes-frontend --region=${{ env.REGION }} --format='value(status.url)' 2>/dev/null || echo "")
+          if [ -n "$ACTUAL_URL" ]; then
+            echo "url=$ACTUAL_URL" >> $GITHUB_OUTPUT
+          else
+            echo "url=" >> $GITHUB_OUTPUT
+          fi
+
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
@@ -143,6 +154,8 @@ jobs:
           docker build \
             --build-arg NEXT_PUBLIC_API_URL=${{ steps.backend-url.outputs.url }} \
             --build-arg NEXT_PUBLIC_VIDEO_URL=https://storage.googleapis.com/${{ vars.GCP_PROJECT_ID }}-media/video.mp4 \
+            --build-arg NEXT_PUBLIC_APP_URL=${{ steps.frontend-url.outputs.url }} \
+            --build-arg BETTER_AUTH_URL=${{ steps.frontend-url.outputs.url }} \
             -f frontend/Dockerfile \
             -t $IMAGE:${{ github.sha }} \
             -t $IMAGE:latest \
@@ -168,6 +181,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -175,15 +194,79 @@ jobs:
           workload_identity_provider: projects/${{ vars.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/github-actions
           service_account: github-actions@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
 
-      - name: Run migrations via Cloud Run job
-        run: |
-          gcloud run jobs execute holmes-migrate --region=${{ env.REGION }} --wait
-        continue-on-error: true # First deploy won't have job yet
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
 
-  # Job 5: Verify deployment
-  verify:
+      - name: Install Cloud SQL Proxy
+        run: |
+          curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.0/cloud-sql-proxy.linux.amd64
+          chmod +x cloud-sql-proxy
+
+      - name: Get database connection info
+        id: db-info
+        run: |
+          INSTANCE=$(gcloud sql instances list --format='value(connectionName)' --filter='name:holmes*' | head -1)
+          echo "instance=$INSTANCE" >> $GITHUB_OUTPUT
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://holmes:${{ secrets.DB_PASSWORD }}@localhost:5432/holmes
+        run: |
+          # Start Cloud SQL Proxy in background
+          ./cloud-sql-proxy --port 5432 ${{ steps.db-info.outputs.instance }} &
+          sleep 5
+
+          # Run migrations
+          cd backend
+          uv sync
+          uv run alembic upgrade head
+
+          # Stop proxy
+          pkill -f cloud-sql-proxy || true
+
+  # Job 5: Update service env vars
+  update-env:
     runs-on: ubuntu-latest
     needs: [backend, frontend]
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: projects/${{ vars.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/github-actions
+          service_account: github-actions@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get service URLs
+        id: urls
+        run: |
+          BACKEND_URL=$(gcloud run services describe holmes-backend --region=${{ env.REGION }} --format='value(status.url)')
+          FRONTEND_URL=$(gcloud run services describe holmes-frontend --region=${{ env.REGION }} --format='value(status.url)')
+          echo "backend=$BACKEND_URL" >> $GITHUB_OUTPUT
+          echo "frontend=$FRONTEND_URL" >> $GITHUB_OUTPUT
+
+      - name: Update backend FRONTEND_URL
+        run: |
+          gcloud run services update holmes-backend \
+            --region=${{ env.REGION }} \
+            --update-env-vars="FRONTEND_URL=${{ steps.urls.outputs.frontend }}"
+
+      - name: Update frontend env vars
+        run: |
+          gcloud run services update holmes-frontend \
+            --region=${{ env.REGION }} \
+            --update-env-vars="NEXT_PUBLIC_API_URL=${{ steps.urls.outputs.backend }},BETTER_AUTH_URL=${{ steps.urls.outputs.frontend }}"
+
+  # Job 6: Verify deployment
+  verify:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, update-env]
     permissions:
       contents: read
       id-token: write

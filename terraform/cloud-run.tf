@@ -41,6 +41,12 @@ resource "google_cloud_run_v2_service" "backend" {
         value = "postgresql+asyncpg://${google_sql_user.backend.name}:${random_password.db_password.result}@/${google_sql_database.holmes.name}?host=/cloudsql/${google_sql_database_instance.main.connection_name}"
       }
 
+      # Frontend URL for JWKS endpoint - updated by CI/CD after frontend deploys
+      env {
+        name  = "FRONTEND_URL"
+        value = ""
+      }
+
       volume_mounts {
         name       = "cloudsql"
         mount_path = "/cloudsql"
@@ -112,11 +118,69 @@ resource "google_cloud_run_v2_service" "frontend" {
         value = "https://storage.googleapis.com/${google_storage_bucket.media.name}/video.mp4"
       }
 
+      # Database URL for Better Auth (socket-based for Cloud Run)
+      env {
+        name  = "DATABASE_URL"
+        value = "postgresql://${google_sql_user.backend.name}:${random_password.db_password.result}@/${google_sql_database.holmes.name}?host=/cloudsql/${google_sql_database_instance.main.connection_name}"
+      }
+
+      # Better Auth URL (set via CI/CD after frontend URL known)
+      env {
+        name  = "BETTER_AUTH_URL"
+        value = "" # Updated by CI/CD
+      }
+
+      # Better Auth Secret from Secret Manager
+      env {
+        name = "BETTER_AUTH_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.better_auth_secret.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      # Google OAuth from Secret Manager
+      env {
+        name = "GOOGLE_CLIENT_ID"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.google_client_id.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "GOOGLE_CLIENT_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.google_client_secret.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      # Cloud SQL volume mount
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
+
       resources {
         limits = {
           cpu    = "1"
           memory = "512Mi"
         }
+      }
+    }
+
+    # Cloud SQL volume
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = [google_sql_database_instance.main.connection_name]
       }
     }
 
@@ -131,6 +195,9 @@ resource "google_cloud_run_v2_service" "frontend" {
   depends_on = [
     google_project_service.run,
     google_artifact_registry_repository.holmes,
+    google_secret_manager_secret.better_auth_secret,
+    google_secret_manager_secret.google_client_id,
+    google_secret_manager_secret.google_client_secret,
   ]
 }
 

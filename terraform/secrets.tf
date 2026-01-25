@@ -45,6 +45,23 @@ resource "google_secret_manager_secret" "google_client_secret" {
   depends_on = [google_project_service.secretmanager]
 }
 
+# Database password for the Cloud SQL "backend" user (used by CI migrations and Cloud Run)
+resource "google_secret_manager_secret" "db_password" {
+  project   = var.project_id
+  secret_id = "db-password"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.secretmanager]
+}
+
+resource "google_secret_manager_secret_version" "db_password" {
+  secret      = google_secret_manager_secret.db_password.id
+  secret_data = random_password.db_password.result
+}
+
 # -----------------------------------------------------------------------------
 # IAM: Allow frontend service account to access secrets
 # -----------------------------------------------------------------------------
@@ -68,4 +85,12 @@ resource "google_secret_manager_secret_iam_member" "frontend_google_client_secre
   secret_id = google_secret_manager_secret.google_client_secret.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.frontend.email}"
+}
+
+# IAM: Allow GitHub Actions service account to access DB password for migrations
+resource "google_secret_manager_secret_iam_member" "github_actions_db_password" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.db_password.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.github_actions.email}"
 }

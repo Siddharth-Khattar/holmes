@@ -237,18 +237,41 @@ jobs:
           echo "instance=$CONNECTION_NAME" >> $GITHUB_OUTPUT
 
       - name: Run migrations
-        env:
-          # Connect via Cloud SQL Proxy on localhost. Use 127.0.0.1 to avoid IPv6 ::1 resolution issues.
-          # NOTE: Terraform creates the DB user as "backend".
-          DATABASE_URL: postgresql+asyncpg://backend:${{ secrets.DB_PASSWORD }}@127.0.0.1:5432/holmes
         run: |
           set -euo pipefail
 
-          if [ -z "${{ secrets.DB_PASSWORD }}" ]; then
-            echo "Missing required secret: DB_PASSWORD"
-            echo "Set DB_PASSWORD to the Cloud SQL 'backend' user's password (Terraform random_password.db_password)."
+          # Prefer GitHub secret override, otherwise fetch from GCP Secret Manager.
+          DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+          if [ -z "$DB_PASSWORD" ]; then
+            SECRET_NAME="${{ vars.DB_PASSWORD_SECRET_NAME }}"
+            if [ -z "$SECRET_NAME" ]; then
+              SECRET_NAME="db-password"
+            fi
+
+            echo "DB_PASSWORD not set in GitHub secrets; fetching from Secret Manager ($SECRET_NAME)."
+            set +e
+            DB_PASSWORD="$(gcloud secrets versions access latest --secret="$SECRET_NAME" 2>/tmp/secret_err)"
+            status=$?
+            set -e
+            if [ $status -ne 0 ]; then
+              echo "Failed to read Secret Manager secret '$SECRET_NAME'."
+              echo "--- gcloud error ---"
+              cat /tmp/secret_err || true
+              echo "--------------------"
+              echo "Fix: apply Terraform so the secret exists, and ensure the GitHub Actions service account has roles/secretmanager.secretAccessor on it."
+              echo "Terraform creates it in terraform/secrets.tf as secret_id='$SECRET_NAME'."
+              exit 1
+            fi
+          fi
+
+          if [ -z "$DB_PASSWORD" ]; then
+            echo "DB password is empty. Ensure either GitHub secret DB_PASSWORD is set (optional override), or Secret Manager secret '$SECRET_NAME' exists and has a latest version."
             exit 1
           fi
+
+          # Connect via Cloud SQL Proxy on localhost. Use 127.0.0.1 to avoid IPv6 ::1 resolution issues.
+          # NOTE: Terraform creates the DB user as "backend".
+          export DATABASE_URL="postgresql+asyncpg://backend:$DB_PASSWORD@127.0.0.1:5432/holmes"
 
           # Start Cloud SQL Proxy in background
           ./cloud-sql-proxy --address 127.0.0.1 --port 5432 "${{ steps.db-info.outputs.instance }}" &

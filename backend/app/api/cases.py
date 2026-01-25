@@ -68,9 +68,7 @@ async def list_cases(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
     page: Annotated[int, Query(ge=1, description="Page number")] = 1,
-    per_page: Annotated[
-        int, Query(ge=1, le=100, description="Cases per page")
-    ] = 20,
+    per_page: Annotated[int, Query(ge=1, le=100, description="Cases per page")] = 20,
     sort_by: Annotated[str, Query(description="Sort field")] = "updated_at",
     sort_order: Annotated[str, Query(description="Sort direction")] = "desc",
 ) -> CaseListResponse:

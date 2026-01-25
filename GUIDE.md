@@ -29,6 +29,11 @@
    make install
    ```
 
+   Install git hooks (recommended)
+   ```bash
+   make hooks
+   ```
+
 4. Start database and run migrations
    ```bash
    make dev-db
@@ -46,6 +51,7 @@
 | Command | Description |
 |---------|-------------|
 | `make install` | Install all dependencies (bun + uv) |
+| `make hooks` | Install git hooks (Lefthook) |
 | `make dev-db` | Start local PostgreSQL via Docker |
 | `make stop-db` | Stop local PostgreSQL |
 | `make adminer` | Start Adminer database UI (port 8081) |

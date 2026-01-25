@@ -1,12 +1,25 @@
 # Holmes Development Makefile
 # Cross-language orchestration for the monorepo
 
-.PHONY: install dev-db stop-db adminer generate-types lint format migrate migrate-auth dev-backend dev-frontend
+.PHONY: install hooks dev-db stop-db adminer generate-types lint format migrate migrate-auth dev-backend dev-frontend
 
 # Install all dependencies
 install:
 	bun install
 	cd backend && uv sync --dev
+
+# Install git hooks (requires lefthook)
+hooks:
+	@if command -v lefthook >/dev/null 2>&1; then \
+		lefthook install; \
+		echo "Lefthook hooks installed."; \
+	else \
+		echo "lefthook is not installed."; \
+		echo "Install it, then rerun: make hooks"; \
+		echo "macOS (Homebrew): brew install lefthook"; \
+		echo "Linux: see https://github.com/evilmartians/lefthook#installation"; \
+		exit 1; \
+	fi
 
 # Start local PostgreSQL database
 dev-db:
@@ -20,7 +33,7 @@ stop-db:
 adminer:
 	docker compose up -d adminer
 
-# Generate TypeScript types from Pydantic models
+# Generate TypeScript types from FastAPI OpenAPI (via openapi-typescript)
 generate-types:
 	@tmp=$$(mktemp -t holmes-openapi.XXXXXX.json) ; \
 	cd backend && uv run python -c 'import json; from app.main import app; print(json.dumps(app.openapi()))' > "$$tmp" ; \

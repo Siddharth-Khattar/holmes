@@ -22,7 +22,6 @@ dependencies = [
 dev = [
     "ruff>=0.14.13",
     "mypy>=1.19.0",
-    "pydantic-to-typescript2>=1.0.6",
 ]
 
 [build-system]

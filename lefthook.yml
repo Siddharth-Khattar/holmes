@@ -2,16 +2,17 @@
 # Source: https://github.com/evilmartians/lefthook
 
 pre-commit:
-  parallel: true
+  parallel: false
   commands:
+    ruff-format:
+      glob: "backend/**/*.py"
+      root: "backend/"
+      run: uv run ruff format {staged_files}
+      stage_fixed: true
     ruff-check:
       glob: "backend/**/*.py"
       root: "backend/"
       run: uv run ruff check {staged_files}
-    ruff-format:
-      glob: "backend/**/*.py"
-      root: "backend/"
-      run: uv run ruff format --check {staged_files}
     eslint:
       glob: "frontend/**/*.{js,ts,tsx}"
       root: "frontend/"
@@ -23,6 +24,8 @@ pre-commit:
 
 pre-push:
   commands:
+    backend-format-check:
+      run: cd backend && uv run ruff format --check .
     generate-types:
       run: |
         make generate-types

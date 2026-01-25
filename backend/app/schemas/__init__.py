@@ -6,6 +6,7 @@ from app.schemas.case import (
     CaseListQuery,
     CaseListResponse,
     CaseResponse,
+    CaseUpdate,
 )
 from app.schemas.common import ErrorResponse, TimestampMixin
 from app.schemas.health import HealthResponse
@@ -15,6 +16,7 @@ __all__ = [
     "CaseListQuery",
     "CaseListResponse",
     "CaseResponse",
+    "CaseUpdate",
     "ErrorResponse",
     "HealthResponse",
     "TimestampMixin",

@@ -18,6 +18,7 @@ from app.schemas.case import (
     CaseResponse,
     CaseUpdate,
 )
+from app.schemas.common import ErrorResponse
 
 router = APIRouter(prefix="/api/cases", tags=["cases"])
 
@@ -27,6 +28,11 @@ router = APIRouter(prefix="/api/cases", tags=["cases"])
     response_model=CaseResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new case",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
 )
 async def create_case(
     case_data: CaseCreate,
@@ -52,12 +58,19 @@ async def create_case(
     "",
     response_model=CaseListResponse,
     summary="List user's cases",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
 )
 async def list_cases(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
     page: Annotated[int, Query(ge=1, description="Page number")] = 1,
-    per_page: Annotated[int, Query(ge=1, le=100, description="Cases per page")] = 20,
+    per_page: Annotated[
+        int, Query(ge=1, le=100, description="Cases per page")
+    ] = 20,
     sort_by: Annotated[str, Query(description="Sort field")] = "updated_at",
     sort_order: Annotated[str, Query(description="Sort direction")] = "desc",
 ) -> CaseListResponse:
@@ -100,6 +113,12 @@ async def list_cases(
     "/{case_id}",
     response_model=CaseResponse,
     summary="Get a single case",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        404: {"model": ErrorResponse, "description": "Not found"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
 )
 async def get_case(
     case_id: UUID,
@@ -129,6 +148,12 @@ async def get_case(
     "/{case_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete a case",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        404: {"model": ErrorResponse, "description": "Not found"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
 )
 async def delete_case(
     case_id: UUID,
@@ -159,6 +184,13 @@ async def delete_case(
     "/{case_id}",
     response_model=CaseResponse,
     summary="Update a case",
+    responses={
+        400: {"model": ErrorResponse, "description": "Bad request"},
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        404: {"model": ErrorResponse, "description": "Not found"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
 )
 async def update_case(
     case_id: UUID,

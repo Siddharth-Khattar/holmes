@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 import { signIn } from "@/lib/auth-client";
@@ -15,6 +15,7 @@ import { signIn } from "@/lib/auth-client";
 export function LoginForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -37,7 +38,18 @@ export function LoginForm() {
     });
 
     if (result.error) {
-      setError(result.error.message || "Failed to sign in. Please try again.");
+      const errorCode = result.error.code;
+      const errorStatus = result.error.status;
+
+      if (errorStatus === 401 || errorCode === "INVALID_EMAIL_OR_PASSWORD") {
+        setError("Invalid email or password. Please check your credentials.");
+      } else if (errorCode === "USER_NOT_FOUND") {
+        setError("No account found with this email. Please sign up first.");
+      } else {
+        setError(
+          result.error.message || "Failed to sign in. Please try again.",
+        );
+      }
     } else {
       toast.success("Welcome back!");
       router.push("/cases");
@@ -78,14 +90,28 @@ export function LoginForm() {
         >
           Password
         </label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          {...register("password")}
-          className="w-full rounded-lg border border-smoke/10 bg-jet/50 px-4 py-3 text-smoke placeholder-stone outline-none transition-colors focus:border-accent/30 focus:ring-1 focus:ring-accent/30"
-          placeholder="Enter your password"
-        />
+        <div className="relative">
+          <input
+            id="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            {...register("password")}
+            className="w-full rounded-lg border border-smoke/10 bg-jet/50 px-4 py-3 pr-12 text-smoke placeholder-stone outline-none transition-colors focus:border-accent/30 focus:ring-1 focus:ring-accent/30"
+            placeholder="Enter your password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-stone transition-colors hover:text-smoke"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            {showPassword ? (
+              <EyeOff className="h-5 w-5" />
+            ) : (
+              <Eye className="h-5 w-5" />
+            )}
+          </button>
+        </div>
         {errors.password && (
           <p className="mt-1 text-sm text-destructive">
             {errors.password.message}

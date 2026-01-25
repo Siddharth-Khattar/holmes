@@ -5,8 +5,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Briefcase, Search } from "lucide-react";
+import { Briefcase } from "lucide-react";
 import { clsx } from "clsx";
 import { UserMenu } from "./user-menu";
 
@@ -48,11 +49,17 @@ export function Sidebar({ user }: SidebarProps) {
             "text-smoke hover:text-accent transition-colors",
           )}
         >
-          <div className="w-8 h-8 rounded-lg bg-smoke/10 flex items-center justify-center flex-shrink-0">
-            <Search className="w-4 h-4" />
-          </div>
+          <Image
+            src="/logo.svg"
+            alt="Holmes"
+            width={32}
+            height={32}
+            className="w-8 h-8 shrink-0"
+          />
           {isExpanded && (
-            <span className="text-lg font-semibold tracking-tight">Holmes</span>
+            <span className="font-serif text-lg font-medium tracking-tight">
+              Holmes
+            </span>
           )}
         </Link>
       </div>
@@ -78,7 +85,7 @@ export function Sidebar({ user }: SidebarProps) {
                   )}
                   title={!isExpanded ? item.label : undefined}
                 >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <Icon className="w-5 h-5 shrink-0" />
                   {isExpanded && <span className="text-sm">{item.label}</span>}
                 </Link>
               </li>

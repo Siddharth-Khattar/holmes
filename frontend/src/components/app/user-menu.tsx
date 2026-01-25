@@ -4,6 +4,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 import { LogOut } from "lucide-react";
 import { clsx } from "clsx";
 import { useLogout } from "@/hooks/use-logout";
@@ -74,15 +75,17 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
       >
         {/* Avatar */}
         {user.image ? (
-          <img
+          <Image
             src={user.image}
             alt={displayName}
+            width={32}
+            height={32}
             className="w-8 h-8 rounded-full object-cover shrink-0"
           />
         ) : (
           <div
             className={clsx(
-              "w-8 h-8 rounded-full flex-shrink-0",
+              "w-8 h-8 rounded-full shrink-0",
               "bg-smoke/10 flex items-center justify-center",
               "text-smoke text-xs font-medium",
             )}

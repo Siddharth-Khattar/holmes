@@ -273,10 +273,6 @@ jobs:
             exit 1
           fi
 
-          # Connect via Cloud SQL Proxy on localhost. Use 127.0.0.1 to avoid IPv6 ::1 resolution issues.
-          # NOTE: Terraform creates the DB user as "backend".
-          export DATABASE_URL="postgresql+asyncpg://backend:$DB_PASSWORD@127.0.0.1:5432/holmes"
-
           # Better Auth migrations need their server config env vars present.
           echo "Fetching Better Auth and OAuth secrets from Secret Manager."
           export BETTER_AUTH_SECRET="$(gcloud secrets versions access latest --secret=better-auth-secret)"
@@ -287,6 +283,12 @@ jobs:
             echo "BETTER_AUTH_SECRET is empty after fetch; ensure secret 'better-auth-secret' exists with a latest version."
             exit 1
           fi
+
+          # Build DB URLs for different runtimes:
+          # - Better Auth uses node-postgres (expects postgresql://)
+          # - Alembic uses SQLAlchemy + asyncpg (postgresql+asyncpg://)
+          DATABASE_URL_PG="postgresql://backend:$DB_PASSWORD@127.0.0.1:5432/holmes"
+          DATABASE_URL_ASYNCPG="postgresql+asyncpg://backend:$DB_PASSWORD@127.0.0.1:5432/holmes"
 
           # Start Cloud SQL Proxy in background
           ./cloud-sql-proxy --address 127.0.0.1 --port 5432 "${{ steps.db-info.outputs.instance }}" &
@@ -308,13 +310,15 @@ jobs:
           done
 
           # Run Better Auth migrations first (creates auth tables like \"user\")
-          bun install
+          bun install --frozen-lockfile
           cd frontend
-          bunx @better-auth/cli migrate
+          export DATABASE_URL="$DATABASE_URL_PG"
+          bunx @better-auth/cli migrate --yes --config ./src/lib/auth.ts
           cd ..
 
           # Run migrations
           cd backend
+          export DATABASE_URL="$DATABASE_URL_ASYNCPG"
           uv sync --frozen
           uv run alembic upgrade head
 

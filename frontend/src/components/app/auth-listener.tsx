@@ -4,25 +4,28 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { getOrCreateTabId } from "@/lib/tab-id";
 
 export function AuthListener() {
-  const router = useRouter();
-
   useEffect(() => {
     if (typeof window === "undefined" || !("BroadcastChannel" in window))
       return;
 
+    const tabId = getOrCreateTabId();
+
     const bc = new BroadcastChannel("auth");
     bc.onmessage = (event) => {
       if (event.data?.type === "logout") {
-        router.push("/");
-        router.refresh();
+        // Ignore messages from the same tab; local logout owns navigation.
+        if (tabId && event.data?.senderTabId === tabId) return;
+
+        // Cross-tab logout should be a hard navigation to avoid app-router pending states.
+        window.location.assign("/");
       }
     };
 
     return () => bc.close();
-  }, [router]);
+  }, []);
 
   return null;
 }

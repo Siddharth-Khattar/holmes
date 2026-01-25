@@ -1,7 +1,10 @@
 // ABOUTME: App layout for authenticated users
 // ABOUTME: Validates session server-side and renders sidebar shell
 
+export const dynamic = "force-dynamic";
+
 import { headers } from "next/headers";
+import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 import { Toaster } from "sonner";
 
@@ -14,6 +17,10 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Authenticated routes must never be statically rendered or cached.
+  // This prevents stale auth state (e.g. after logout) from leaving the UI stuck.
+  noStore();
+
   const session = await auth.api.getSession({
     headers: await headers(),
   });

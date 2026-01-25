@@ -50,10 +50,12 @@ export function Sidebar({ user }: SidebarProps) {
           )}
         >
           <Image
-            src="/logo.svg"
+            src="/logo-2x.png"
             alt="Holmes"
             width={32}
             height={32}
+            loading="eager"
+            priority
             className="w-8 h-8 shrink-0"
           />
           {isExpanded && (

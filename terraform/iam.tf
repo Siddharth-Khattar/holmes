@@ -114,6 +114,13 @@ resource "google_project_iam_member" "github_actions_service_account_user" {
   member  = "serviceAccount:${google_service_account.github_actions.email}"
 }
 
+# Allow GitHub Actions to connect to Cloud SQL via Cloud SQL Proxy (migrate job)
+resource "google_project_iam_member" "github_actions_cloudsql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.github_actions.email}"
+}
+
 # -----------------------------------------------------------------------------
 # Backend Service Account IAM Bindings
 # -----------------------------------------------------------------------------

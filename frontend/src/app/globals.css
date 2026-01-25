@@ -147,6 +147,16 @@
   .tracking-wide {
     letter-spacing: var(--tracking-wide);
   }
+
+  /* Dotted canvas background pattern */
+  .bg-canvas {
+    background-image: radial-gradient(
+      circle,
+      rgba(138, 138, 130, 0.15) 1px,
+      transparent 1px
+    );
+    background-size: 26px 26px;
+  }
 }
 
 /* ============================================================

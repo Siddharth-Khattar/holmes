@@ -41,7 +41,7 @@ export default async function AppLayout({
   return (
     <div className="flex min-h-screen bg-charcoal">
       <Sidebar user={user} />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto bg-charcoal bg-canvas">
         <Toaster
           position="top-right"
           toastOptions={{

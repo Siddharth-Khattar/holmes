@@ -1,7 +1,7 @@
 # Holmes Development Makefile
 # Cross-language orchestration for the monorepo
 
-.PHONY: install dev-db stop-db generate-types lint format migrate migrate-auth dev-backend dev-frontend
+.PHONY: install dev-db stop-db adminer generate-types lint format migrate migrate-auth dev-backend dev-frontend
 
 # Install all dependencies
 install:
@@ -15,6 +15,10 @@ dev-db:
 # Stop local PostgreSQL database
 stop-db:
 	docker compose down
+
+# Start Adminer database UI (http://localhost:8081)
+adminer:
+	docker compose up -d adminer
 
 # Generate TypeScript types from Pydantic models
 generate-types:

@@ -48,6 +48,7 @@
 | `make install` | Install all dependencies (bun + uv) |
 | `make dev-db` | Start local PostgreSQL via Docker |
 | `make stop-db` | Stop local PostgreSQL |
+| `make adminer` | Start Adminer database UI (port 8081) |
 | `make migrate` | Run all database migrations (auth + app) |
 | `make migrate-auth` | Run Better Auth migrations only |
 | `make dev-backend` | Start FastAPI dev server (port 8080) |
@@ -67,7 +68,7 @@ holmes/
 │   └── src/           # Application code
 ├── packages/types/    # Shared TypeScript types (auto-generated)
 ├── terraform/         # GCP infrastructure (Cloud Run, Cloud SQL)
-├── docker-compose.yml # Local PostgreSQL
+├── docker-compose.yml # Local PostgreSQL + Adminer
 └── Makefile           # Development commands
 ```
 
@@ -150,6 +151,42 @@ cd backend && uv run alembic upgrade head  # Then Alembic
 ```bash
 cd frontend && bunx @better-auth/cli migrate
 ```
+
+### Database UI (Adminer)
+
+Adminer provides a web UI for browsing and managing the PostgreSQL database.
+
+```bash
+# Start database + Adminer
+make dev-db && make adminer
+
+# Or start everything at once
+docker compose up -d
+```
+
+Open **http://localhost:8081** and login:
+
+| Field | Value |
+|-------|-------|
+| System | PostgreSQL |
+| Server | postgres |
+| Username | postgres |
+| Password | postgres |
+| Database | holmes |
+
+### Better Auth Tables
+
+Better Auth stores authentication data in PostgreSQL. These tables are managed by Better Auth (not Alembic):
+
+| Table | Contents |
+|-------|----------|
+| `user` | User accounts (id, name, email, emailVerified, image) |
+| `session` | Active sessions (token, userId, expiresAt, ipAddress, userAgent) |
+| `account` | Auth providers & credentials (OAuth tokens, hashed passwords) |
+| `verification` | Email verification tokens |
+| `jwks` | JWT signing keys |
+
+**Note:** The SQLAlchemy models in `backend/app/models/auth.py` use snake_case attribute names but map to Better Auth's camelCase column names (e.g., `email_verified` maps to `emailVerified`).
 
 ### Build for production
 ```bash

@@ -2,21 +2,21 @@
 phase: 01-foundation-infrastructure
 plan: 03
 subsystem: types
-tags: [pydantic, typescript, codegen, pydantic2ts]
+tags: [pydantic, openapi, typescript, codegen]
 
 requires:
   - phase: 01-01
     provides: monorepo structure with packages/types workspace
 
 provides:
-  - Pydantic schemas as source of truth for API types
-  - TypeScript type generation via pydantic2ts
+  - FastAPI OpenAPI contract as source of truth for API types
+  - TypeScript type generation via openapi-typescript
   - @holmes/types package for frontend type imports
 
 affects: [02-auth, 03-ingestion, 04-agents, frontend]
 
 tech-stack:
-  added: [pydantic2ts, json-schema-to-typescript]
+  added: [openapi-typescript]
   patterns: [python-first-types, generated-typescript]
 
 key-files:
@@ -32,8 +32,8 @@ key-files:
     - package.json
 
 key-decisions:
-  - "Python Pydantic schemas are source of truth for all API types"
-  - "TypeScript generated via pydantic2ts, committed to repo (not gitignored)"
+  - "FastAPI OpenAPI contract (derived from Pydantic schemas + route annotations) is the source of truth for generated types"
+  - "TypeScript generated from FastAPI OpenAPI via openapi-typescript, committed to repo (not gitignored)"
   - "Types exported via @holmes/types workspace package"
 
 patterns-established:
@@ -47,7 +47,7 @@ completed: 2026-01-21
 
 # Plan 01-03: Type Generation Pipeline Summary
 
-**Pydantic-to-TypeScript pipeline with HealthResponse, ErrorResponse, and TimestampMixin types**
+**OpenAPI-to-TypeScript pipeline with HealthResponse, ErrorResponse, and TimestampMixin types**
 
 ## Performance
 
@@ -59,8 +59,8 @@ completed: 2026-01-21
 
 ## Accomplishments
 
-- Pydantic schemas created as single source of truth for API types
-- pydantic2ts pipeline working with `make generate-types`
+- Pydantic schemas created and included in the OpenAPI contract used for type generation
+- OpenAPI → TypeScript pipeline working with `make generate-types`
 - @holmes/types package properly configured with exports
 - Frontend can import types with full type safety
 
@@ -77,12 +77,12 @@ completed: 2026-01-21
 - `packages/types/src/generated/api.ts` - Generated TypeScript interfaces
 - `packages/types/src/index.ts` - Re-exports generated types
 - `packages/types/package.json` - Proper ESM/CJS exports configuration
-- `Makefile` - Fixed pydantic2ts command with json2ts path
-- `package.json` - Added json-schema-to-typescript dependency
+- `Makefile` - Generates types from FastAPI OpenAPI via openapi-typescript
+- `package.json` - Adds `openapi-typescript` and wires `generate-types` to Makefile
 
 ## Decisions Made
 
-- Used pydantic2ts for type generation (requires json-schema-to-typescript)
+- Used openapi-typescript for type generation (OpenAPI → TypeScript)
 - Generated types committed to repo for better DX (no build step needed)
 - Types re-exported through index.ts for cleaner imports
 
@@ -92,7 +92,7 @@ None - plan executed as specified.
 
 ## Issues Encountered
 
-- pydantic2ts needed explicit `--json2ts-cmd` path to find json2ts binary in monorepo
+- None specific to the OpenAPI-based pipeline; type generation is driven by the backend OpenAPI schema.
 
 ## User Setup Required
 

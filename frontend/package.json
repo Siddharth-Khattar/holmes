@@ -7,20 +7,29 @@
     "build": "prettier --write src && next build",
     "start": "next start",
     "lint": "eslint",
-    "format": "prettier --write src"
+    "format": "prettier --write src",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@holmes/types": "workspace:*",
+    "@hookform/resolvers": "^5.2.2",
+    "better-auth": "^1.4.17",
     "clsx": "^2.1.1",
+    "lucide-react": "^0.563.0",
     "motion": "^12.29.0",
     "next": "16.1.4",
+    "pg": "^8.17.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "tailwind-merge": "^3.4.0"
+    "react-hook-form": "^7.71.1",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

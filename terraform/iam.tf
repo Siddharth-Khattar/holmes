@@ -114,6 +114,13 @@ resource "google_project_iam_member" "github_actions_service_account_user" {
   member  = "serviceAccount:${google_service_account.github_actions.email}"
 }
 
+# Allow GitHub Actions to connect to Cloud SQL via Cloud SQL Proxy (migrate job)
+resource "google_project_iam_member" "github_actions_cloudsql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.github_actions.email}"
+}
+
 # -----------------------------------------------------------------------------
 # Backend Service Account IAM Bindings
 # -----------------------------------------------------------------------------
@@ -128,4 +135,14 @@ resource "google_storage_bucket_iam_member" "backend_storage_access" {
   bucket = google_storage_bucket.evidence.name
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.backend.email}"
+}
+
+# -----------------------------------------------------------------------------
+# Frontend Service Account IAM Bindings
+# -----------------------------------------------------------------------------
+
+resource "google_project_iam_member" "frontend_cloudsql_client" {
+  project = var.project_id
+  role    = "roles/cloudsql.client"
+  member  = "serviceAccount:${google_service_account.frontend.email}"
 }

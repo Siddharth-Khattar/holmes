@@ -9,10 +9,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    database_url: str
+    # NOTE: Kept optional so tooling (like OpenAPI/type generation) can import
+    # the app without requiring runtime secrets. Runtime validation happens
+    # during application startup.
+    database_url: str | None = None
     cors_origins_raw: str = ""
     debug: bool = False
     gcs_bucket: str | None = None
+    frontend_url: str = "http://localhost:3000"  # For JWKS endpoint
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -25,7 +29,6 @@ class Settings(BaseSettings):
     @classmethod
     def model_customise_sources(
         cls,
-        settings_cls,
         init_settings,
         env_settings,
         dotenv_settings,
@@ -41,23 +44,50 @@ class Settings(BaseSettings):
 
     @cached_property
     def cors_origins(self) -> list[str]:
-        """Parse CORS origins from comma-separated or JSON string."""
+        """Parse CORS origins from comma-separated or JSON string.
+
+        Automatically includes frontend_url if set and not the localhost default.
+        """
         value = self.cors_origins_raw.strip()
-        if not value:
-            return []
-        # Try JSON array first
-        if value.startswith("["):
-            try:
-                import json
+        origins: list[str] = []
 
-                parsed = json.loads(value)
-                if isinstance(parsed, list):
-                    return [str(o).strip() for o in parsed if str(o).strip()]
-            except Exception:
-                pass
-        # Fall back to comma-separated
-        return [o.strip() for o in value.split(",") if o.strip()]
+        if value:
+            # Try JSON array first
+            if value.startswith("["):
+                try:
+                    import json
+
+                    parsed = json.loads(value)
+                    if isinstance(parsed, list):
+                        origins = [str(o).strip() for o in parsed if str(o).strip()]
+                except Exception:
+                    pass
+            # Fall back to comma-separated
+            if not origins:
+                origins = [o.strip() for o in value.split(",") if o.strip()]
+
+        # Auto-include frontend_url for production CORS
+        if self.frontend_url and self.frontend_url not in origins:
+            origins.append(self.frontend_url)
+
+        return origins
 
 
-# Required fields are loaded from environment variables at runtime
-settings = Settings()  # type: ignore[call-arg]
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    """Get cached settings instance.
+
+    This keeps module imports side-effect free (important for tooling, tests,
+    and OpenAPI generation) while still using environment-driven configuration.
+    """
+
+    global _settings
+    if _settings is None:
+        _settings = Settings()  # type: ignore[call-arg]
+    return _settings
+
+
+# Backwards-compatible import style.
+settings = get_settings()

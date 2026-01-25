@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-01-24
-**Current Phase:** 2 of 12 (Authentication & Case Shell)
-**Current Plan:** Ready to start Phase 2
+**Last Updated:** 2026-01-25
+**Current Phase:** 3 of 12 (File Ingestion)
+**Current Plan:** Ready to start Phase 3
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -11,7 +11,7 @@
 |-------|------|--------|---------|-----------|
 | 1 | Foundation Infrastructure | COMPLETE | 2026-01-21 | 2026-01-22 |
 | 1.1 | Frontend Design Foundation (INSERTED) | COMPLETE | 2026-01-23 | 2026-01-24 |
-| 2 | Authentication & Case Shell | NOT_STARTED | - | - |
+| 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 |
 | 3 | File Ingestion | NOT_STARTED | - | - |
 | 4 | Core Agent System | NOT_STARTED | - | - |
 | 5 | Agent Flow | NOT_STARTED | - | - |
@@ -26,13 +26,15 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 1.1: Frontend Design Foundation** (2026-01-23 → 2026-01-24)
-  - All 5 plans complete: Design tokens, UI primitives, Above-the-fold, Core content, Final assembly
-  - Complete landing page with 13 components, Liquid Glass design system, video player, ethereal background
-  - Hero video hosted on GCS bucket for production
+- **Phase 2: Authentication & Case Shell** (2026-01-24 → 2026-01-25)
+  - 7 plans across 5 waves completed
+  - Backend: Auth models, JWT validation via JWKS, Case CRUD with ownership
+  - Frontend: Better Auth with JWT plugin, login/signup UI, app shell with sidebar
+  - Infrastructure: Secret Manager, Cloud SQL for frontend, CI/CD with migrations
+  - All 7 requirements satisfied (REQ-AUTH-001-004, REQ-CASE-001-003)
 
 **What's next:**
-- Phase 2: Authentication & Case Shell
+- Phase 3: File Ingestion
 
 ## Roadmap Evolution
 
@@ -71,6 +73,9 @@
 | Design tokens approach | CSS variables vs Tailwind @theme | Tailwind v4 @theme | Native utility generation, cleaner integration |
 | Animation library | framer-motion vs motion | motion@12 | Canonical package name for v12+, React 19 compatible |
 | Variable font control | Preset weights vs Axis utilities | Axis utilities | Fine-grained WONK/SOFT control for Fraunces |
+| CI/CD migrations | Cloud Run job vs Cloud SQL Proxy | Cloud SQL Proxy | More reliable, no separate job infrastructure needed |
+| Secret management | Values in terraform vs References only | References only | Security best practice; values added manually via GCP Console |
+| Cross-service URLs | Build-time vs Post-deploy update | Post-deploy update | Solves chicken-and-egg URL problem with update-env job |
 
 ## Blockers
 

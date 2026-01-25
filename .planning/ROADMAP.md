@@ -40,6 +40,8 @@
 |-------|------|-------|--------------|
 | 13 | Memory Service | Cross-case learning, pattern recognition | REQ-MEM-001 |
 
+
+> NOTE: Use the design guide in DOCS/UI/DESIGN-SYSTEM.md to align yourself for the UI.
 ---
 
 ## Phase 1: Foundation Infrastructure
@@ -131,7 +133,18 @@ Plans:
 
 **Requirements:** REQ-AUTH-001, REQ-AUTH-002, REQ-AUTH-003, REQ-AUTH-004, REQ-CASE-001, REQ-CASE-002, REQ-CASE-003
 
-**Deliverables:**
+**Plans:** 7 plans in 5 waves
+
+Plans:
+- [x] 02-01-PLAN.md — Backend auth infrastructure (models, session validation, migration)
+- [x] 02-02-PLAN.md — Backend case CRUD endpoints
+- [x] 02-03-PLAN.md — Frontend Better Auth setup (config, middleware, client)
+- [x] 02-04-PLAN.md — Auth UI (login/signup page with forms)
+- [x] 02-05-PLAN.md — App shell (sidebar, layout, user menu)
+- [x] 02-06-PLAN.md — Case list and creation UI
+- [x] 02-07-PLAN.md — Infrastructure deployment updates (secrets, Cloud SQL, CI/CD)
+
+**Deliverables:** ✓ COMPLETE
 - Better Auth integration in Next.js
 - Email/password signup and login
 - Google OAuth login
@@ -148,7 +161,7 @@ Plans:
 - User ID from session used for all case queries
 - Database schema: users, sessions, accounts, cases tables
 
-**Exit Criteria:**
+**Exit Criteria:** ✓ ALL MET
 - User can register, login, logout
 - Google OAuth works
 - Session persists across refresh
@@ -729,8 +742,9 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 1.3*
-*Updated: 2026-01-24 (Phase 1.1 complete)*
+*Roadmap Version: 1.4*
+*Updated: 2026-01-24 (Phase 2 planned)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
+*Phase 2 planned: 2026-01-24*

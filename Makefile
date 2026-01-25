@@ -1,12 +1,25 @@
 # Holmes Development Makefile
 # Cross-language orchestration for the monorepo
 
-.PHONY: install dev-db stop-db generate-types lint format migrate dev-backend dev-frontend
+.PHONY: install hooks dev-db stop-db adminer generate-types lint format migrate migrate-auth dev-backend dev-frontend
 
 # Install all dependencies
 install:
 	bun install
 	cd backend && uv sync --dev
+
+# Install git hooks (requires lefthook)
+hooks:
+	@if command -v lefthook >/dev/null 2>&1; then \
+		lefthook install; \
+		echo "Lefthook hooks installed."; \
+	else \
+		echo "lefthook is not installed."; \
+		echo "Install it, then rerun: make hooks"; \
+		echo "macOS (Homebrew): brew install lefthook"; \
+		echo "Linux: see https://github.com/evilmartians/lefthook#installation"; \
+		exit 1; \
+	fi
 
 # Start local PostgreSQL database
 dev-db:
@@ -16,9 +29,16 @@ dev-db:
 stop-db:
 	docker compose down
 
-# Generate TypeScript types from Pydantic models
+# Start Adminer database UI (http://localhost:8081)
+adminer:
+	docker compose up -d adminer
+
+# Generate TypeScript types from FastAPI OpenAPI (via openapi-typescript)
 generate-types:
-	cd backend && uv run pydantic2ts --module app.schemas --output ../packages/types/src/generated/api.ts --json2ts-cmd ../node_modules/.bin/json2ts
+	@tmp=$$(mktemp -t holmes-openapi.XXXXXX.json) ; \
+	cd backend && uv run python -c 'import json; from app.main import app; print(json.dumps(app.openapi()))' > "$$tmp" ; \
+	cd .. && bunx openapi-typescript "$$tmp" --output packages/types/src/generated/api.ts ; \
+	rm -f "$$tmp"
 
 # Run linting for all projects
 lint:
@@ -30,8 +50,12 @@ format:
 	bun run format:frontend || true
 	cd backend && uv run ruff format .
 
-# Run database migrations
-migrate:
+# Run Better Auth migrations (creates auth tables)
+migrate-auth:
+	cd frontend && bunx @better-auth/cli migrate
+
+# Run all database migrations (auth first, then app)
+migrate: migrate-auth
 	cd backend && uv run alembic upgrade head
 
 # Start backend development server

@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
 import Image from "next/image";
+import Link from "next/link";
 
 /**
  * Fixed navigation bar with Liquid Glass effect.
@@ -140,20 +141,14 @@ export function Navigation() {
           ))}
         </nav>
 
-        {/* Desktop CTA Buttons */}
-        <div className="hidden items-center justify-end gap-4 md:flex">
-          <button
-            type="button"
-            className="cursor-pointer rounded-lg px-5 py-2.5 text-base font-medium text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke"
-          >
-            Login
-          </button>
-          <button
-            type="button"
+        {/* Desktop CTA Button */}
+        <div className="hidden items-center justify-end md:flex">
+          <Link
+            href="/login"
             className="liquid-glass-button px-5 py-2.5 text-base font-medium text-smoke"
           >
-            Get Started
-          </button>
+            Login
+          </Link>
         </div>
 
         {/* Mobile Menu Button */}
@@ -221,19 +216,13 @@ export function Navigation() {
                 {link.label}
               </a>
             ))}
-            <div className="flex flex-col gap-2 pt-3">
-              <button
-                type="button"
-                className="cursor-pointer rounded-lg px-3 py-2 text-base font-medium text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke"
+            <div className="pt-3">
+              <Link
+                href="/login"
+                className="block liquid-glass-button px-3 py-2 text-base font-medium text-smoke text-center"
               >
                 Login
-              </button>
-              <button
-                type="button"
-                className="liquid-glass-button px-3 py-2 text-base font-medium text-smoke"
-              >
-                Get Started
-              </button>
+              </Link>
             </div>
           </div>
         </motion.div>

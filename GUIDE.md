@@ -29,6 +29,11 @@
    make install
    ```
 
+   Install git hooks (recommended)
+   ```bash
+   make hooks
+   ```
+
 4. Start database and run migrations
    ```bash
    make dev-db
@@ -46,14 +51,17 @@
 | Command | Description |
 |---------|-------------|
 | `make install` | Install all dependencies (bun + uv) |
+| `make hooks` | Install git hooks (Lefthook) |
 | `make dev-db` | Start local PostgreSQL via Docker |
 | `make stop-db` | Stop local PostgreSQL |
-| `make migrate` | Run Alembic database migrations |
+| `make adminer` | Start Adminer database UI (port 8081) |
+| `make migrate` | Run all database migrations (auth + app) |
+| `make migrate-auth` | Run Better Auth migrations only |
 | `make dev-backend` | Start FastAPI dev server (port 8080) |
 | `make dev-frontend` | Start Next.js dev server (port 3000) |
 | `make lint` | Run linters (ESLint + Ruff) |
 | `make format` | Format code (Prettier + Ruff) |
-| `make generate-types` | Generate TS types from Pydantic models |
+| `make generate-types` | Generate TS types from FastAPI OpenAPI (via openapi-typescript) |
 
 ## Project Structure
 
@@ -66,7 +74,7 @@ holmes/
 │   └── src/           # Application code
 ├── packages/types/    # Shared TypeScript types (auto-generated)
 ├── terraform/         # GCP infrastructure (Cloud Run, Cloud SQL)
-├── docker-compose.yml # Local PostgreSQL
+├── docker-compose.yml # Local PostgreSQL + Adminer
 └── Makefile           # Development commands
 ```
 
@@ -126,6 +134,67 @@ uv run alembic revision --autogenerate -m "description"
 ```bash
 make generate-types
 ```
+
+Generated types are committed under `packages/types/`. A pre-push hook will block pushes if generated output differs from what’s committed.
+
+### Database Migrations
+
+The project uses two migration systems:
+
+1. **Better Auth** (frontend) - Creates authentication tables (`user`, `session`, `account`, etc.)
+2. **Alembic** (backend) - Creates application tables (`cases`, etc.)
+
+**Important:** Better Auth migrations must run first because Alembic migrations have foreign keys to auth tables.
+
+```bash
+# Run all migrations (recommended)
+make migrate
+
+# Or run individually in order:
+make migrate-auth     # Better Auth tables first
+cd backend && uv run alembic upgrade head  # Then Alembic
+```
+
+**Troubleshooting:** If you see `relation "user" does not exist`, run Better Auth migrations first:
+```bash
+cd frontend && bunx @better-auth/cli migrate
+```
+
+### Database UI (Adminer)
+
+Adminer provides a web UI for browsing and managing the PostgreSQL database.
+
+```bash
+# Start database + Adminer
+make dev-db && make adminer
+
+# Or start everything at once
+docker compose up -d
+```
+
+Open **http://localhost:8081** and login:
+
+| Field | Value |
+|-------|-------|
+| System | PostgreSQL |
+| Server | postgres |
+| Username | postgres |
+| Password | postgres |
+| Database | holmes |
+
+### Better Auth Tables
+
+Better Auth stores authentication data in PostgreSQL. These tables are managed by Better Auth (not Alembic):
+
+| Table | Contents |
+|-------|----------|
+| `user` | User accounts (id, name, email, emailVerified, image) |
+| `session` | Active sessions (token, userId, expiresAt, ipAddress, userAgent) |
+| `account` | Auth providers & credentials (OAuth tokens, hashed passwords) |
+| `verification` | Email verification tokens |
+| `jwks` | JWT signing keys |
+
+**Note:** The SQLAlchemy models in `backend/app/models/auth.py` use snake_case attribute names but map to Better Auth's camelCase column names (e.g., `email_verified` maps to `emailVerified`).
 
 ### Build for production
 ```bash

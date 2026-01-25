@@ -5,6 +5,7 @@
 
 import { forwardRef, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { motion, useScroll, useTransform } from "motion/react";
 
 interface VideoPlayerProps {
@@ -110,12 +111,12 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut", delay: 0.7 }}
         >
-          <button
-            type="button"
-            className="liquid-glass-button px-8 py-4 text-lg font-medium text-smoke"
+          <Link
+            href="/login"
+            className="liquid-glass-button inline-block px-8 py-4 text-lg font-medium text-smoke"
           >
             Start Your Investigation
-          </button>
+          </Link>
         </motion.div>
       </div>
 

@@ -7,3 +7,5 @@ export {
   useIsTablet,
   useIsMobile,
 } from "./use-media-query";
+
+export { useLogout } from "./use-logout";

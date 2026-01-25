@@ -4,13 +4,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { signupSchema, type SignupFormData } from "@/lib/validations/auth";
 import { signUp } from "@/lib/auth-client";
 
 export function SignupForm() {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -33,13 +36,15 @@ export function SignupForm() {
       name: data.name,
       email: data.email,
       password: data.password,
-      callbackURL: "/cases",
     });
 
     if (result.error) {
       setError(
         result.error.message || "Failed to create account. Please try again.",
       );
+    } else {
+      toast.success("Account created successfully!");
+      router.push("/cases");
     }
   }
 

@@ -4,13 +4,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 import { signIn } from "@/lib/auth-client";
 
 export function LoginForm() {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -31,11 +34,13 @@ export function LoginForm() {
     const result = await signIn.email({
       email: data.email,
       password: data.password,
-      callbackURL: "/cases",
     });
 
     if (result.error) {
       setError(result.error.message || "Failed to sign in. Please try again.");
+    } else {
+      toast.success("Welcome back!");
+      router.push("/cases");
     }
   }
 

@@ -20,11 +20,12 @@ export function useLogout() {
             bc.postMessage({ type: "logout" });
             bc.close();
           }
-
-          router.push("/");
         },
       },
     });
+
+    // Redirect after signOut completes (not inside callback)
+    router.push("/");
   };
 
   return { logout };

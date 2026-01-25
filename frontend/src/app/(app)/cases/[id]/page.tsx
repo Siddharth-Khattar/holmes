@@ -12,22 +12,26 @@ import { clsx } from "clsx";
 import { api, ApiError } from "@/lib/api-client";
 import type { Case, CaseStatus } from "@/types/case";
 
-const statusConfig: Record<CaseStatus, { label: string; className: string }> = {
+const statusConfig: Record<
+  CaseStatus,
+  { label: string; className: string; style?: React.CSSProperties }
+> = {
   DRAFT: {
     label: "Draft",
-    className: "bg-stone/20 text-stone",
+    className: "text-[var(--muted-foreground)]",
+    style: { backgroundColor: "var(--muted)" },
   },
   PROCESSING: {
     label: "Processing",
-    className: "bg-amber-500/20 text-amber-400",
+    className: "bg-amber-500/20 text-amber-500 dark:text-amber-400",
   },
   READY: {
     label: "Ready",
-    className: "bg-emerald-500/20 text-emerald-400",
+    className: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400",
   },
   ERROR: {
     label: "Error",
-    className: "bg-red-500/20 text-red-400",
+    className: "bg-red-500/20 text-red-600 dark:text-red-400",
   },
 };
 
@@ -57,12 +61,24 @@ export default function CasePage() {
     return (
       <div className="p-6 lg:p-8">
         {/* Back link skeleton */}
-        <div className="h-5 w-24 bg-jet/50 rounded animate-pulse mb-6" />
+        <div
+          className="h-5 w-24 rounded animate-pulse mb-6"
+          style={{ backgroundColor: "var(--muted)" }}
+        />
         {/* Header skeleton */}
-        <div className="h-8 w-64 bg-jet/50 rounded animate-pulse mb-2" />
-        <div className="h-5 w-48 bg-jet/50 rounded animate-pulse mb-8" />
+        <div
+          className="h-8 w-64 rounded animate-pulse mb-2"
+          style={{ backgroundColor: "var(--muted)" }}
+        />
+        <div
+          className="h-5 w-48 rounded animate-pulse mb-8"
+          style={{ backgroundColor: "var(--muted)" }}
+        />
         {/* Content skeleton */}
-        <div className="h-48 bg-jet/50 rounded-xl animate-pulse" />
+        <div
+          className="h-48 rounded-xl animate-pulse"
+          style={{ backgroundColor: "var(--muted)" }}
+        />
       </div>
     );
   }
@@ -80,7 +96,7 @@ export default function CasePage() {
         href="/cases"
         className={clsx(
           "inline-flex items-center gap-1.5 mb-6",
-          "text-sm text-stone hover:text-smoke transition-colors",
+          "text-sm text-(--muted-foreground) hover:text-(--foreground) transition-colors",
         )}
       >
         <ArrowLeft className="w-4 h-4" />
@@ -91,33 +107,51 @@ export default function CasePage() {
       <div className="flex items-start justify-between mb-8">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl font-medium text-smoke">{caseData.name}</h1>
+            <h1 className="text-2xl font-medium text-(--foreground)">
+              {caseData.name}
+            </h1>
             <span
               className={clsx(
                 "px-2.5 py-1 rounded-full text-xs font-medium",
                 status.className,
               )}
+              style={status.style}
             >
               {status.label}
             </span>
           </div>
           {caseData.description && (
-            <p className="text-stone max-w-2xl">{caseData.description}</p>
+            <p className="text-(--muted-foreground) max-w-2xl">
+              {caseData.description}
+            </p>
           )}
         </div>
       </div>
 
       {/* Empty state for files */}
-      <div className="bg-jet/50 border border-smoke/10 rounded-xl p-12 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-smoke/5 flex items-center justify-center mx-auto mb-6">
-          <Upload className="w-8 h-8 text-stone" />
+      <div
+        className="rounded-xl p-12 text-center"
+        style={{
+          backgroundColor: "var(--card)",
+          border: "1px solid var(--border)",
+        }}
+      >
+        <div
+          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
+          style={{ backgroundColor: "var(--muted)" }}
+        >
+          <Upload className="w-8 h-8 text-(--muted-foreground)" />
         </div>
-        <h3 className="text-lg font-medium text-smoke mb-2">No files yet</h3>
-        <p className="text-stone text-sm max-w-md mx-auto mb-6">
+        <h3 className="text-lg font-medium text-(--foreground) mb-2">
+          No files yet
+        </h3>
+        <p className="text-(--muted-foreground) text-sm max-w-md mx-auto mb-6">
           Upload evidence documents to start your investigation. Holmes will
           analyze and extract insights from your files.
         </p>
-        <p className="text-stone/60 text-xs">File upload coming in Phase 3</p>
+        <p className="text-(--muted-foreground)/60 text-xs">
+          File upload coming in Phase 3
+        </p>
       </div>
     </div>
   );

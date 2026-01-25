@@ -1,6 +1,15 @@
 @import "tailwindcss";
 
 /* ============================================================
+   TAILWIND V4 DARK MODE CONFIGURATION
+   ============================================================
+   Configure dark mode to use class selector strategy.
+   Works with next-themes which adds .dark/.light to html element.
+   ============================================================ */
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
    DESIGN TOKENS - Holmes Design System
    ============================================================
    Core color palette, typography, and glass effect tokens.
@@ -33,14 +42,14 @@
   /* Semantic Colors */
   --color-error: #f87171;
 
-  /* Light Mode Palette - Warm, professional alternative for app UI */
-  --color-light-bg: #faf9f7;
-  --color-light-bg-subtle: #f5f4f1;
-  --color-light-text: #1a1918;
-  --color-light-text-muted: #6b6a66;
-  --color-light-border: #e8e7e3;
-  --color-light-accent: #2a2825;
-  --color-light-accent-hover: #3d3a36;
+  /* Light Mode Palette - Warm sepia/parchment, easy on the eyes */
+  --color-light-bg: #e0d6c8;
+  --color-light-bg-subtle: #d6cabb;
+  --color-light-text: #2a2520;
+  --color-light-text-muted: #6b635a;
+  --color-light-border: #c4b8a8;
+  --color-light-accent: #3d3833;
+  --color-light-accent-hover: #524d46;
 
   /* Typography - Font Families */
   --font-family-serif: var(--font-playfair);
@@ -59,7 +68,8 @@
    These are semantic aliases for component theming.
    ============================================================ */
 
-:root {
+:root,
+.dark {
   /* Background */
   --background: var(--color-charcoal);
   --foreground: var(--color-smoke);
@@ -97,6 +107,9 @@
   --input: rgba(248, 247, 244, 0.1);
   --ring: var(--color-accent);
 
+  /* Focus Ring - for accessibility */
+  --ring-offset: var(--color-charcoal);
+
   /* Radius */
   --radius: 0.5rem;
 }
@@ -130,6 +143,9 @@
   --border: var(--color-light-border);
   --input: var(--color-light-border);
   --ring: var(--color-light-accent);
+
+  /* Focus Ring - for accessibility */
+  --ring-offset: var(--color-light-bg);
 }
 
 /* ============================================================
@@ -156,6 +172,15 @@
       transparent 1px
     );
     background-size: 26px 26px;
+  }
+
+  /* Light mode canvas pattern - visible warm brown dots */
+  .light .bg-canvas {
+    background-image: radial-gradient(
+      circle,
+      rgba(90, 80, 65, 0.25) 1px,
+      transparent 1px
+    );
   }
 }
 
@@ -361,6 +386,105 @@
   .liquid-glass-animated {
     will-change: transform;
   }
+
+  /* --------------------------------------------------------
+     Light Mode Glass Variants
+     --------------------------------------------------------
+     Adapted glass effects for light mode with inverted
+     colors and reduced intensity for better visibility.
+     -------------------------------------------------------- */
+
+  /* Light mode - glass panel */
+  .light .glass-panel {
+    background: rgba(214, 202, 187, 0.85);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  .light .glass-panel:hover {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  }
+
+  /* Light mode - glass nav */
+  .light .glass-nav {
+    background: rgba(214, 202, 187, 0.92);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Light mode - liquid glass card */
+  .light .liquid-glass-card {
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.08),
+      0 1px 4px rgba(0, 0, 0, 0.04);
+  }
+
+  .light .liquid-glass-card:hover {
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.12),
+      0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  .light .liquid-glass-card > .liquid-glass-filter {
+    backdrop-filter: blur(40px) saturate(120%) brightness(1.05);
+    -webkit-backdrop-filter: blur(40px) saturate(120%) brightness(1.05);
+  }
+
+  .light .liquid-glass-card > .liquid-glass-overlay {
+    background: linear-gradient(
+      175deg,
+      rgba(214, 202, 187, 0.94) 0%,
+      rgba(224, 214, 200, 0.97) 100%
+    );
+  }
+
+  .light .liquid-glass-card > .liquid-glass-specular {
+    background: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  /* Light mode - liquid glass modal */
+  .light .liquid-glass-modal {
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.15);
+  }
+
+  .light .liquid-glass-modal > .liquid-glass-filter {
+    backdrop-filter: blur(32px) saturate(120%) brightness(1.02);
+    -webkit-backdrop-filter: blur(32px) saturate(120%) brightness(1.02);
+  }
+
+  .light .liquid-glass-modal > .liquid-glass-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(214, 202, 187, 0.96) 0%,
+      rgba(224, 214, 200, 0.98) 100%
+    );
+  }
+
+  .light .liquid-glass-modal > .liquid-glass-specular {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.03);
+  }
+
+  /* Light mode - liquid glass nav */
+  .light .liquid-glass-nav > .liquid-glass-filter {
+    backdrop-filter: blur(24px) saturate(120%) brightness(1.02);
+    -webkit-backdrop-filter: blur(24px) saturate(120%) brightness(1.02);
+  }
+
+  .light .liquid-glass-nav > .liquid-glass-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(214, 202, 187, 0.94) 0%,
+      rgba(224, 214, 200, 0.97) 100%
+    );
+  }
+
+  /* Light mode - subtle glass */
+  .light .liquid-glass-subtle {
+    background: rgba(214, 202, 187, 0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
 }
 
 /* ============================================================
@@ -410,6 +534,24 @@
   transform: scale(0.98);
 }
 
+/* Light mode variant - uses dark accent for visibility */
+.light .liquid-glass-button {
+  background: var(--color-light-accent);
+  color: var(--color-light-bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.light .liquid-glass-button:hover {
+  background: var(--color-light-accent-hover);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
 /* ============================================================
    ACCESSIBILITY - REDUCED MOTION
    ============================================================
@@ -432,9 +574,14 @@
    ============================================================ */
 
 body {
-  background-color: var(--color-charcoal);
-  color: var(--color-smoke);
+  background-color: var(--background);
+  color: var(--foreground);
   font-size: 18px;
   line-height: 1.6;
   letter-spacing: var(--tracking-body);
+}
+
+/* Theme-aware logo - darkens cream/white logo in light mode */
+.light .logo-themed {
+  filter: brightness(0);
 }

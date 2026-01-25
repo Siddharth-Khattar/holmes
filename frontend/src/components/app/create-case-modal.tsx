@@ -87,30 +87,36 @@ export function CreateCaseModal({
     <div className="fixed inset-0 z-50">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-charcoal/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={handleClose}
       />
 
       {/* Modal */}
       <div className="absolute inset-0 flex items-center justify-center p-4">
         <div
-          className={clsx(
-            "relative w-full max-w-lg",
-            "bg-jet border border-smoke/10 rounded-2xl",
-            "shadow-2xl shadow-black/50",
-          )}
+          className="relative w-full max-w-lg rounded-2xl shadow-2xl"
+          style={{
+            backgroundColor: "var(--card)",
+            border: "1px solid var(--border)",
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-smoke/10">
-            <h2 className="text-lg font-medium text-smoke">Create New Case</h2>
+          <div
+            className="flex items-center justify-between p-6"
+            style={{ borderBottom: "1px solid var(--border)" }}
+          >
+            <h2
+              className="text-lg font-medium"
+              style={{ color: "var(--foreground)" }}
+            >
+              Create New Case
+            </h2>
             <button
               onClick={handleClose}
               disabled={isSubmitting}
-              className={clsx(
-                "p-2 rounded-lg transition-colors",
-                "text-stone hover:text-smoke hover:bg-smoke/10",
-              )}
+              className="p-2 rounded-lg transition-colors"
+              style={{ color: "var(--muted-foreground)" }}
             >
               <X className="w-5 h-5" />
             </button>
@@ -122,7 +128,8 @@ export function CreateCaseModal({
             <div>
               <label
                 htmlFor="case-name"
-                className="block text-sm font-medium text-smoke mb-2"
+                className="block text-sm font-medium mb-2"
+                style={{ color: "var(--foreground)" }}
               >
                 Case Name <span className="text-red-400">*</span>
               </label>
@@ -132,16 +139,14 @@ export function CreateCaseModal({
                 autoFocus
                 placeholder="e.g., Acme Corp Investigation"
                 {...register("name")}
-                className={clsx(
-                  "w-full px-4 py-3 rounded-lg",
-                  "bg-charcoal border",
-                  "text-smoke placeholder:text-stone",
-                  "focus:outline-none focus:ring-2 focus:ring-smoke/30",
-                  "transition-colors",
-                  errors.name
-                    ? "border-red-500/50"
-                    : "border-smoke/10 focus:border-smoke/20",
-                )}
+                className="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 transition-colors"
+                style={{
+                  backgroundColor: "var(--background)",
+                  border: errors.name
+                    ? "1px solid rgba(239, 68, 68, 0.5)"
+                    : "1px solid var(--border)",
+                  color: "var(--foreground)",
+                }}
               />
               {errors.name && (
                 <p className="mt-2 text-sm text-red-400">
@@ -154,28 +159,35 @@ export function CreateCaseModal({
             <div>
               <label
                 htmlFor="case-description"
-                className="block text-sm font-medium text-smoke mb-2"
+                className="block text-sm font-medium mb-2"
+                style={{ color: "var(--foreground)" }}
               >
                 Description
-                <span className="text-stone font-normal ml-1">(optional)</span>
+                <span
+                  className="font-normal ml-1"
+                  style={{ color: "var(--muted-foreground)" }}
+                >
+                  (optional)
+                </span>
               </label>
               <textarea
                 id="case-description"
                 rows={4}
                 placeholder="Describe the case context..."
                 {...register("description")}
-                className={clsx(
-                  "w-full px-4 py-3 rounded-lg resize-none",
-                  "bg-charcoal border",
-                  "text-smoke placeholder:text-stone",
-                  "focus:outline-none focus:ring-2 focus:ring-smoke/30",
-                  "transition-colors",
-                  errors.description
-                    ? "border-red-500/50"
-                    : "border-smoke/10 focus:border-smoke/20",
-                )}
+                className="w-full px-4 py-3 rounded-lg resize-none focus:outline-none focus:ring-2 transition-colors"
+                style={{
+                  backgroundColor: "var(--background)",
+                  border: errors.description
+                    ? "1px solid rgba(239, 68, 68, 0.5)"
+                    : "1px solid var(--border)",
+                  color: "var(--foreground)",
+                }}
               />
-              <p className="mt-2 text-xs text-stone">
+              <p
+                className="mt-2 text-xs"
+                style={{ color: "var(--muted-foreground)" }}
+              >
                 This context helps the AI understand your case better.
               </p>
               {errors.description && (
@@ -191,12 +203,8 @@ export function CreateCaseModal({
                 type="button"
                 onClick={handleClose}
                 disabled={isSubmitting}
-                className={clsx(
-                  "px-4 py-2 rounded-lg",
-                  "text-sm font-medium text-stone",
-                  "hover:text-smoke hover:bg-smoke/5",
-                  "transition-colors",
-                )}
+                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{ color: "var(--muted-foreground)" }}
               >
                 Cancel
               </button>
@@ -205,11 +213,13 @@ export function CreateCaseModal({
                 disabled={isSubmitting}
                 className={clsx(
                   "flex items-center gap-2 px-4 py-2 rounded-lg",
-                  "text-sm font-medium",
-                  "bg-smoke text-charcoal",
-                  "hover:bg-accent transition-colors",
+                  "text-sm font-medium transition-colors",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
                 )}
+                style={{
+                  backgroundColor: "var(--primary)",
+                  color: "var(--primary-foreground)",
+                }}
               >
                 {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 <span>{isSubmitting ? "Creating..." : "Create Case"}</span>

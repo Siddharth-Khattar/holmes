@@ -27,11 +27,27 @@ export function EmptyState({
         className,
       )}
     >
-      <div className="w-16 h-16 rounded-2xl bg-smoke/5 flex items-center justify-center mb-6">
-        <Icon className="w-8 h-8 text-stone" />
+      <div
+        className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
+        style={{ backgroundColor: "var(--muted)" }}
+      >
+        <Icon
+          className="w-8 h-8"
+          style={{ color: "var(--muted-foreground)" }}
+        />
       </div>
-      <h3 className="text-lg font-medium text-smoke mb-2">{title}</h3>
-      <p className="text-stone text-sm max-w-sm mb-6">{description}</p>
+      <h3
+        className="text-lg font-medium mb-2"
+        style={{ color: "var(--foreground)" }}
+      >
+        {title}
+      </h3>
+      <p
+        className="text-sm max-w-sm mb-6"
+        style={{ color: "var(--muted-foreground)" }}
+      >
+        {description}
+      </p>
       {action}
     </div>
   );

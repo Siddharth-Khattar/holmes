@@ -15,22 +15,26 @@ interface CaseCardProps {
   isDeleting?: boolean;
 }
 
-const statusConfig: Record<CaseStatus, { label: string; className: string }> = {
+const statusConfig: Record<
+  CaseStatus,
+  { label: string; className: string; style?: React.CSSProperties }
+> = {
   DRAFT: {
     label: "Draft",
-    className: "bg-stone/20 text-stone",
+    className: "text-[var(--muted-foreground)]",
+    style: { backgroundColor: "var(--muted)" },
   },
   PROCESSING: {
     label: "Processing",
-    className: "bg-amber-500/20 text-amber-400",
+    className: "bg-amber-500/20 text-amber-500 dark:text-amber-400",
   },
   READY: {
     label: "Ready",
-    className: "bg-emerald-500/20 text-emerald-400",
+    className: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400",
   },
   ERROR: {
     label: "Error",
-    className: "bg-red-500/20 text-red-400",
+    className: "bg-red-500/20 text-red-600 dark:text-red-400",
   },
 };
 
@@ -78,18 +82,22 @@ export function CaseCard({
       <div
         onClick={handleClick}
         className={clsx(
-          "flex items-center gap-4 p-4",
-          "bg-jet border border-smoke/10 rounded-xl",
+          "flex items-center gap-4 p-4 rounded-xl",
           "cursor-pointer transition-all duration-200",
-          "hover:shadow-lg hover:shadow-black/20 hover:border-smoke/20",
           isDeleting && "opacity-50 pointer-events-none",
         )}
+        style={{
+          backgroundColor: "var(--card)",
+          border: "1px solid var(--border)",
+        }}
       >
         {/* Name */}
         <div className="flex-1 min-w-0">
-          <h3 className="text-smoke font-medium truncate">{caseData.name}</h3>
+          <h3 className="text-[var(--foreground)] font-medium truncate">
+            {caseData.name}
+          </h3>
           {caseData.description && (
-            <p className="text-stone text-sm truncate mt-0.5">
+            <p className="text-[var(--muted-foreground)] text-sm truncate mt-0.5">
               {caseData.description}
             </p>
           )}
@@ -101,18 +109,19 @@ export function CaseCard({
             "px-2.5 py-1 rounded-full text-xs font-medium",
             status.className,
           )}
+          style={status.style}
         >
           {status.label}
         </span>
 
         {/* File count */}
-        <div className="flex items-center gap-1.5 text-stone text-sm w-20">
+        <div className="flex items-center gap-1.5 text-[var(--muted-foreground)] text-sm w-20">
           <FileText className="w-4 h-4" />
           <span>{caseData.file_count} files</span>
         </div>
 
         {/* Last updated */}
-        <div className="flex items-center gap-1.5 text-stone text-sm w-24">
+        <div className="flex items-center gap-1.5 text-[var(--muted-foreground)] text-sm w-24">
           <Clock className="w-4 h-4" />
           <span>{formatRelativeTime(caseData.updated_at)}</span>
         </div>
@@ -123,7 +132,7 @@ export function CaseCard({
           disabled={isDeleting}
           className={clsx(
             "p-2 rounded-lg transition-colors",
-            "text-stone hover:text-red-400 hover:bg-red-500/10",
+            "text-[var(--muted-foreground)] hover:text-red-400 hover:bg-red-500/10",
             "focus:outline-none focus:ring-2 focus:ring-red-500/50",
           )}
           title="Delete case"
@@ -139,12 +148,14 @@ export function CaseCard({
     <div
       onClick={handleClick}
       className={clsx(
-        "flex flex-col p-4",
-        "bg-jet border border-smoke/10 rounded-xl",
+        "flex flex-col p-4 rounded-xl",
         "cursor-pointer transition-all duration-200",
-        "hover:shadow-lg hover:shadow-black/20 hover:border-smoke/20",
         isDeleting && "opacity-50 pointer-events-none",
       )}
+      style={{
+        backgroundColor: "var(--card)",
+        border: "1px solid var(--border)",
+      }}
     >
       {/* Header with status and delete */}
       <div className="flex items-start justify-between mb-3">
@@ -153,6 +164,7 @@ export function CaseCard({
             "px-2.5 py-1 rounded-full text-xs font-medium",
             status.className,
           )}
+          style={status.style}
         >
           {status.label}
         </span>
@@ -161,7 +173,7 @@ export function CaseCard({
           disabled={isDeleting}
           className={clsx(
             "p-1.5 rounded-lg transition-colors",
-            "text-stone hover:text-red-400 hover:bg-red-500/10",
+            "text-[var(--muted-foreground)] hover:text-red-400 hover:bg-red-500/10",
             "focus:outline-none focus:ring-2 focus:ring-red-500/50",
           )}
           title="Delete case"
@@ -171,11 +183,11 @@ export function CaseCard({
       </div>
 
       {/* Name and description */}
-      <h3 className="text-smoke font-medium mb-1 line-clamp-1">
+      <h3 className="text-[var(--foreground)] font-medium mb-1 line-clamp-1">
         {caseData.name}
       </h3>
       {caseData.description && (
-        <p className="text-stone text-sm line-clamp-2 mb-4">
+        <p className="text-[var(--muted-foreground)] text-sm line-clamp-2 mb-4">
           {caseData.description}
         </p>
       )}
@@ -184,7 +196,10 @@ export function CaseCard({
       <div className="flex-1" />
 
       {/* Footer with metadata */}
-      <div className="flex items-center justify-between text-stone text-sm pt-3 border-t border-smoke/5">
+      <div
+        className="flex items-center justify-between text-[var(--muted-foreground)] text-sm pt-3 border-t"
+        style={{ borderColor: "var(--border)" }}
+      >
         <div className="flex items-center gap-1.5">
           <FileText className="w-4 h-4" />
           <span>{caseData.file_count} files</span>

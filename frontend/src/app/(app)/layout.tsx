@@ -39,16 +39,25 @@ export default async function AppLayout({
   };
 
   return (
-    <div className="flex min-h-screen bg-charcoal">
+    <div
+      className="flex min-h-screen"
+      style={{ backgroundColor: "var(--background)" }}
+    >
       <Sidebar user={user} />
-      <main className="flex-1 overflow-auto bg-charcoal bg-canvas">
+      <main
+        className="flex-1 overflow-auto bg-canvas text-foreground"
+        style={{
+          backgroundColor: "var(--background)",
+          color: "var(--foreground)",
+        }}
+      >
         <Toaster
           position="top-right"
           toastOptions={{
             style: {
-              background: "var(--color-jet)",
-              color: "var(--color-smoke)",
-              border: "1px solid rgba(248, 247, 244, 0.1)",
+              background: "var(--card)",
+              color: "var(--foreground)",
+              border: "1px solid var(--border)",
             },
           }}
         />

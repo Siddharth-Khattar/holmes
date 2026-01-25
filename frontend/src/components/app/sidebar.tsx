@@ -5,11 +5,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Briefcase } from "lucide-react";
 import { clsx } from "clsx";
 import { UserMenu } from "./user-menu";
+import { ThemedLogo } from "./themed-logo";
 
 interface SidebarProps {
   user: {
@@ -34,27 +34,28 @@ export function Sidebar({ user }: SidebarProps) {
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
       className={clsx(
-        "flex flex-col h-screen bg-jet",
-        "border-r border-smoke/10",
+        "flex flex-col h-screen",
         "transition-[width] duration-200 ease-out",
         isExpanded ? "w-60" : "w-16",
       )}
+      style={{
+        backgroundColor: "var(--card)",
+        borderRight: "1px solid var(--border)",
+      }}
     >
       {/* Logo */}
-      <div className="flex items-center h-16 px-4 border-b border-smoke/10">
+      <div
+        className="flex items-center h-16 px-4"
+        style={{ borderBottom: "1px solid var(--border)" }}
+      >
         <Link
           href="/cases"
-          className={clsx(
-            "flex items-center gap-3",
-            "text-smoke hover:text-accent transition-colors",
-          )}
+          className="flex items-center gap-3 transition-colors"
+          style={{ color: "var(--foreground)" }}
         >
-          <Image
-            src="/logo-2x.png"
-            alt="Holmes"
+          <ThemedLogo
             width={32}
             height={32}
-            loading="eager"
             priority
             className="w-8 h-8 shrink-0"
           />
@@ -81,10 +82,13 @@ export function Sidebar({ user }: SidebarProps) {
                   className={clsx(
                     "flex items-center gap-3 px-3 py-2 rounded-lg",
                     "transition-colors duration-150",
-                    isActive
-                      ? "bg-smoke/10 text-smoke"
-                      : "text-stone hover:text-smoke hover:bg-smoke/5",
                   )}
+                  style={{
+                    backgroundColor: isActive ? "var(--muted)" : "transparent",
+                    color: isActive
+                      ? "var(--foreground)"
+                      : "var(--muted-foreground)",
+                  }}
                   title={!isExpanded ? item.label : undefined}
                 >
                   <Icon className="w-5 h-5 shrink-0" />
@@ -97,7 +101,7 @@ export function Sidebar({ user }: SidebarProps) {
       </nav>
 
       {/* User Menu at bottom */}
-      <div className="p-2 border-t border-smoke/10">
+      <div className="p-2" style={{ borderTop: "1px solid var(--border)" }}>
         <UserMenu user={user} collapsed={!isExpanded} />
       </div>
     </aside>

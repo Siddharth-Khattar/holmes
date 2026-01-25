@@ -106,16 +106,29 @@ export function CaseList() {
       <div>
         {/* Header skeleton */}
         <div className="flex items-center justify-between mb-6">
-          <div className="h-8 w-24 bg-jet/50 rounded animate-pulse" />
+          <div
+            className="h-8 w-24 rounded animate-pulse"
+            style={{ backgroundColor: "var(--muted)" }}
+          />
           <div className="flex items-center gap-3">
-            <div className="h-10 w-24 bg-jet/50 rounded animate-pulse" />
-            <div className="h-10 w-32 bg-jet/50 rounded animate-pulse" />
+            <div
+              className="h-10 w-24 rounded animate-pulse"
+              style={{ backgroundColor: "var(--muted)" }}
+            />
+            <div
+              className="h-10 w-32 rounded animate-pulse"
+              style={{ backgroundColor: "var(--muted)" }}
+            />
           </div>
         </div>
         {/* Grid skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-40 bg-jet/50 rounded-xl animate-pulse" />
+            <div
+              key={i}
+              className="h-40 rounded-xl animate-pulse"
+              style={{ backgroundColor: "var(--muted)" }}
+            />
           ))}
         </div>
       </div>
@@ -126,31 +139,48 @@ export function CaseList() {
     <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-medium text-smoke">Cases</h1>
+        <h1
+          className="text-2xl font-medium"
+          style={{ color: "var(--foreground)" }}
+        >
+          Cases
+        </h1>
 
         <div className="flex items-center gap-3">
           {/* View toggle */}
-          <div className="flex items-center bg-jet rounded-lg p-1 border border-smoke/10">
+          <div
+            className="flex items-center rounded-lg p-1"
+            style={{
+              backgroundColor: "var(--card)",
+              border: "1px solid var(--border)",
+            }}
+          >
             <button
               onClick={() => setViewMode("grid")}
-              className={clsx(
-                "p-2 rounded-md transition-colors",
-                viewMode === "grid"
-                  ? "bg-smoke/10 text-smoke"
-                  : "text-stone hover:text-smoke",
-              )}
+              className="p-2 rounded-md transition-colors"
+              style={{
+                backgroundColor:
+                  viewMode === "grid" ? "var(--muted)" : "transparent",
+                color:
+                  viewMode === "grid"
+                    ? "var(--foreground)"
+                    : "var(--muted-foreground)",
+              }}
               title="Grid view"
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode("list")}
-              className={clsx(
-                "p-2 rounded-md transition-colors",
-                viewMode === "list"
-                  ? "bg-smoke/10 text-smoke"
-                  : "text-stone hover:text-smoke",
-              )}
+              className="p-2 rounded-md transition-colors"
+              style={{
+                backgroundColor:
+                  viewMode === "list" ? "var(--muted)" : "transparent",
+                color:
+                  viewMode === "list"
+                    ? "var(--foreground)"
+                    : "var(--muted-foreground)",
+              }}
               title="List view"
             >
               <List className="w-4 h-4" />
@@ -161,11 +191,12 @@ export function CaseList() {
           <div className="relative">
             <button
               onClick={() => setShowSortDropdown(!showSortDropdown)}
-              className={clsx(
-                "flex items-center gap-2 px-3 py-2",
-                "bg-jet border border-smoke/10 rounded-lg",
-                "text-sm text-stone hover:text-smoke transition-colors",
-              )}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors"
+              style={{
+                backgroundColor: "var(--card)",
+                border: "1px solid var(--border)",
+                color: "var(--muted-foreground)",
+              }}
             >
               <span>{currentSortLabel}</span>
               <ChevronDown className="w-4 h-4" />
@@ -180,12 +211,11 @@ export function CaseList() {
                 />
                 {/* Dropdown */}
                 <div
-                  className={clsx(
-                    "absolute right-0 mt-2 w-40 z-20",
-                    "bg-jet border border-smoke/10 rounded-lg",
-                    "shadow-lg shadow-black/30",
-                    "py-1",
-                  )}
+                  className="absolute right-0 mt-2 w-40 z-20 rounded-lg shadow-lg py-1"
+                  style={{
+                    backgroundColor: "var(--popover)",
+                    border: "1px solid var(--border)",
+                  }}
                 >
                   {sortOptions.map((option) => (
                     <button
@@ -195,12 +225,17 @@ export function CaseList() {
                         setShowSortDropdown(false);
                         setPage(1);
                       }}
-                      className={clsx(
-                        "w-full px-3 py-2 text-left text-sm transition-colors",
-                        sortBy === option.value
-                          ? "text-smoke bg-smoke/10"
-                          : "text-stone hover:text-smoke hover:bg-smoke/5",
-                      )}
+                      className="w-full px-3 py-2 text-left text-sm transition-colors"
+                      style={{
+                        backgroundColor:
+                          sortBy === option.value
+                            ? "var(--muted)"
+                            : "transparent",
+                        color:
+                          sortBy === option.value
+                            ? "var(--foreground)"
+                            : "var(--muted-foreground)",
+                      }}
                     >
                       {option.label}
                     </button>
@@ -213,12 +248,7 @@ export function CaseList() {
           {/* New Case button */}
           <button
             onClick={() => setShowCreateModal(true)}
-            className={clsx(
-              "flex items-center gap-2 px-4 py-2",
-              "bg-smoke text-charcoal rounded-lg",
-              "font-medium text-sm",
-              "hover:bg-accent transition-colors",
-            )}
+            className="liquid-glass-button flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm"
           >
             <Plus className="w-4 h-4" />
             <span>New Case</span>
@@ -235,12 +265,7 @@ export function CaseList() {
           action={
             <button
               onClick={() => setShowCreateModal(true)}
-              className={clsx(
-                "flex items-center gap-2 px-4 py-2",
-                "bg-smoke text-charcoal rounded-lg",
-                "font-medium text-sm",
-                "hover:bg-accent transition-colors",
-              )}
+              className="liquid-glass-button flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm"
             >
               <Plus className="w-4 h-4" />
               <span>Create Case</span>
@@ -276,32 +301,39 @@ export function CaseList() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className={clsx(
-                  "flex items-center gap-1 px-3 py-2 rounded-lg",
-                  "text-sm transition-colors",
-                  page === 1
-                    ? "text-stone/50 cursor-not-allowed"
-                    : "text-stone hover:text-smoke hover:bg-smoke/5",
-                )}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition-colors"
+                style={{
+                  color:
+                    page === 1
+                      ? "var(--muted-foreground)"
+                      : "var(--foreground)",
+                  opacity: page === 1 ? 0.5 : 1,
+                  cursor: page === 1 ? "not-allowed" : "pointer",
+                }}
               >
                 <ChevronLeft className="w-4 h-4" />
                 <span>Previous</span>
               </button>
 
-              <span className="text-sm text-stone">
+              <span
+                className="text-sm"
+                style={{ color: "var(--muted-foreground)" }}
+              >
                 Page {page} of {totalPages}
               </span>
 
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className={clsx(
-                  "flex items-center gap-1 px-3 py-2 rounded-lg",
-                  "text-sm transition-colors",
-                  page === totalPages
-                    ? "text-stone/50 cursor-not-allowed"
-                    : "text-stone hover:text-smoke hover:bg-smoke/5",
-                )}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition-colors"
+                style={{
+                  color:
+                    page === totalPages
+                      ? "var(--muted-foreground)"
+                      : "var(--foreground)",
+                  opacity: page === totalPages ? 0.5 : 1,
+                  cursor: page === totalPages ? "not-allowed" : "pointer",
+                }}
               >
                 <span>Next</span>
                 <ChevronRight className="w-4 h-4" />

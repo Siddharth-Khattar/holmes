@@ -1,5 +1,5 @@
 // ABOUTME: Layout for authentication pages (login/signup)
-// ABOUTME: Centered, minimal, no sidebar - separate from app shell
+// ABOUTME: Centered, minimal, no sidebar - forces dark mode styling
 
 import { Toaster } from "sonner";
 
@@ -9,7 +9,13 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-charcoal flex items-center justify-center p-4">
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{
+        backgroundColor: "var(--color-charcoal)",
+        color: "var(--color-smoke)",
+      }}
+    >
       <Toaster
         position="top-center"
         toastOptions={{

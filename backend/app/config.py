@@ -29,7 +29,6 @@ class Settings(BaseSettings):
     @classmethod
     def model_customise_sources(
         cls,
-        settings_cls,
         init_settings,
         env_settings,
         dotenv_settings,
@@ -45,22 +44,33 @@ class Settings(BaseSettings):
 
     @cached_property
     def cors_origins(self) -> list[str]:
-        """Parse CORS origins from comma-separated or JSON string."""
-        value = self.cors_origins_raw.strip()
-        if not value:
-            return []
-        # Try JSON array first
-        if value.startswith("["):
-            try:
-                import json
+        """Parse CORS origins from comma-separated or JSON string.
 
-                parsed = json.loads(value)
-                if isinstance(parsed, list):
-                    return [str(o).strip() for o in parsed if str(o).strip()]
-            except Exception:
-                pass
-        # Fall back to comma-separated
-        return [o.strip() for o in value.split(",") if o.strip()]
+        Automatically includes frontend_url if set and not the localhost default.
+        """
+        value = self.cors_origins_raw.strip()
+        origins: list[str] = []
+
+        if value:
+            # Try JSON array first
+            if value.startswith("["):
+                try:
+                    import json
+
+                    parsed = json.loads(value)
+                    if isinstance(parsed, list):
+                        origins = [str(o).strip() for o in parsed if str(o).strip()]
+                except Exception:
+                    pass
+            # Fall back to comma-separated
+            if not origins:
+                origins = [o.strip() for o in value.split(",") if o.strip()]
+
+        # Auto-include frontend_url for production CORS
+        if self.frontend_url and self.frontend_url not in origins:
+            origins.append(self.frontend_url)
+
+        return origins
 
 
 _settings: Settings | None = None

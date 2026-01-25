@@ -20,10 +20,12 @@ WORKDIR /app
 # Build arguments for Next.js public env vars (inlined at build time)
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_VIDEO_URL
+ARG NEXT_PUBLIC_APP_URL
 
 # Make build args available as env vars during build
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_VIDEO_URL=$NEXT_PUBLIC_VIDEO_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
 # Copy installed dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules

@@ -6,6 +6,18 @@
 - **Dark mode**: Default (`:root`, `.dark`)
 - **Light mode**: Warm sepia/parchment (`.light` class)
 - **Provider**: `next-themes` with `attribute="class"`
+- **Scope**: Light mode component styles are scoped to `.theme-scope` class
+
+### Theme Scoping
+
+Light mode CSS for components (glass effects, buttons, logo) is scoped to `.theme-scope`:
+
+```css
+/* This only applies within .theme-scope */
+.light .theme-scope .glass-panel { ... }
+```
+
+The `.theme-scope` class is on the app layout (`app/(app)/layout.tsx`). This prevents light mode styles from leaking to landing/auth pages when the user has light mode selected.
 
 ### CSS Variable Usage
 
@@ -65,15 +77,17 @@ className="text-amber-500 dark:text-amber-400"
 - **Landing/Marketing** (`app/(marketing)/`): Uses `var(--color-charcoal)` directly
 - **Auth pages** (`app/(auth)/`): Uses `var(--color-charcoal)` directly
 
-These pages ignore user theme preference by design.
+These pages stay dark because:
+1. They use hardcoded dark color tokens
+2. They lack the `.theme-scope` class, so light mode component styles don't apply
 
 ### Themed Logo
 
-Use `<ThemedLogo>` component in the app shell - it applies `filter: brightness(0)` in light mode via the `.logo-themed` CSS class.
+Use `<ThemedLogo>` component in the app shell - it applies `filter: brightness(0)` in light mode via `.light .theme-scope .logo-themed` CSS rule.
 
 ### Glass Effects
 
-Glass components (`.liquid-glass-*`, `.glass-panel`) have light mode variants. They work automatically via CSS.
+Glass components (`.liquid-glass-*`, `.glass-panel`) have light mode variants scoped to `.theme-scope`. They only apply within the app UI, not landing/auth pages.
 
 ### Adding New Components
 
@@ -81,3 +95,14 @@ Glass components (`.liquid-glass-*`, `.glass-panel`) have light mode variants. T
 2. Use `style={{ }}` for backgrounds, text colors, borders
 3. Test in both light and dark modes
 4. Avoid hardcoded color classes (`bg-jet`, `text-smoke`) in app UI
+
+### Adding Light Mode CSS for New Components
+
+When adding light mode variants for new component classes:
+
+```css
+/* Always scope to .theme-scope to prevent affecting landing/auth pages */
+.light .theme-scope .my-component {
+  /* light mode styles */
+}
+```

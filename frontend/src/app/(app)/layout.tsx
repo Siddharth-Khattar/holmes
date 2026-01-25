@@ -40,7 +40,7 @@ export default async function AppLayout({
 
   return (
     <div
-      className="flex min-h-screen"
+      className="theme-scope flex min-h-screen"
       style={{ backgroundColor: "var(--background)" }}
     >
       <Sidebar user={user} />

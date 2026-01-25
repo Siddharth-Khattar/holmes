@@ -174,8 +174,8 @@
     background-size: 26px 26px;
   }
 
-  /* Light mode canvas pattern - visible warm brown dots */
-  .light .bg-canvas {
+  /* Light mode canvas pattern - visible warm brown dots (scoped to app UI) */
+  .light .theme-scope .bg-canvas {
     background-image: radial-gradient(
       circle,
       rgba(90, 80, 65, 0.25) 1px,
@@ -388,47 +388,48 @@
   }
 
   /* --------------------------------------------------------
-     Light Mode Glass Variants
+     Light Mode Glass Variants (Scoped to .theme-scope)
      --------------------------------------------------------
      Adapted glass effects for light mode with inverted
      colors and reduced intensity for better visibility.
+     Scoped to .theme-scope to prevent affecting landing/auth pages.
      -------------------------------------------------------- */
 
   /* Light mode - glass panel */
-  .light .glass-panel {
+  .light .theme-scope .glass-panel {
     background: rgba(214, 202, 187, 0.85);
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
   }
 
-  .light .glass-panel:hover {
+  .light .theme-scope .glass-panel:hover {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
   }
 
   /* Light mode - glass nav */
-  .light .glass-nav {
+  .light .theme-scope .glass-nav {
     background: rgba(214, 202, 187, 0.92);
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
   }
 
   /* Light mode - liquid glass card */
-  .light .liquid-glass-card {
+  .light .theme-scope .liquid-glass-card {
     box-shadow:
       0 4px 24px rgba(0, 0, 0, 0.08),
       0 1px 4px rgba(0, 0, 0, 0.04);
   }
 
-  .light .liquid-glass-card:hover {
+  .light .theme-scope .liquid-glass-card:hover {
     box-shadow:
       0 8px 32px rgba(0, 0, 0, 0.12),
       0 2px 8px rgba(0, 0, 0, 0.06);
   }
 
-  .light .liquid-glass-card > .liquid-glass-filter {
+  .light .theme-scope .liquid-glass-card > .liquid-glass-filter {
     backdrop-filter: blur(40px) saturate(120%) brightness(1.05);
     -webkit-backdrop-filter: blur(40px) saturate(120%) brightness(1.05);
   }
 
-  .light .liquid-glass-card > .liquid-glass-overlay {
+  .light .theme-scope .liquid-glass-card > .liquid-glass-overlay {
     background: linear-gradient(
       175deg,
       rgba(214, 202, 187, 0.94) 0%,
@@ -436,22 +437,22 @@
     );
   }
 
-  .light .liquid-glass-card > .liquid-glass-specular {
+  .light .theme-scope .liquid-glass-card > .liquid-glass-specular {
     background: none;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
   }
 
   /* Light mode - liquid glass modal */
-  .light .liquid-glass-modal {
+  .light .theme-scope .liquid-glass-modal {
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.15);
   }
 
-  .light .liquid-glass-modal > .liquid-glass-filter {
+  .light .theme-scope .liquid-glass-modal > .liquid-glass-filter {
     backdrop-filter: blur(32px) saturate(120%) brightness(1.02);
     -webkit-backdrop-filter: blur(32px) saturate(120%) brightness(1.02);
   }
 
-  .light .liquid-glass-modal > .liquid-glass-overlay {
+  .light .theme-scope .liquid-glass-modal > .liquid-glass-overlay {
     background: linear-gradient(
       180deg,
       rgba(214, 202, 187, 0.96) 0%,
@@ -459,19 +460,19 @@
     );
   }
 
-  .light .liquid-glass-modal > .liquid-glass-specular {
+  .light .theme-scope .liquid-glass-modal > .liquid-glass-specular {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.6),
       inset 0 -1px 0 rgba(0, 0, 0, 0.03);
   }
 
   /* Light mode - liquid glass nav */
-  .light .liquid-glass-nav > .liquid-glass-filter {
+  .light .theme-scope .liquid-glass-nav > .liquid-glass-filter {
     backdrop-filter: blur(24px) saturate(120%) brightness(1.02);
     -webkit-backdrop-filter: blur(24px) saturate(120%) brightness(1.02);
   }
 
-  .light .liquid-glass-nav > .liquid-glass-overlay {
+  .light .theme-scope .liquid-glass-nav > .liquid-glass-overlay {
     background: linear-gradient(
       180deg,
       rgba(214, 202, 187, 0.94) 0%,
@@ -480,7 +481,7 @@
   }
 
   /* Light mode - subtle glass */
-  .light .liquid-glass-subtle {
+  .light .theme-scope .liquid-glass-subtle {
     background: rgba(214, 202, 187, 0.75);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
@@ -534,8 +535,8 @@
   transform: scale(0.98);
 }
 
-/* Light mode variant - uses dark accent for visibility */
-.light .liquid-glass-button {
+/* Light mode variant - uses dark accent for visibility (scoped to app UI) */
+.light .theme-scope .liquid-glass-button {
   background: var(--color-light-accent);
   color: var(--color-light-bg);
   backdrop-filter: none;
@@ -545,7 +546,7 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-.light .liquid-glass-button:hover {
+.light .theme-scope .liquid-glass-button:hover {
   background: var(--color-light-accent-hover);
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.15),
@@ -581,7 +582,7 @@ body {
   letter-spacing: var(--tracking-body);
 }
 
-/* Theme-aware logo - darkens cream/white logo in light mode */
-.light .logo-themed {
+/* Theme-aware logo - darkens cream/white logo in light mode (scoped to app UI) */
+.light .theme-scope .logo-themed {
   filter: brightness(0);
 }

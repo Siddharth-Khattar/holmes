@@ -215,16 +215,59 @@ jobs:
       - name: Get database connection info
         id: db-info
         run: |
-          INSTANCE=$(gcloud sql instances list --format='value(connectionName)' --filter='name:holmes*' | head -1)
-          echo "instance=$INSTANCE" >> $GITHUB_OUTPUT
+          # Prefer an explicit connection name configured as a GitHub repo variable.
+          # Example value: project:region:instance (e.g. holmes-gemini-3-hack:europe-west3:holmes-db-prod)
+          CONNECTION_NAME="${{ vars.CLOUDSQL_CONNECTION_NAME }}"
+
+          if [ -z "$CONNECTION_NAME" ]; then
+            # Fallback for hackathon deployments: Terraform names instances as holmes-db-${environment}.
+            # Default environment is "prod"; map branches to envs for future expansion.
+            if [ "${{ github.ref_name }}" = "main" ]; then
+              DB_ENV=prod
+            elif [ "${{ github.ref_name }}" = "development" ]; then
+              DB_ENV=dev
+            else
+              DB_ENV=prod
+            fi
+
+            INSTANCE_NAME="holmes-db-$DB_ENV"
+            CONNECTION_NAME="${{ vars.GCP_PROJECT_ID }}:${{ env.REGION }}:$INSTANCE_NAME"
+          fi
+
+          echo "instance=$CONNECTION_NAME" >> $GITHUB_OUTPUT
 
       - name: Run migrations
         env:
-          DATABASE_URL: postgresql+asyncpg://holmes:${{ secrets.DB_PASSWORD }}@localhost:5432/holmes
+          # Connect via Cloud SQL Proxy on localhost. Use 127.0.0.1 to avoid IPv6 ::1 resolution issues.
+          # NOTE: Terraform creates the DB user as "backend".
+          DATABASE_URL: postgresql+asyncpg://backend:${{ secrets.DB_PASSWORD }}@127.0.0.1:5432/holmes
         run: |
+          set -euo pipefail
+
+          if [ -z "${{ secrets.DB_PASSWORD }}" ]; then
+            echo "Missing required secret: DB_PASSWORD"
+            echo "Set DB_PASSWORD to the Cloud SQL 'backend' user's password (Terraform random_password.db_password)."
+            exit 1
+          fi
+
           # Start Cloud SQL Proxy in background
-          ./cloud-sql-proxy --port 5432 ${{ steps.db-info.outputs.instance }} &
-          sleep 5
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 "${{ steps.db-info.outputs.instance }}" &
+
+          # Wait for proxy to accept connections (avoid flaky fixed sleeps)
+          for i in $(seq 1 30); do
+            if python3 -c 'import socket; s=socket.socket(); s.settimeout(1); s.connect(("127.0.0.1", 5432)); s.close()' >/dev/null 2>&1; then
+              echo "Cloud SQL Proxy is ready."
+              break
+            fi
+
+            if [ "$i" -eq 30 ]; then
+              echo "Cloud SQL Proxy did not become ready in time."
+              pkill -f cloud-sql-proxy || true
+              exit 1
+            fi
+
+            sleep 1
+          done
 
           # Run migrations
           cd backend

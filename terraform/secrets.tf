@@ -87,6 +87,28 @@ resource "google_secret_manager_secret_iam_member" "frontend_google_client_secre
   member    = "serviceAccount:${google_service_account.frontend.email}"
 }
 
+# IAM: Allow GitHub Actions service account to access secrets needed in CI
+resource "google_secret_manager_secret_iam_member" "github_actions_better_auth" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.better_auth_secret.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.github_actions.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "github_actions_google_client_id" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.google_client_id.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.github_actions.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "github_actions_google_client_secret" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.google_client_secret.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.github_actions.email}"
+}
+
 # IAM: Allow GitHub Actions service account to access DB password for migrations
 resource "google_secret_manager_secret_iam_member" "github_actions_db_password" {
   project   = var.project_id

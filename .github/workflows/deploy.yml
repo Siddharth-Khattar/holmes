@@ -191,6 +191,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -273,6 +277,17 @@ jobs:
           # NOTE: Terraform creates the DB user as "backend".
           export DATABASE_URL="postgresql+asyncpg://backend:$DB_PASSWORD@127.0.0.1:5432/holmes"
 
+          # Better Auth migrations need their server config env vars present.
+          echo "Fetching Better Auth and OAuth secrets from Secret Manager."
+          export BETTER_AUTH_SECRET="$(gcloud secrets versions access latest --secret=better-auth-secret)"
+          export GOOGLE_CLIENT_ID="$(gcloud secrets versions access latest --secret=google-client-id)"
+          export GOOGLE_CLIENT_SECRET="$(gcloud secrets versions access latest --secret=google-client-secret)"
+
+          if [ -z "$BETTER_AUTH_SECRET" ]; then
+            echo "BETTER_AUTH_SECRET is empty after fetch; ensure secret 'better-auth-secret' exists with a latest version."
+            exit 1
+          fi
+
           # Start Cloud SQL Proxy in background
           ./cloud-sql-proxy --address 127.0.0.1 --port 5432 "${{ steps.db-info.outputs.instance }}" &
 
@@ -291,6 +306,12 @@ jobs:
 
             sleep 1
           done
+
+          # Run Better Auth migrations first (creates auth tables like \"user\")
+          bun install
+          cd frontend
+          bunx @better-auth/cli migrate
+          cd ..
 
           # Run migrations
           cd backend

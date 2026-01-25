@@ -22,7 +22,10 @@ adminer:
 
 # Generate TypeScript types from Pydantic models
 generate-types:
-	cd backend && uv run pydantic2ts --module app.schemas --output ../packages/types/src/generated/api.ts --json2ts-cmd ../node_modules/.bin/json2ts
+	@tmp=$$(mktemp -t holmes-openapi.XXXXXX.json) ; \
+	cd backend && uv run python -c 'import json; from app.main import app; print(json.dumps(app.openapi()))' > "$$tmp" ; \
+	cd .. && bunx openapi-typescript "$$tmp" --output packages/types/src/generated/api.ts ; \
+	rm -f "$$tmp"
 
 # Run linting for all projects
 lint:

@@ -1,11 +1,12 @@
 # ABOUTME: Central export point for all Pydantic API schemas.
-# ABOUTME: These schemas are the source of truth for API types, generated to TypeScript via pydantic2ts.
+# ABOUTME: These schemas are the source of truth for API types, generated to TypeScript via openapi-typescript.
 
 from app.schemas.case import (
     CaseCreate,
     CaseListQuery,
     CaseListResponse,
     CaseResponse,
+    CaseUpdate,
 )
 from app.schemas.common import ErrorResponse, TimestampMixin
 from app.schemas.health import HealthResponse
@@ -15,6 +16,7 @@ __all__ = [
     "CaseListQuery",
     "CaseListResponse",
     "CaseResponse",
+    "CaseUpdate",
     "ErrorResponse",
     "HealthResponse",
     "TimestampMixin",

@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.models.auth import User
+from app.schemas.common import ErrorResponse
 
 # Cache JWKS client - fetches public keys from Better Auth
 _jwks_client: PyJWKClient | None = None
@@ -50,7 +51,11 @@ async def get_current_user(
         payload = jwt.decode(
             token,
             signing_key.key,
-            algorithms=["EdDSA", "ES256", "RS256"],  # Better Auth supports multiple
+            algorithms=[
+                "EdDSA",
+                "ES256",
+                "RS256",
+            ],  # Better Auth supports multiple
             audience=settings.frontend_url,
             issuer=settings.frontend_url,
         )
@@ -88,7 +93,14 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-@router.get("/me")
+@router.get(
+    "/me",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        422: {"model": ErrorResponse, "description": "Validation error"},
+        500: {"model": ErrorResponse, "description": "Internal server error"},
+    },
+)
 async def get_me(current_user: CurrentUser) -> dict:
     """Return current authenticated user info."""
     return {

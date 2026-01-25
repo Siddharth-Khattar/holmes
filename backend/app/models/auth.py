@@ -14,6 +14,7 @@ class User(Base):
     Better Auth user table.
 
     Read-only model - this table is managed by Better Auth.
+    Column names use camelCase to match Better Auth's schema.
     """
 
     __tablename__ = "user"
@@ -22,10 +23,12 @@ class User(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    email_verified: Mapped[bool] = mapped_column(
+        "emailVerified", Boolean, default=False
+    )
     image: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column("createdAt", DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column("updatedAt", DateTime, nullable=False)
 
 
 class Session(Base):
@@ -33,19 +36,20 @@ class Session(Base):
     Better Auth session table.
 
     Read-only model - this table is managed by Better Auth.
+    Column names use camelCase to match Better Auth's schema.
     """
 
     __tablename__ = "session"
     __table_args__ = {"extend_existing": True}
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
-    user_id: Mapped[str] = mapped_column(String, nullable=False)
+    user_id: Mapped[str] = mapped_column("userId", String, nullable=False)
     token: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    ip_address: Mapped[str | None] = mapped_column(String, nullable=True)
-    user_agent: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column("expiresAt", DateTime, nullable=False)
+    ip_address: Mapped[str | None] = mapped_column("ipAddress", String, nullable=True)
+    user_agent: Mapped[str | None] = mapped_column("userAgent", String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column("createdAt", DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column("updatedAt", DateTime, nullable=False)
 
 
 class Account(Base):
@@ -53,28 +57,31 @@ class Account(Base):
     Better Auth account table for OAuth providers and email/password.
 
     Read-only model - this table is managed by Better Auth.
+    Column names use camelCase to match Better Auth's schema.
     """
 
     __tablename__ = "account"
     __table_args__ = {"extend_existing": True}
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
-    user_id: Mapped[str] = mapped_column(String, nullable=False)
-    account_id: Mapped[str] = mapped_column(String, nullable=False)
-    provider_id: Mapped[str] = mapped_column(String, nullable=False)
-    access_token: Mapped[str | None] = mapped_column(Text, nullable=True)
-    refresh_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    user_id: Mapped[str] = mapped_column("userId", String, nullable=False)
+    account_id: Mapped[str] = mapped_column("accountId", String, nullable=False)
+    provider_id: Mapped[str] = mapped_column("providerId", String, nullable=False)
+    access_token: Mapped[str | None] = mapped_column("accessToken", Text, nullable=True)
+    refresh_token: Mapped[str | None] = mapped_column(
+        "refreshToken", Text, nullable=True
+    )
     access_token_expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime, nullable=True
+        "accessTokenExpiresAt", DateTime, nullable=True
     )
     refresh_token_expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime, nullable=True
+        "refreshTokenExpiresAt", DateTime, nullable=True
     )
     scope: Mapped[str | None] = mapped_column(String, nullable=True)
-    id_token: Mapped[str | None] = mapped_column(Text, nullable=True)
+    id_token: Mapped[str | None] = mapped_column("idToken", Text, nullable=True)
     password: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column("createdAt", DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column("updatedAt", DateTime, nullable=False)
 
 
 class Verification(Base):
@@ -82,6 +89,7 @@ class Verification(Base):
     Better Auth verification table for email verification tokens.
 
     Read-only model - this table is managed by Better Auth.
+    Column names use camelCase to match Better Auth's schema.
     """
 
     __tablename__ = "verification"
@@ -90,9 +98,9 @@ class Verification(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     identifier: Mapped[str] = mapped_column(String, nullable=False)
     value: Mapped[str] = mapped_column(String, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column("expiresAt", DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column("createdAt", DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column("updatedAt", DateTime, nullable=False)
 
 
 class Jwks(Base):
@@ -100,12 +108,13 @@ class Jwks(Base):
     Better Auth JWKS table for JWT signing keys.
 
     Read-only model - this table is managed by Better Auth.
+    Column names use camelCase to match Better Auth's schema.
     """
 
     __tablename__ = "jwks"
     __table_args__ = {"extend_existing": True}
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
-    public_key: Mapped[str] = mapped_column(Text, nullable=False)
-    private_key: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    public_key: Mapped[str] = mapped_column("publicKey", Text, nullable=False)
+    private_key: Mapped[str] = mapped_column("privateKey", Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column("createdAt", DateTime, nullable=False)

@@ -55,7 +55,7 @@
 | `make dev-frontend` | Start Next.js dev server (port 3000) |
 | `make lint` | Run linters (ESLint + Ruff) |
 | `make format` | Format code (Prettier + Ruff) |
-| `make generate-types` | Generate TS types from Pydantic models |
+| `make generate-types` | Generate TS types from FastAPI OpenAPI (via openapi-typescript) |
 
 ## Project Structure
 
@@ -128,6 +128,8 @@ uv run alembic revision --autogenerate -m "description"
 ```bash
 make generate-types
 ```
+
+Generated types are committed under `packages/types/`. A pre-push hook will block pushes if generated output differs from what’s committed.
 
 ### Database Migrations
 

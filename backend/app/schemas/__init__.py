@@ -1,5 +1,5 @@
 # ABOUTME: Central export point for all Pydantic API schemas.
-# ABOUTME: These schemas are the source of truth for API types, generated to TypeScript via pydantic2ts.
+# ABOUTME: These schemas are the source of truth for API types, generated to TypeScript via openapi-typescript.
 
 from app.schemas.case import (
     CaseCreate,

@@ -8,7 +8,7 @@
   "scripts": {
     "dev:frontend": "bun --cwd frontend dev",
     "build:frontend": "bun --cwd frontend build",
-    "generate-types": "cd backend && uv run pydantic2ts --module app.schemas --output ../packages/types/src/generated/api.ts --json2ts-cmd ../node_modules/.bin/json2ts",
+    "generate-types": "make generate-types",
     "lint": "bun run lint:frontend && bun run lint:backend",
     "lint:frontend": "bun --cwd frontend lint",
     "lint:backend": "cd backend && uv run ruff check .",
@@ -18,6 +18,7 @@
   },
   "devDependencies": {
     "json-schema-to-typescript": "^15.0.4",
-    "lefthook": "^2.0.15"
+    "lefthook": "^2.0.15",
+    "openapi-typescript": "^7.9.1"
   }
 }

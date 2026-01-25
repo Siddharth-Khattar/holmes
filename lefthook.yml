@@ -20,3 +20,14 @@ pre-commit:
       glob: "frontend/**/*.{js,ts,tsx,json,css,md}"
       root: "frontend/"
       run: npx prettier --check {staged_files}
+
+pre-push:
+  commands:
+    generate-types:
+      run: |
+        make generate-types
+        if [ -n "$(git status --porcelain packages/types/)" ]; then
+          echo "Type generation produced changes. Run 'make generate-types' and commit the results before pushing."
+          git diff -- packages/types/
+          exit 1
+        fi

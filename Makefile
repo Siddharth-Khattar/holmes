@@ -1,7 +1,7 @@
 # Holmes Development Makefile
 # Cross-language orchestration for the monorepo
 
-.PHONY: install dev-db stop-db generate-types lint format migrate dev-backend dev-frontend
+.PHONY: install dev-db stop-db generate-types lint format migrate migrate-auth dev-backend dev-frontend
 
 # Install all dependencies
 install:
@@ -30,8 +30,12 @@ format:
 	bun run format:frontend || true
 	cd backend && uv run ruff format .
 
-# Run database migrations
-migrate:
+# Run Better Auth migrations (creates auth tables)
+migrate-auth:
+	cd frontend && bunx @better-auth/cli migrate
+
+# Run all database migrations (auth first, then app)
+migrate: migrate-auth
 	cd backend && uv run alembic upgrade head
 
 # Start backend development server

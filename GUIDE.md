@@ -48,7 +48,8 @@
 | `make install` | Install all dependencies (bun + uv) |
 | `make dev-db` | Start local PostgreSQL via Docker |
 | `make stop-db` | Stop local PostgreSQL |
-| `make migrate` | Run Alembic database migrations |
+| `make migrate` | Run all database migrations (auth + app) |
+| `make migrate-auth` | Run Better Auth migrations only |
 | `make dev-backend` | Start FastAPI dev server (port 8080) |
 | `make dev-frontend` | Start Next.js dev server (port 3000) |
 | `make lint` | Run linters (ESLint + Ruff) |
@@ -125,6 +126,29 @@ uv run alembic revision --autogenerate -m "description"
 ### Sync TypeScript types after schema changes
 ```bash
 make generate-types
+```
+
+### Database Migrations
+
+The project uses two migration systems:
+
+1. **Better Auth** (frontend) - Creates authentication tables (`user`, `session`, `account`, etc.)
+2. **Alembic** (backend) - Creates application tables (`cases`, etc.)
+
+**Important:** Better Auth migrations must run first because Alembic migrations have foreign keys to auth tables.
+
+```bash
+# Run all migrations (recommended)
+make migrate
+
+# Or run individually in order:
+make migrate-auth     # Better Auth tables first
+cd backend && uv run alembic upgrade head  # Then Alembic
+```
+
+**Troubleshooting:** If you see `relation "user" does not exist`, run Better Auth migrations first:
+```bash
+cd frontend && bunx @better-auth/cli migrate
 ```
 
 ### Build for production

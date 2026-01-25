@@ -58,7 +58,7 @@ export function SignupForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       {error && (
-        <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-error">
           {error}
         </div>
       )}
@@ -76,7 +76,7 @@ export function SignupForm() {
           placeholder="Your name"
         />
         {errors.name && (
-          <p className="mt-1 text-sm text-destructive">{errors.name.message}</p>
+          <p className="mt-1 text-sm text-error">{errors.name.message}</p>
         )}
       </div>
 
@@ -93,9 +93,7 @@ export function SignupForm() {
           placeholder="you@example.com"
         />
         {errors.email && (
-          <p className="mt-1 text-sm text-destructive">
-            {errors.email.message}
-          </p>
+          <p className="mt-1 text-sm text-error">{errors.email.message}</p>
         )}
       </div>
 
@@ -129,9 +127,7 @@ export function SignupForm() {
           </button>
         </div>
         {errors.password && (
-          <p className="mt-1 text-sm text-destructive">
-            {errors.password.message}
-          </p>
+          <p className="mt-1 text-sm text-error">{errors.password.message}</p>
         )}
         <p className="mt-1 text-xs text-stone">
           Min 8 characters, including uppercase, lowercase, and number

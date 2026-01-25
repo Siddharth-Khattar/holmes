@@ -59,7 +59,7 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       {error && (
-        <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-error">
           {error}
         </div>
       )}
@@ -77,9 +77,7 @@ export function LoginForm() {
           placeholder="you@example.com"
         />
         {errors.email && (
-          <p className="mt-1 text-sm text-destructive">
-            {errors.email.message}
-          </p>
+          <p className="mt-1 text-sm text-error">{errors.email.message}</p>
         )}
       </div>
 
@@ -113,9 +111,7 @@ export function LoginForm() {
           </button>
         </div>
         {errors.password && (
-          <p className="mt-1 text-sm text-destructive">
-            {errors.password.message}
-          </p>
+          <p className="mt-1 text-sm text-error">{errors.password.message}</p>
         )}
       </div>
 

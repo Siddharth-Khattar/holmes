@@ -30,6 +30,9 @@
   /* Ethereal Shadow */
   --color-shadow: rgba(70, 68, 64, 0.85);
 
+  /* Semantic Colors */
+  --color-error: #f87171;
+
   /* Light Mode Palette - Warm, professional alternative for app UI */
   --color-light-bg: #faf9f7;
   --color-light-bg-subtle: #f5f4f1;

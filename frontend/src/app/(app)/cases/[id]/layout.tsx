@@ -99,6 +99,11 @@ export default function CaseLayout({
   
   // Get current section from pathname
   const currentSection = pathname.split('/').pop() || 'upload';
+  
+  // Debug: log to verify matching
+  console.log('CaseLayout - pathname:', pathname);
+  console.log('CaseLayout - currentSection:', currentSection);
+  console.log('CaseLayout - activeTab:', `/${currentSection}`);
 
   const handleTabChange = (href: string) => {
     router.push(`${basePath}${href}`);

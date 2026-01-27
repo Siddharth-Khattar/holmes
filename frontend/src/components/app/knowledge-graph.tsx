@@ -51,20 +51,20 @@ interface KnowledgeGraphProps {
 }
 
 const ENTITY_COLORS: Record<EntityType, string> = {
-  person: '#3B82F6',
-  organization: '#8B5CF6',
-  location: '#10B981',
-  event: '#F59E0B',
-  document: '#6366F1',
-  evidence: '#EC4899',
+  person: '#8B7355',      // Warm brown - matches stone/muted palette
+  organization: '#6B5A47', // Deep warm brown
+  location: '#9D8B73',    // Light warm brown
+  event: '#B89968',       // Golden brown
+  document: '#7A6B5D',    // Medium warm brown
+  evidence: '#A68A6A',    // Tan brown
 };
 
 const EVIDENCE_COLORS: Record<EvidenceType, string> = {
-  text: '#F59E0B',
-  image: '#EC4899',
-  video: '#8B5CF6',
-  audio: '#10B981',
-  document: '#6366F1',
+  text: '#B89968',        // Golden brown
+  image: '#A68A6A',       // Tan brown
+  video: '#8B7355',       // Warm brown
+  audio: '#9D8B73',       // Light warm brown
+  document: '#7A6B5D',    // Medium warm brown
 };
 
 const EVIDENCE_ICONS: Record<EvidenceType, any> = {
@@ -487,7 +487,7 @@ export function KnowledgeGraph({
           <circle
             r={isSelected ? 35 : isHovered ? 32 : 30}
             fill={color}
-            stroke={isConnecting ? "#10B981" : isSelected ? "#FFF" : isHovered ? "#FFF" : color}
+            stroke={isConnecting ? "var(--color-accent)" : isSelected ? "var(--color-smoke)" : isHovered ? "var(--color-accent-muted)" : color}
             strokeWidth={isConnecting ? 4 : isSelected ? 4 : isHovered ? 3 : 2}
             opacity={0.9}
           />
@@ -508,7 +508,7 @@ export function KnowledgeGraph({
           <text
             y={0}
             textAnchor="middle"
-            fill="#FFF"
+            fill="var(--color-smoke)"
             fontSize="10"
             fontWeight="600"
             style={{ pointerEvents: "none", userSelect: "none" }}
@@ -534,8 +534,8 @@ export function KnowledgeGraph({
                 cx={35}
                 cy={0}
                 r={12}
-                fill={isConnecting ? "#10B981" : "#3B82F6"}
-                stroke="#FFF"
+                fill={isConnecting ? "var(--color-accent)" : "var(--color-accent-muted)"}
+                stroke="var(--color-smoke)"
                 strokeWidth={2}
               />
               <text
@@ -543,7 +543,7 @@ export function KnowledgeGraph({
                 y={0}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill="#FFF"
+                fill="var(--color-charcoal)"
                 fontSize="14"
                 fontWeight="600"
                 style={{ pointerEvents: "none" }}
@@ -586,7 +586,7 @@ export function KnowledgeGraph({
             height={isSelected ? 70 : isHovered ? 64 : 60}
             rx={8}
             fill={color}
-            stroke={isConnecting ? "#10B981" : isSelected ? "#FFF" : isHovered ? "#FFF" : color}
+            stroke={isConnecting ? "var(--color-accent)" : isSelected ? "var(--color-smoke)" : isHovered ? "var(--color-accent-muted)" : color}
             strokeWidth={isConnecting ? 4 : isSelected ? 4 : isHovered ? 3 : 2}
             opacity={0.9}
           />
@@ -600,7 +600,7 @@ export function KnowledgeGraph({
             style={{ pointerEvents: "none" }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
-              <IconComponent size={20} color="#FFF" />
+              <IconComponent size={20} color="var(--color-smoke)" />
             </div>
           </foreignObject>
 
@@ -634,8 +634,8 @@ export function KnowledgeGraph({
                 cx={35}
                 cy={0}
                 r={12}
-                fill={isConnecting ? "#10B981" : "#3B82F6"}
-                stroke="#FFF"
+                fill={isConnecting ? "var(--color-accent)" : "var(--color-accent-muted)"}
+                stroke="var(--color-smoke)"
                 strokeWidth={2}
               />
               <text
@@ -643,7 +643,7 @@ export function KnowledgeGraph({
                 y={0}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill="#FFF"
+                fill="var(--color-charcoal)"
                 fontSize="14"
                 fontWeight="600"
                 style={{ pointerEvents: "none" }}
@@ -677,9 +677,9 @@ export function KnowledgeGraph({
           y1={sourcePos.y}
           x2={targetPos.x}
           y2={targetPos.y}
-          stroke="#D97706"
+          stroke="var(--color-stone)"
           strokeWidth={2}
-          opacity={0.6}
+          opacity={0.4}
           strokeDasharray="5,5"
         />
 
@@ -700,18 +700,23 @@ export function KnowledgeGraph({
 
   return (
     <div 
-      className="relative w-full h-full rounded-lg shadow-2xl flex flex-col overflow-hidden"
-      style={{ backgroundColor: "#2C2416", minHeight: "600px" }}
+      className="relative w-full h-full rounded-lg shadow-2xl flex flex-col overflow-hidden border border-stone/10"
+      style={{ 
+        backgroundColor: "var(--color-jet)", 
+        minHeight: "600px",
+        backgroundImage: "radial-gradient(circle at 1px 1px, rgba(138, 138, 130, 0.08) 1px, transparent 0)",
+        backgroundSize: "24px 24px"
+      }}
     >
       {/* Header */}
       <div
         className="flex-none px-6 py-4 border-b"
-        style={{ borderColor: "rgba(139, 92, 46, 0.3)" }}
+        style={{ borderColor: "rgba(138, 138, 130, 0.15)" }}
       >
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-medium text-amber-100 mb-2">Knowledge Graph</h2>
-            <div className="flex items-center gap-6 text-xs text-amber-200/60">
+            <h2 className="text-xl font-medium text-smoke mb-2">Knowledge Graph</h2>
+            <div className="flex items-center gap-6 text-xs text-stone">
               <span>{entityCount} entities</span>
               <span>•</span>
               <span>{evidenceCount} evidence items</span>
@@ -722,15 +727,15 @@ export function KnowledgeGraph({
           
           <div className="flex items-center gap-2">
             {connectingFrom && (
-              <div className="px-3 py-1 rounded-lg bg-green-500/20 text-green-400 text-xs">
+              <div className="px-3 py-1 rounded-lg bg-accent/10 text-accent text-xs">
                 Click another node to connect
               </div>
             )}
             <button
-              className="p-2 rounded-lg hover:bg-amber-900/20 transition-colors"
+              className="p-2 rounded-lg hover:bg-stone/10 transition-colors"
               title="Filters"
             >
-              <Filter className="w-5 h-5 text-amber-200" />
+              <Filter className="w-5 h-5 text-stone" />
             </button>
           </div>
         </div>
@@ -751,7 +756,7 @@ export function KnowledgeGraph({
         <svg
           ref={svgRef}
           className="w-full h-full"
-          style={{ backgroundColor: "#2C2416", cursor: connectingFrom ? "crosshair" : "grab" }}
+          style={{ backgroundColor: "var(--color-charcoal)", cursor: connectingFrom ? "crosshair" : "grab" }}
         >
           {/* Dotted background pattern */}
           <defs>
@@ -763,7 +768,7 @@ export function KnowledgeGraph({
               height="20"
               patternUnits="userSpaceOnUse"
             >
-              <circle cx="2" cy="2" r="1" fill="#8B7355" opacity="0.3" />
+              <circle cx="2" cy="2" r="1" fill="var(--color-stone)" opacity="0.2" />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#dotted-background)" />
@@ -781,7 +786,7 @@ export function KnowledgeGraph({
                   y1={tempConnection.from.y}
                   x2={tempConnection.to.x}
                   y2={tempConnection.to.y}
-                  stroke="#10B981"
+                  stroke="var(--color-accent)"
                   strokeWidth={2}
                   opacity={0.6}
                   strokeDasharray="5,5"
@@ -800,37 +805,37 @@ export function KnowledgeGraph({
         <div className="absolute bottom-4 right-4 flex flex-col gap-2">
           <button
             onClick={handleZoomIn}
-            className="w-10 h-10 rounded-lg bg-amber-900/80 hover:bg-amber-900 text-amber-100 flex items-center justify-center transition-colors"
+            className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
             title="Zoom In"
           >
             <ZoomIn className="w-5 h-5" />
           </button>
           <button
             onClick={handleZoomOut}
-            className="w-10 h-10 rounded-lg bg-amber-900/80 hover:bg-amber-900 text-amber-100 flex items-center justify-center transition-colors"
+            className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
             title="Zoom Out"
           >
             <ZoomOut className="w-5 h-5" />
           </button>
           <button
             onClick={handleResetZoom}
-            className="w-10 h-10 rounded-lg bg-amber-900/80 hover:bg-amber-900 text-amber-100 flex items-center justify-center transition-colors"
+            className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
             title="Reset Zoom"
           >
             <RotateCcw className="w-5 h-5" />
           </button>
           
           {/* Divider */}
-          <div className="h-px bg-amber-900/40 my-1" />
+          <div className="h-px bg-stone/20 my-1" />
           
           {/* Stop/Start Simulation */}
           <button
             onClick={handleToggleSimulation}
             className={clsx(
-              "w-10 h-10 rounded-lg text-amber-100 flex items-center justify-center transition-colors",
+              "w-10 h-10 rounded-lg text-smoke flex items-center justify-center transition-colors border border-stone/20",
               isSimulationRunning 
-                ? "bg-amber-900/80 hover:bg-amber-900" 
-                : "bg-green-900/80 hover:bg-green-900"
+                ? "bg-jet/90 hover:bg-jet" 
+                : "bg-accent/20 hover:bg-accent/30"
             )}
             title={isSimulationRunning ? "Freeze Graph" : "Unfreeze Graph"}
           >
@@ -849,21 +854,21 @@ export function KnowledgeGraph({
 
         {/* Legend - Top Left */}
         <div
-          className="absolute top-4 left-4 p-4 rounded-lg shadow-lg"
-          style={{ backgroundColor: "rgba(44, 36, 22, 0.95)", maxWidth: "280px" }}
+          className="absolute top-4 left-4 p-4 rounded-lg shadow-lg border border-stone/20"
+          style={{ backgroundColor: "rgba(17, 17, 17, 0.95)" }}
         >
-          <h3 className="text-amber-100 font-medium text-sm mb-3">Node Legend</h3>
+          <h3 className="text-smoke font-medium text-sm mb-3">Node Legend</h3>
           
           {/* Entity Types */}
           <div className="mb-3">
-            <p className="text-amber-200/60 text-xs mb-2">Entities (Circles)</p>
+            <p className="text-stone text-xs mb-2">Entities (Circles)</p>
             <div className="space-y-1.5">
               {Object.entries(ENTITY_COLORS).map(([type, color]) => (
                 <div key={type} className="flex items-center gap-2">
                   <svg width="20" height="20">
                     <circle cx="10" cy="10" r="8" fill={color} opacity="0.9" />
                   </svg>
-                  <span className="text-amber-100 text-xs capitalize">{type}</span>
+                  <span className="text-smoke text-xs capitalize">{type}</span>
                 </div>
               ))}
             </div>
@@ -871,7 +876,7 @@ export function KnowledgeGraph({
 
           {/* Evidence Types */}
           <div>
-            <p className="text-amber-200/60 text-xs mb-2">Evidence (Squares)</p>
+            <p className="text-stone text-xs mb-2">Evidence (Squares)</p>
             <div className="space-y-1.5">
               {Object.entries(EVIDENCE_COLORS).map(([type, color]) => {
                 const IconComponent = EVIDENCE_ICONS[type as EvidenceType] || File;
@@ -880,7 +885,7 @@ export function KnowledgeGraph({
                     <svg width="20" height="20">
                       <rect x="2" y="2" width="16" height="16" rx="2" fill={color} opacity="0.9" />
                     </svg>
-                    <span className="text-amber-100 text-xs capitalize">{type}</span>
+                    <span className="text-smoke text-xs capitalize">{type}</span>
                   </div>
                 );
               })}
@@ -891,10 +896,10 @@ export function KnowledgeGraph({
         {/* Node info panel - only show when node is selected */}
         {selectedNode && (
           <div
-            className="absolute top-4 right-4 p-4 rounded-lg shadow-lg max-w-xs"
-            style={{ backgroundColor: "rgba(44, 36, 22, 0.95)" }}
+            className="absolute top-4 right-4 p-4 rounded-lg shadow-lg max-w-xs border border-stone/20"
+            style={{ backgroundColor: "rgba(17, 17, 17, 0.95)" }}
           >
-            <div className="text-amber-100">
+            <div className="text-smoke">
               {(() => {
                 const node = nodes.find((n) => n.id === selectedNode);
                 if (!node) return null;
@@ -907,17 +912,17 @@ export function KnowledgeGraph({
                         <svg width="16" height="16">
                           <circle cx="8" cy="8" r="6" fill={ENTITY_COLORS[entity.type]} opacity="0.9" />
                         </svg>
-                        <span className="text-xs text-amber-200/60 capitalize">{entity.type}</span>
+                        <span className="text-xs text-stone capitalize">{entity.type}</span>
                       </div>
                       <h3 className="font-medium text-lg mb-2">{entity.name}</h3>
                       {entity.description && (
-                        <p className="text-sm text-amber-200/60 mb-3">
+                        <p className="text-sm text-stone mb-3">
                           {entity.description}
                         </p>
                       )}
                       <button
                         onClick={() => setSelectedNode(null)}
-                        className="text-xs text-amber-300 hover:text-amber-100"
+                        className="text-xs text-accent hover:text-accent-muted"
                       >
                         Close
                       </button>
@@ -934,21 +939,21 @@ export function KnowledgeGraph({
                         <svg width="16" height="16">
                           <rect x="2" y="2" width="12" height="12" rx="2" fill={EVIDENCE_COLORS[evidence.type]} opacity="0.9" />
                         </svg>
-                        <span className="text-xs text-amber-200/60 capitalize">{evidence.type}</span>
+                        <span className="text-xs text-stone capitalize">{evidence.type}</span>
                       </div>
                       <h3 className="font-medium text-lg mb-2">{evidence.title}</h3>
                       {evidence.content && (
-                        <p className="text-sm text-amber-200/60 mb-2">
+                        <p className="text-sm text-stone mb-2">
                           {evidence.content}
                         </p>
                       )}
                       {evidence.url && (
-                        <p className="text-xs text-amber-200/40 mb-2">
+                        <p className="text-xs text-stone/60 mb-2">
                           {evidence.url}
                         </p>
                       )}
                       {evidence.metadata && (
-                        <div className="text-xs text-amber-200/60 mb-3">
+                        <div className="text-xs text-stone mb-3">
                           {Object.entries(evidence.metadata).map(([key, value]) => (
                             <div key={key}>
                               <span className="capitalize">{key}:</span> {String(value)}
@@ -958,7 +963,7 @@ export function KnowledgeGraph({
                       )}
                       <button
                         onClick={() => setSelectedNode(null)}
-                        className="text-xs text-amber-300 hover:text-amber-100"
+                        className="text-xs text-accent hover:text-accent-muted"
                       >
                         Close
                       </button>

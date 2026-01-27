@@ -3,3 +3,4 @@
 
 export { GlassCard } from "./glass-card";
 export { VideoModal } from "./video-modal";
+export { ExpandableTabs } from "./expandable-tabs";

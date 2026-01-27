@@ -1,28 +1,60 @@
 "use client";
 
-import { Network } from "lucide-react";
+import { useParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { KnowledgeGraph } from "@/components/app/knowledge-graph";
+import { useCaseGraph } from "@/hooks/use-case-graph";
 
 export default function KnowledgeGraphPage() {
-  return (
-    <div
-      className="rounded-xl p-12 text-center"
-      style={{
-        backgroundColor: "var(--card)",
-        border: "1px solid var(--border)",
-      }}
-    >
+  const params = useParams();
+  const { data, loading, error } = useCaseGraph(params.id as string);
+
+  if (loading) {
+    return (
       <div
-        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
-        style={{ backgroundColor: "var(--muted)" }}
+        className="rounded-xl p-12 text-center"
+        style={{
+          backgroundColor: "var(--card)",
+          border: "1px solid var(--border)",
+        }}
       >
-        <Network className="w-8 h-8 text-(--muted-foreground)" />
+        <Loader2 className="w-8 h-8 text-(--muted-foreground) animate-spin mx-auto mb-4" />
+        <p className="text-(--muted-foreground) text-sm">Loading knowledge graph...</p>
       </div>
-      <h3 className="text-lg font-medium text-(--foreground) mb-2">
-        Knowledge Graph
-      </h3>
-      <p className="text-(--muted-foreground) text-sm max-w-md mx-auto">
-        Coming soon - Visualize connections and relationships within your case data.
-      </p>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        className="rounded-xl p-12 text-center"
+        style={{
+          backgroundColor: "var(--card)",
+          border: "1px solid var(--border)",
+        }}
+      >
+        <p className="text-red-500 text-sm">Error loading graph: {error.message}</p>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  // Count entity nodes vs evidence nodes
+  const entityNodes = data.nodes.filter(n => n.type === 'entity');
+  const evidenceNodes = data.nodes.filter(n => n.type === 'evidence');
+
+  return (
+    <div className="h-[calc(100vh-280px)]">
+      <KnowledgeGraph
+        nodes={data.nodes}
+        connections={data.connections}
+        entityCount={entityNodes.length}
+        evidenceCount={evidenceNodes.length}
+        relationshipCount={data.relationships.length}
+      />
     </div>
   );
 }

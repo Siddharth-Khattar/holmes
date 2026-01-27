@@ -9,3 +9,4 @@ export {
 } from "./use-media-query";
 
 export { useLogout } from "./use-logout";
+export { useCaseGraph } from "./use-case-graph";

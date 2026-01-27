@@ -47,6 +47,7 @@ interface KnowledgeGraphProps {
   evidenceCount: number;
   relationshipCount: number;
   onAddRelationship?: (sourceId: string, targetId: string) => void;
+  onRelationshipCountChange?: (count: number) => void;
 }
 
 const ENTITY_COLORS: Record<EntityType, string> = {
@@ -80,7 +81,8 @@ export function KnowledgeGraph({
   entityCount,
   evidenceCount,
   relationshipCount,
-  onAddRelationship 
+  onAddRelationship,
+  onRelationshipCountChange 
 }: KnowledgeGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -170,6 +172,14 @@ export function KnowledgeGraph({
 
   // Combine original connections with locally created ones
   const allConnections = [...connections, ...localConnections];
+  const totalRelationshipCount = relationshipCount + localConnections.length;
+
+  // Notify parent of relationship count changes
+  useEffect(() => {
+    if (onRelationshipCountChange) {
+      onRelationshipCountChange(totalRelationshipCount);
+    }
+  }, [totalRelationshipCount, onRelationshipCountChange]);
 
   // Update simulation when data changes
   useEffect(() => {
@@ -706,7 +716,7 @@ export function KnowledgeGraph({
               <span>•</span>
               <span>{evidenceCount} evidence items</span>
               <span>•</span>
-              <span>{relationshipCount} relationships</span>
+              <span>{totalRelationshipCount} relationships</span>
             </div>
           </div>
           

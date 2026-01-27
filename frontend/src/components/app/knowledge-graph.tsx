@@ -100,6 +100,8 @@ export function KnowledgeGraph({
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [tempConnection, setTempConnection] = useState<{ from: Position; to: Position } | null>(null);
   const [localConnections, setLocalConnections] = useState<GraphConnection[]>([]);
+  const [isSimulationRunning, setIsSimulationRunning] = useState(true);
+  const manuallyStoppedRef = useRef(false);
 
   // Initialize dimensions
   useEffect(() => {
@@ -128,13 +130,14 @@ export function KnowledgeGraph({
           forceLink<ForceNode, ForceLink>([])
             .id((d) => d.id)
             .distance(120)
-            .strength(0.7)
+            .strength(0.5)
         )
-        .force("charge", forceManyBody<ForceNode>().strength(-400).distanceMax(500))
-        .force("center", forceCenter(dimensions.width / 2, dimensions.height / 2).strength(0.05))
-        .force("collide", forceCollide<ForceNode>().radius(50).strength(0.8).iterations(3))
-        .alphaDecay(0.02)
-        .velocityDecay(0.3)
+        .force("charge", forceManyBody<ForceNode>().strength(-300).distanceMax(400))
+        .force("center", forceCenter(dimensions.width / 2, dimensions.height / 2).strength(0.1))
+        .force("collide", forceCollide<ForceNode>().radius(50).strength(0.9).iterations(3))
+        .alphaMin(0.001)
+        .alphaDecay(0.0228)
+        .velocityDecay(0.4)
         .on("tick", () => {
           // Update positions in ref
           forceNodesRef.current.forEach((node) => {
@@ -147,6 +150,13 @@ export function KnowledgeGraph({
           requestAnimationFrame(() => {
             setRenderTrigger((prev) => prev + 1);
           });
+        })
+        .on("end", () => {
+          // Simulation has stabilized naturally
+          if (!manuallyStoppedRef.current) {
+            console.log("Simulation stabilized naturally");
+            setIsSimulationRunning(false);
+          }
         });
     }
 
@@ -216,8 +226,11 @@ export function KnowledgeGraph({
       (centerForce as any).x(dimensions.width / 2).y(dimensions.height / 2);
     }
 
-    // Reheat simulation
-    sim.alpha(0.5).restart();
+    // Only restart simulation if not manually stopped
+    if (!manuallyStoppedRef.current) {
+      sim.alpha(0.3).restart();
+      setIsSimulationRunning(true);
+    }
   }, [nodes, allConnections, dimensions.width, dimensions.height]);
 
   // Setup zoom and pan behavior
@@ -285,7 +298,17 @@ export function KnowledgeGraph({
       if (forceNode) {
         forceNode.fx = x;
         forceNode.fy = y;
-        simulationRef.current?.alpha(0.3).restart();
+        
+        // Only restart simulation if it's running
+        if (simulationRef.current && isSimulationRunning) {
+          simulationRef.current.alpha(0.3).restart();
+        } else if (simulationRef.current) {
+          // If frozen, just update position without simulation
+          forceNode.x = x;
+          forceNode.y = y;
+          nodePositionsRef.current.set(nodeId, { x, y });
+          setRenderTrigger(prev => prev + 1);
+        }
       }
     };
 
@@ -312,7 +335,7 @@ export function KnowledgeGraph({
 
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
-  }, []);
+  }, [isSimulationRunning]);
 
   // Handle connection creation
   const handleStartConnection = useCallback((nodeId: string, e: React.MouseEvent) => {
@@ -402,6 +425,25 @@ export function KnowledgeGraph({
       .duration(500)
       .call(zoomBehaviorRef.current.transform, zoomIdentity);
   };
+
+  const handleToggleSimulation = useCallback(() => {
+    if (!simulationRef.current) return;
+    
+    if (isSimulationRunning) {
+      // Stop simulation - set alpha to 0 to stop immediately
+      simulationRef.current.alpha(0);
+      simulationRef.current.stop();
+      manuallyStoppedRef.current = true;
+      setIsSimulationRunning(false);
+      console.log("Simulation stopped");
+    } else {
+      // Restart simulation gently
+      manuallyStoppedRef.current = false;
+      simulationRef.current.alpha(0.1).restart();
+      setIsSimulationRunning(true);
+      console.log("Simulation started");
+    }
+  }, [isSimulationRunning]);
 
   // Render node
   const renderNode = (node: GraphNode) => {
@@ -766,6 +808,32 @@ export function KnowledgeGraph({
             title="Reset Zoom"
           >
             <RotateCcw className="w-5 h-5" />
+          </button>
+          
+          {/* Divider */}
+          <div className="h-px bg-amber-900/40 my-1" />
+          
+          {/* Stop/Start Simulation */}
+          <button
+            onClick={handleToggleSimulation}
+            className={clsx(
+              "w-10 h-10 rounded-lg text-amber-100 flex items-center justify-center transition-colors",
+              isSimulationRunning 
+                ? "bg-amber-900/80 hover:bg-amber-900" 
+                : "bg-green-900/80 hover:bg-green-900"
+            )}
+            title={isSimulationRunning ? "Freeze Graph" : "Unfreeze Graph"}
+          >
+            {isSimulationRunning ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="6" y="4" width="4" height="16" />
+                <rect x="14" y="4" width="4" height="16" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+            )}
           </button>
         </div>
 

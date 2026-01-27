@@ -46,6 +46,7 @@ interface KnowledgeGraphProps {
   entityCount: number;
   evidenceCount: number;
   relationshipCount: number;
+  onAddRelationship?: (sourceId: string, targetId: string) => void;
 }
 
 const ENTITY_COLORS: Record<EntityType, string> = {
@@ -78,7 +79,8 @@ export function KnowledgeGraph({
   connections, 
   entityCount,
   evidenceCount,
-  relationshipCount 
+  relationshipCount,
+  onAddRelationship 
 }: KnowledgeGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -97,6 +99,7 @@ export function KnowledgeGraph({
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [tempConnection, setTempConnection] = useState<{ from: Position; to: Position } | null>(null);
+  const [localConnections, setLocalConnections] = useState<GraphConnection[]>([]);
 
   // Initialize dimensions
   useEffect(() => {
@@ -155,6 +158,9 @@ export function KnowledgeGraph({
     };
   }, [dimensions.width, dimensions.height]);
 
+  // Combine original connections with locally created ones
+  const allConnections = [...connections, ...localConnections];
+
   // Update simulation when data changes
   useEffect(() => {
     if (!simulationRef.current) return;
@@ -185,8 +191,8 @@ export function KnowledgeGraph({
       };
     });
 
-    // Convert connections to force links
-    const forceLinks: ForceLink[] = connections.map((conn) => ({
+    // Convert connections to force links - use allConnections
+    const forceLinks: ForceLink[] = allConnections.map((conn) => ({
       source: conn.source,
       target: conn.target,
       connection: conn,
@@ -212,7 +218,7 @@ export function KnowledgeGraph({
 
     // Reheat simulation
     sim.alpha(0.5).restart();
-  }, [nodes, connections, dimensions.width, dimensions.height]);
+  }, [nodes, allConnections, dimensions.width, dimensions.height]);
 
   // Setup zoom and pan behavior
   useEffect(() => {
@@ -337,14 +343,43 @@ export function KnowledgeGraph({
 
   const handleCompleteConnection = useCallback((targetNodeId: string) => {
     if (connectingFrom && connectingFrom !== targetNodeId) {
-      // TODO: Call API to create relationship
-      console.log('Create relationship:', connectingFrom, '->', targetNodeId);
-      // For now, just show alert
-      alert(`Create relationship from ${connectingFrom} to ${targetNodeId}`);
+      // Get node names for the relationship label
+      const sourceNode = nodes.find(n => n.id === connectingFrom);
+      const targetNode = nodes.find(n => n.id === targetNodeId);
+      
+      if (!sourceNode || !targetNode) return;
+
+      // Create a new relationship locally
+      const newRelationship: GraphConnection = {
+        id: `temp-${Date.now()}`,
+        source: connectingFrom,
+        target: targetNodeId,
+        relationship: {
+          id: `temp-rel-${Date.now()}`,
+          sourceEntityId: connectingFrom,
+          targetEntityId: targetNodeId,
+          type: 'custom',
+          label: 'Connected to',
+          strength: 0.5,
+          createdAt: new Date(),
+        },
+      };
+
+      // Add to local connections
+      setLocalConnections(prev => [...prev, newRelationship]);
+
+      // Call parent callback if provided (for backend integration)
+      if (onAddRelationship) {
+        onAddRelationship(connectingFrom, targetNodeId);
+      }
+
+      // Show success feedback
+      console.log('Relationship created:', connectingFrom, '->', targetNodeId);
     }
+    
     setConnectingFrom(null);
     setTempConnection(null);
-  }, [connectingFrom]);
+  }, [connectingFrom, nodes, onAddRelationship]);
 
   // Zoom controls
   const handleZoomIn = () => {
@@ -685,7 +720,7 @@ export function KnowledgeGraph({
           <g transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>
             {/* Connections layer */}
             <g className="edges-layer">
-              {connections.map((conn) => renderConnection(conn))}
+              {allConnections.map((conn) => renderConnection(conn))}
               
               {/* Temporary connection line */}
               {tempConnection && (

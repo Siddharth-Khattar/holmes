@@ -32,7 +32,7 @@ export interface DragBehaviorOptions {
  * @returns D3 drag behavior that can be applied to SVG elements, or null if simulation is null
  */
 export function createDragBehavior(
-  simulation: Simulation<GraphNode, GraphConnection> | null
+  simulation: Simulation<GraphNode, GraphConnection> | null,
 ) {
   return createDragBehaviorWithClick({ simulation });
 }
@@ -65,7 +65,7 @@ export function createDragBehaviorWithClick({
    */
   function dragStarted(
     event: D3DragEvent<SVGCircleElement, GraphNode, GraphNode>,
-    d: GraphNode
+    d: GraphNode,
   ) {
     // Store starting position for click detection
     dragStartX = event.x;
@@ -89,7 +89,7 @@ export function createDragBehaviorWithClick({
    */
   function dragged(
     event: D3DragEvent<SVGCircleElement, GraphNode, GraphNode>,
-    d: GraphNode
+    d: GraphNode,
   ) {
     // Update fixed position to cursor coordinates
     // The simulation will use these values instead of calculating new positions
@@ -104,12 +104,12 @@ export function createDragBehaviorWithClick({
    */
   function dragEnded(
     event: D3DragEvent<SVGCircleElement, GraphNode, GraphNode>,
-    d: GraphNode
+    d: GraphNode,
   ) {
     // Calculate drag distance for click detection
     if (dragStartX !== null && dragStartY !== null) {
       const dragDistance = Math.sqrt(
-        Math.pow(event.x - dragStartX, 2) + Math.pow(event.y - dragStartY, 2)
+        Math.pow(event.x - dragStartX, 2) + Math.pow(event.y - dragStartY, 2),
       );
 
       // If distance is below threshold, treat as click

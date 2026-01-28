@@ -1,7 +1,11 @@
 // ABOUTME: Helper utilities for D3 graph operations
 // ABOUTME: Provides node sizing, opacity calculations, and other D3-related utilities
 
-import type { GraphNode, EntityType, EvidenceType } from "@/types/knowledge-graph";
+import type {
+  GraphNode,
+  EntityType,
+  EvidenceType,
+} from "@/types/knowledge-graph";
 
 /**
  * Default opacity configuration for connections
@@ -73,7 +77,7 @@ export function getEvidenceColor(type: EvidenceType): string {
  */
 export function getConnectionOpacityByStrength(
   strength: number,
-  config = DEFAULT_OPACITY_CONFIG
+  config = DEFAULT_OPACITY_CONFIG,
 ): number {
   // Strength is 0-1, map to opacity range
   return config.min + strength * (config.max - config.min);
@@ -85,7 +89,7 @@ export function getConnectionOpacityByStrength(
  */
 export function getEnhancedConnectionOpacity(
   strength: number,
-  config = DEFAULT_OPACITY_CONFIG
+  config = DEFAULT_OPACITY_CONFIG,
 ): number {
   // Apply power function for non-linear emphasis
   const emphasized = Math.pow(strength, 0.7);
@@ -103,7 +107,7 @@ export interface PercentileThresholds {
 }
 
 export function calculatePercentileThresholds(
-  values: number[]
+  values: number[],
 ): PercentileThresholds {
   if (values.length === 0) {
     return { p25: 0, p50: 0, p75: 0, p90: 0 };
@@ -132,7 +136,7 @@ export function calculatePercentileThresholds(
 export function getConnectionOpacityByPercentile(
   strength: number,
   thresholds: PercentileThresholds,
-  config = DEFAULT_OPACITY_CONFIG
+  config = DEFAULT_OPACITY_CONFIG,
 ): number {
   // Map strength to opacity based on percentile position
   if (strength >= thresholds.p90) {
@@ -155,7 +159,7 @@ export function distance(
   x1: number,
   y1: number,
   x2: number,
-  y2: number
+  y2: number,
 ): number {
   return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
 }
@@ -168,7 +172,7 @@ export function isPointInCircle(
   py: number,
   cx: number,
   cy: number,
-  radius: number
+  radius: number,
 ): boolean {
   return distance(px, py, cx, cy) <= radius;
 }
@@ -182,7 +186,7 @@ export function isPointInRect(
   rx: number,
   ry: number,
   width: number,
-  height: number
+  height: number,
 ): boolean {
   return px >= rx && px <= rx + width && py >= ry && py <= ry + height;
 }

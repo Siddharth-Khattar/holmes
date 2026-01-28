@@ -1,9 +1,12 @@
-import { TimelineEvent } from '@/types/timeline.types';
+import { TimelineEvent } from "@/types/timeline.types";
 
 /**
  * Calculate similarity score between two events (0-1)
  */
-function calculateSimilarity(event1: TimelineEvent, event2: TimelineEvent): number {
+function calculateSimilarity(
+  event1: TimelineEvent,
+  event2: TimelineEvent,
+): number {
   let score = 0;
 
   // Same date (exact match)
@@ -13,7 +16,7 @@ function calculateSimilarity(event1: TimelineEvent, event2: TimelineEvent): numb
   // Same day (within 24 hours)
   else if (
     Math.abs(
-      new Date(event1.date).getTime() - new Date(event2.date).getTime()
+      new Date(event1.date).getTime() - new Date(event2.date).getTime(),
     ) <
     24 * 60 * 60 * 1000
   ) {
@@ -32,7 +35,7 @@ function calculateSimilarity(event1: TimelineEvent, event2: TimelineEvent): numb
   // Overlapping source documents
   if (event1.sourceIds && event2.sourceIds) {
     const overlap = event1.sourceIds.filter((id) =>
-      event2.sourceIds!.includes(id)
+      event2.sourceIds!.includes(id),
     ).length;
     const total = new Set([...event1.sourceIds, ...event2.sourceIds]).size;
     score += (overlap / total) * 0.1;
@@ -76,7 +79,7 @@ function levenshteinDistance(str1: string, str2: string): number {
         matrix[i][j] = Math.min(
           matrix[i - 1][j - 1] + 1,
           matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
+          matrix[i - 1][j] + 1,
         );
       }
     }
@@ -90,7 +93,7 @@ function levenshteinDistance(str1: string, str2: string): number {
  */
 export function findDuplicateEvents(
   events: TimelineEvent[],
-  similarityThreshold: number = 0.7
+  similarityThreshold: number = 0.7,
 ): TimelineEvent[][] {
   const duplicateGroups: TimelineEvent[][] = [];
   const processed = new Set<string>();
@@ -124,7 +127,7 @@ export function findDuplicateEvents(
  */
 export function mergeEvents(events: TimelineEvent[]): TimelineEvent {
   if (events.length === 0) {
-    throw new Error('Cannot merge empty event array');
+    throw new Error("Cannot merge empty event array");
   }
 
   if (events.length === 1) {
@@ -172,7 +175,7 @@ export function mergeEvents(events: TimelineEvent[]): TimelineEvent {
  */
 export function deduplicateEvents(
   events: TimelineEvent[],
-  similarityThreshold: number = 0.7
+  similarityThreshold: number = 0.7,
 ): TimelineEvent[] {
   const duplicateGroups = findDuplicateEvents(events, similarityThreshold);
   const mergedEvents = duplicateGroups.map((group) => mergeEvents(group));

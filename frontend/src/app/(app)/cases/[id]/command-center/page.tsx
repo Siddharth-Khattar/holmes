@@ -21,7 +21,8 @@ export default function CommandCenterPage() {
         Command Center
       </h3>
       <p className="text-(--muted-foreground) text-sm max-w-md mx-auto">
-        Coming soon - Your central hub for case management and investigation control.
+        Coming soon - Your central hub for case management and investigation
+        control.
       </p>
     </div>
   );

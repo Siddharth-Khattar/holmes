@@ -120,7 +120,14 @@ export function useZoom({
     return () => {
       svg.on(".zoom", null);
     };
-  }, [svgElement, onTransformChange, containerWidth, containerHeight, minScale, maxScale]);
+  }, [
+    svgElement,
+    onTransformChange,
+    containerWidth,
+    containerHeight,
+    minScale,
+    maxScale,
+  ]);
 
   /**
    * Applies a programmatic zoom transformation with smooth transition.
@@ -130,9 +137,12 @@ export function useZoom({
       if (!svgElement || !zoomBehaviorRef.current) return;
 
       const svg = select(svgElement);
-      svg.transition().duration(duration).call(zoomBehaviorRef.current.transform, transform);
+      svg
+        .transition()
+        .duration(duration)
+        .call(zoomBehaviorRef.current.transform, transform);
     },
-    [svgElement]
+    [svgElement],
   );
 
   const zoomIn = useCallback(
@@ -147,7 +157,7 @@ export function useZoom({
       const newTransform = currentTransformRef.current.scale(scaleFactor);
       applyProgrammaticZoom(newTransform);
     },
-    [maxScale, applyProgrammaticZoom]
+    [maxScale, applyProgrammaticZoom],
   );
 
   const zoomOut = useCallback(
@@ -162,7 +172,7 @@ export function useZoom({
       const newTransform = currentTransformRef.current.scale(1 / scaleFactor);
       applyProgrammaticZoom(newTransform);
     },
-    [minScale, applyProgrammaticZoom]
+    [minScale, applyProgrammaticZoom],
   );
 
   const resetZoom = useCallback(() => {
@@ -177,7 +187,7 @@ export function useZoom({
     (transform: ZoomTransform, duration = 500) => {
       applyProgrammaticZoom(transform, duration);
     },
-    [applyProgrammaticZoom]
+    [applyProgrammaticZoom],
   );
 
   if (!svgElement) {

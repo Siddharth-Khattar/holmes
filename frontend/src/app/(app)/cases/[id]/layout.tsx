@@ -96,21 +96,24 @@ export default function CaseLayout({
 
   const status = statusConfig[caseData.status];
   const basePath = `/cases/${params.id}`;
-  
+
   // Get current section from pathname
-  const currentSection = pathname.split('/').pop() || 'upload';
-  
+  const currentSection = pathname.split("/").pop() || "upload";
+
   // Debug: log to verify matching
-  console.log('CaseLayout - pathname:', pathname);
-  console.log('CaseLayout - currentSection:', currentSection);
-  console.log('CaseLayout - activeTab:', `/${currentSection}`);
+  console.log("CaseLayout - pathname:", pathname);
+  console.log("CaseLayout - currentSection:", currentSection);
+  console.log("CaseLayout - activeTab:", `/${currentSection}`);
 
   const handleTabChange = (href: string) => {
     router.push(`${basePath}${href}`);
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
+    <div
+      className="min-h-screen"
+      style={{ backgroundColor: "var(--background)" }}
+    >
       <div className="p-6 lg:p-8">
         {/* Back link */}
         <Link

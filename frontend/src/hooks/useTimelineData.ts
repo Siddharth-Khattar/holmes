@@ -1,30 +1,40 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { TimelineApiResponse, TimelineFilters, TimelineEvent } from '@/types/timeline.types';
-import { timelineApi } from '@/lib/api/timelineApi';
-import { getCachedTimelineData, setCachedTimelineData } from '@/lib/cache/timelineCache';
-import { PERFORMANCE_CONFIG } from '@/constants/timeline.constants';
-import { generateMockTimelineResponse } from '@/lib/mock-timeline-data';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  TimelineApiResponse,
+  TimelineFilters,
+  TimelineEvent,
+} from "@/types/timeline.types";
+import { timelineApi } from "@/lib/api/timelineApi";
+import {
+  getCachedTimelineData,
+  setCachedTimelineData,
+} from "@/lib/cache/timelineCache";
+import { PERFORMANCE_CONFIG } from "@/constants/timeline.constants";
+import { generateMockTimelineResponse } from "@/lib/mock-timeline-data";
 
 export function useTimelineData(caseId: string, filters: TimelineFilters) {
   const queryClient = useQueryClient();
 
   // Main data query with caching
   const query = useQuery({
-    queryKey: ['timeline', caseId, filters],
+    queryKey: ["timeline", caseId, filters],
     queryFn: async (): Promise<TimelineApiResponse> => {
       // Try cache first
       const cached = getCachedTimelineData(caseId, filters);
-      if (cached && Date.now() - cached.timestamp < PERFORMANCE_CONFIG.CACHE_TTL) {
+      if (
+        cached &&
+        Date.now() - cached.timestamp < PERFORMANCE_CONFIG.CACHE_TTL
+      ) {
         return cached.data;
       }
 
       try {
         // Fetch from API
         const data = await timelineApi.getTimelineEvents(caseId, filters);
-        
+
         // Validate response
         if (!data || !Array.isArray(data.events)) {
-          throw new Error('Invalid timeline data received');
+          throw new Error("Invalid timeline data received");
         }
 
         // Update cache
@@ -33,26 +43,31 @@ export function useTimelineData(caseId: string, filters: TimelineFilters) {
         return data;
       } catch (error) {
         // Fallback to mock data if API fails
-        console.warn('Timeline API failed, using mock data:', error);
+        console.warn("Timeline API failed, using mock data:", error);
         const mockData = generateMockTimelineResponse(caseId);
-        
+
         // Apply filters to mock data
         let filteredEvents = mockData.events;
-        
+
         if (filters.layers && filters.layers.length > 0) {
-          filteredEvents = filteredEvents.filter(e => filters.layers.includes(e.layer));
-        }
-        
-        if (filters.searchQuery) {
-          const query = filters.searchQuery.toLowerCase();
-          filteredEvents = filteredEvents.filter(e =>
-            e.title.toLowerCase().includes(query) ||
-            e.description?.toLowerCase().includes(query)
+          filteredEvents = filteredEvents.filter((e) =>
+            filters.layers.includes(e.layer),
           );
         }
-        
+
+        if (filters.searchQuery) {
+          const query = filters.searchQuery.toLowerCase();
+          filteredEvents = filteredEvents.filter(
+            (e) =>
+              e.title.toLowerCase().includes(query) ||
+              e.description?.toLowerCase().includes(query),
+          );
+        }
+
         if (filters.minConfidence) {
-          filteredEvents = filteredEvents.filter(e => e.confidence >= filters.minConfidence!);
+          filteredEvents = filteredEvents.filter(
+            (e) => e.confidence >= filters.minConfidence!,
+          );
         }
 
         const response: TimelineApiResponse = {
@@ -82,11 +97,11 @@ export function useTimelineData(caseId: string, filters: TimelineFilters) {
     },
     onMutate: async (updatedEvent) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['timeline', caseId] });
+      await queryClient.cancelQueries({ queryKey: ["timeline", caseId] });
 
       // Snapshot previous value
       const previousData = queryClient.getQueryData<TimelineApiResponse>([
-        'timeline',
+        "timeline",
         caseId,
         filters,
       ]);
@@ -94,13 +109,13 @@ export function useTimelineData(caseId: string, filters: TimelineFilters) {
       // Optimistically update
       if (previousData) {
         queryClient.setQueryData<TimelineApiResponse>(
-          ['timeline', caseId, filters],
+          ["timeline", caseId, filters],
           {
             ...previousData,
             events: previousData.events.map((event) =>
-              event.id === updatedEvent.id ? updatedEvent : event
+              event.id === updatedEvent.id ? updatedEvent : event,
             ),
-          }
+          },
         );
       }
 
@@ -110,15 +125,15 @@ export function useTimelineData(caseId: string, filters: TimelineFilters) {
       // Rollback on error
       if (context?.previousData) {
         queryClient.setQueryData(
-          ['timeline', caseId, filters],
-          context.previousData
+          ["timeline", caseId, filters],
+          context.previousData,
         );
       }
-      console.error('Failed to update timeline event:', error);
+      console.error("Failed to update timeline event:", error);
     },
     onSettled: () => {
       // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey: ['timeline', caseId] });
+      queryClient.invalidateQueries({ queryKey: ["timeline", caseId] });
     },
   });
 
@@ -128,22 +143,24 @@ export function useTimelineData(caseId: string, filters: TimelineFilters) {
       return await timelineApi.deleteTimelineEvent(caseId, eventId);
     },
     onMutate: async (deletedEventId) => {
-      await queryClient.cancelQueries({ queryKey: ['timeline', caseId] });
+      await queryClient.cancelQueries({ queryKey: ["timeline", caseId] });
 
       const previousData = queryClient.getQueryData<TimelineApiResponse>([
-        'timeline',
+        "timeline",
         caseId,
         filters,
       ]);
 
       if (previousData) {
         queryClient.setQueryData<TimelineApiResponse>(
-          ['timeline', caseId, filters],
+          ["timeline", caseId, filters],
           {
             ...previousData,
-            events: previousData.events.filter((event) => event.id !== deletedEventId),
+            events: previousData.events.filter(
+              (event) => event.id !== deletedEventId,
+            ),
             totalCount: previousData.totalCount - 1,
-          }
+          },
         );
       }
 
@@ -152,14 +169,14 @@ export function useTimelineData(caseId: string, filters: TimelineFilters) {
     onError: (error, variables, context) => {
       if (context?.previousData) {
         queryClient.setQueryData(
-          ['timeline', caseId, filters],
-          context.previousData
+          ["timeline", caseId, filters],
+          context.previousData,
         );
       }
-      console.error('Failed to delete timeline event:', error);
+      console.error("Failed to delete timeline event:", error);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['timeline', caseId] });
+      queryClient.invalidateQueries({ queryKey: ["timeline", caseId] });
     },
   });
 

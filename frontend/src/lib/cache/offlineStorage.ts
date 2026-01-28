@@ -1,8 +1,8 @@
-import { TimelineApiResponse } from '@/types/timeline.types';
+import { TimelineApiResponse } from "@/types/timeline.types";
 
-const DB_NAME = 'legal-intelligence-timeline';
+const DB_NAME = "legal-intelligence-timeline";
 const DB_VERSION = 1;
-const STORE_NAME = 'timeline-cache';
+const STORE_NAME = "timeline-cache";
 
 class OfflineStorage {
   private db: IDBDatabase | null = null;
@@ -23,27 +23,24 @@ class OfflineStorage {
         const db = (event.target as IDBOpenDBRequest).result;
 
         if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-          store.createIndex('caseId', 'caseId', { unique: false });
-          store.createIndex('timestamp', 'timestamp', { unique: false });
+          const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
+          store.createIndex("caseId", "caseId", { unique: false });
+          store.createIndex("timestamp", "timestamp", { unique: false });
         }
       };
     });
   }
 
-  async set(
-    caseId: string,
-    data: TimelineApiResponse
-  ): Promise<void> {
+  async set(caseId: string, data: TimelineApiResponse): Promise<void> {
     await this.init();
 
     return new Promise((resolve, reject) => {
       if (!this.db) {
-        reject(new Error('Database not initialized'));
+        reject(new Error("Database not initialized"));
         return;
       }
 
-      const transaction = this.db.transaction([STORE_NAME], 'readwrite');
+      const transaction = this.db.transaction([STORE_NAME], "readwrite");
       const store = transaction.objectStore(STORE_NAME);
 
       const entry = {
@@ -65,11 +62,11 @@ class OfflineStorage {
 
     return new Promise((resolve, reject) => {
       if (!this.db) {
-        reject(new Error('Database not initialized'));
+        reject(new Error("Database not initialized"));
         return;
       }
 
-      const transaction = this.db.transaction([STORE_NAME], 'readonly');
+      const transaction = this.db.transaction([STORE_NAME], "readonly");
       const store = transaction.objectStore(STORE_NAME);
       const request = store.get(`timeline-${caseId}`);
 
@@ -91,11 +88,11 @@ class OfflineStorage {
 
     return new Promise((resolve, reject) => {
       if (!this.db) {
-        reject(new Error('Database not initialized'));
+        reject(new Error("Database not initialized"));
         return;
       }
 
-      const transaction = this.db.transaction([STORE_NAME], 'readwrite');
+      const transaction = this.db.transaction([STORE_NAME], "readwrite");
       const store = transaction.objectStore(STORE_NAME);
       const request = store.delete(`timeline-${caseId}`);
 
@@ -109,11 +106,11 @@ class OfflineStorage {
 
     return new Promise((resolve, reject) => {
       if (!this.db) {
-        reject(new Error('Database not initialized'));
+        reject(new Error("Database not initialized"));
         return;
       }
 
-      const transaction = this.db.transaction([STORE_NAME], 'readwrite');
+      const transaction = this.db.transaction([STORE_NAME], "readwrite");
       const store = transaction.objectStore(STORE_NAME);
       const request = store.clear();
 

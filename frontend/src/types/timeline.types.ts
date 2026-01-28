@@ -1,11 +1,11 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // Layer system
-export const TimelineLayerSchema = z.enum(['evidence', 'legal', 'strategy']);
+export const TimelineLayerSchema = z.enum(["evidence", "legal", "strategy"]);
 export type TimelineLayer = z.infer<typeof TimelineLayerSchema>;
 
 // Zoom levels
-export const TimelineZoomLevelSchema = z.enum(['day', 'week', 'month', 'year']);
+export const TimelineZoomLevelSchema = z.enum(["day", "week", "month", "year"]);
 export type TimelineZoomLevel = z.infer<typeof TimelineZoomLevelSchema>;
 
 // Core event model - FIXED: Made all critical fields required
@@ -20,7 +20,7 @@ export const TimelineEventSchema = z.object({
   entityIds: z.array(z.string().uuid()).default([]),
   confidence: z.number().min(0).max(1).default(0.8),
   isUserCorrected: z.boolean().default(false),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -36,11 +36,13 @@ export const TimelineApiResponseSchema = z.object({
     latest: z.string().datetime(),
   }),
   layerCounts: z.record(TimelineLayerSchema, z.number()),
-  pagination: z.object({
-    limit: z.number(),
-    offset: z.number(),
-    hasMore: z.boolean(),
-  }).optional(),
+  pagination: z
+    .object({
+      limit: z.number(),
+      offset: z.number(),
+      hasMore: z.boolean(),
+    })
+    .optional(),
 });
 
 export type TimelineApiResponse = z.infer<typeof TimelineApiResponseSchema>;
@@ -69,12 +71,12 @@ export interface TimelineProps {
 
 // SSE Event types
 export type TimelineSSEEventType =
-  | 'timeline-event-created'
-  | 'timeline-event-updated'
-  | 'timeline-event-deleted'
-  | 'timeline-extraction-started'
-  | 'timeline-extraction-progress'
-  | 'timeline-extraction-complete';
+  | "timeline-event-created"
+  | "timeline-event-updated"
+  | "timeline-event-deleted"
+  | "timeline-extraction-started"
+  | "timeline-extraction-progress"
+  | "timeline-extraction-complete";
 
 export interface TimelineSSEEvent {
   type: TimelineSSEEventType;

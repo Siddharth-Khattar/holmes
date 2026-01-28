@@ -20,7 +20,9 @@ export function Timeline({
   enableRealtimeUpdates = true,
   className,
 }: TimelineProps) {
-  const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(
+    null,
+  );
 
   // Filter and zoom state
   const {
@@ -50,7 +52,7 @@ export function Timeline({
   // Filter events by selected layers
   const filteredEvents = useMemo(() => {
     const events = timelineData?.events || initialEvents;
-    return events.filter(event => selectedLayers.includes(event.layer));
+    return events.filter((event) => selectedLayers.includes(event.layer));
   }, [timelineData?.events, initialEvents, selectedLayers]);
 
   const handleEventClick = (event: TimelineEvent) => {
@@ -77,15 +79,15 @@ export function Timeline({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-4">
-        <div className="text-red-600 dark:text-red-400 text-lg font-medium">
+        <div className="text-[var(--destructive)] text-lg font-medium">
           Failed to load timeline
         </div>
-        <p className="text-neutral-600 dark:text-neutral-400 text-sm mt-2">
-          {error.message || 'An unexpected error occurred'}
+        <p className="text-[var(--muted-foreground)] text-sm mt-2">
+          {error.message || "An unexpected error occurred"}
         </p>
         <button
           onClick={() => refetch()}
-          className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+          className="mt-4 px-4 py-2 bg-[var(--primary)] hover:bg-[var(--primary)]/90 text-[var(--primary-foreground)] rounded-md transition-colors font-medium"
         >
           Retry
         </button>
@@ -98,7 +100,6 @@ export function Timeline({
   return (
     <div className={className}>
       <TimelineHeader
-        caseId={caseId}
         dateRange={timelineData?.dateRange}
         layerCounts={timelineData?.layerCounts}
       />

@@ -1,8 +1,15 @@
 // Knowledge Graph Types
+import type { SimulationNodeDatum, SimulationLinkDatum } from "d3-force";
 
-export type EntityType = 'person' | 'organization' | 'location' | 'event' | 'document' | 'evidence';
+export type EntityType =
+  | "person"
+  | "organization"
+  | "location"
+  | "event"
+  | "document"
+  | "evidence";
 
-export type EvidenceType = 'text' | 'image' | 'video' | 'audio' | 'document';
+export type EvidenceType = "text" | "image" | "video" | "audio" | "document";
 
 export interface Position {
   x: number;
@@ -41,19 +48,19 @@ export interface Relationship {
   createdAt: Date;
 }
 
-export interface GraphNode {
+export interface GraphNode extends SimulationNodeDatum {
   id: string;
-  type: 'entity' | 'evidence';
+  type: "entity" | "evidence";
   data: Entity | Evidence;
   position: Position;
   isPinned: boolean;
   degree?: number; // Number of connections
 }
 
-export interface GraphConnection {
+export interface GraphConnection extends SimulationLinkDatum<GraphNode> {
   id: string;
-  source: string; // node id
-  target: string; // node id
+  source: string | GraphNode; // node id or node object
+  target: string | GraphNode; // node id or node object
   relationship: Relationship;
 }
 
@@ -110,15 +117,25 @@ export interface RedStringBoardOptions {
 }
 
 export type GraphEvent =
-  | { type: 'nodeClick'; nodeId: string; event: React.MouseEvent }
-  | { type: 'nodeDoubleClick'; nodeId: string; event: React.MouseEvent }
-  | { type: 'nodeHover'; nodeId: string; event: React.MouseEvent }
-  | { type: 'nodeHoverLeave'; nodeId: string; event: React.MouseEvent }
-  | { type: 'nodeDragStart'; nodeId: string; event: React.MouseEvent }
-  | { type: 'nodeDragging'; nodeId: string; position: Position; event: MouseEvent }
-  | { type: 'nodeDragEnd'; nodeId: string; position: Position; event: MouseEvent }
-  | { type: 'edgeClick'; edgeId: string; event: React.MouseEvent }
-  | { type: 'backgroundClick'; position: Position; event: React.MouseEvent }
-  | { type: 'zoom'; scale: number; translation: Position }
-  | { type: 'stabilizationProgress'; progress: number }
-  | { type: 'stabilizationDone' };
+  | { type: "nodeClick"; nodeId: string; event: React.MouseEvent }
+  | { type: "nodeDoubleClick"; nodeId: string; event: React.MouseEvent }
+  | { type: "nodeHover"; nodeId: string; event: React.MouseEvent }
+  | { type: "nodeHoverLeave"; nodeId: string; event: React.MouseEvent }
+  | { type: "nodeDragStart"; nodeId: string; event: React.MouseEvent }
+  | {
+      type: "nodeDragging";
+      nodeId: string;
+      position: Position;
+      event: MouseEvent;
+    }
+  | {
+      type: "nodeDragEnd";
+      nodeId: string;
+      position: Position;
+      event: MouseEvent;
+    }
+  | { type: "edgeClick"; edgeId: string; event: React.MouseEvent }
+  | { type: "backgroundClick"; position: Position; event: React.MouseEvent }
+  | { type: "zoom"; scale: number; translation: Position }
+  | { type: "stabilizationProgress"; progress: number }
+  | { type: "stabilizationDone" };

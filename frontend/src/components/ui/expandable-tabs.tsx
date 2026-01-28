@@ -38,8 +38,11 @@ export function ExpandableTabs({
 }: ExpandableTabsProps) {
   // Debug: log activeTab to verify what's being passed
   React.useEffect(() => {
-    console.log('ExpandableTabs - activeTab:', activeTab);
-    console.log('ExpandableTabs - tabs:', tabs.map(t => t.type !== 'separator' ? t.href : 'separator'));
+    console.log("ExpandableTabs - activeTab:", activeTab);
+    console.log(
+      "ExpandableTabs - tabs:",
+      tabs.map((t) => (t.type !== "separator" ? t.href : "separator")),
+    );
   }, [activeTab, tabs]);
 
   const handleSelect = (href: string) => {
@@ -54,7 +57,7 @@ export function ExpandableTabs({
     <div
       className={cn(
         "flex flex-wrap items-center gap-2 rounded-2xl border bg-background/80 backdrop-blur-xl p-1 shadow-lg",
-        className
+        className,
       )}
     >
       {tabs.map((tab, index) => {
@@ -64,9 +67,11 @@ export function ExpandableTabs({
 
         const Icon = tab.icon;
         const isActive = activeTab === tab.href;
-        
+
         // Debug each tab
-        console.log(`Tab: ${tab.title}, href: ${tab.href}, activeTab: ${activeTab}, isActive: ${isActive}`);
+        console.log(
+          `Tab: ${tab.title}, href: ${tab.href}, activeTab: ${activeTab}, isActive: ${isActive}`,
+        );
 
         return (
           <motion.button
@@ -81,9 +86,9 @@ export function ExpandableTabs({
                     "bg-gradient-to-br from-white/25 to-white/10 dark:from-white/15 dark:to-white/5",
                     "shadow-[inset_0_1px_2px_0_rgba(255,255,255,0.4),0_2px_4px_0_rgba(0,0,0,0.15)] dark:shadow-[inset_0_1px_2px_0_rgba(255,255,255,0.2),0_2px_4px_0_rgba(0,0,0,0.4)]",
                     "backdrop-blur-sm border border-white/30 dark:border-white/15",
-                    "text-foreground font-semibold"
+                    "text-foreground font-semibold",
                   )
-                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
             )}
           >
             <Icon size={20} />

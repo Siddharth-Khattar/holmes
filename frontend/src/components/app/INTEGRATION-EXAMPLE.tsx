@@ -1,13 +1,13 @@
 /**
  * INTEGRATION EXAMPLE: Knowledge Graph with All Hooks
- * 
+ *
  * This file demonstrates how to integrate all the knowledge graph hooks
  * for a complete, production-ready implementation with:
  * - Backend data sensitivity
  * - Live data adaptability
  * - Performance optimization
  * - User interaction handling
- * 
+ *
  * NOTE: This is an example/reference file, not meant to be used directly.
  * Adapt the patterns shown here to your actual KnowledgeGraph component.
  */
@@ -33,6 +33,8 @@ import type {
   GraphNode,
   GraphConnection,
   Transform,
+  Entity,
+  Evidence,
 } from "@/types/knowledge-graph";
 
 interface KnowledgeGraphExampleProps {
@@ -49,7 +51,9 @@ export function KnowledgeGraphExample({
   // ============================================================================
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const simulationRef = useRef<Simulation<GraphNode, GraphConnection> | null>(null);
+  const simulationRef = useRef<Simulation<GraphNode, GraphConnection> | null>(
+    null,
+  );
 
   // ============================================================================
   // STATE
@@ -68,12 +72,14 @@ export function KnowledgeGraphExample({
   // Filter nodes based on debounced search
   const filteredNodes = nodes.filter((node) => {
     if (!debouncedSearchQuery) return true;
-    
+
     const searchLower = debouncedSearchQuery.toLowerCase();
     if (node.type === "entity") {
-      return node.data.name.toLowerCase().includes(searchLower);
+      const entityData = node.data as Entity;
+      return entityData.name.toLowerCase().includes(searchLower);
     } else if (node.type === "evidence") {
-      return node.data.title.toLowerCase().includes(searchLower);
+      const evidenceData = node.data as Evidence;
+      return evidenceData.title.toLowerCase().includes(searchLower);
     }
     return false;
   });
@@ -181,7 +187,7 @@ export function KnowledgeGraphExample({
       selectNode(nodeId);
       nodeInfoPanel.setCollapsed(false); // Open panel when node selected
     },
-    [selectNode, nodeInfoPanel]
+    [selectNode, nodeInfoPanel],
   );
 
   // ============================================================================
@@ -218,10 +224,17 @@ export function KnowledgeGraphExample({
           fontSize="12"
           style={{ pointerEvents: "none" }}
         >
-          {node.type === "entity" ? node.data.name : node.data.title}
+          {node.type === "entity"
+            ? (node.data as Entity).name
+            : (node.data as Evidence).title}
         </text>
       </g>
     );
+  };
+
+  // Helper function to get node ID from source/target
+  const getNodeId = (nodeOrId: string | GraphNode): string => {
+    return typeof nodeOrId === "string" ? nodeOrId : nodeOrId.id;
   };
 
   // ============================================================================
@@ -229,9 +242,12 @@ export function KnowledgeGraphExample({
   // ============================================================================
   const renderConnection = (conn: GraphConnection, index: number) => {
     const opacity = getConnectionOpacity(index);
-    
-    const sourceNode = filteredNodes.find((n) => n.id === conn.source);
-    const targetNode = filteredNodes.find((n) => n.id === conn.target);
+
+    const sourceId = getNodeId(conn.source);
+    const targetId = getNodeId(conn.target);
+
+    const sourceNode = filteredNodes.find((n) => n.id === sourceId);
+    const targetNode = filteredNodes.find((n) => n.id === targetId);
 
     if (!sourceNode || !targetNode) return null;
 
@@ -287,7 +303,9 @@ export function KnowledgeGraphExample({
           style={{ backgroundColor: "#F9FAFB" }}
         >
           {/* Transform group */}
-          <g transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>
+          <g
+            transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}
+          >
             {/* Connections layer */}
             <g className="edges-layer">
               {connections.map((conn, index) => renderConnection(conn, index))}
@@ -329,7 +347,9 @@ export function KnowledgeGraphExample({
           <button
             onClick={toggleSimulation}
             className="w-10 h-10 rounded-lg bg-white shadow-lg hover:bg-gray-50 flex items-center justify-center"
-            title={isSimulationRunning ? "Pause Simulation" : "Resume Simulation"}
+            title={
+              isSimulationRunning ? "Pause Simulation" : "Resume Simulation"
+            }
           >
             {isSimulationRunning ? (
               <Pause className="w-5 h-5" />

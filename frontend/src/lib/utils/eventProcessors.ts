@@ -1,4 +1,4 @@
-import { TimelineEvent, TimelineLayer } from '@/types/timeline.types';
+import { TimelineEvent, TimelineLayer } from "@/types/timeline.types";
 
 /**
  * Sort events chronologically
@@ -14,7 +14,7 @@ export function sortEventsByDate(events: TimelineEvent[]): TimelineEvent[] {
  */
 export function groupEventsByDate(
   events: TimelineEvent[],
-  groupingFn: (date: Date) => string
+  groupingFn: (date: Date) => string,
 ): Record<string, TimelineEvent[]> {
   const groups: Record<string, TimelineEvent[]> = {};
 
@@ -37,7 +37,7 @@ export function groupEventsByDate(
  */
 export function filterByConfidence(
   events: TimelineEvent[],
-  minConfidence: number
+  minConfidence: number,
 ): TimelineEvent[] {
   return events.filter((event) => event.confidence >= minConfidence);
 }
@@ -47,7 +47,7 @@ export function filterByConfidence(
  */
 export function filterByLayers(
   events: TimelineEvent[],
-  layers: TimelineLayer[]
+  layers: TimelineLayer[],
 ): TimelineEvent[] {
   return events.filter((event) => layers.includes(event.layer));
 }
@@ -57,7 +57,7 @@ export function filterByLayers(
  */
 export function searchEvents(
   events: TimelineEvent[],
-  query: string
+  query: string,
 ): TimelineEvent[] {
   const lowerQuery = query.toLowerCase();
 

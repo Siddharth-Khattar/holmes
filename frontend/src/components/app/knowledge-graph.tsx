@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ZoomIn, ZoomOut, RotateCcw, Filter, FileText, Image, Video, Music, File } from "lucide-react";
+import {
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Filter,
+  FileText,
+  Image,
+  Video,
+  Music,
+  File,
+} from "lucide-react";
 import {
   forceSimulation,
   forceLink,
@@ -11,7 +21,12 @@ import {
   type Simulation,
   type SimulationLinkDatum,
 } from "d3-force";
-import { zoom as d3Zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior } from "d3-zoom";
+import {
+  zoom as d3Zoom,
+  zoomIdentity,
+  type D3ZoomEvent,
+  type ZoomBehavior,
+} from "d3-zoom";
 import { select } from "d3-selection";
 import "d3-transition";
 import { clsx } from "clsx";
@@ -51,20 +66,20 @@ interface KnowledgeGraphProps {
 }
 
 const ENTITY_COLORS: Record<EntityType, string> = {
-  person: '#8B7355',      // Warm brown - matches stone/muted palette
-  organization: '#6B5A47', // Deep warm brown
-  location: '#9D8B73',    // Light warm brown
-  event: '#B89968',       // Golden brown
-  document: '#7A6B5D',    // Medium warm brown
-  evidence: '#A68A6A',    // Tan brown
+  person: "#8B7355", // Warm brown - matches stone/muted palette
+  organization: "#6B5A47", // Deep warm brown
+  location: "#9D8B73", // Light warm brown
+  event: "#B89968", // Golden brown
+  document: "#7A6B5D", // Medium warm brown
+  evidence: "#A68A6A", // Tan brown
 };
 
 const EVIDENCE_COLORS: Record<EvidenceType, string> = {
-  text: '#B89968',        // Golden brown
-  image: '#A68A6A',       // Tan brown
-  video: '#8B7355',       // Warm brown
-  audio: '#9D8B73',       // Light warm brown
-  document: '#7A6B5D',    // Medium warm brown
+  text: "#B89968", // Golden brown
+  image: "#A68A6A", // Tan brown
+  video: "#8B7355", // Warm brown
+  audio: "#9D8B73", // Light warm brown
+  document: "#7A6B5D", // Medium warm brown
 };
 
 const EVIDENCE_ICONS: Record<EvidenceType, any> = {
@@ -75,14 +90,14 @@ const EVIDENCE_ICONS: Record<EvidenceType, any> = {
   document: File,
 };
 
-export function KnowledgeGraph({ 
-  nodes, 
-  connections, 
+export function KnowledgeGraph({
+  nodes,
+  connections,
   entityCount,
   evidenceCount,
   relationshipCount,
   onAddRelationship,
-  onRelationshipCountChange 
+  onRelationshipCountChange,
 }: KnowledgeGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -92,7 +107,9 @@ export function KnowledgeGraph({
   const nodePositionsRef = useRef<Map<string, Position>>(new Map());
   const transformRef = useRef<Transform>({ x: 0, y: 0, k: 1 });
   const draggingNodeRef = useRef<string | null>(null);
-  const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(
+    null,
+  );
 
   const [transform, setTransform] = useState<Transform>({ x: 0, y: 0, k: 1 });
   const [renderTrigger, setRenderTrigger] = useState(0);
@@ -100,8 +117,13 @@ export function KnowledgeGraph({
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
-  const [tempConnection, setTempConnection] = useState<{ from: Position; to: Position } | null>(null);
-  const [localConnections, setLocalConnections] = useState<GraphConnection[]>([]);
+  const [tempConnection, setTempConnection] = useState<{
+    from: Position;
+    to: Position;
+  } | null>(null);
+  const [localConnections, setLocalConnections] = useState<GraphConnection[]>(
+    [],
+  );
   const [isSimulationRunning, setIsSimulationRunning] = useState(true);
   const manuallyStoppedRef = useRef(false);
 
@@ -119,24 +141,39 @@ export function KnowledgeGraph({
       }
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   // Initialize force simulation (only once)
   useEffect(() => {
-    if (!simulationRef.current && dimensions.width > 0 && dimensions.height > 0) {
+    if (
+      !simulationRef.current &&
+      dimensions.width > 0 &&
+      dimensions.height > 0
+    ) {
       simulationRef.current = forceSimulation<ForceNode>([])
         .force(
           "link",
           forceLink<ForceNode, ForceLink>([])
             .id((d) => d.id)
             .distance(120)
-            .strength(0.5)
+            .strength(0.5),
         )
-        .force("charge", forceManyBody<ForceNode>().strength(-300).distanceMax(400))
-        .force("center", forceCenter(dimensions.width / 2, dimensions.height / 2).strength(0.1))
-        .force("collide", forceCollide<ForceNode>().radius(50).strength(0.9).iterations(3))
+        .force(
+          "charge",
+          forceManyBody<ForceNode>().strength(-300).distanceMax(400),
+        )
+        .force(
+          "center",
+          forceCenter(dimensions.width / 2, dimensions.height / 2).strength(
+            0.1,
+          ),
+        )
+        .force(
+          "collide",
+          forceCollide<ForceNode>().radius(50).strength(0.9).iterations(3),
+        )
         .alphaMin(0.001)
         .alphaDecay(0.0228)
         .velocityDecay(0.4)
@@ -188,7 +225,7 @@ export function KnowledgeGraph({
     // Convert nodes to force nodes with better initial positioning
     const forceNodes: ForceNode[] = nodes.map((node, index) => {
       const existing = forceNodesRef.current.find((n) => n.id === node.id);
-      
+
       if (existing && existing.x !== undefined && existing.y !== undefined) {
         return {
           ...node,
@@ -245,19 +282,20 @@ export function KnowledgeGraph({
 
   // Setup zoom and pan behavior
   useEffect(() => {
-    if (!svgRef.current || dimensions.width === 0 || dimensions.height === 0) return;
+    if (!svgRef.current || dimensions.width === 0 || dimensions.height === 0)
+      return;
 
     const svg = select(svgRef.current);
-    
+
     const zoomBehavior = d3Zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 4])
       .filter((event: any) => {
         // Allow zoom on wheel
-        if (event.type === 'wheel') return true;
+        if (event.type === "wheel") return true;
         // Allow pan on background drag (not on nodes)
-        if (event.type === 'mousedown' || event.type === 'touchstart') {
+        if (event.type === "mousedown" || event.type === "touchstart") {
           const target = event.target as Element;
-          return !target.closest('.node-group');
+          return !target.closest(".node-group");
         }
         return true;
       })
@@ -279,152 +317,185 @@ export function KnowledgeGraph({
   }, [dimensions.width, dimensions.height]);
 
   // Node drag behavior with click detection
-  const handleNodeMouseDown = useCallback((nodeId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    const startX = e.clientX;
-    const startY = e.clientY;
-    let hasMoved = false;
+  const handleNodeMouseDown = useCallback(
+    (nodeId: string, e: React.MouseEvent) => {
+      e.stopPropagation();
 
-    draggingNodeRef.current = nodeId;
-    const svg = svgRef.current;
-    if (!svg) return;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      let hasMoved = false;
 
-    const rect = svg.getBoundingClientRect();
+      draggingNodeRef.current = nodeId;
+      const svg = svgRef.current;
+      if (!svg) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!draggingNodeRef.current) return;
+      const rect = svg.getBoundingClientRect();
 
-      const dx = Math.abs(e.clientX - startX);
-      const dy = Math.abs(e.clientY - startY);
-      if (dx > 5 || dy > 5) {
-        hasMoved = true;
-      }
+      const handleMouseMove = (e: MouseEvent) => {
+        if (!draggingNodeRef.current) return;
 
-      const x = (e.clientX - rect.left - transformRef.current.x) / transformRef.current.k;
-      const y = (e.clientY - rect.top - transformRef.current.y) / transformRef.current.k;
-
-      const forceNode = forceNodesRef.current.find((n) => n.id === nodeId);
-      if (forceNode) {
-        forceNode.fx = x;
-        forceNode.fy = y;
-        
-        // Only restart simulation if it's running
-        if (simulationRef.current && isSimulationRunning) {
-          simulationRef.current.alpha(0.3).restart();
-        } else if (simulationRef.current) {
-          // If frozen, just update position without simulation
-          forceNode.x = x;
-          forceNode.y = y;
-          nodePositionsRef.current.set(nodeId, { x, y });
-          setRenderTrigger(prev => prev + 1);
+        const dx = Math.abs(e.clientX - startX);
+        const dy = Math.abs(e.clientY - startY);
+        if (dx > 5 || dy > 5) {
+          hasMoved = true;
         }
-      }
-    };
 
-    const handleMouseUp = () => {
-      if (draggingNodeRef.current) {
-        const forceNode = forceNodesRef.current.find((n) => n.id === draggingNodeRef.current);
+        const x =
+          (e.clientX - rect.left - transformRef.current.x) /
+          transformRef.current.k;
+        const y =
+          (e.clientY - rect.top - transformRef.current.y) /
+          transformRef.current.k;
+
+        const forceNode = forceNodesRef.current.find((n) => n.id === nodeId);
         if (forceNode) {
-          // Release fixed position
-          forceNode.fx = null;
-          forceNode.fy = null;
+          forceNode.fx = x;
+          forceNode.fy = y;
+
+          // Only restart simulation if it's running
+          if (simulationRef.current && isSimulationRunning) {
+            simulationRef.current.alpha(0.3).restart();
+          } else if (simulationRef.current) {
+            // If frozen, just update position without simulation
+            forceNode.x = x;
+            forceNode.y = y;
+            nodePositionsRef.current.set(nodeId, { x, y });
+            setRenderTrigger((prev) => prev + 1);
+          }
         }
-
-        // If didn't move much, treat as click
-        if (!hasMoved) {
-          setSelectedNode(nodeId);
-        }
-
-        draggingNodeRef.current = null;
-      }
-
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-  }, [isSimulationRunning]);
-
-  // Handle connection creation
-  const handleStartConnection = useCallback((nodeId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setConnectingFrom(nodeId);
-    
-    const node = forceNodesRef.current.find(n => n.id === nodeId);
-    if (node && node.x !== undefined && node.y !== undefined) {
-      setTempConnection({
-        from: { x: node.x, y: node.y },
-        to: { x: node.x, y: node.y }
-      });
-    }
-  }, []);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (connectingFrom && tempConnection && svgRef.current) {
-      const rect = svgRef.current.getBoundingClientRect();
-      const x = (e.clientX - rect.left - transformRef.current.x) / transformRef.current.k;
-      const y = (e.clientY - rect.top - transformRef.current.y) / transformRef.current.k;
-      
-      setTempConnection({
-        ...tempConnection,
-        to: { x, y }
-      });
-    }
-  }, [connectingFrom, tempConnection]);
-
-  const handleCompleteConnection = useCallback((targetNodeId: string) => {
-    if (connectingFrom && connectingFrom !== targetNodeId) {
-      // Get node names for the relationship label
-      const sourceNode = nodes.find(n => n.id === connectingFrom);
-      const targetNode = nodes.find(n => n.id === targetNodeId);
-      
-      if (!sourceNode || !targetNode) return;
-
-      // Create a new relationship locally
-      const newRelationship: GraphConnection = {
-        id: `temp-${Date.now()}`,
-        source: connectingFrom,
-        target: targetNodeId,
-        relationship: {
-          id: `temp-rel-${Date.now()}`,
-          sourceEntityId: connectingFrom,
-          targetEntityId: targetNodeId,
-          type: 'custom',
-          label: 'Connected to',
-          strength: 0.5,
-          createdAt: new Date(),
-        },
       };
 
-      // Add to local connections
-      setLocalConnections(prev => [...prev, newRelationship]);
+      const handleMouseUp = () => {
+        if (draggingNodeRef.current) {
+          const forceNode = forceNodesRef.current.find(
+            (n) => n.id === draggingNodeRef.current,
+          );
+          if (forceNode) {
+            // Release fixed position
+            forceNode.fx = null;
+            forceNode.fy = null;
+          }
 
-      // Call parent callback if provided (for backend integration)
-      if (onAddRelationship) {
-        onAddRelationship(connectingFrom, targetNodeId);
+          // If didn't move much, treat as click
+          if (!hasMoved) {
+            setSelectedNode(nodeId);
+          }
+
+          draggingNodeRef.current = null;
+        }
+
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [isSimulationRunning],
+  );
+
+  // Handle connection creation
+  const handleStartConnection = useCallback(
+    (nodeId: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      setConnectingFrom(nodeId);
+
+      const node = forceNodesRef.current.find((n) => n.id === nodeId);
+      if (node && node.x !== undefined && node.y !== undefined) {
+        setTempConnection({
+          from: { x: node.x, y: node.y },
+          to: { x: node.x, y: node.y },
+        });
+      }
+    },
+    [],
+  );
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (connectingFrom && tempConnection && svgRef.current) {
+        const rect = svgRef.current.getBoundingClientRect();
+        const x =
+          (e.clientX - rect.left - transformRef.current.x) /
+          transformRef.current.k;
+        const y =
+          (e.clientY - rect.top - transformRef.current.y) /
+          transformRef.current.k;
+
+        setTempConnection({
+          ...tempConnection,
+          to: { x, y },
+        });
+      }
+    },
+    [connectingFrom, tempConnection],
+  );
+
+  const handleCompleteConnection = useCallback(
+    (targetNodeId: string) => {
+      if (connectingFrom && connectingFrom !== targetNodeId) {
+        // Get node names for the relationship label
+        const sourceNode = nodes.find((n) => n.id === connectingFrom);
+        const targetNode = nodes.find((n) => n.id === targetNodeId);
+
+        if (!sourceNode || !targetNode) return;
+
+        // Create a new relationship locally
+        const newRelationship: GraphConnection = {
+          id: `temp-${Date.now()}`,
+          source: connectingFrom,
+          target: targetNodeId,
+          relationship: {
+            id: `temp-rel-${Date.now()}`,
+            sourceEntityId: connectingFrom,
+            targetEntityId: targetNodeId,
+            type: "custom",
+            label: "Connected to",
+            strength: 0.5,
+            createdAt: new Date(),
+          },
+        };
+
+        // Add to local connections
+        setLocalConnections((prev) => [...prev, newRelationship]);
+
+        // Call parent callback if provided (for backend integration)
+        if (onAddRelationship) {
+          onAddRelationship(connectingFrom, targetNodeId);
+        }
+
+        // Show success feedback
+        console.log(
+          "Relationship created:",
+          connectingFrom,
+          "->",
+          targetNodeId,
+        );
       }
 
-      // Show success feedback
-      console.log('Relationship created:', connectingFrom, '->', targetNodeId);
-    }
-    
-    setConnectingFrom(null);
-    setTempConnection(null);
-  }, [connectingFrom, nodes, onAddRelationship]);
+      setConnectingFrom(null);
+      setTempConnection(null);
+    },
+    [connectingFrom, nodes, onAddRelationship],
+  );
 
   // Zoom controls
   const handleZoomIn = () => {
     if (!svgRef.current || !zoomBehaviorRef.current) return;
     const svg = select(svgRef.current);
-    (svg as any).transition().duration(300).call(zoomBehaviorRef.current.scaleBy, 1.3);
+    (svg as any)
+      .transition()
+      .duration(300)
+      .call(zoomBehaviorRef.current.scaleBy, 1.3);
   };
 
   const handleZoomOut = () => {
     if (!svgRef.current || !zoomBehaviorRef.current) return;
     const svg = select(svgRef.current);
-    (svg as any).transition().duration(300).call(zoomBehaviorRef.current.scaleBy, 0.7);
+    (svg as any)
+      .transition()
+      .duration(300)
+      .call(zoomBehaviorRef.current.scaleBy, 0.7);
   };
 
   const handleResetZoom = () => {
@@ -438,7 +509,7 @@ export function KnowledgeGraph({
 
   const handleToggleSimulation = useCallback(() => {
     if (!simulationRef.current) return;
-    
+
     if (isSimulationRunning) {
       // Stop simulation - set alpha to 0 to stop immediately
       simulationRef.current.alpha(0);
@@ -463,7 +534,7 @@ export function KnowledgeGraph({
     const isConnecting = connectingFrom === node.id;
 
     // Handle entity nodes
-    if (node.type === 'entity') {
+    if (node.type === "entity") {
       const entity = node.data as Entity;
       const color = ENTITY_COLORS[entity.type] || "#6B7280";
 
@@ -487,11 +558,19 @@ export function KnowledgeGraph({
           <circle
             r={isSelected ? 35 : isHovered ? 32 : 30}
             fill={color}
-            stroke={isConnecting ? "var(--color-accent)" : isSelected ? "var(--color-smoke)" : isHovered ? "var(--color-accent-muted)" : color}
+            stroke={
+              isConnecting
+                ? "var(--color-accent)"
+                : isSelected
+                  ? "var(--color-smoke)"
+                  : isHovered
+                    ? "var(--color-accent-muted)"
+                    : color
+            }
             strokeWidth={isConnecting ? 4 : isSelected ? 4 : isHovered ? 3 : 2}
             opacity={0.9}
           />
-          
+
           {/* Node label */}
           <text
             y={50}
@@ -534,7 +613,11 @@ export function KnowledgeGraph({
                 cx={35}
                 cy={0}
                 r={12}
-                fill={isConnecting ? "var(--color-accent)" : "var(--color-accent-muted)"}
+                fill={
+                  isConnecting
+                    ? "var(--color-accent)"
+                    : "var(--color-accent-muted)"
+                }
                 stroke="var(--color-smoke)"
                 strokeWidth={2}
               />
@@ -557,7 +640,7 @@ export function KnowledgeGraph({
     }
 
     // Handle evidence nodes
-    if (node.type === 'evidence') {
+    if (node.type === "evidence") {
       const evidence = node.data as Evidence;
       const color = EVIDENCE_COLORS[evidence.type] || "#6B7280";
       const IconComponent = EVIDENCE_ICONS[evidence.type] || File;
@@ -586,11 +669,19 @@ export function KnowledgeGraph({
             height={isSelected ? 70 : isHovered ? 64 : 60}
             rx={8}
             fill={color}
-            stroke={isConnecting ? "var(--color-accent)" : isSelected ? "var(--color-smoke)" : isHovered ? "var(--color-accent-muted)" : color}
+            stroke={
+              isConnecting
+                ? "var(--color-accent)"
+                : isSelected
+                  ? "var(--color-smoke)"
+                  : isHovered
+                    ? "var(--color-accent-muted)"
+                    : color
+            }
             strokeWidth={isConnecting ? 4 : isSelected ? 4 : isHovered ? 3 : 2}
             opacity={0.9}
           />
-          
+
           {/* Evidence icon */}
           <foreignObject
             x={-12}
@@ -599,7 +690,15 @@ export function KnowledgeGraph({
             height={24}
             style={{ pointerEvents: "none" }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+                height: "100%",
+              }}
+            >
               <IconComponent size={20} color="var(--color-smoke)" />
             </div>
           </foreignObject>
@@ -613,7 +712,9 @@ export function KnowledgeGraph({
             fontWeight={isSelected ? "600" : "400"}
             style={{ pointerEvents: "none", userSelect: "none" }}
           >
-            {evidence.title.length > 20 ? evidence.title.substring(0, 20) + '...' : evidence.title}
+            {evidence.title.length > 20
+              ? evidence.title.substring(0, 20) + "..."
+              : evidence.title}
           </text>
 
           {/* Connection button */}
@@ -634,7 +735,11 @@ export function KnowledgeGraph({
                 cx={35}
                 cy={0}
                 r={12}
-                fill={isConnecting ? "var(--color-accent)" : "var(--color-accent-muted)"}
+                fill={
+                  isConnecting
+                    ? "var(--color-accent)"
+                    : "var(--color-accent-muted)"
+                }
                 stroke="var(--color-smoke)"
                 strokeWidth={2}
               />
@@ -659,10 +764,18 @@ export function KnowledgeGraph({
     return null;
   };
 
+  // Helper function to get node ID from source/target
+  const getNodeId = (nodeOrId: string | GraphNode): string => {
+    return typeof nodeOrId === "string" ? nodeOrId : nodeOrId.id;
+  };
+
   // Render connection
   const renderConnection = (conn: GraphConnection) => {
-    const sourcePos = nodePositionsRef.current.get(conn.source);
-    const targetPos = nodePositionsRef.current.get(conn.target);
+    const sourceId = getNodeId(conn.source);
+    const targetId = getNodeId(conn.target);
+
+    const sourcePos = nodePositionsRef.current.get(sourceId);
+    const targetPos = nodePositionsRef.current.get(targetId);
 
     if (!sourcePos || !targetPos) return null;
 
@@ -699,13 +812,14 @@ export function KnowledgeGraph({
   };
 
   return (
-    <div 
+    <div
       className="relative w-full h-full rounded-lg shadow-2xl flex flex-col overflow-hidden border border-stone/10"
-      style={{ 
-        backgroundColor: "var(--color-jet)", 
+      style={{
+        backgroundColor: "var(--color-jet)",
         minHeight: "600px",
-        backgroundImage: "radial-gradient(circle at 1px 1px, rgba(138, 138, 130, 0.08) 1px, transparent 0)",
-        backgroundSize: "24px 24px"
+        backgroundImage:
+          "radial-gradient(circle at 1px 1px, rgba(138, 138, 130, 0.08) 1px, transparent 0)",
+        backgroundSize: "24px 24px",
       }}
     >
       {/* Header */}
@@ -715,7 +829,9 @@ export function KnowledgeGraph({
       >
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-medium text-smoke mb-2">Knowledge Graph</h2>
+            <h2 className="text-xl font-medium text-smoke mb-2">
+              Knowledge Graph
+            </h2>
             <div className="flex items-center gap-6 text-xs text-stone">
               <span>{entityCount} entities</span>
               <span>•</span>
@@ -724,7 +840,7 @@ export function KnowledgeGraph({
               <span>{totalRelationshipCount} relationships</span>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             {connectingFrom && (
               <div className="px-3 py-1 rounded-lg bg-accent/10 text-accent text-xs">
@@ -742,8 +858,8 @@ export function KnowledgeGraph({
       </div>
 
       {/* Graph Container */}
-      <div 
-        ref={containerRef} 
+      <div
+        ref={containerRef}
         className="flex-1 relative overflow-hidden"
         onMouseMove={handleMouseMove}
         onClick={() => {
@@ -756,7 +872,10 @@ export function KnowledgeGraph({
         <svg
           ref={svgRef}
           className="w-full h-full"
-          style={{ backgroundColor: "var(--color-charcoal)", cursor: connectingFrom ? "crosshair" : "grab" }}
+          style={{
+            backgroundColor: "var(--color-charcoal)",
+            cursor: connectingFrom ? "crosshair" : "grab",
+          }}
         >
           {/* Dotted background pattern */}
           <defs>
@@ -768,17 +887,25 @@ export function KnowledgeGraph({
               height="20"
               patternUnits="userSpaceOnUse"
             >
-              <circle cx="2" cy="2" r="1" fill="var(--color-stone)" opacity="0.2" />
+              <circle
+                cx="2"
+                cy="2"
+                r="1"
+                fill="var(--color-stone)"
+                opacity="0.2"
+              />
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#dotted-background)" />
 
           {/* Transform group */}
-          <g transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>
+          <g
+            transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}
+          >
             {/* Connections layer */}
             <g className="edges-layer">
               {allConnections.map((conn) => renderConnection(conn))}
-              
+
               {/* Temporary connection line */}
               {tempConnection && (
                 <line
@@ -824,28 +951,42 @@ export function KnowledgeGraph({
           >
             <RotateCcw className="w-5 h-5" />
           </button>
-          
+
           {/* Divider */}
           <div className="h-px bg-stone/20 my-1" />
-          
+
           {/* Stop/Start Simulation */}
           <button
             onClick={handleToggleSimulation}
             className={clsx(
               "w-10 h-10 rounded-lg text-smoke flex items-center justify-center transition-colors border border-stone/20",
-              isSimulationRunning 
-                ? "bg-jet/90 hover:bg-jet" 
-                : "bg-accent/20 hover:bg-accent/30"
+              isSimulationRunning
+                ? "bg-jet/90 hover:bg-jet"
+                : "bg-accent/20 hover:bg-accent/30",
             )}
             title={isSimulationRunning ? "Freeze Graph" : "Unfreeze Graph"}
           >
             {isSimulationRunning ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <rect x="6" y="4" width="4" height="16" />
                 <rect x="14" y="4" width="4" height="16" />
               </svg>
             ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
             )}
@@ -858,7 +999,7 @@ export function KnowledgeGraph({
           style={{ backgroundColor: "rgba(17, 17, 17, 0.95)" }}
         >
           <h3 className="text-smoke font-medium text-sm mb-3">Node Legend</h3>
-          
+
           {/* Entity Types */}
           <div className="mb-3">
             <p className="text-stone text-xs mb-2">Entities (Circles)</p>
@@ -879,13 +1020,24 @@ export function KnowledgeGraph({
             <p className="text-stone text-xs mb-2">Evidence (Squares)</p>
             <div className="space-y-1.5">
               {Object.entries(EVIDENCE_COLORS).map(([type, color]) => {
-                const IconComponent = EVIDENCE_ICONS[type as EvidenceType] || File;
+                const IconComponent =
+                  EVIDENCE_ICONS[type as EvidenceType] || File;
                 return (
                   <div key={type} className="flex items-center gap-2">
                     <svg width="20" height="20">
-                      <rect x="2" y="2" width="16" height="16" rx="2" fill={color} opacity="0.9" />
+                      <rect
+                        x="2"
+                        y="2"
+                        width="16"
+                        height="16"
+                        rx="2"
+                        fill={color}
+                        opacity="0.9"
+                      />
                     </svg>
-                    <span className="text-smoke text-xs capitalize">{type}</span>
+                    <span className="text-smoke text-xs capitalize">
+                      {type}
+                    </span>
                   </div>
                 );
               })}
@@ -904,17 +1056,27 @@ export function KnowledgeGraph({
                 const node = nodes.find((n) => n.id === selectedNode);
                 if (!node) return null;
 
-                if (node.type === 'entity') {
+                if (node.type === "entity") {
                   const entity = node.data as Entity;
                   return (
                     <>
                       <div className="flex items-center gap-2 mb-2">
                         <svg width="16" height="16">
-                          <circle cx="8" cy="8" r="6" fill={ENTITY_COLORS[entity.type]} opacity="0.9" />
+                          <circle
+                            cx="8"
+                            cy="8"
+                            r="6"
+                            fill={ENTITY_COLORS[entity.type]}
+                            opacity="0.9"
+                          />
                         </svg>
-                        <span className="text-xs text-stone capitalize">{entity.type}</span>
+                        <span className="text-xs text-stone capitalize">
+                          {entity.type}
+                        </span>
                       </div>
-                      <h3 className="font-medium text-lg mb-2">{entity.name}</h3>
+                      <h3 className="font-medium text-lg mb-2">
+                        {entity.name}
+                      </h3>
                       {entity.description && (
                         <p className="text-sm text-stone mb-3">
                           {entity.description}
@@ -930,18 +1092,30 @@ export function KnowledgeGraph({
                   );
                 }
 
-                if (node.type === 'evidence') {
+                if (node.type === "evidence") {
                   const evidence = node.data as Evidence;
                   const IconComponent = EVIDENCE_ICONS[evidence.type] || File;
                   return (
                     <>
                       <div className="flex items-center gap-2 mb-2">
                         <svg width="16" height="16">
-                          <rect x="2" y="2" width="12" height="12" rx="2" fill={EVIDENCE_COLORS[evidence.type]} opacity="0.9" />
+                          <rect
+                            x="2"
+                            y="2"
+                            width="12"
+                            height="12"
+                            rx="2"
+                            fill={EVIDENCE_COLORS[evidence.type]}
+                            opacity="0.9"
+                          />
                         </svg>
-                        <span className="text-xs text-stone capitalize">{evidence.type}</span>
+                        <span className="text-xs text-stone capitalize">
+                          {evidence.type}
+                        </span>
                       </div>
-                      <h3 className="font-medium text-lg mb-2">{evidence.title}</h3>
+                      <h3 className="font-medium text-lg mb-2">
+                        {evidence.title}
+                      </h3>
                       {evidence.content && (
                         <p className="text-sm text-stone mb-2">
                           {evidence.content}
@@ -954,11 +1128,14 @@ export function KnowledgeGraph({
                       )}
                       {evidence.metadata && (
                         <div className="text-xs text-stone mb-3">
-                          {Object.entries(evidence.metadata).map(([key, value]) => (
-                            <div key={key}>
-                              <span className="capitalize">{key}:</span> {String(value)}
-                            </div>
-                          ))}
+                          {Object.entries(evidence.metadata).map(
+                            ([key, value]) => (
+                              <div key={key}>
+                                <span className="capitalize">{key}:</span>{" "}
+                                {String(value)}
+                              </div>
+                            ),
+                          )}
                         </div>
                       )}
                       <button

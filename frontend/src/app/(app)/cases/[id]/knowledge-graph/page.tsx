@@ -21,7 +21,9 @@ export default function KnowledgeGraphPage() {
         }}
       >
         <Loader2 className="w-8 h-8 text-(--muted-foreground) animate-spin mx-auto mb-4" />
-        <p className="text-(--muted-foreground) text-sm">Loading knowledge graph...</p>
+        <p className="text-(--muted-foreground) text-sm">
+          Loading knowledge graph...
+        </p>
       </div>
     );
   }
@@ -35,7 +37,9 @@ export default function KnowledgeGraphPage() {
           border: "1px solid var(--border)",
         }}
       >
-        <p className="text-red-500 text-sm">Error loading graph: {error.message}</p>
+        <p className="text-red-500 text-sm">
+          Error loading graph: {error.message}
+        </p>
       </div>
     );
   }
@@ -45,13 +49,13 @@ export default function KnowledgeGraphPage() {
   }
 
   // Count entity nodes vs evidence nodes
-  const entityNodes = data.nodes.filter(n => n.type === 'entity');
-  const evidenceNodes = data.nodes.filter(n => n.type === 'evidence');
+  const entityNodes = data.nodes.filter((n) => n.type === "entity");
+  const evidenceNodes = data.nodes.filter((n) => n.type === "evidence");
 
   const handleAddRelationship = async (sourceId: string, targetId: string) => {
     // TODO: Implement API call when backend is ready
-    console.log('TODO: Create relationship via API:', sourceId, '->', targetId);
-    
+    console.log("TODO: Create relationship via API:", sourceId, "->", targetId);
+
     // Example of what the API call would look like:
     /*
     try {

@@ -28,34 +28,36 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onClick?.();
         }
       }}
       className={cn(
-        "group relative p-4 rounded-lg border-2 transition-all duration-200",
+        "group relative p-4 rounded-lg border-2 transition-all duration-200 bg-[var(--card)]",
         "hover:shadow-lg hover:-translate-y-0.5 cursor-pointer",
-        "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
-        layerConfig.bgColor,
+        "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--ring)]",
         layerConfig.borderColor,
-        "bg-opacity-50 dark:bg-opacity-30"
       )}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-2">
-          <div className={cn(
-            "p-1.5 rounded-md",
-            layerConfig.bgColor,
-            "bg-opacity-80 dark:bg-opacity-60"
-          )}>
+          <div
+            className={cn(
+              "p-1.5 rounded-md",
+              layerConfig.bgColor,
+              "bg-opacity-80 dark:bg-opacity-60",
+            )}
+          >
             <IconComponent className={cn("w-4 h-4", layerConfig.color)} />
           </div>
-          <span className={cn(
-            "text-xs font-medium uppercase tracking-wide",
-            layerConfig.color
-          )}>
+          <span
+            className={cn(
+              "text-xs font-medium uppercase tracking-wide",
+              layerConfig.color,
+            )}
+          >
             {layerConfig.label}
           </span>
         </div>
@@ -63,7 +65,7 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
         {/* Confidence indicator */}
         <div className="flex items-center gap-1">
           {event.isUserCorrected ? (
-            <div 
+            <div
               className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400"
               title="User verified"
             >
@@ -71,55 +73,61 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
               <span className="hidden sm:inline">Verified</span>
             </div>
           ) : event.confidence < 0.7 ? (
-            <div 
+            <div
               className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400"
               title={`Confidence: ${Math.round(event.confidence * 100)}%`}
             >
               <AlertCircle className="w-3 h-3" />
-              <span className="hidden sm:inline">{Math.round(event.confidence * 100)}%</span>
+              <span className="hidden sm:inline">
+                {Math.round(event.confidence * 100)}%
+              </span>
             </div>
           ) : null}
         </div>
       </div>
 
       {/* Title */}
-      <h4 className="text-base font-semibold text-neutral-900 dark:text-neutral-100 mb-1 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
+      <h4 className="text-base font-semibold text-[var(--foreground)] mb-1 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
         {event.title}
       </h4>
 
       {/* Description */}
       {event.description && (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400 line-clamp-2 mb-3">
+        <p className="text-sm text-[var(--muted-foreground)] line-clamp-2 mb-3">
           {event.description}
         </p>
       )}
 
       {/* Footer metadata */}
-      <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500 dark:text-neutral-500">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--muted-foreground)]">
         <time dateTime={event.date}>
-          {format(new Date(event.date), 'h:mm a')}
+          {format(new Date(event.date), "h:mm a")}
         </time>
-        
+
         {event.sourceIds && event.sourceIds.length > 0 && (
           <span className="flex items-center gap-1">
             <FileText className="w-3 h-3" />
-            {event.sourceIds.length} {event.sourceIds.length === 1 ? 'source' : 'sources'}
+            {event.sourceIds.length}{" "}
+            {event.sourceIds.length === 1 ? "source" : "sources"}
           </span>
         )}
-        
+
         {event.entityIds && event.entityIds.length > 0 && (
           <span>
-            {event.entityIds.length} {event.entityIds.length === 1 ? 'entity' : 'entities'}
+            {event.entityIds.length}{" "}
+            {event.entityIds.length === 1 ? "entity" : "entities"}
           </span>
         )}
       </div>
 
       {/* Hover indicator */}
-      <div className={cn(
-        "absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none",
-        "ring-2 ring-inset",
-        layerConfig.borderColor
-      )} />
+      <div
+        className={cn(
+          "absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none",
+          "ring-2 ring-inset",
+          layerConfig.borderColor,
+        )}
+      />
     </div>
   );
 }

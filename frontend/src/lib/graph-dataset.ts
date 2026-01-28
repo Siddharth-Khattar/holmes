@@ -10,7 +10,7 @@ export class GraphDataSet<T extends { id: string }> {
   }
 
   addMultiple(items: T[]): void {
-    items.forEach(item => this.data.set(item.id, item));
+    items.forEach((item) => this.data.set(item.id, item));
     this.notifyListeners();
   }
 
@@ -47,7 +47,7 @@ export class GraphDataSet<T extends { id: string }> {
 
   private notifyListeners(): void {
     const items = this.getAll();
-    this.listeners.forEach(listener => listener(items));
+    this.listeners.forEach((listener) => listener(items));
   }
 
   get size(): number {

@@ -5,6 +5,13 @@ import { useMemo, useState, useCallback } from "react";
 import type { GraphNode, GraphConnection } from "@/types/knowledge-graph";
 
 /**
+ * Helper to get node ID from source/target which can be string or GraphNode
+ */
+const getNodeId = (nodeOrId: string | GraphNode): string => {
+  return typeof nodeOrId === "string" ? nodeOrId : nodeOrId.id;
+};
+
+/**
  * Represents the state of a selected cluster in the graph
  */
 export interface ClusterState {
@@ -34,7 +41,9 @@ const INITIAL_CLUSTER_STATE: ClusterState = {
  */
 export function useCluster(nodes: GraphNode[], connections: GraphConnection[]) {
   // Cluster selection state
-  const [clusterState, setClusterState] = useState<ClusterState>(INITIAL_CLUSTER_STATE);
+  const [clusterState, setClusterState] = useState<ClusterState>(
+    INITIAL_CLUSTER_STATE,
+  );
 
   // Build adjacency map for O(1) neighbor lookups
   const adjacencyMap = useMemo(() => {
@@ -47,8 +56,8 @@ export function useCluster(nodes: GraphNode[], connections: GraphConnection[]) {
 
     // Populate with connections (bidirectional)
     connections.forEach((conn) => {
-      const sourceId = conn.source;
-      const targetId = conn.target;
+      const sourceId = getNodeId(conn.source);
+      const targetId = getNodeId(conn.target);
 
       // Add bidirectional connections
       map.get(sourceId)?.add(targetId);
@@ -70,8 +79,8 @@ export function useCluster(nodes: GraphNode[], connections: GraphConnection[]) {
       // Find all connections within the cluster
       const clusterConnectionIndices = new Set<number>();
       connections.forEach((conn, index) => {
-        const sourceId = conn.source;
-        const targetId = conn.target;
+        const sourceId = getNodeId(conn.source);
+        const targetId = getNodeId(conn.target);
 
         // Connection is in cluster if both ends are cluster nodes
         if (clusterNodeIds.has(sourceId) && clusterNodeIds.has(targetId)) {
@@ -85,7 +94,7 @@ export function useCluster(nodes: GraphNode[], connections: GraphConnection[]) {
         clusterConnectionIndices,
       };
     },
-    [adjacencyMap, connections]
+    [adjacencyMap, connections],
   );
 
   /**
@@ -102,7 +111,7 @@ export function useCluster(nodes: GraphNode[], connections: GraphConnection[]) {
         setClusterState(newCluster);
       }
     },
-    [clusterState.selectedNodeId, computeCluster]
+    [clusterState.selectedNodeId, computeCluster],
   );
 
   /**
@@ -119,7 +128,7 @@ export function useCluster(nodes: GraphNode[], connections: GraphConnection[]) {
     (nodeId: string): boolean => {
       return clusterState.clusterNodeIds.has(nodeId);
     },
-    [clusterState.clusterNodeIds]
+    [clusterState.clusterNodeIds],
   );
 
   /**
@@ -129,7 +138,7 @@ export function useCluster(nodes: GraphNode[], connections: GraphConnection[]) {
     (connectionIndex: number): boolean => {
       return clusterState.clusterConnectionIndices.has(connectionIndex);
     },
-    [clusterState.clusterConnectionIndices]
+    [clusterState.clusterConnectionIndices],
   );
 
   /**
@@ -142,7 +151,7 @@ export function useCluster(nodes: GraphNode[], connections: GraphConnection[]) {
       }
       return isNodeInCluster(nodeId) ? 1.0 : 0.15;
     },
-    [clusterState.selectedNodeId, isNodeInCluster]
+    [clusterState.selectedNodeId, isNodeInCluster],
   );
 
   /**
@@ -164,7 +173,7 @@ export function useCluster(nodes: GraphNode[], connections: GraphConnection[]) {
       // Full opacity for cluster connections
       return 0.8;
     },
-    [clusterState.selectedNodeId, isConnectionInCluster]
+    [clusterState.selectedNodeId, isConnectionInCluster],
   );
 
   /**
@@ -174,7 +183,7 @@ export function useCluster(nodes: GraphNode[], connections: GraphConnection[]) {
     (nodeId: string): number => {
       return nodeId === clusterState.selectedNodeId ? 1.3 : 1.0;
     },
-    [clusterState.selectedNodeId]
+    [clusterState.selectedNodeId],
   );
 
   /**
@@ -194,7 +203,7 @@ export function useCluster(nodes: GraphNode[], connections: GraphConnection[]) {
     (nodeId: string): number => {
       return adjacencyMap.get(nodeId)?.size || 0;
     },
-    [adjacencyMap]
+    [adjacencyMap],
   );
 
   /**

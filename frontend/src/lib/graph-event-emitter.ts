@@ -1,9 +1,12 @@
-import { GraphEvent } from '@/types/knowledge-graph';
+import { GraphEvent } from "@/types/knowledge-graph";
 
 export class GraphEventEmitter {
   private listeners: Map<string, Set<(event: GraphEvent) => void>> = new Map();
 
-  on(eventType: GraphEvent['type'], handler: (event: GraphEvent) => void): () => void {
+  on(
+    eventType: GraphEvent["type"],
+    handler: (event: GraphEvent) => void,
+  ): () => void {
     if (!this.listeners.has(eventType)) {
       this.listeners.set(eventType, new Set());
     }
@@ -11,12 +14,15 @@ export class GraphEventEmitter {
     return () => this.off(eventType, handler);
   }
 
-  off(eventType: GraphEvent['type'], handler: (event: GraphEvent) => void): void {
+  off(
+    eventType: GraphEvent["type"],
+    handler: (event: GraphEvent) => void,
+  ): void {
     this.listeners.get(eventType)?.delete(handler);
   }
 
   emit(event: GraphEvent): void {
-    this.listeners.get(event.type)?.forEach(handler => handler(event));
+    this.listeners.get(event.type)?.forEach((handler) => handler(event));
   }
 
   clear(): void {

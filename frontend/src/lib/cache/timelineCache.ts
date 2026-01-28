@@ -1,8 +1,5 @@
-import {
-  TimelineApiResponse,
-  TimelineFilters,
-} from '@/types/timeline.types';
-import { PERFORMANCE_CONFIG } from '@/constants/timeline.constants';
+import { TimelineApiResponse, TimelineFilters } from "@/types/timeline.types";
+import { PERFORMANCE_CONFIG } from "@/constants/timeline.constants";
 
 interface CacheEntry {
   data: TimelineApiResponse;
@@ -25,14 +22,16 @@ class TimelineCache {
   set(
     caseId: string,
     filters: TimelineFilters,
-    data: TimelineApiResponse
+    data: TimelineApiResponse,
   ): void {
     const key = this.generateKey(caseId, filters);
 
     // Implement LRU eviction
     if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
       const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey);
+      }
     }
 
     this.cache.set(key, {
@@ -44,7 +43,7 @@ class TimelineCache {
   invalidate(caseId: string): void {
     // Remove all entries for this case
     const keysToDelete: string[] = [];
-    
+
     this.cache.forEach((_, key) => {
       if (key.startsWith(caseId)) {
         keysToDelete.push(key);
@@ -80,15 +79,18 @@ class TimelineCache {
 const timelineCache = new TimelineCache();
 
 // Cleanup old entries every 5 minutes
-if (typeof window !== 'undefined') {
-  setInterval(() => {
-    timelineCache.cleanup();
-  }, 5 * 60 * 1000);
+if (typeof window !== "undefined") {
+  setInterval(
+    () => {
+      timelineCache.cleanup();
+    },
+    5 * 60 * 1000,
+  );
 }
 
 export function getCachedTimelineData(
   caseId: string,
-  filters: TimelineFilters
+  filters: TimelineFilters,
 ): CacheEntry | null {
   return timelineCache.get(caseId, filters);
 }
@@ -96,7 +98,7 @@ export function getCachedTimelineData(
 export function setCachedTimelineData(
   caseId: string,
   filters: TimelineFilters,
-  data: TimelineApiResponse
+  data: TimelineApiResponse,
 ): void {
   timelineCache.set(caseId, filters, data);
 }

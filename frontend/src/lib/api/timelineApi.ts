@@ -4,8 +4,8 @@ import {
   TimelineEvent,
   TimelineEventSchema,
   TimelineFilters,
-} from '@/types/timeline.types';
-import { API_CONFIG } from '@/constants/timeline.constants';
+} from "@/types/timeline.types";
+import { API_CONFIG } from "@/constants/timeline.constants";
 
 class TimelineApiClient {
   private baseUrl: string;
@@ -19,40 +19,42 @@ class TimelineApiClient {
    */
   async getTimelineEvents(
     caseId: string,
-    filters: TimelineFilters
+    filters: TimelineFilters,
   ): Promise<TimelineApiResponse> {
     const params = new URLSearchParams();
 
     if (filters.layers && filters.layers.length > 0) {
-      params.append('layers', filters.layers.join(','));
+      params.append("layers", filters.layers.join(","));
     }
     if (filters.startDate) {
-      params.append('startDate', filters.startDate);
+      params.append("startDate", filters.startDate);
     }
     if (filters.endDate) {
-      params.append('endDate', filters.endDate);
+      params.append("endDate", filters.endDate);
     }
     if (filters.searchQuery) {
-      params.append('q', filters.searchQuery);
+      params.append("q", filters.searchQuery);
     }
     if (filters.minConfidence !== undefined) {
-      params.append('minConfidence', String(filters.minConfidence));
+      params.append("minConfidence", String(filters.minConfidence));
     }
     if (filters.showUserCorrectedOnly) {
-      params.append('userCorrectedOnly', 'true');
+      params.append("userCorrectedOnly", "true");
     }
 
     const url = `${this.baseUrl}/${caseId}/timeline?${params.toString()}`;
 
     const response = await this.fetchWithTimeout(url, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch timeline events: ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch timeline events: ${response.statusText}`,
+      );
     }
 
     const data = await response.json();
@@ -67,20 +69,22 @@ class TimelineApiClient {
    */
   async createTimelineEvent(
     caseId: string,
-    event: Omit<TimelineEvent, 'id' | 'caseId' | 'createdAt' | 'updatedAt'>
+    event: Omit<TimelineEvent, "id" | "caseId" | "createdAt" | "updatedAt">,
   ): Promise<TimelineEvent> {
     const url = `${this.baseUrl}/${caseId}/timeline`;
 
     const response = await this.fetchWithTimeout(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(event),
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to create timeline event: ${response.statusText}`);
+      throw new Error(
+        `Failed to create timeline event: ${response.statusText}`,
+      );
     }
 
     const data = await response.json();
@@ -92,20 +96,22 @@ class TimelineApiClient {
    */
   async updateTimelineEvent(
     caseId: string,
-    event: TimelineEvent
+    event: TimelineEvent,
   ): Promise<TimelineEvent> {
     const url = `${this.baseUrl}/${caseId}/timeline/${event.id}`;
 
     const response = await this.fetchWithTimeout(url, {
-      method: 'PUT',
+      method: "PUT",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(event),
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to update timeline event: ${response.statusText}`);
+      throw new Error(
+        `Failed to update timeline event: ${response.statusText}`,
+      );
     }
 
     const data = await response.json();
@@ -119,11 +125,13 @@ class TimelineApiClient {
     const url = `${this.baseUrl}/${caseId}/timeline/${eventId}`;
 
     const response = await this.fetchWithTimeout(url, {
-      method: 'DELETE',
+      method: "DELETE",
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to delete timeline event: ${response.statusText}`);
+      throw new Error(
+        `Failed to delete timeline event: ${response.statusText}`,
+      );
     }
   }
 
@@ -135,14 +143,18 @@ class TimelineApiClient {
     options?: {
       fileIds?: string[];
       forceReprocess?: boolean;
-    }
-  ): Promise<{ taskId: string; estimatedDuration: number; filesQueued: number }> {
+    },
+  ): Promise<{
+    taskId: string;
+    estimatedDuration: number;
+    filesQueued: number;
+  }> {
     const url = `${this.baseUrl}/${caseId}/timeline/extract`;
 
     const response = await this.fetchWithTimeout(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(options || {}),
     });
@@ -159,10 +171,10 @@ class TimelineApiClient {
    */
   async getExtractionStatus(
     caseId: string,
-    taskId: string
+    taskId: string,
   ): Promise<{
     taskId: string;
-    status: 'pending' | 'processing' | 'completed' | 'failed';
+    status: "pending" | "processing" | "completed" | "failed";
     progress: number;
     filesProcessed: number;
     eventsExtracted: number;
@@ -171,11 +183,13 @@ class TimelineApiClient {
     const url = `${this.baseUrl}/${caseId}/timeline/extract/${taskId}`;
 
     const response = await this.fetchWithTimeout(url, {
-      method: 'GET',
+      method: "GET",
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to get extraction status: ${response.statusText}`);
+      throw new Error(
+        `Failed to get extraction status: ${response.statusText}`,
+      );
     }
 
     return response.json();
@@ -186,10 +200,13 @@ class TimelineApiClient {
    */
   private async fetchWithTimeout(
     url: string,
-    options: RequestInit
+    options: RequestInit,
   ): Promise<Response> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.REQUEST_TIMEOUT);
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      API_CONFIG.REQUEST_TIMEOUT,
+    );
 
     try {
       const response = await fetch(url, {

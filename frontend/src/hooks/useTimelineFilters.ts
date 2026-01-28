@@ -1,31 +1,31 @@
-import { useState, useMemo, useCallback } from 'react';
-import { useDebounce } from './useDebounce';
+import { useState, useMemo, useCallback } from "react";
+import { useDebounce } from "./useDebounce";
 import {
   TimelineZoomLevel,
   TimelineLayer,
   TimelineFilters,
-} from '@/types/timeline.types';
-import { PERFORMANCE_CONFIG } from '@/constants/timeline.constants';
+} from "@/types/timeline.types";
+import { PERFORMANCE_CONFIG } from "@/constants/timeline.constants";
 
 export function useTimelineFilters() {
-  const [zoomLevel, setZoomLevel] = useState<TimelineZoomLevel>('month');
+  const [zoomLevel, setZoomLevel] = useState<TimelineZoomLevel>("month");
   const [selectedLayers, setSelectedLayers] = useState<TimelineLayer[]>([
-    'evidence',
-    'legal',
-    'strategy',
+    "evidence",
+    "legal",
+    "strategy",
   ]);
   const [dateRange, setDateRange] = useState<{
     startDate?: string;
     endDate?: string;
   }>({});
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [minConfidence, setMinConfidence] = useState<number>(0);
   const [showUserCorrectedOnly, setShowUserCorrectedOnly] = useState(false);
 
   // Debounce search query to reduce API calls
   const debouncedSearchQuery = useDebounce(
     searchQuery,
-    PERFORMANCE_CONFIG.DEBOUNCE_DELAY
+    PERFORMANCE_CONFIG.DEBOUNCE_DELAY,
   );
 
   // Memoized filters object
@@ -45,15 +45,15 @@ export function useTimelineFilters() {
       debouncedSearchQuery,
       minConfidence,
       showUserCorrectedOnly,
-    ]
+    ],
   );
 
   // Reset all filters
   const resetFilters = useCallback(() => {
-    setZoomLevel('month');
-    setSelectedLayers(['evidence', 'legal', 'strategy']);
+    setZoomLevel("month");
+    setSelectedLayers(["evidence", "legal", "strategy"]);
     setDateRange({});
-    setSearchQuery('');
+    setSearchQuery("");
     setMinConfidence(0);
     setShowUserCorrectedOnly(false);
   }, []);

@@ -20,7 +20,7 @@ export interface PanelStateController {
  */
 function getLocalStorage<T>(key: string, defaultValue: T): T {
   if (typeof window === "undefined") return defaultValue;
-  
+
   try {
     const item = window.localStorage.getItem(key);
     return item ? JSON.parse(item) : defaultValue;
@@ -35,7 +35,7 @@ function getLocalStorage<T>(key: string, defaultValue: T): T {
  */
 function setLocalStorage<T>(key: string, value: T): void {
   if (typeof window === "undefined") return;
-  
+
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch (error) {
@@ -71,7 +71,7 @@ function setLocalStorage<T>(key: string, value: T): void {
  */
 export function usePanelState(
   panelId: string,
-  defaultCollapsed: boolean = true
+  defaultCollapsed: boolean = true,
 ): PanelStateController {
   const storageKey = `holmes-panel-${panelId}`;
 

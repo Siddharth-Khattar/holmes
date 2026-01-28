@@ -39,12 +39,14 @@ The Knowledge Graph is a red string board visualization that displays entities, 
 ## Key Features Implemented
 
 ### ✅ Force Simulation
+
 - Single simulation instance (no recreation on render)
 - Proper lifecycle management with refs
 - Adaptive forces based on node types
 - Smooth transitions on data updates
 
 ### ✅ Visual Design
+
 - Cork board background (#2C2416)
 - Dotted pattern (fixed size, doesn't zoom)
 - Red string connections (dashed amber lines)
@@ -52,6 +54,7 @@ The Knowledge Graph is a red string board visualization that displays entities, 
 - Hover and selection states
 
 ### ✅ Interactions
+
 - Drag nodes to reposition
 - Zoom with mouse wheel
 - Pan by dragging background
@@ -59,6 +62,7 @@ The Knowledge Graph is a red string board visualization that displays entities, 
 - Hover for highlights
 
 ### ✅ Performance
+
 - Position updates via refs (not state)
 - RequestAnimationFrame for smooth rendering
 - Proper event listener cleanup
@@ -111,7 +115,7 @@ Response: {
 export function useCaseGraph(caseId: string) {
   const [data, setData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
     async function fetchGraph() {
       const response = await api.get(`/api/cases/${caseId}/graph`);
@@ -120,23 +124,23 @@ export function useCaseGraph(caseId: string) {
     }
     fetchGraph();
   }, [caseId]);
-  
+
   const addEntity = async (entity: Partial<Entity>) => {
     const newEntity = await api.post(`/api/cases/${caseId}/entities`, entity);
-    setData(prev => ({
+    setData((prev) => ({
       ...prev!,
-      entities: [...prev!.entities, newEntity]
+      entities: [...prev!.entities, newEntity],
     }));
   };
-  
+
   const addRelationship = async (rel: Partial<Relationship>) => {
     const newRel = await api.post(`/api/cases/${caseId}/relationships`, rel);
-    setData(prev => ({
+    setData((prev) => ({
       ...prev!,
-      relationships: [...prev!.relationships, newRel]
+      relationships: [...prev!.relationships, newRel],
     }));
   };
-  
+
   return { data, loading, addEntity, addRelationship };
 }
 ```
@@ -147,17 +151,17 @@ export function useCaseGraph(caseId: string) {
 // Use SSE or WebSocket for live updates
 useEffect(() => {
   const eventSource = new EventSource(`/api/cases/${caseId}/graph/stream`);
-  
-  eventSource.addEventListener('entity-added', (e) => {
+
+  eventSource.addEventListener("entity-added", (e) => {
     const entity = JSON.parse(e.data);
     // Update graph data
   });
-  
-  eventSource.addEventListener('relationship-added', (e) => {
+
+  eventSource.addEventListener("relationship-added", (e) => {
     const relationship = JSON.parse(e.data);
     // Update graph data
   });
-  
+
   return () => eventSource.close();
 }, [caseId]);
 ```
@@ -165,6 +169,7 @@ useEffect(() => {
 ## Database Schema
 
 ### Entities Table
+
 ```sql
 CREATE TABLE entities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -182,6 +187,7 @@ CREATE INDEX idx_entities_type ON entities(type);
 ```
 
 ### Relationships Table
+
 ```sql
 CREATE TABLE relationships (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -205,18 +211,21 @@ CREATE INDEX idx_relationships_target ON relationships(target_entity_id);
 ## Migration Path
 
 ### Phase 1: Replace Mock Data
+
 1. Create API endpoints in backend
 2. Implement database schema
 3. Create `useCaseGraph` hook
 4. Replace `generateMockGraphData()` with API call
 
 ### Phase 2: Add CRUD Operations
+
 1. Add entity creation UI
 2. Add relationship creation UI
 3. Implement delete operations
 4. Add edit/update functionality
 
 ### Phase 3: Advanced Features
+
 1. Filters by entity type
 2. Search functionality
 3. Export graph as image
@@ -232,12 +241,12 @@ import { useCaseGraph } from '@/hooks/use-case-graph';
 export default function KnowledgeGraphPage() {
   const params = useParams();
   const { data, loading, addEntity, addRelationship } = useCaseGraph(params.id as string);
-  
+
   if (loading) return <LoadingSpinner />;
   if (!data) return <ErrorState />;
-  
+
   const { nodes, connections } = transformGraphData(data);
-  
+
   return (
     <KnowledgeGraph
       nodes={nodes}
@@ -264,10 +273,10 @@ export default function KnowledgeGraphPage() {
 test('simulation is created once', () => {
   const { rerender } = render(<KnowledgeGraph nodes={[]} connections={[]} />);
   const sim1 = getSimulationRef();
-  
+
   rerender(<KnowledgeGraph nodes={newNodes} connections={[]} />);
   const sim2 = getSimulationRef();
-  
+
   expect(sim1).toBe(sim2); // Same instance
 });
 
@@ -275,9 +284,9 @@ test('simulation is created once', () => {
 test('drag handlers are cleaned up', () => {
   const { unmount } = render(<KnowledgeGraph nodes={nodes} connections={[]} />);
   const spy = jest.spyOn(document, 'removeEventListener');
-  
+
   unmount();
-  
+
   expect(spy).toHaveBeenCalledWith('mousemove', expect.any(Function));
   expect(spy).toHaveBeenCalledWith('mouseup', expect.any(Function));
 });

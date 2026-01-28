@@ -16,13 +16,13 @@ import {
 
 ```typescript
 const {
-  clusterState,           // { selectedNodeId, clusterNodeIds, clusterConnectionIndices }
-  selectNode,             // (nodeId: string) => void
-  clearSelection,         // () => void
-  getNodeOpacity,         // (nodeId: string) => number
-  getConnectionOpacity,   // (index: number) => number
-  getNodeScale,           // (nodeId: string) => number
-  connectionStats,        // { min, max, average, p50, p75, p90, p95 }
+  clusterState, // { selectedNodeId, clusterNodeIds, clusterConnectionIndices }
+  selectNode, // (nodeId: string) => void
+  clearSelection, // () => void
+  getNodeOpacity, // (nodeId: string) => number
+  getConnectionOpacity, // (index: number) => number
+  getNodeScale, // (nodeId: string) => number
+  connectionStats, // { min, max, average, p50, p75, p90, p95 }
 } = useCluster(nodes, connections);
 ```
 
@@ -41,7 +41,7 @@ const getSimulation = useForceSimulation({
   width,
   height,
   onTick: () => forceUpdate(),
-  onSimulationCreated: (sim) => simulationRef.current = sim,
+  onSimulationCreated: (sim) => (simulationRef.current = sim),
   linkDistance: 120,
   linkStrength: 0.5,
   chargeStrength: -300,
@@ -55,7 +55,7 @@ const simulation = getSimulation();
 ```typescript
 const { isCollapsed, toggleCollapse, setCollapsed } = usePanelState(
   "panel-id",
-  true // default collapsed
+  true, // default collapsed
 );
 ```
 
@@ -79,16 +79,18 @@ zoomController?.resetZoom();
 ## Common Patterns
 
 ### Search with Debouncing
+
 ```typescript
 const [search, setSearch] = useState("");
 const debouncedSearch = useDebounce(search, 300);
 
-const filtered = nodes.filter(node =>
-  node.data.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+const filtered = nodes.filter((node) =>
+  node.data.name.toLowerCase().includes(debouncedSearch.toLowerCase()),
 );
 ```
 
 ### Cluster Highlighting
+
 ```typescript
 const { selectNode, getNodeOpacity } = useCluster(nodes, connections);
 
@@ -99,6 +101,7 @@ const { selectNode, getNodeOpacity } = useCluster(nodes, connections);
 ```
 
 ### Persistent Panels
+
 ```typescript
 const panel = usePanelState("my-panel", false);
 
@@ -108,11 +111,12 @@ const panel = usePanelState("my-panel", false);
 ```
 
 ### Complete Integration
+
 ```typescript
 function KnowledgeGraph({ nodes, connections }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
-  
+
   const cluster = useCluster(nodes, connections);
   const zoom = useZoom({
     svgElement: svgRef.current,
@@ -120,7 +124,7 @@ function KnowledgeGraph({ nodes, connections }) {
     containerWidth: 800,
     containerHeight: 600,
   });
-  
+
   useForceSimulation({
     nodes,
     connections,
@@ -128,7 +132,7 @@ function KnowledgeGraph({ nodes, connections }) {
     height: 600,
     onTick: () => forceUpdate(),
   });
-  
+
   return (
     <svg ref={svgRef}>
       <g transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>

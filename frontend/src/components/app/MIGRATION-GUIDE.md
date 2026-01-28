@@ -5,6 +5,7 @@ This guide explains how to integrate the new knowledge graph hooks into your exi
 ## Overview
 
 The new hooks provide:
+
 1. **Better separation of concerns** - Logic is extracted from the component
 2. **Reusability** - Hooks can be used in other graph components
 3. **Performance** - Optimized with memoization and debouncing
@@ -30,6 +31,7 @@ import {
 ### Step 2: Replace Zoom Logic
 
 **Before:**
+
 ```typescript
 // Manual zoom behavior setup in useEffect
 useEffect(() => {
@@ -45,6 +47,7 @@ useEffect(() => {
 ```
 
 **After:**
+
 ```typescript
 // Use the hook
 const zoomController = useZoom({
@@ -69,14 +72,18 @@ const zoomController = useZoom({
 ### Step 3: Replace Force Simulation Logic
 
 **Before:**
+
 ```typescript
 useEffect(() => {
   if (!simulationRef.current) {
     simulationRef.current = forceSimulation<ForceNode>([])
-      .force("link", forceLink<ForceNode, ForceLink>([])
-        .id((d) => d.id)
-        .distance(120)
-        .strength(0.5))
+      .force(
+        "link",
+        forceLink<ForceNode, ForceLink>([])
+          .id((d) => d.id)
+          .distance(120)
+          .strength(0.5),
+      )
       .force("charge", forceManyBody<ForceNode>().strength(-300))
       // ... more forces
       .on("tick", () => {
@@ -87,6 +94,7 @@ useEffect(() => {
 ```
 
 **After:**
+
 ```typescript
 const getSimulation = useForceSimulation({
   nodes,
@@ -123,7 +131,7 @@ const {
 const renderNode = (node: GraphNode) => {
   const opacity = getNodeOpacity(node.id);
   const scale = getNodeScale(node.id);
-  
+
   return (
     <g
       opacity={opacity}
@@ -138,7 +146,7 @@ const renderNode = (node: GraphNode) => {
 // In your connection rendering:
 const renderConnection = (conn: GraphConnection, index: number) => {
   const opacity = getConnectionOpacity(index);
-  
+
   return (
     <line
       opacity={opacity}
@@ -192,6 +200,7 @@ const nodeInfoPanel = usePanelState("node-info-panel", true);
 ### 1. Backend Data Sensitivity
 
 The hooks automatically respond to data changes:
+
 - `useCluster` rebuilds adjacency map when nodes/connections change
 - `useForceSimulation` restarts simulation on data updates
 - All hooks use proper React dependency arrays
@@ -199,6 +208,7 @@ The hooks automatically respond to data changes:
 ### 2. Live Data Adaptability
 
 Real-time updates work seamlessly:
+
 - Simulation tick callbacks trigger re-renders
 - Zoom/pan state updates immediately
 - Cluster selection responds instantly
@@ -246,6 +256,7 @@ Real-time updates work seamlessly:
 ### Issue: Nodes not rendering
 
 **Solution**: Make sure you're using the simulation's node positions:
+
 ```typescript
 const x = (node as any).x || 0;
 const y = (node as any).y || 0;
@@ -254,6 +265,7 @@ const y = (node as any).y || 0;
 ### Issue: Zoom not working
 
 **Solution**: Ensure SVG ref is set before creating zoom controller:
+
 ```typescript
 const zoomController = useZoom({
   svgElement: svgRef.current, // Must not be null
@@ -264,6 +276,7 @@ const zoomController = useZoom({
 ### Issue: Cluster selection not highlighting
 
 **Solution**: Make sure you're passing the connection index to `getConnectionOpacity`:
+
 ```typescript
 connections.map((conn, index) => {
   const opacity = getConnectionOpacity(index); // Pass index, not conn
@@ -274,6 +287,7 @@ connections.map((conn, index) => {
 ### Issue: Search is slow
 
 **Solution**: Increase debounce delay:
+
 ```typescript
 const debouncedSearchQuery = useDebounce(searchQuery, 500); // 500ms instead of 300ms
 ```

@@ -1,6 +1,12 @@
-import { useState, useEffect } from 'react';
-import { GraphNode, GraphConnection, Entity, Evidence, Relationship } from '@/types/knowledge-graph';
-import { generateMockGraphData } from '@/lib/mock-graph-data';
+import { useState, useEffect } from "react";
+import {
+  GraphNode,
+  GraphConnection,
+  Entity,
+  Evidence,
+  Relationship,
+} from "@/types/knowledge-graph";
+import { generateMockGraphData } from "@/lib/mock-graph-data";
 
 interface GraphData {
   nodes: GraphNode[];
@@ -19,9 +25,9 @@ interface UseCaseGraphReturn {
 
 /**
  * Hook to fetch and manage knowledge graph data for a case
- * 
+ *
  * TODO: Replace mock data with real API calls when backend is ready
- * 
+ *
  * Future API endpoints:
  * - GET /api/cases/:caseId/graph
  * - POST /api/cases/:caseId/entities
@@ -44,14 +50,16 @@ export function useCaseGraph(caseId: string): UseCaseGraphReturn {
       // const { entities, evidence, relationships } = response;
 
       // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Use mock data for now
       const mockData = generateMockGraphData();
 
       setData(mockData);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch graph data'));
+      setError(
+        err instanceof Error ? err : new Error("Failed to fetch graph data"),
+      );
     } finally {
       setLoading(false);
     }
@@ -71,15 +79,15 @@ export function useCaseGraph(caseId: string): UseCaseGraphReturn {
 
 /**
  * Future implementation with real API:
- * 
+ *
  * export function useCaseGraph(caseId: string) {
  *   const [data, setData] = useState<GraphData | null>(null);
  *   const [loading, setLoading] = useState(true);
- *   
+ *
  *   useEffect(() => {
  *     async function fetchGraph() {
  *       const response = await api.get(`/api/cases/${caseId}/graph`);
- *       
+ *
  *       // Transform API response to graph format
  *       const nodes: GraphNode[] = [
  *         ...response.entities.map(entity => ({
@@ -97,21 +105,21 @@ export function useCaseGraph(caseId: string): UseCaseGraphReturn {
  *           isPinned: false,
  *         })),
  *       ];
- *       
+ *
  *       const connections: GraphConnection[] = response.relationships.map(rel => ({
  *         id: rel.id,
  *         source: rel.sourceEntityId,
  *         target: rel.targetEntityId,
  *         relationship: rel,
  *       }));
- *       
+ *
  *       setData({ nodes, connections, ...response });
  *       setLoading(false);
  *     }
- *     
+ *
  *     fetchGraph();
  *   }, [caseId]);
- *   
+ *
  *   const addEntity = async (entity: Partial<Entity>) => {
  *     const newEntity = await api.post(`/api/cases/${caseId}/entities`, entity);
  *     setData(prev => ({
@@ -127,7 +135,7 @@ export function useCaseGraph(caseId: string): UseCaseGraphReturn {
  *     }));
  *     return newEntity;
  *   };
- *   
+ *
  *   const addRelationship = async (rel: Partial<Relationship>) => {
  *     const newRel = await api.post(`/api/cases/${caseId}/relationships`, rel);
  *     setData(prev => ({
@@ -142,7 +150,7 @@ export function useCaseGraph(caseId: string): UseCaseGraphReturn {
  *     }));
  *     return newRel;
  *   };
- *   
+ *
  *   return { data, loading, addEntity, addRelationship };
  * }
  */

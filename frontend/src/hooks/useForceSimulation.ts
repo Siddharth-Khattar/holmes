@@ -18,7 +18,9 @@ interface UseForceSimulationProps {
   width: number;
   height: number;
   onTick?: () => void;
-  onSimulationCreated?: (simulation: Simulation<GraphNode, GraphConnection>) => void;
+  onSimulationCreated?: (
+    simulation: Simulation<GraphNode, GraphConnection>,
+  ) => void;
   /** Custom function to calculate node radius for collision detection */
   getNodeRadius?: (node: GraphNode) => number;
   /** Link distance (default: 120) */
@@ -59,7 +61,9 @@ export function useForceSimulation({
   chargeDistanceMax = 400,
   collisionPadding = 3,
 }: UseForceSimulationProps) {
-  const simulationRef = useRef<Simulation<GraphNode, GraphConnection> | null>(null);
+  const simulationRef = useRef<Simulation<GraphNode, GraphConnection> | null>(
+    null,
+  );
 
   useEffect(() => {
     // Skip if no data provided
@@ -83,14 +87,14 @@ export function useForceSimulation({
         forceLink<GraphNode, GraphConnection>(connections)
           .id((d) => d.id)
           .distance(linkDistance)
-          .strength(linkStrength)
+          .strength(linkStrength),
       )
       // Many-body force: nodes repel each other
       .force(
         "charge",
         forceManyBody<GraphNode>()
           .strength(chargeStrength)
-          .distanceMax(chargeDistanceMax)
+          .distanceMax(chargeDistanceMax),
       )
       // Center force: pulls graph toward viewport center
       .force("center", forceCenter<GraphNode>(width / 2, height / 2))
@@ -102,7 +106,7 @@ export function useForceSimulation({
             const baseRadius = getNodeRadius ? getNodeRadius(node) : 30;
             return baseRadius + collisionPadding;
           })
-          .strength(0.7)
+          .strength(0.7),
       );
 
     // Handle simulation tick events

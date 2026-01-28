@@ -18,19 +18,19 @@ import {
 
 ### Core Graph Hooks
 
-| Hook | Purpose | Key Features |
-|------|---------|--------------|
-| `useCluster` | Cluster selection & highlighting | Adjacency map, opacity calculations, connection stats |
-| `useForceSimulation` | D3 force-directed layout | Configurable forces, tick callbacks, auto-cleanup |
-| `useZoom` | Zoom & pan controls | Programmatic zoom, smooth transitions, extent limits |
-| `useDrag` | Node drag behavior | Click detection, simulation integration, fixed positioning |
+| Hook                 | Purpose                          | Key Features                                               |
+| -------------------- | -------------------------------- | ---------------------------------------------------------- |
+| `useCluster`         | Cluster selection & highlighting | Adjacency map, opacity calculations, connection stats      |
+| `useForceSimulation` | D3 force-directed layout         | Configurable forces, tick callbacks, auto-cleanup          |
+| `useZoom`            | Zoom & pan controls              | Programmatic zoom, smooth transitions, extent limits       |
+| `useDrag`            | Node drag behavior               | Click detection, simulation integration, fixed positioning |
 
 ### Utility Hooks
 
-| Hook | Purpose | Key Features |
-|------|---------|--------------|
-| `useDebounce` | Delay value updates | Configurable delay, automatic cleanup |
-| `usePanelState` | Panel collapse state | localStorage persistence, SSR-safe |
+| Hook            | Purpose              | Key Features                          |
+| --------------- | -------------------- | ------------------------------------- |
+| `useDebounce`   | Delay value updates  | Configurable delay, automatic cleanup |
+| `usePanelState` | Panel collapse state | localStorage persistence, SSR-safe    |
 
 ## Documentation
 
@@ -41,21 +41,25 @@ import {
 ## Key Benefits
 
 ### 🎯 Backend Data Sensitivity
+
 - Automatic response to data changes
 - Efficient re-computation with memoization
 - Proper React dependency management
 
 ### ⚡ Live Data Adaptability
+
 - Real-time simulation updates
 - Instant user interaction feedback
 - Smooth transitions and animations
 
 ### 🚀 Performance Optimization
+
 - Debounced search and filters
 - Memoized expensive computations
 - Efficient re-render strategies
 
 ### 🧩 Code Organization
+
 - Separation of concerns
 - Reusable across components
 - Easy to test and maintain
@@ -67,14 +71,14 @@ function KnowledgeGraph({ nodes, connections }) {
   // Search with debouncing
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedQuery = useDebounce(searchQuery, 300);
-  
+
   // Cluster selection
   const {
     selectNode,
     getNodeOpacity,
     getConnectionOpacity,
   } = useCluster(nodes, connections);
-  
+
   // Force simulation
   const getSimulation = useForceSimulation({
     nodes,
@@ -83,7 +87,7 @@ function KnowledgeGraph({ nodes, connections }) {
     height: 600,
     onTick: () => forceUpdate(),
   });
-  
+
   // Zoom controls
   const zoomController = useZoom({
     svgElement: svgRef.current,
@@ -91,10 +95,10 @@ function KnowledgeGraph({ nodes, connections }) {
     containerWidth: 800,
     containerHeight: 600,
   });
-  
+
   // Panel state
   const panel = usePanelState("node-info", true);
-  
+
   return (
     <div>
       <input
@@ -143,12 +147,14 @@ function KnowledgeGraph({ nodes, connections }) {
 ## Testing
 
 Each hook includes:
+
 - Unit tests for isolated functionality
 - Integration tests with other hooks
 - Performance benchmarks
 - Edge case handling
 
 Run tests:
+
 ```bash
 npm test src/hooks
 ```
@@ -156,6 +162,7 @@ npm test src/hooks
 ## Contributing
 
 When adding new hooks:
+
 1. Follow the existing naming convention (`use*`)
 2. Add comprehensive JSDoc comments
 3. Include usage examples

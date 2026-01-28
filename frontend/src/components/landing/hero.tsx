@@ -5,8 +5,9 @@
 
 import { forwardRef, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform } from "motion/react";
+import { useSession } from "@/lib/auth-client";
 
 interface VideoPlayerProps {
   src: string;
@@ -51,10 +52,40 @@ const VideoPlayer = dynamic(() => Promise.resolve(VideoPlayerBase), {
  * Layout: Text content at top, video below with smooth scale-up on scroll.
  */
 export function Hero() {
+  const router = useRouter();
+  const { data: session, isPending } = useSession();
   const sectionRef = useRef<HTMLElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+
+  console.log("🎯 [HERO] Component rendered", {
+    hasSession: !!session,
+    sessionUser: session?.user,
+    isPending,
+    timestamp: new Date().toISOString(),
+  });
+
+  const handleStartInvestigation = () => {
+    console.log("🚀 [HERO] Start Investigation clicked", {
+      hasSession: !!session,
+      sessionUser: session?.user,
+      isPending,
+      willNavigateTo: session?.user ? "/cases" : "/login",
+    });
+
+    // If logged in, go to cases. Otherwise, go to login.
+    if (session?.user) {
+      console.log("✅ [HERO] User is logged in, navigating to /cases");
+      router.push("/cases");
+    } else {
+      console.log("❌ [HERO] User is NOT logged in, navigating to /login");
+      
+      // Use window.location for a hard navigation to avoid any client-side routing issues
+      console.log("🔄 [HERO] Using window.location.href for hard navigation");
+      window.location.href = "/login";
+    }
+  };
 
   const handlePlayClick = () => {
     if (videoRef.current) {
@@ -120,12 +151,13 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut", delay: 0.7 }}
         >
-          <Link
-            href="/login"
-            className="liquid-glass-button inline-block px-8 py-4 text-lg font-medium text-smoke"
+          <button
+            onClick={handleStartInvestigation}
+            disabled={isPending}
+            className="liquid-glass-button inline-block px-8 py-4 text-lg font-medium text-smoke disabled:opacity-50"
           >
-            Start Your Investigation
-          </Link>
+            {isPending ? "Loading..." : "Start Your Investigation"}
+          </button>
         </motion.div>
       </div>
 

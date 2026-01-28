@@ -1,6 +1,9 @@
 // ABOUTME: Home page component for Holmes application
 // ABOUTME: Complete landing page with all 9 sections - Navigation, Hero, Problem, Solution, Workflow, Features, Trust, CTA, Footer
 
+"use client";
+
+import { useEffect } from "react";
 import { Navigation } from "@/components/landing/navigation";
 import { Hero } from "@/components/landing/hero";
 import { ProblemSection } from "@/components/landing/problem-section";
@@ -14,6 +17,14 @@ import { EtherealShadow } from "@/components/landing/ethereal-shadow";
 import { SectionDivider } from "@/components/landing/section-divider";
 
 export default function Home() {
+  useEffect(() => {
+    console.log("🏡 [LANDING PAGE] Component mounted", {
+      timestamp: new Date().toISOString(),
+      pathname: window.location.pathname,
+    });
+  }, []);
+
+  console.log("🏡 [LANDING PAGE] Rendering");
   return (
     <>
       {/* Fixed background - doesn't scroll */}

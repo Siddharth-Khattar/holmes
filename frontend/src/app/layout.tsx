@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { Playfair_Display, DM_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { ClearInvalidSession } from "./clear-invalid-session";
 
 const playfairDisplay = Playfair_Display({
   subsets: ["latin"],
@@ -40,6 +41,7 @@ export default function RootLayout({
     >
       <body className="font-sans bg-background text-foreground antialiased">
         <Providers>
+          <ClearInvalidSession />
           {/* SVG Filters for Liquid Glass Effect */}
           <svg
             className="absolute h-0 w-0"

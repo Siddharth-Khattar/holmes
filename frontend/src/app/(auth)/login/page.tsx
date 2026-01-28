@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
 import { SignupForm } from "@/components/auth/signup-form";
@@ -13,6 +13,15 @@ type AuthTab = "signin" | "signup";
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState<AuthTab>("signin");
+
+  useEffect(() => {
+    console.log("🔑 [LOGIN PAGE] Component mounted", {
+      timestamp: new Date().toISOString(),
+      pathname: window.location.pathname,
+    });
+  }, []);
+
+  console.log("🔑 [LOGIN PAGE] Rendering", { activeTab });
 
   return (
     <div className="w-full max-w-md">

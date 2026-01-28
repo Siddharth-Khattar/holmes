@@ -21,14 +21,25 @@ export default async function AppLayout({
   // This prevents stale auth state (e.g. after logout) from leaving the UI stuck.
   noStore();
 
+  console.log("🏠 [APP LAYOUT] Checking session...");
+
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
+  console.log("🏠 [APP LAYOUT] Session check result", {
+    hasSession: !!session,
+    sessionUser: session?.user,
+    timestamp: new Date().toISOString(),
+  });
+
   // Double-check auth (middleware is first line, this is defense-in-depth)
   if (!session) {
-    redirect("/");
+    console.log("🚫 [APP LAYOUT] No valid session found, redirecting to /login (not /)");
+    redirect("/login");
   }
+
+  console.log("✅ [APP LAYOUT] Session valid, rendering app");
 
   // Normalize user object to match component prop types
   const user = {
@@ -37,6 +48,8 @@ export default async function AppLayout({
     email: session.user.email,
     image: session.user.image ?? null,
   };
+
+  console.log("👤 [APP LAYOUT] User data", user);
 
   return (
     <div

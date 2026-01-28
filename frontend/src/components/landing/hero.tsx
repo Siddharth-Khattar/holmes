@@ -19,6 +19,15 @@ interface VideoPlayerProps {
  */
 const VideoPlayerBase = forwardRef<HTMLVideoElement, VideoPlayerProps>(
   function VideoPlayerBase({ src, onEnded }, ref) {
+    // Don't render if src is empty
+    if (!src) {
+      return (
+        <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-stone/5 to-stone/10 flex items-center justify-center">
+          <p className="text-smoke/50 text-sm">Video placeholder</p>
+        </div>
+      );
+    }
+
     return (
       <video
         ref={ref}
@@ -133,7 +142,7 @@ export function Hero() {
           {/* Video Element - client-only to avoid hydration mismatch */}
           <VideoPlayer
             ref={videoRef}
-            src={process.env.NEXT_PUBLIC_VIDEO_URL ?? "/video.mp4"}
+            src={process.env.NEXT_PUBLIC_VIDEO_URL || ""}
             onEnded={handleVideoEnd}
           />
 

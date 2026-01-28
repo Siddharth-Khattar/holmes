@@ -82,7 +82,7 @@ export function useZoom({
 }: UseZoomOptions): ZoomController | null {
   // Track current transform for programmatic operations
   const currentTransformRef = useRef<ZoomTransform>(zoomIdentity);
-  const zoomBehaviorRef = useRef<any>(null);
+  const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, Record<string, unknown>> | null>(null);
 
   useEffect(() => {
     if (!svgElement || containerWidth === 0 || containerHeight === 0) {
@@ -100,13 +100,13 @@ export function useZoom({
      * Handles zoom events from mouse wheel and pan gestures.
      * Updates the current transform and notifies parent component.
      */
-    function handleZoom(event: D3ZoomEvent<SVGSVGElement, unknown>) {
+    function handleZoom(event: D3ZoomEvent<SVGSVGElement, Record<string, unknown>>) {
       currentTransformRef.current = event.transform;
       onTransformChange(event.transform);
     }
 
     // Create zoom behavior with constraints
-    const zoomBehavior = zoom<SVGSVGElement, unknown>()
+    const zoomBehavior = zoom<SVGSVGElement, Record<string, unknown>>()
       .scaleExtent([minScale, maxScale])
       .translateExtent(translateExtent)
       .on("zoom", handleZoom);

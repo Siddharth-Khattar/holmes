@@ -85,8 +85,11 @@ export function usePanelState(
   // Hydrate from localStorage on mount (client-side only)
   useEffect(() => {
     const storedValue = getLocalStorage<boolean>(storageKey, defaultCollapsed);
-    setIsCollapsed(storedValue);
-    setIsHydrated(true);
+    // Use a microtask to avoid setState during render
+    Promise.resolve().then(() => {
+      setIsCollapsed(storedValue);
+      setIsHydrated(true);
+    });
   }, [storageKey, defaultCollapsed]);
 
   // Persist to localStorage whenever state changes (after initial hydration)

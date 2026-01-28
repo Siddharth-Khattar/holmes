@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { KnowledgeGraph } from "@/components/app/knowledge-graph";
@@ -9,7 +8,6 @@ import { useCaseGraph } from "@/hooks/use-case-graph";
 export default function KnowledgeGraphPage() {
   const params = useParams();
   const { data, loading, error } = useCaseGraph(params.id as string);
-  const [currentRelationshipCount, setCurrentRelationshipCount] = useState(0);
 
   if (loading) {
     return (
@@ -80,10 +78,6 @@ export default function KnowledgeGraphPage() {
     */
   };
 
-  const handleRelationshipCountChange = (count: number) => {
-    setCurrentRelationshipCount(count);
-  };
-
   return (
     <div className="h-[calc(100vh-280px)]">
       <KnowledgeGraph
@@ -93,7 +87,6 @@ export default function KnowledgeGraphPage() {
         evidenceCount={evidenceNodes.length}
         relationshipCount={data.relationships.length}
         onAddRelationship={handleAddRelationship}
-        onRelationshipCountChange={handleRelationshipCountChange}
       />
     </div>
   );

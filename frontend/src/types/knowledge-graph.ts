@@ -21,7 +21,7 @@ export interface Entity {
   type: EntityType;
   name: string;
   description?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,7 +32,7 @@ export interface Evidence {
   title: string;
   content?: string;
   url?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdAt: Date;
 }
 
@@ -44,7 +44,7 @@ export interface Relationship {
   label: string;
   strength: number; // 0-1
   isCrossModal?: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   createdAt: Date;
 }
 

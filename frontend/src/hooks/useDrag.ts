@@ -79,8 +79,9 @@ export function createDragBehaviorWithClick({
 
     // Fix the node position at its current location
     // fx and fy are D3's fixed position properties
-    (d as any).fx = (d as any).x;
-    (d as any).fy = (d as any).y;
+    const nodeWithPosition = d as GraphNode & { x?: number; y?: number; fx?: number | null; fy?: number | null };
+    nodeWithPosition.fx = nodeWithPosition.x;
+    nodeWithPosition.fy = nodeWithPosition.y;
   }
 
   /**
@@ -93,8 +94,9 @@ export function createDragBehaviorWithClick({
   ) {
     // Update fixed position to cursor coordinates
     // The simulation will use these values instead of calculating new positions
-    (d as any).fx = event.x;
-    (d as any).fy = event.y;
+    const nodeWithPosition = d as GraphNode & { fx?: number | null; fy?: number | null };
+    nodeWithPosition.fx = event.x;
+    nodeWithPosition.fy = event.y;
   }
 
   /**
@@ -129,8 +131,9 @@ export function createDragBehaviorWithClick({
 
     // Release the fixed position - node will now respond to forces again
     // Set to null (not undefined) to remove the constraint
-    (d as any).fx = null;
-    (d as any).fy = null;
+    const nodeWithPosition = d as GraphNode & { fx?: number | null; fy?: number | null };
+    nodeWithPosition.fx = null;
+    nodeWithPosition.fy = null;
   }
 
   // Create and return the drag behavior with typed event handlers

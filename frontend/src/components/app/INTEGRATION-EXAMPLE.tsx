@@ -25,7 +25,6 @@ import {
   useForceSimulation,
   usePanelState,
   useZoom,
-  type ZoomController,
 } from "@/hooks";
 
 // Import types
@@ -60,9 +59,9 @@ export function KnowledgeGraphExample({
   // ============================================================================
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [transform, setTransform] = useState<Transform>({ x: 0, y: 0, k: 1 });
-  const [renderTrigger, setRenderTrigger] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSimulationRunning, setIsSimulationRunning] = useState(true);
+  const [svgElement, setSvgElement] = useState<SVGSVGElement | null>(null);
 
   // ============================================================================
   // HOOKS: Debounced Search
@@ -107,7 +106,7 @@ export function KnowledgeGraphExample({
     height: dimensions.height,
     onTick: () => {
       // Trigger re-render on each simulation tick
-      setRenderTrigger((prev) => prev + 1);
+      // Force update handled by simulation
     },
     onSimulationCreated: (simulation) => {
       simulationRef.current = simulation;
@@ -123,8 +122,8 @@ export function KnowledgeGraphExample({
   // ============================================================================
   // HOOKS: Zoom Controller
   // ============================================================================
-  const zoomController: ZoomController | null = useZoom({
-    svgElement: svgRef.current,
+  const zoomController = useZoom({
+    svgElement,
     onTransformChange: (newTransform) => {
       setTransform({
         x: newTransform.x,
@@ -137,6 +136,13 @@ export function KnowledgeGraphExample({
     minScale: 0.1,
     maxScale: 5,
   });
+
+  // Set SVG element after mount
+  useEffect(() => {
+    if (svgRef.current) {
+      setSvgElement(svgRef.current);
+    }
+  }, []);
 
   // ============================================================================
   // HOOKS: Panel State (with localStorage persistence)
@@ -199,8 +205,8 @@ export function KnowledgeGraphExample({
     const isSelected = clusterState.selectedNodeId === node.id;
 
     // Get position from D3 simulation
-    const x = (node as any).x || 0;
-    const y = (node as any).y || 0;
+    const x = (node as GraphNode & { x?: number }).x || 0;
+    const y = (node as GraphNode & { y?: number }).y || 0;
 
     return (
       <g
@@ -251,10 +257,10 @@ export function KnowledgeGraphExample({
 
     if (!sourceNode || !targetNode) return null;
 
-    const x1 = (sourceNode as any).x || 0;
-    const y1 = (sourceNode as any).y || 0;
-    const x2 = (targetNode as any).x || 0;
-    const y2 = (targetNode as any).y || 0;
+    const x1 = (sourceNode as GraphNode & { x?: number }).x || 0;
+    const y1 = (sourceNode as GraphNode & { y?: number }).y || 0;
+    const x2 = (targetNode as GraphNode & { x?: number }).x || 0;
+    const y2 = (targetNode as GraphNode & { y?: number }).y || 0;
 
     return (
       <line

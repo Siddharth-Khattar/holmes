@@ -32,7 +32,6 @@ interface ExpandableTabsProps {
 export function ExpandableTabs({
   tabs,
   className,
-  activeColor = "text-primary",
   activeTab,
   onTabChange,
 }: ExpandableTabsProps) {

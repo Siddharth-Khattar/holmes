@@ -20,3 +20,26 @@ export interface ChatbotState {
   size: { width: number; height: number };
   messages: ChatMessage[];
 }
+
+// Backend API types
+export interface ChatApiRequest {
+  message: string;
+  context?: ChatbotContext;
+  history: ChatMessage[];
+}
+
+export interface ChatApiResponse {
+  message: string;
+  metadata?: {
+    model?: string;
+    tokens?: number;
+    timestamp?: string;
+    [key: string]: string | number | boolean | undefined;
+  };
+}
+
+export interface ChatApiError {
+  error: string;
+  code?: string;
+  details?: string;
+}

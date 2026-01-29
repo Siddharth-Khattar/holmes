@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { MessageCircle, X, Send, Minimize2, Maximize2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { clsx } from "clsx";
+import Image from "next/image";
 import { useChatbot } from "@/hooks/useChatbot";
 
 interface ChatbotProps {
@@ -260,10 +261,23 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       className={clsx(
-                        "flex",
+                        "flex gap-2",
                         message.role === "user" ? "justify-end" : "justify-start"
                       )}
                     >
+                      {/* Holmes Logo for Assistant Messages */}
+                      {message.role === "assistant" && (
+                        <div className="flex-shrink-0 mt-1">
+                          <Image 
+                            src="/logo-1x.png" 
+                            alt="Holmes" 
+                            width={24}
+                            height={24}
+                            className="opacity-70"
+                          />
+                        </div>
+                      )}
+                      
                       <div
                         className={clsx(
                           "max-w-[80%] rounded-lg px-4 py-2",
@@ -287,15 +301,69 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
 
                   {isTyping && (
                     <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
                       className="flex justify-start"
                     >
                       <div className="bg-[var(--light-bg)] dark:bg-[var(--charcoal)] rounded-lg px-4 py-3 border border-[var(--light-border)] dark:border-[var(--smoke)]/10">
-                        <div className="flex gap-1">
-                          <span className="w-2 h-2 rounded-full bg-[var(--light-text-muted)] dark:bg-[var(--stone)] animate-bounce" style={{ animationDelay: "0ms" }} />
-                          <span className="w-2 h-2 rounded-full bg-[var(--light-text-muted)] dark:bg-[var(--stone)] animate-bounce" style={{ animationDelay: "150ms" }} />
-                          <span className="w-2 h-2 rounded-full bg-[var(--light-text-muted)] dark:bg-[var(--stone)] animate-bounce" style={{ animationDelay: "300ms" }} />
+                        <div className="flex items-center gap-2">
+                          {/* Holmes Logo */}
+                          <Image 
+                            src="/logo-1x.png" 
+                            alt="Holmes" 
+                            width={20}
+                            height={20}
+                            className="opacity-70 flex-shrink-0"
+                          />
+                          
+                          {/* Thinking Text */}
+                          <span className="text-sm text-[var(--light-text)] dark:text-[var(--smoke)]">
+                            Thinking
+                          </span>
+                          
+                          {/* Animated Dots */}
+                          <div className="flex items-center gap-0.5">
+                            <motion.span
+                              className="inline-block w-1 h-1 rounded-full bg-white"
+                              animate={{
+                                scale: [1, 1.5, 1],
+                                opacity: [0.4, 1, 0.4],
+                              }}
+                              transition={{
+                                duration: 1.2,
+                                repeat: Infinity,
+                                ease: "easeInOut",
+                                delay: 0,
+                              }}
+                            />
+                            <motion.span
+                              className="inline-block w-1 h-1 rounded-full bg-white"
+                              animate={{
+                                scale: [1, 1.5, 1],
+                                opacity: [0.4, 1, 0.4],
+                              }}
+                              transition={{
+                                duration: 1.2,
+                                repeat: Infinity,
+                                ease: "easeInOut",
+                                delay: 0.2,
+                              }}
+                            />
+                            <motion.span
+                              className="inline-block w-1 h-1 rounded-full bg-white"
+                              animate={{
+                                scale: [1, 1.5, 1],
+                                opacity: [0.4, 1, 0.4],
+                              }}
+                              transition={{
+                                duration: 1.2,
+                                repeat: Infinity,
+                                ease: "easeInOut",
+                                delay: 0.4,
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
                     </motion.div>

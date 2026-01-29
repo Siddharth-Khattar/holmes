@@ -4,9 +4,25 @@ import type { ChatMessage, ChatbotContext } from "@/types/chatbot";
 interface UseChatbotOptions {
   context?: ChatbotContext;
   onError?: (error: Error) => void;
+  apiEndpoint?: string; // Allow custom API endpoint
 }
 
-export function useChatbot({ context, onError }: UseChatbotOptions = {}) {
+interface ChatApiRequest {
+  message: string;
+  context?: ChatbotContext;
+  history: ChatMessage[];
+}
+
+interface ChatApiResponse {
+  message: string;
+  metadata?: {
+    model?: string;
+    tokens?: number;
+    timestamp?: string;
+  };
+}
+
+export function useChatbot({ context, onError, apiEndpoint = '/api/chat' }: UseChatbotOptions = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
 
@@ -25,19 +41,40 @@ export function useChatbot({ context, onError }: UseChatbotOptions = {}) {
       setIsTyping(true);
 
       try {
-        // TODO: Replace with actual API call to your backend
-        // const response = await fetch('/api/chat', {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({
-        //     message: content,
-        //     context,
-        //     history: messages,
-        //   }),
-        // });
-        // const data = await response.json();
+        // Try to call the backend API
+        const response = await fetch(apiEndpoint, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: content,
+            context,
+            history: messages,
+          } as ChatApiRequest),
+        });
 
-        // Simulate AI response for now
+        if (response.ok) {
+          // Backend is available - use real response
+          const data: ChatApiResponse = await response.json();
+          
+          const assistantMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: data.message,
+            timestamp: new Date(),
+          };
+
+          setMessages((prev) => [...prev, assistantMessage]);
+        } else {
+          // Backend returned an error - fall back to mock
+          throw new Error(`API returned ${response.status}`);
+        }
+      } catch (error) {
+        // Backend not available or error occurred - use mock response
+        console.log('Using mock response (backend not available):', error);
+        
+        // Simulate network delay
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
         const assistantMessage: ChatMessage = {
@@ -48,22 +85,19 @@ export function useChatbot({ context, onError }: UseChatbotOptions = {}) {
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
-      } catch (error) {
-        onError?.(error as Error);
         
-        const errorMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: "I apologize, but I encountered an error. Please try again.",
-          timestamp: new Date(),
-        };
+        // Only call onError if it's not a network/404 error (backend not ready)
+        const isNetworkError = error instanceof TypeError;
+        const is404Error = error instanceof Error && error.message.includes('404');
         
-        setMessages((prev) => [...prev, errorMessage]);
+        if (onError && !isNetworkError && !is404Error) {
+          onError(error as Error);
+        }
       } finally {
         setIsTyping(false);
       }
     },
-    [context, onError]
+    [context, onError, apiEndpoint, messages]
   );
 
   const clearMessages = useCallback(() => {

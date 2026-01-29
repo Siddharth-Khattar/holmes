@@ -6,7 +6,7 @@ import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
+
   // Get the session cookie
   const sessionCookie = request.cookies.get("better-auth.session_token");
 
@@ -19,10 +19,14 @@ export function middleware(request: NextRequest) {
   // Protected app routes - redirect to login if not authenticated
   if (pathname.startsWith("/cases")) {
     if (!sessionCookie) {
-      console.log("🚫 [MIDDLEWARE] No session cookie for /cases, redirecting to /login");
+      console.log(
+        "🚫 [MIDDLEWARE] No session cookie for /cases, redirecting to /login",
+      );
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    console.log("✅ [MIDDLEWARE] Session cookie present for /cases, allowing access (will be validated by layout)");
+    console.log(
+      "✅ [MIDDLEWARE] Session cookie present for /cases, allowing access (will be validated by layout)",
+    );
   }
 
   // For login page, just let it through - don't redirect based on cookie presence

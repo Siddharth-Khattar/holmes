@@ -80,7 +80,7 @@ export function Hero() {
       router.push("/cases");
     } else {
       console.log("❌ [HERO] User is NOT logged in, navigating to /login");
-      
+
       // Use window.location for a hard navigation to avoid any client-side routing issues
       console.log("🔄 [HERO] Using window.location.href for hard navigation");
       window.location.href = "/login";

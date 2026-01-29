@@ -30,12 +30,12 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
   });
   
   // Window dragging state
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
   // Window resizing state
-  const [size, setSize] = useState({ width: 400, height: 600 });
+  const [size, setSize] = useState({ width: 880, height: 1320 });
   const [isResizing, setIsResizing] = useState(false);
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
   
@@ -52,9 +52,16 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
+      const newX = e.clientX - dragOffset.x;
+      const newY = e.clientY - dragOffset.y;
+      
+      // Keep window within viewport bounds
+      const maxX = window.innerWidth - 100; // Keep at least 100px visible
+      const maxY = window.innerHeight - 60; // Keep header visible
+      
       setPosition({
-        x: e.clientX - dragOffset.x,
-        y: e.clientY - dragOffset.y,
+        x: Math.max(0, Math.min(newX, maxX)),
+        y: Math.max(0, Math.min(newY, maxY)),
       });
     };
 
@@ -152,12 +159,11 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
               "w-14 h-14 rounded-full",
               "flex items-center justify-center",
               "shadow-lg hover:shadow-xl transition-shadow",
-              "bg-[var(--light-accent)] dark:bg-[var(--accent)]",
-              "text-[var(--light-bg)] dark:text-[var(--charcoal)]"
+              "bg-[#2a2825] dark:bg-[#f5f4ef]"
             )}
             aria-label="Open chat"
           >
-            <MessageCircle className="w-6 h-6" />
+            <MessageCircle className="w-6 h-6 text-[#faf9f7] dark:text-[#050505]" />
           </motion.button>
         )}
       </AnimatePresence>
@@ -167,14 +173,12 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
         {isOpen && (
           <motion.div
             ref={chatWindowRef}
-            initial={{ scale: 0, opacity: 0, x: "100%", y: "100%" }}
+            initial={{ scale: 0, opacity: 0 }}
             animate={{ 
               scale: 1, 
-              opacity: 1, 
-              x: position.x || "calc(100vw - 100% - 24px)", 
-              y: position.y || "calc(100vh - 100% - 24px)" 
+              opacity: 1,
             }}
-            exit={{ scale: 0, opacity: 0, x: "100%", y: "100%" }}
+            exit={{ scale: 0, opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             style={{
               width: isMinimized ? 320 : size.width,
@@ -183,6 +187,10 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
               maxHeight: "90vh",
               position: "fixed",
               zIndex: 1000,
+              right: position ? undefined : "24px",
+              bottom: position ? undefined : "24px",
+              left: position ? `${position.x}px` : undefined,
+              top: position ? `${position.y}px` : undefined,
             }}
             className={clsx(
               "rounded-xl overflow-hidden",
@@ -203,7 +211,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
               )}
             >
               <div className="flex items-center gap-2">
-                <MessageCircle className="w-5 h-5 text-[var(--light-accent)] dark:text-[var(--accent)]" />
+                <MessageCircle className="w-5 h-5 text-[#2a2825] dark:text-[#f5f4ef]" />
                 <h3 className="font-medium text-[var(--light-text)] dark:text-[var(--smoke)]">
                   Case Assistant
                 </h3>
@@ -260,7 +268,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                         className={clsx(
                           "max-w-[80%] rounded-lg px-4 py-2",
                           message.role === "user"
-                            ? "bg-[var(--light-accent)] dark:bg-[var(--accent)] text-[var(--light-bg)] dark:text-[var(--charcoal)]"
+                            ? "bg-[#2a2825] dark:bg-[#f5f4ef] text-[#faf9f7] dark:text-[#050505]"
                             : "bg-[var(--light-bg)] dark:bg-[var(--charcoal)] text-[var(--light-text)] dark:text-[var(--smoke)] border border-[var(--light-border)] dark:border-[var(--smoke)]/10"
                         )}
                       >
@@ -321,9 +329,9 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                       disabled={!inputValue.trim()}
                       className={clsx(
                         "px-4 py-2 rounded-lg",
-                        "bg-[var(--light-accent)] dark:bg-[var(--accent)]",
-                        "text-[var(--light-bg)] dark:text-[var(--charcoal)]",
-                        "hover:bg-[var(--light-accent-hover)] dark:hover:bg-[var(--accent-muted)]",
+                        "bg-[#2a2825] dark:bg-[#f5f4ef]",
+                        "text-[#faf9f7] dark:text-[#050505]",
+                        "hover:bg-[#3d3a36] dark:hover:bg-[#d4d3ce]",
                         "disabled:opacity-50 disabled:cursor-not-allowed",
                         "transition-colors",
                         "flex items-center justify-center"

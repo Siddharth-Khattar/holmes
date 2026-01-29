@@ -4,6 +4,9 @@ export { useTimelineSSE } from "./useTimelineSSE";
 export { useTimelineFilters } from "./useTimelineFilters";
 export { useDebounce } from "./useDebounce";
 
+// Command Center hooks
+export { useCommandCenterSSE } from "./useCommandCenterSSE";
+
 // Chatbot hooks
 export { useChatbot } from "./useChatbot";
 

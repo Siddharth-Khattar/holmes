@@ -257,7 +257,7 @@ export function EvidenceSourcePanel({
                 Prev Finding
               </button>
               <span className="text-xs text-stone">
-                Finding 1 of {mockData.findings.length}
+                Finding 1 of {mockData.findings?.length ?? 0}
               </span>
               <button className="flex items-center gap-1 px-3 py-1.5 rounded bg-charcoal/50 hover:bg-charcoal text-xs text-smoke">
                 Next Finding
@@ -324,7 +324,7 @@ export function EvidenceSourcePanel({
             <div>
               <div className="text-xs text-stone mb-2">KEY MOMENTS:</div>
               <div className="space-y-2">
-                {mockData.keyMoments.map((moment, idx) => (
+                {mockData.keyMoments?.map((moment, idx) => (
                   <div
                     key={idx}
                     className={`p-2 rounded-lg border cursor-pointer transition-colors ${
@@ -355,7 +355,7 @@ export function EvidenceSourcePanel({
                 Prev Moment
               </button>
               <span className="text-xs text-stone">
-                Moment 1 of {mockData.keyMoments.length}
+                Moment 1 of {mockData.keyMoments?.length ?? 0}
               </span>
               <button className="flex items-center gap-1 px-3 py-1.5 rounded bg-charcoal/50 hover:bg-charcoal text-xs text-smoke">
                 Next Moment
@@ -402,13 +402,15 @@ export function EvidenceSourcePanel({
             <div>
               <div className="text-xs text-stone mb-2">HIGHLIGHTS:</div>
               <div className="space-y-2">
-                {mockData.findings.map((finding, idx) => (
+                {mockData.findings?.map((finding, idx) => (
                   <div
                     key={idx}
                     className="flex items-center gap-2 p-2 rounded-lg bg-charcoal/30 border border-stone/10"
                   >
                     <div className="w-2 h-2 rounded-full bg-accent" />
-                    <span className="text-xs text-smoke">{finding}</span>
+                    <span className="text-xs text-smoke">
+                      {typeof finding === "string" ? finding : finding.text}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -472,7 +474,7 @@ export function EvidenceSourcePanel({
             <div>
               <div className="text-xs text-stone mb-2">TRANSCRIPT:</div>
               <div className="space-y-2">
-                {mockData.transcript.map((entry, idx) => (
+                {mockData.transcript?.map((entry, idx) => (
                   <div
                     key={idx}
                     className={`p-3 rounded-lg border ${

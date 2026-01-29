@@ -35,7 +35,9 @@ export default async function AppLayout({
 
   // Double-check auth (middleware is first line, this is defense-in-depth)
   if (!session) {
-    console.log("🚫 [APP LAYOUT] No valid session found, redirecting to /login (not /)");
+    console.log(
+      "🚫 [APP LAYOUT] No valid session found, redirecting to /login (not /)",
+    );
     redirect("/login");
   }
 

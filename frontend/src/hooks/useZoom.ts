@@ -1,7 +1,12 @@
 // ABOUTME: Utility function for creating D3 zoom and pan behavior for the graph canvas
 // ABOUTME: Handles zoom events, programmatic zoom controls, and coordinate transformations
 
-import { zoom, zoomIdentity, type D3ZoomEvent } from "d3-zoom";
+import {
+  zoom,
+  zoomIdentity,
+  type D3ZoomEvent,
+  type ZoomBehavior,
+} from "d3-zoom";
 import { select } from "d3-selection";
 import "d3-transition";
 import type { ZoomTransform } from "d3-zoom";
@@ -82,7 +87,10 @@ export function useZoom({
 }: UseZoomOptions): ZoomController | null {
   // Track current transform for programmatic operations
   const currentTransformRef = useRef<ZoomTransform>(zoomIdentity);
-  const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, Record<string, unknown>> | null>(null);
+  const zoomBehaviorRef = useRef<ZoomBehavior<
+    SVGSVGElement,
+    Record<string, unknown>
+  > | null>(null);
 
   useEffect(() => {
     if (!svgElement || containerWidth === 0 || containerHeight === 0) {
@@ -100,7 +108,9 @@ export function useZoom({
      * Handles zoom events from mouse wheel and pan gestures.
      * Updates the current transform and notifies parent component.
      */
-    function handleZoom(event: D3ZoomEvent<SVGSVGElement, Record<string, unknown>>) {
+    function handleZoom(
+      event: D3ZoomEvent<SVGSVGElement, Record<string, unknown>>,
+    ) {
       currentTransformRef.current = event.transform;
       onTransformChange(event.transform);
     }
@@ -112,7 +122,7 @@ export function useZoom({
       .on("zoom", handleZoom);
 
     // Apply zoom behavior to SVG element
-    const svg = select(svgElement);
+    const svg = select<SVGSVGElement, Record<string, unknown>>(svgElement);
     svg.call(zoomBehavior);
 
     zoomBehaviorRef.current = zoomBehavior;
@@ -136,7 +146,7 @@ export function useZoom({
     (transform: ZoomTransform, duration: number = 300) => {
       if (!svgElement || !zoomBehaviorRef.current) return;
 
-      const svg = select(svgElement);
+      const svg = select<SVGSVGElement, Record<string, unknown>>(svgElement);
       svg
         .transition()
         .duration(duration)

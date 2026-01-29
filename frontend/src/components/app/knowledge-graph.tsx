@@ -81,7 +81,10 @@ const EVIDENCE_COLORS: Record<EvidenceType, string> = {
   document: "#7A6B5D", // Medium warm brown
 };
 
-const EVIDENCE_ICONS: Record<EvidenceType, React.ComponentType<{ size?: number; color?: string }>> = {
+const EVIDENCE_ICONS: Record<
+  EvidenceType,
+  React.ComponentType<{ size?: number; color?: string }>
+> = {
   text: FileText,
   image: Image,
   video: Video,
@@ -104,9 +107,10 @@ export function KnowledgeGraph({
   const forceLinksRef = useRef<ForceLink[]>([]);
   const transformRef = useRef<Transform>({ x: 0, y: 0, k: 1 });
   const draggingNodeRef = useRef<string | null>(null);
-  const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, Record<string, unknown>> | null>(
-    null,
-  );
+  const zoomBehaviorRef = useRef<ZoomBehavior<
+    SVGSVGElement,
+    Record<string, unknown>
+  > | null>(null);
 
   const [transform, setTransform] = useState<Transform>({ x: 0, y: 0, k: 1 });
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
@@ -117,7 +121,9 @@ export function KnowledgeGraph({
     from: Position;
     to: Position;
   } | null>(null);
-  const [nodePositions, setNodePositions] = useState<Map<string, Position>>(new Map());
+  const [nodePositions, setNodePositions] = useState<Map<string, Position>>(
+    new Map(),
+  );
   const [localConnections, setLocalConnections] = useState<GraphConnection[]>(
     [],
   );
@@ -208,7 +214,7 @@ export function KnowledgeGraph({
   // Combine original connections with locally created ones
   const allConnections = useMemo(
     () => [...connections, ...localConnections],
-    [connections, localConnections]
+    [connections, localConnections],
   );
   const totalRelationshipCount = relationshipCount + localConnections.length;
 
@@ -256,13 +262,17 @@ export function KnowledgeGraph({
     const sim = simulationRef.current;
     sim.nodes(forceNodes);
 
-    const linkForce = sim.force("link") as ReturnType<typeof forceLink<ForceNode, ForceLink>> | undefined;
+    const linkForce = sim.force("link") as
+      | ReturnType<typeof forceLink<ForceNode, ForceLink>>
+      | undefined;
     if (linkForce) {
       linkForce.links(forceLinks);
     }
 
     // Update center force to current dimensions
-    const centerForce = sim.force("center") as ReturnType<typeof forceCenter> | undefined;
+    const centerForce = sim.force("center") as
+      | ReturnType<typeof forceCenter>
+      | undefined;
     if (centerForce) {
       centerForce.x(dimensions.width / 2).y(dimensions.height / 2);
     }
@@ -282,7 +292,7 @@ export function KnowledgeGraph({
     if (!svgRef.current || dimensions.width === 0 || dimensions.height === 0)
       return;
 
-    const svg = select(svgRef.current);
+    const svg = select<SVGSVGElement, Record<string, unknown>>(svgRef.current);
 
     const zoomBehavior = d3Zoom<SVGSVGElement, Record<string, unknown>>()
       .scaleExtent([0.1, 4])
@@ -296,14 +306,17 @@ export function KnowledgeGraph({
         }
         return true;
       })
-      .on("zoom", (event: D3ZoomEvent<SVGSVGElement, Record<string, unknown>>) => {
-        transformRef.current = {
-          x: event.transform.x,
-          y: event.transform.y,
-          k: event.transform.k,
-        };
-        setTransform(transformRef.current);
-      });
+      .on(
+        "zoom",
+        (event: D3ZoomEvent<SVGSVGElement, Record<string, unknown>>) => {
+          transformRef.current = {
+            x: event.transform.x,
+            y: event.transform.y,
+            k: event.transform.k,
+          };
+          setTransform(transformRef.current);
+        },
+      );
 
     svg.call(zoomBehavior);
     zoomBehaviorRef.current = zoomBehavior;
@@ -356,7 +369,7 @@ export function KnowledgeGraph({
             // If frozen, just update position without simulation
             forceNode.x = x;
             forceNode.y = y;
-            setNodePositions(prev => {
+            setNodePositions((prev) => {
               const newPositions = new Map(prev);
               newPositions.set(nodeId, { x, y });
               return newPositions;
@@ -482,25 +495,19 @@ export function KnowledgeGraph({
   // Zoom controls
   const handleZoomIn = () => {
     if (!svgRef.current || !zoomBehaviorRef.current) return;
-    const svg = select(svgRef.current);
-    svg
-      .transition()
-      .duration(300)
-      .call(zoomBehaviorRef.current.scaleBy, 1.3);
+    const svg = select<SVGSVGElement, Record<string, unknown>>(svgRef.current);
+    svg.transition().duration(300).call(zoomBehaviorRef.current.scaleBy, 1.3);
   };
 
   const handleZoomOut = () => {
     if (!svgRef.current || !zoomBehaviorRef.current) return;
-    const svg = select(svgRef.current);
-    svg
-      .transition()
-      .duration(300)
-      .call(zoomBehaviorRef.current.scaleBy, 0.7);
+    const svg = select<SVGSVGElement, Record<string, unknown>>(svgRef.current);
+    svg.transition().duration(300).call(zoomBehaviorRef.current.scaleBy, 0.7);
   };
 
   const handleResetZoom = () => {
     if (!svgRef.current || !zoomBehaviorRef.current) return;
-    const svg = select(svgRef.current);
+    const svg = select<SVGSVGElement, Record<string, unknown>>(svgRef.current);
     svg
       .transition()
       .duration(500)

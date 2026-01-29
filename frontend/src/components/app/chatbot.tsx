@@ -36,7 +36,11 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   
   // Window resizing state
-  const [size, setSize] = useState({ width: 880, height: 1320 });
+  const MIN_WIDTH = 320;
+  const MIN_HEIGHT = 400;
+  const MAX_WIDTH = 880;
+  const MAX_HEIGHT = 1320;
+  const [size, setSize] = useState({ width: MAX_WIDTH, height: MAX_HEIGHT });
   const [isResizing, setIsResizing] = useState(false);
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
   
@@ -87,9 +91,13 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
       const deltaX = e.clientX - resizeStart.x;
       const deltaY = e.clientY - resizeStart.y;
       
+      // Calculate new dimensions with constraints
+      const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, resizeStart.width + deltaX));
+      const newHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, resizeStart.height + deltaY));
+      
       setSize({
-        width: Math.max(320, resizeStart.width + deltaX),
-        height: Math.max(400, resizeStart.height + deltaY),
+        width: newWidth,
+        height: newHeight,
       });
     };
 
@@ -104,7 +112,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isResizing, resizeStart]);
+  }, [isResizing, resizeStart, MIN_WIDTH, MIN_HEIGHT, MAX_WIDTH, MAX_HEIGHT]);
 
   const handleDragStart = (e: React.MouseEvent) => {
     if (chatWindowRef.current) {
@@ -247,11 +255,11 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
             {!isMinimized && (
               <>
                 {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-transparent to-black/5 dark:to-white/5">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4 bg-gradient-to-b from-transparent to-black/5 dark:to-white/5">
                   {messages.length === 0 && (
-                    <div className="text-center py-8">
+                    <div className="text-center py-8 px-4">
                       <MessageCircle className="w-12 h-12 mx-auto mb-3 text-[#2a2825] dark:text-[#f5f4ef] opacity-40 drop-shadow" />
-                      <p className="text-[#2a2825] dark:text-[#faf9f7] text-sm font-medium drop-shadow-sm">
+                      <p className="text-[#2a2825] dark:text-[#faf9f7] text-sm font-medium drop-shadow-sm break-words">
                         {caseContext
                           ? `Ask me anything about "${caseContext.name}"`
                           : "Start a conversation to get help with your case"}
@@ -284,13 +292,19 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                       
                       <div
                         className={clsx(
-                          "max-w-[80%] rounded-lg px-4 py-2.5 shadow-sm",
+                          "rounded-lg px-4 py-2.5 shadow-sm",
+                          "max-w-[85%] min-w-[120px]",
                           message.role === "user"
                             ? "bg-[#2a2825] dark:bg-[#f5f4ef] text-[#faf9f7] dark:text-[#050505]"
                             : "bg-white/50 dark:bg-[#2a2825]/60 backdrop-blur-md text-[#1a1816] dark:text-[#faf9f7] border border-white/40 dark:border-white/10"
                         )}
+                        style={{
+                          wordWrap: "break-word",
+                          overflowWrap: "break-word",
+                          wordBreak: "break-word",
+                        }}
                       >
-                        <p className="text-sm whitespace-pre-wrap break-words leading-relaxed font-medium">
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed font-medium">
                           {message.content}
                         </p>
                         <span className={clsx(
@@ -382,8 +396,8 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                 </div>
 
                 {/* Input Area */}
-                <div className="p-4 border-t border-white/30 dark:border-white/10 bg-white/30 dark:bg-[#2a2825]/50 backdrop-blur-md">
-                  <div className="flex gap-2">
+                <div className="p-4 border-t border-white/30 dark:border-white/10 bg-white/30 dark:bg-[#2a2825]/50 backdrop-blur-md flex-shrink-0">
+                  <div className="flex gap-2 items-end">
                     <textarea
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
@@ -391,7 +405,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                       placeholder="Type your message..."
                       rows={1}
                       className={clsx(
-                        "flex-1 px-3 py-2.5 rounded-lg resize-none",
+                        "flex-1 min-w-0 px-3 py-2.5 rounded-lg resize-none",
                         "bg-white/50 dark:bg-[#1a1816]/50",
                         "backdrop-blur-sm",
                         "border border-white/40 dark:border-white/10",
@@ -401,15 +415,19 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                         "focus:border-[#2a2825]/40 dark:focus:border-[#f5f4ef]/40",
                         "text-sm font-medium",
                         "shadow-sm",
-                        "transition-all"
+                        "transition-all",
+                        "overflow-y-auto"
                       )}
-                      style={{ maxHeight: "120px" }}
+                      style={{ 
+                        maxHeight: "120px",
+                        minHeight: "40px",
+                      }}
                     />
                     <button
                       onClick={handleSendMessage}
                       disabled={!inputValue.trim()}
                       className={clsx(
-                        "px-4 py-2.5 rounded-lg",
+                        "px-4 py-2.5 rounded-lg flex-shrink-0",
                         "bg-[#2a2825] dark:bg-[#f5f4ef]",
                         "text-[#faf9f7] dark:text-[#050505]",
                         "hover:bg-[#3d3a36] dark:hover:bg-[#d4d3ce]",
@@ -428,12 +446,28 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                 {/* Resize Handle */}
                 <div
                   onMouseDown={handleResizeStart}
-                  className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize opacity-40 hover:opacity-70 transition-opacity"
-                  style={{
-                    background: "linear-gradient(135deg, transparent 50%, currentColor 50%)",
-                    color: "#2a2825",
-                  }}
-                />
+                  className={clsx(
+                    "absolute bottom-0 right-0 w-6 h-6 cursor-se-resize",
+                    "opacity-30 hover:opacity-60 transition-opacity",
+                    "flex items-end justify-end p-1"
+                  )}
+                  title="Drag to resize"
+                >
+                  <svg 
+                    width="12" 
+                    height="12" 
+                    viewBox="0 0 12 12" 
+                    className="text-[#2a2825] dark:text-[#f5f4ef]"
+                  >
+                    <path 
+                      d="M11 11L11 7M11 11L7 11M11 11L6 6M11 3L11 1L9 1M3 11L1 11L1 9" 
+                      stroke="currentColor" 
+                      strokeWidth="1.5" 
+                      strokeLinecap="round" 
+                      fill="none"
+                    />
+                  </svg>
+                </div>
               </>
             )}
           </motion.div>

@@ -11,7 +11,9 @@ import {
   Video,
   Music,
   File,
+  ExternalLink,
 } from "lucide-react";
+import { EvidenceSourcePanel } from "./evidence-source-panel";
 import {
   forceSimulation,
   forceLink,
@@ -129,6 +131,10 @@ export function KnowledgeGraph({
   );
   const [isSimulationRunning, setIsSimulationRunning] = useState(true);
   const manuallyStoppedRef = useRef(false);
+  const [sourcePanelEvidence, setSourcePanelEvidence] =
+    useState<Evidence | null>(null);
+  const [isSourcePanelMinimized, setIsSourcePanelMinimized] = useState(false);
+  const [isPanelClosing, setIsPanelClosing] = useState(false);
 
   // Initialize dimensions
   useEffect(() => {
@@ -392,6 +398,14 @@ export function KnowledgeGraph({
           // If didn't move much, treat as click
           if (!hasMoved) {
             setSelectedNode(nodeId);
+            
+            // If source panel is open and this is an evidence node, auto-open it
+            const clickedNode = nodes.find((n) => n.id === nodeId);
+            if (sourcePanelEvidence && clickedNode?.type === "evidence") {
+              const evidence = clickedNode.data as Evidence;
+              setSourcePanelEvidence(evidence);
+              setIsSourcePanelMinimized(false);
+            }
           }
 
           draggingNodeRef.current = null;
@@ -404,7 +418,7 @@ export function KnowledgeGraph({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [isSimulationRunning],
+    [isSimulationRunning, nodes, sourcePanelEvidence],
   );
 
   // Handle connection creation
@@ -820,7 +834,7 @@ export function KnowledgeGraph({
 
   return (
     <div
-      className="relative w-full h-full rounded-lg shadow-2xl flex flex-col overflow-hidden border border-stone/10"
+      className="relative w-full h-full rounded-lg shadow-2xl flex gap-2 overflow-hidden border border-stone/10"
       style={{
         backgroundColor: "var(--color-jet)",
         minHeight: "600px",
@@ -829,214 +843,232 @@ export function KnowledgeGraph({
         backgroundSize: "24px 24px",
       }}
     >
-      {/* Header */}
+      {/* Source Panel - Left Side */}
       <div
-        className="flex-none px-6 py-4 border-b"
-        style={{ borderColor: "rgba(138, 138, 130, 0.15)" }}
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-xl font-medium text-smoke mb-2">
-              Knowledge Graph
-            </h2>
-            <div className="flex items-center gap-6 text-xs text-stone">
-              <span>{entityCount} entities</span>
-              <span>•</span>
-              <span>{evidenceCount} evidence items</span>
-              <span>•</span>
-              <span>{totalRelationshipCount} relationships</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {connectingFrom && (
-              <div className="px-3 py-1 rounded-lg bg-accent/10 text-accent text-xs">
-                Click another node to connect
-              </div>
-            )}
-            <button
-              className="p-2 rounded-lg hover:bg-stone/10 transition-colors"
-              title="Filters"
-            >
-              <Filter className="w-5 h-5 text-stone" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Graph Container */}
-      <div
-        ref={containerRef}
-        className="flex-1 relative overflow-hidden"
-        onMouseMove={handleMouseMove}
-        onClick={() => {
-          if (connectingFrom) {
-            setConnectingFrom(null);
-            setTempConnection(null);
-          }
+        className="flex-none overflow-hidden transition-all duration-300 ease-in-out"
+        style={{
+          width:
+            sourcePanelEvidence || isPanelClosing
+              ? isSourcePanelMinimized
+                ? "60px"
+                : "40%"
+              : "0px",
+          opacity: isPanelClosing ? 0 : 1,
         }}
       >
-        <svg
-          ref={svgRef}
-          className="w-full h-full"
-          style={{
-            backgroundColor: "var(--color-charcoal)",
-            cursor: connectingFrom ? "crosshair" : "grab",
-          }}
-        >
-          {/* Dotted background pattern */}
-          <defs>
-            <pattern
-              id="dotted-background"
-              x="0"
-              y="0"
-              width="20"
-              height="20"
-              patternUnits="userSpaceOnUse"
-            >
-              <circle
-                cx="2"
-                cy="2"
-                r="1"
-                fill="var(--color-stone)"
-                opacity="0.2"
-              />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#dotted-background)" />
+        {sourcePanelEvidence && (
+          <div className="h-full w-full">
+            <EvidenceSourcePanel
+              evidence={sourcePanelEvidence}
+              isMinimized={isSourcePanelMinimized}
+              onClose={() => {
+                setIsPanelClosing(true);
+                setTimeout(() => {
+                  setSourcePanelEvidence(null);
+                  setIsSourcePanelMinimized(false);
+                  setIsPanelClosing(false);
+                }, 300);
+              }}
+              onToggleMinimize={() =>
+                setIsSourcePanelMinimized(!isSourcePanelMinimized)
+              }
+            />
+          </div>
+        )}
+      </div>
 
-          {/* Transform group */}
-          <g
-            transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}
-          >
-            {/* Connections layer */}
-            <g className="edges-layer">
-              {allConnections.map((conn) => renderConnection(conn))}
-
-              {/* Temporary connection line */}
-              {tempConnection && (
-                <line
-                  x1={tempConnection.from.x}
-                  y1={tempConnection.from.y}
-                  x2={tempConnection.to.x}
-                  y2={tempConnection.to.y}
-                  stroke="var(--color-accent)"
-                  strokeWidth={2}
-                  opacity={0.6}
-                  strokeDasharray="5,5"
-                />
-              )}
-            </g>
-
-            {/* Nodes layer */}
-            <g className="nodes-layer">
-              {nodes.map((node) => renderNode(node))}
-            </g>
-          </g>
-        </svg>
-
-        {/* Zoom controls */}
-        <div className="absolute bottom-4 right-4 flex flex-col gap-2">
-          <button
-            onClick={handleZoomIn}
-            className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
-            title="Zoom In"
-          >
-            <ZoomIn className="w-5 h-5" />
-          </button>
-          <button
-            onClick={handleZoomOut}
-            className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
-            title="Zoom Out"
-          >
-            <ZoomOut className="w-5 h-5" />
-          </button>
-          <button
-            onClick={handleResetZoom}
-            className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
-            title="Reset Zoom"
-          >
-            <RotateCcw className="w-5 h-5" />
-          </button>
-
-          {/* Divider */}
-          <div className="h-px bg-stone/20 my-1" />
-
-          {/* Stop/Start Simulation */}
-          <button
-            onClick={handleToggleSimulation}
-            className={clsx(
-              "w-10 h-10 rounded-lg text-smoke flex items-center justify-center transition-colors border border-stone/20",
-              isSimulationRunning
-                ? "bg-jet/90 hover:bg-jet"
-                : "bg-accent/20 hover:bg-accent/30",
-            )}
-            title={isSimulationRunning ? "Freeze Graph" : "Unfreeze Graph"}
-          >
-            {isSimulationRunning ? (
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <rect x="6" y="4" width="4" height="16" />
-                <rect x="14" y="4" width="4" height="16" />
-              </svg>
-            ) : (
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
-            )}
-          </button>
-        </div>
-
-        {/* Legend - Top Left */}
+      {/* Main Graph Container */}
+      <div className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
+        {/* Header */}
         <div
-          className="absolute top-4 left-4 p-4 rounded-lg shadow-lg border border-stone/20"
-          style={{ backgroundColor: "rgba(17, 17, 17, 0.95)" }}
+          className="flex-none px-6 py-4 border-b"
+          style={{ borderColor: "rgba(138, 138, 130, 0.15)" }}
         >
-          <h3 className="text-smoke font-medium text-sm mb-3">Node Legend</h3>
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xl font-medium text-smoke mb-2">
+                Knowledge Graph
+              </h2>
+              <div className="flex items-center gap-6 text-xs text-stone">
+                <span>{entityCount} entities</span>
+                <span>•</span>
+                <span>{evidenceCount} evidence items</span>
+                <span>•</span>
+                <span>{totalRelationshipCount} relationships</span>
+              </div>
+            </div>
 
-          {/* Entity Types */}
-          <div className="mb-3">
-            <p className="text-stone text-xs mb-2">Entities (Circles)</p>
-            <div className="space-y-1.5">
-              {Object.entries(ENTITY_COLORS).map(([type, color]) => (
-                <div key={type} className="flex items-center gap-2">
-                  <svg width="20" height="20">
-                    <circle cx="10" cy="10" r="8" fill={color} opacity="0.9" />
-                  </svg>
-                  <span className="text-smoke text-xs capitalize">{type}</span>
+            <div className="flex items-center gap-2">
+              {connectingFrom && (
+                <div className="px-3 py-1 rounded-lg bg-accent/10 text-accent text-xs">
+                  Click another node to connect
                 </div>
-              ))}
+              )}
+              <button
+                className="p-2 rounded-lg hover:bg-stone/10 transition-colors"
+                title="Filters"
+              >
+                <Filter className="w-5 h-5 text-stone" />
+              </button>
             </div>
           </div>
+        </div>
 
-          {/* Evidence Types */}
-          <div>
-            <p className="text-stone text-xs mb-2">Evidence (Squares)</p>
-            <div className="space-y-1.5">
-              {Object.entries(EVIDENCE_COLORS).map(([type]) => {
-                return (
+        {/* Graph Container */}
+        <div
+          ref={containerRef}
+          className="flex-1 relative overflow-hidden"
+          onMouseMove={handleMouseMove}
+          onClick={() => {
+            if (connectingFrom) {
+              setConnectingFrom(null);
+              setTempConnection(null);
+            }
+          }}
+        >
+          <svg
+            ref={svgRef}
+            className="w-full h-full"
+            style={{
+              backgroundColor: "var(--color-charcoal)",
+              cursor: connectingFrom ? "crosshair" : "grab",
+            }}
+          >
+            {/* Dotted background pattern */}
+            <defs>
+              <pattern
+                id="dotted-background"
+                x="0"
+                y="0"
+                width="20"
+                height="20"
+                patternUnits="userSpaceOnUse"
+              >
+                <circle
+                  cx="2"
+                  cy="2"
+                  r="1"
+                  fill="var(--color-stone)"
+                  opacity="0.2"
+                />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#dotted-background)" />
+
+            {/* Transform group */}
+            <g
+              transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}
+            >
+              {/* Connections layer */}
+              <g className="edges-layer">
+                {allConnections.map((conn) => renderConnection(conn))}
+
+                {/* Temporary connection line */}
+                {tempConnection && (
+                  <line
+                    x1={tempConnection.from.x}
+                    y1={tempConnection.from.y}
+                    x2={tempConnection.to.x}
+                    y2={tempConnection.to.y}
+                    stroke="var(--color-accent)"
+                    strokeWidth={2}
+                    opacity={0.6}
+                    strokeDasharray="5,5"
+                  />
+                )}
+              </g>
+
+              {/* Nodes layer */}
+              <g className="nodes-layer">
+                {nodes.map((node) => renderNode(node))}
+              </g>
+            </g>
+          </svg>
+
+          {/* Zoom controls */}
+          <div className="absolute bottom-4 right-4 flex flex-col gap-2">
+            <button
+              onClick={handleZoomIn}
+              className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
+              title="Zoom In"
+            >
+              <ZoomIn className="w-5 h-5" />
+            </button>
+            <button
+              onClick={handleZoomOut}
+              className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
+              title="Zoom Out"
+            >
+              <ZoomOut className="w-5 h-5" />
+            </button>
+            <button
+              onClick={handleResetZoom}
+              className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
+              title="Reset Zoom"
+            >
+              <RotateCcw className="w-5 h-5" />
+            </button>
+
+            {/* Divider */}
+            <div className="h-px bg-stone/20 my-1" />
+
+            {/* Stop/Start Simulation */}
+            <button
+              onClick={handleToggleSimulation}
+              className={clsx(
+                "w-10 h-10 rounded-lg text-smoke flex items-center justify-center transition-colors border border-stone/20",
+                isSimulationRunning
+                  ? "bg-jet/90 hover:bg-jet"
+                  : "bg-accent/20 hover:bg-accent/30",
+              )}
+              title={isSimulationRunning ? "Freeze Graph" : "Unfreeze Graph"}
+            >
+              {isSimulationRunning ? (
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <rect x="6" y="4" width="4" height="16" />
+                  <rect x="14" y="4" width="4" height="16" />
+                </svg>
+              ) : (
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              )}
+            </button>
+          </div>
+
+          {/* Legend - Top Left */}
+          <div
+            className="absolute top-4 left-4 p-4 rounded-lg shadow-lg border border-stone/20"
+            style={{ backgroundColor: "rgba(17, 17, 17, 0.95)" }}
+          >
+            <h3 className="text-smoke font-medium text-sm mb-3">Node Legend</h3>
+
+            {/* Entity Types */}
+            <div className="mb-3">
+              <p className="text-stone text-xs mb-2">Entities (Circles)</p>
+              <div className="space-y-1.5">
+                {Object.entries(ENTITY_COLORS).map(([type, color]) => (
                   <div key={type} className="flex items-center gap-2">
                     <svg width="20" height="20">
-                      <rect
-                        x="2"
-                        y="2"
-                        width="16"
-                        height="16"
-                        rx="2"
-                        fill={EVIDENCE_COLORS[type as EvidenceType]}
+                      <circle
+                        cx="10"
+                        cy="10"
+                        r="8"
+                        fill={color}
                         opacity="0.9"
                       />
                     </svg>
@@ -1044,119 +1076,160 @@ export function KnowledgeGraph({
                       {type}
                     </span>
                   </div>
-                );
-              })}
+                ))}
+              </div>
+            </div>
+
+            {/* Evidence Types */}
+            <div>
+              <p className="text-stone text-xs mb-2">Evidence (Squares)</p>
+              <div className="space-y-1.5">
+                {Object.entries(EVIDENCE_COLORS).map(([type]) => {
+                  return (
+                    <div key={type} className="flex items-center gap-2">
+                      <svg width="20" height="20">
+                        <rect
+                          x="2"
+                          y="2"
+                          width="16"
+                          height="16"
+                          rx="2"
+                          fill={EVIDENCE_COLORS[type as EvidenceType]}
+                          opacity="0.9"
+                        />
+                      </svg>
+                      <span className="text-smoke text-xs capitalize">
+                        {type}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Node info panel - only show when node is selected */}
-        {selectedNode && (
-          <div
-            className="absolute top-4 right-4 p-4 rounded-lg shadow-lg max-w-xs border border-stone/20"
-            style={{ backgroundColor: "rgba(17, 17, 17, 0.95)" }}
-          >
-            <div className="text-smoke">
-              {(() => {
-                const node = nodes.find((n) => n.id === selectedNode);
-                if (!node) return null;
+          {/* Node info panel - only show when node is selected */}
+          {selectedNode && (
+            <div
+              className="absolute top-4 right-4 p-4 rounded-lg shadow-lg max-w-xs border border-stone/20"
+              style={{ backgroundColor: "rgba(17, 17, 17, 0.95)" }}
+            >
+              <div className="text-smoke">
+                {(() => {
+                  const node = nodes.find((n) => n.id === selectedNode);
+                  if (!node) return null;
 
-                if (node.type === "entity") {
-                  const entity = node.data as Entity;
-                  return (
-                    <>
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg width="16" height="16">
-                          <circle
-                            cx="8"
-                            cy="8"
-                            r="6"
-                            fill={ENTITY_COLORS[entity.type]}
-                            opacity="0.9"
-                          />
-                        </svg>
-                        <span className="text-xs text-stone capitalize">
-                          {entity.type}
-                        </span>
-                      </div>
-                      <h3 className="font-medium text-lg mb-2">
-                        {entity.name}
-                      </h3>
-                      {entity.description && (
-                        <p className="text-sm text-stone mb-3">
-                          {entity.description}
-                        </p>
-                      )}
-                      <button
-                        onClick={() => setSelectedNode(null)}
-                        className="text-xs text-accent hover:text-accent-muted"
-                      >
-                        Close
-                      </button>
-                    </>
-                  );
-                }
-
-                if (node.type === "evidence") {
-                  const evidence = node.data as Evidence;
-                  return (
-                    <>
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg width="16" height="16">
-                          <rect
-                            x="2"
-                            y="2"
-                            width="12"
-                            height="12"
-                            rx="2"
-                            fill={EVIDENCE_COLORS[evidence.type]}
-                            opacity="0.9"
-                          />
-                        </svg>
-                        <span className="text-xs text-stone capitalize">
-                          {evidence.type}
-                        </span>
-                      </div>
-                      <h3 className="font-medium text-lg mb-2">
-                        {evidence.title}
-                      </h3>
-                      {evidence.content && (
-                        <p className="text-sm text-stone mb-2">
-                          {evidence.content}
-                        </p>
-                      )}
-                      {evidence.url && (
-                        <p className="text-xs text-stone/60 mb-2">
-                          {evidence.url}
-                        </p>
-                      )}
-                      {evidence.metadata && (
-                        <div className="text-xs text-stone mb-3">
-                          {Object.entries(evidence.metadata).map(
-                            ([key, value]) => (
-                              <div key={key}>
-                                <span className="capitalize">{key}:</span>{" "}
-                                {String(value)}
-                              </div>
-                            ),
-                          )}
+                  if (node.type === "entity") {
+                    const entity = node.data as Entity;
+                    return (
+                      <>
+                        <div className="flex items-center gap-2 mb-2">
+                          <svg width="16" height="16">
+                            <circle
+                              cx="8"
+                              cy="8"
+                              r="6"
+                              fill={ENTITY_COLORS[entity.type]}
+                              opacity="0.9"
+                            />
+                          </svg>
+                          <span className="text-xs text-stone capitalize">
+                            {entity.type}
+                          </span>
                         </div>
-                      )}
-                      <button
-                        onClick={() => setSelectedNode(null)}
-                        className="text-xs text-accent hover:text-accent-muted"
-                      >
-                        Close
-                      </button>
-                    </>
-                  );
-                }
+                        <h3 className="font-medium text-lg mb-2">
+                          {entity.name}
+                        </h3>
+                        {entity.description && (
+                          <p className="text-sm text-stone mb-3">
+                            {entity.description}
+                          </p>
+                        )}
+                        <button
+                          onClick={() => setSelectedNode(null)}
+                          className="text-xs text-accent hover:text-accent-muted"
+                        >
+                          Close
+                        </button>
+                      </>
+                    );
+                  }
 
-                return null;
-              })()}
+                  if (node.type === "evidence") {
+                    const evidence = node.data as Evidence;
+                    return (
+                      <>
+                        <div className="flex items-center gap-2 mb-2">
+                          <svg width="16" height="16">
+                            <rect
+                              x="2"
+                              y="2"
+                              width="12"
+                              height="12"
+                              rx="2"
+                              fill={EVIDENCE_COLORS[evidence.type]}
+                              opacity="0.9"
+                            />
+                          </svg>
+                          <span className="text-xs text-stone capitalize">
+                            {evidence.type}
+                          </span>
+                        </div>
+                        <h3 className="font-medium text-lg mb-2">
+                          {evidence.title}
+                        </h3>
+                        {evidence.content && (
+                          <p className="text-sm text-stone mb-2">
+                            {evidence.content.length > 100
+                              ? evidence.content.substring(0, 100) + "..."
+                              : evidence.content}
+                          </p>
+                        )}
+                        {evidence.url && (
+                          <p className="text-xs text-stone/60 mb-2">
+                            {evidence.url}
+                          </p>
+                        )}
+                        {evidence.metadata && (
+                          <div className="text-xs text-stone mb-3">
+                            {Object.entries(evidence.metadata)
+                              .slice(0, 2)
+                              .map(([key, value]) => (
+                                <div key={key}>
+                                  <span className="capitalize">{key}:</span>{" "}
+                                  {String(value)}
+                                </div>
+                              ))}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setSourcePanelEvidence(evidence);
+                              setIsSourcePanelMinimized(false);
+                            }}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent/20 hover:bg-accent/30 text-xs text-accent transition-colors"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            View Details
+                          </button>
+                          <button
+                            onClick={() => setSelectedNode(null)}
+                            className="text-xs text-stone hover:text-smoke"
+                          >
+                            Close
+                          </button>
+                        </div>
+                      </>
+                    );
+                  }
+
+                  return null;
+                })()}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

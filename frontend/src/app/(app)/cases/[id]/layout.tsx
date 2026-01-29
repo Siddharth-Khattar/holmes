@@ -9,6 +9,7 @@ import { clsx } from "clsx";
 import { api, ApiError } from "@/lib/api-client";
 import type { Case, CaseStatus } from "@/types/case";
 import { ExpandableTabs } from "@/components/ui/expandable-tabs";
+import { Chatbot } from "@/components/app/chatbot";
 
 const statusConfig: Record<
   CaseStatus,
@@ -165,6 +166,16 @@ export default function CaseLayout({
         {/* Page Content */}
         {children}
       </div>
+
+      {/* Chatbot - Available on all case pages */}
+      <Chatbot
+        caseId={params.id as string}
+        caseContext={{
+          name: caseData.name,
+          description: caseData.description || undefined,
+          status: caseData.status,
+        }}
+      />
     </div>
   );
 }

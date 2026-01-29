@@ -237,7 +237,7 @@ export function EvidenceSourcePanel({
 
               {/* Highlighted sections */}
               <div className="mt-4 space-y-2">
-                {mockData.highlights.map((highlight, idx) => (
+                {mockData.highlights?.map((highlight, idx) => (
                   <div
                     key={idx}
                     className="p-2 rounded bg-accent/10 border border-accent/30"

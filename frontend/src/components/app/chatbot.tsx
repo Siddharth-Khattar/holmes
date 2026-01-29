@@ -195,9 +195,11 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
             }}
             className={clsx(
               "rounded-xl overflow-hidden",
-              "shadow-[0_8px_32px_0_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]",
-              "bg-[var(--light-bg-subtle)] dark:bg-[var(--jet)]",
-              "border border-[var(--light-border)] dark:border-[var(--smoke)]/10",
+              "shadow-[0_8px_32px_0_rgba(0,0,0,0.2)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.6)]",
+              // Liquid glass effect with backdrop blur - 10% more transparent
+              "bg-white/60 dark:bg-[#1a1816]/70",
+              "backdrop-blur-xl backdrop-saturate-150",
+              "border border-white/20 dark:border-white/10",
               "flex flex-col"
             )}
           >
@@ -206,35 +208,37 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
               onMouseDown={handleDragStart}
               className={clsx(
                 "flex items-center justify-between px-4 py-3",
-                "bg-[var(--light-bg)] dark:bg-[var(--charcoal)]",
-                "border-b border-[var(--light-border)] dark:border-[var(--smoke)]/10",
+                // Enhanced glass header with stronger contrast - 10% more transparent
+                "bg-white/30 dark:bg-[#2a2825]/50",
+                "backdrop-blur-md",
+                "border-b border-white/30 dark:border-white/10",
                 "cursor-move select-none"
               )}
             >
               <div className="flex items-center gap-2">
-                <MessageCircle className="w-5 h-5 text-[#2a2825] dark:text-[#f5f4ef]" />
-                <h3 className="font-medium text-[var(--light-text)] dark:text-[var(--smoke)]">
+                <MessageCircle className="w-5 h-5 text-[#2a2825] dark:text-[#f5f4ef] drop-shadow-sm" />
+                <h3 className="font-semibold text-[#1a1816] dark:text-[#faf9f7] drop-shadow-sm">
                   Case Assistant
                 </h3>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsMinimized(!isMinimized)}
-                  className="p-1 rounded hover:bg-[var(--light-border)] dark:hover:bg-[var(--smoke)]/10 transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-all hover:scale-105"
                   aria-label={isMinimized ? "Maximize" : "Minimize"}
                 >
                   {isMinimized ? (
-                    <Maximize2 className="w-4 h-4 text-[var(--light-text-muted)] dark:text-[var(--stone)]" />
+                    <Maximize2 className="w-4 h-4 text-[#2a2825] dark:text-[#f5f4ef]" />
                   ) : (
-                    <Minimize2 className="w-4 h-4 text-[var(--light-text-muted)] dark:text-[var(--stone)]" />
+                    <Minimize2 className="w-4 h-4 text-[#2a2825] dark:text-[#f5f4ef]" />
                   )}
                 </button>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-1 rounded hover:bg-[var(--light-border)] dark:hover:bg-[var(--smoke)]/10 transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-all hover:scale-105"
                   aria-label="Close chat"
                 >
-                  <X className="w-4 h-4 text-[var(--light-text-muted)] dark:text-[var(--stone)]" />
+                  <X className="w-4 h-4 text-[#2a2825] dark:text-[#f5f4ef]" />
                 </button>
               </div>
             </div>
@@ -243,11 +247,11 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
             {!isMinimized && (
               <>
                 {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-transparent to-black/5 dark:to-white/5">
                   {messages.length === 0 && (
                     <div className="text-center py-8">
-                      <MessageCircle className="w-12 h-12 mx-auto mb-3 text-[var(--light-text-muted)] dark:text-[var(--stone)] opacity-50" />
-                      <p className="text-[var(--light-text-muted)] dark:text-[var(--stone)] text-sm">
+                      <MessageCircle className="w-12 h-12 mx-auto mb-3 text-[#2a2825] dark:text-[#f5f4ef] opacity-40 drop-shadow" />
+                      <p className="text-[#2a2825] dark:text-[#faf9f7] text-sm font-medium drop-shadow-sm">
                         {caseContext
                           ? `Ask me anything about "${caseContext.name}"`
                           : "Start a conversation to get help with your case"}
@@ -280,16 +284,21 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                       
                       <div
                         className={clsx(
-                          "max-w-[80%] rounded-lg px-4 py-2",
+                          "max-w-[80%] rounded-lg px-4 py-2.5 shadow-sm",
                           message.role === "user"
                             ? "bg-[#2a2825] dark:bg-[#f5f4ef] text-[#faf9f7] dark:text-[#050505]"
-                            : "bg-[var(--light-bg)] dark:bg-[var(--charcoal)] text-[var(--light-text)] dark:text-[var(--smoke)] border border-[var(--light-border)] dark:border-[var(--smoke)]/10"
+                            : "bg-white/50 dark:bg-[#2a2825]/60 backdrop-blur-md text-[#1a1816] dark:text-[#faf9f7] border border-white/40 dark:border-white/10"
                         )}
                       >
-                        <p className="text-sm whitespace-pre-wrap break-words">
+                        <p className="text-sm whitespace-pre-wrap break-words leading-relaxed font-medium">
                           {message.content}
                         </p>
-                        <span className="text-xs opacity-60 mt-1 block">
+                        <span className={clsx(
+                          "text-xs mt-1.5 block font-medium",
+                          message.role === "user" 
+                            ? "opacity-70" 
+                            : "opacity-60"
+                        )}>
                           {message.timestamp.toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
@@ -306,7 +315,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                       exit={{ opacity: 0, y: -10 }}
                       className="flex justify-start"
                     >
-                      <div className="bg-[var(--light-bg)] dark:bg-[var(--charcoal)] rounded-lg px-4 py-3 border border-[var(--light-border)] dark:border-[var(--smoke)]/10">
+                      <div className="bg-white/50 dark:bg-[#2a2825]/60 backdrop-blur-md rounded-lg px-4 py-3 border border-white/40 dark:border-white/10 shadow-sm">
                         <div className="flex items-center gap-2">
                           {/* Holmes Logo */}
                           <Image 
@@ -314,18 +323,18 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                             alt="Holmes" 
                             width={20}
                             height={20}
-                            className="opacity-70 flex-shrink-0"
+                            className="opacity-80 flex-shrink-0 drop-shadow-sm"
                           />
                           
                           {/* Thinking Text */}
-                          <span className="text-sm text-[var(--light-text)] dark:text-[var(--smoke)]">
+                          <span className="text-sm text-[#1a1816] dark:text-[#faf9f7] font-medium">
                             Thinking
                           </span>
                           
                           {/* Animated Dots */}
                           <div className="flex items-center gap-0.5">
                             <motion.span
-                              className="inline-block w-1 h-1 rounded-full bg-white"
+                              className="inline-block w-1.5 h-1.5 rounded-full bg-[#2a2825] dark:bg-[#f5f4ef]"
                               animate={{
                                 scale: [1, 1.5, 1],
                                 opacity: [0.4, 1, 0.4],
@@ -338,7 +347,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                               }}
                             />
                             <motion.span
-                              className="inline-block w-1 h-1 rounded-full bg-white"
+                              className="inline-block w-1.5 h-1.5 rounded-full bg-[#2a2825] dark:bg-[#f5f4ef]"
                               animate={{
                                 scale: [1, 1.5, 1],
                                 opacity: [0.4, 1, 0.4],
@@ -351,7 +360,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                               }}
                             />
                             <motion.span
-                              className="inline-block w-1 h-1 rounded-full bg-white"
+                              className="inline-block w-1.5 h-1.5 rounded-full bg-[#2a2825] dark:bg-[#f5f4ef]"
                               animate={{
                                 scale: [1, 1.5, 1],
                                 opacity: [0.4, 1, 0.4],
@@ -373,7 +382,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                 </div>
 
                 {/* Input Area */}
-                <div className="p-4 border-t border-[var(--light-border)] dark:border-[var(--smoke)]/10 bg-[var(--light-bg)] dark:bg-[var(--charcoal)]">
+                <div className="p-4 border-t border-white/30 dark:border-white/10 bg-white/30 dark:bg-[#2a2825]/50 backdrop-blur-md">
                   <div className="flex gap-2">
                     <textarea
                       value={inputValue}
@@ -382,13 +391,17 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                       placeholder="Type your message..."
                       rows={1}
                       className={clsx(
-                        "flex-1 px-3 py-2 rounded-lg resize-none",
-                        "bg-[var(--light-bg-subtle)] dark:bg-[var(--jet)]",
-                        "border border-[var(--light-border)] dark:border-[var(--smoke)]/10",
-                        "text-[var(--light-text)] dark:text-[var(--smoke)]",
-                        "placeholder:text-[var(--light-text-muted)] dark:placeholder:text-[var(--stone)]",
-                        "focus:outline-none focus:ring-2 focus:ring-[var(--light-accent)] dark:focus:ring-[var(--accent)]",
-                        "text-sm"
+                        "flex-1 px-3 py-2.5 rounded-lg resize-none",
+                        "bg-white/50 dark:bg-[#1a1816]/50",
+                        "backdrop-blur-sm",
+                        "border border-white/40 dark:border-white/10",
+                        "text-[#1a1816] dark:text-[#faf9f7]",
+                        "placeholder:text-[#2a2825]/60 dark:placeholder:text-[#f5f4ef]/60",
+                        "focus:outline-none focus:ring-2 focus:ring-[#2a2825]/30 dark:focus:ring-[#f5f4ef]/30",
+                        "focus:border-[#2a2825]/40 dark:focus:border-[#f5f4ef]/40",
+                        "text-sm font-medium",
+                        "shadow-sm",
+                        "transition-all"
                       )}
                       style={{ maxHeight: "120px" }}
                     />
@@ -396,13 +409,15 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                       onClick={handleSendMessage}
                       disabled={!inputValue.trim()}
                       className={clsx(
-                        "px-4 py-2 rounded-lg",
+                        "px-4 py-2.5 rounded-lg",
                         "bg-[#2a2825] dark:bg-[#f5f4ef]",
                         "text-[#faf9f7] dark:text-[#050505]",
                         "hover:bg-[#3d3a36] dark:hover:bg-[#d4d3ce]",
-                        "disabled:opacity-50 disabled:cursor-not-allowed",
-                        "transition-colors",
-                        "flex items-center justify-center"
+                        "hover:scale-105 active:scale-95",
+                        "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100",
+                        "transition-all duration-200",
+                        "flex items-center justify-center",
+                        "shadow-md hover:shadow-lg"
                       )}
                     >
                       <Send className="w-4 h-4" />
@@ -413,9 +428,10 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                 {/* Resize Handle */}
                 <div
                   onMouseDown={handleResizeStart}
-                  className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+                  className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize opacity-40 hover:opacity-70 transition-opacity"
                   style={{
-                    background: "linear-gradient(135deg, transparent 50%, var(--light-text-muted) 50%)",
+                    background: "linear-gradient(135deg, transparent 50%, currentColor 50%)",
+                    color: "#2a2825",
                   }}
                 />
               </>

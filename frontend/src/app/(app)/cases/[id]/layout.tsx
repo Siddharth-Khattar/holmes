@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
-import { ArrowLeft, Terminal, Network, Upload, Clock } from "lucide-react";
+import { ArrowLeft, Terminal, Network, Upload, Clock, FolderOpen } from "lucide-react";
 import Link from "next/link";
 import { clsx } from "clsx";
 
@@ -37,6 +37,7 @@ const statusConfig: Record<
 const navItems = [
   { title: "Command Center", icon: Terminal, href: "/command-center" },
   { title: "Knowledge Graph", icon: Network, href: "/knowledge-graph" },
+  { title: "Evidence Library", icon: FolderOpen, href: "/library" },
   { title: "Upload", icon: Upload, href: "/upload" },
   { title: "Timeline", icon: Clock, href: "/timeline" },
 ];
@@ -119,10 +120,16 @@ export default function CaseLayout({
         {/* Back link */}
         <Link
           href="/cases"
-          className={clsx(
-            "inline-flex items-center gap-1.5 mb-6",
-            "text-sm text-(--muted-foreground) hover:text-(--foreground) transition-colors",
-          )}
+          className="inline-flex items-center gap-1.5 mb-6 text-sm transition-colors"
+          style={{
+            color: "var(--muted-foreground)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "var(--foreground)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "var(--muted-foreground)";
+          }}
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Cases</span>
@@ -132,7 +139,7 @@ export default function CaseLayout({
         <div className="flex items-start justify-between mb-8">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-2xl font-medium text-(--foreground)">
+              <h1 className="text-2xl font-medium" style={{ color: "var(--foreground)" }}>
                 {caseData.name}
               </h1>
               <span
@@ -146,7 +153,7 @@ export default function CaseLayout({
               </span>
             </div>
             {caseData.description && (
-              <p className="text-(--muted-foreground) max-w-2xl">
+              <p className="max-w-2xl" style={{ color: "var(--muted-foreground)" }}>
                 {caseData.description}
               </p>
             )}

@@ -18,8 +18,8 @@ export default function KnowledgeGraphPage() {
           border: "1px solid var(--border)",
         }}
       >
-        <Loader2 className="w-8 h-8 text-(--muted-foreground) animate-spin mx-auto mb-4" />
-        <p className="text-(--muted-foreground) text-sm">
+        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: "var(--muted-foreground)" }} />
+        <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
           Loading knowledge graph...
         </p>
       </div>

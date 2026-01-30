@@ -24,8 +24,7 @@ const VALID_AGENT_TYPES: AgentType[] = [
  */
 function isValidAgentType(value: unknown): value is AgentType {
   return (
-    typeof value === "string" &&
-    VALID_AGENT_TYPES.includes(value as AgentType)
+    typeof value === "string" && VALID_AGENT_TYPES.includes(value as AgentType)
   );
 }
 

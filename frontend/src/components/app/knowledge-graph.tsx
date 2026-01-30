@@ -398,7 +398,7 @@ export function KnowledgeGraph({
           // If didn't move much, treat as click
           if (!hasMoved) {
             setSelectedNode(nodeId);
-            
+
             // If source panel is open and this is an evidence node, auto-open it
             const clickedNode = nodes.find((n) => n.id === nodeId);
             if (sourcePanelEvidence && clickedNode?.type === "evidence") {

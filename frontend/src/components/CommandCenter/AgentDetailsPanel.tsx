@@ -56,9 +56,7 @@ export function AgentDetailsPanel({
                 Agent Details
               </span>
             </div>
-            <h3 className="text-lg font-semibold text-smoke">
-              {config.name}
-            </h3>
+            <h3 className="text-lg font-semibold text-smoke">{config.name}</h3>
             <p className="text-xs text-stone mt-1">{config.description}</p>
           </div>
           <button

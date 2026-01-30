@@ -49,17 +49,15 @@ export function AgentFlowCanvas({
   const [hoveredAgent, setHoveredAgent] = useState<AgentType | null>(null);
   const [nodePositions, setNodePositions] = useState<
     Map<AgentType, { x: number; y: number }>
-  >(new Map());
-  const [draggingAgent, setDraggingAgent] = useState<AgentType | null>(null);
-
-  // Initialize node positions from config
-  useEffect(() => {
+  >(() => {
+    // Initialize node positions from config
     const initialPositions = new Map<AgentType, { x: number; y: number }>();
     Object.entries(AGENT_CONFIGS).forEach(([type, config]) => {
       initialPositions.set(type as AgentType, { ...config.position });
     });
-    setNodePositions(initialPositions);
-  }, []);
+    return initialPositions;
+  });
+  const [draggingAgent, setDraggingAgent] = useState<AgentType | null>(null);
 
   // Initialize dimensions
   useEffect(() => {
@@ -192,7 +190,7 @@ export function AgentFlowCanvas({
   const handleNodeMouseDown = useCallback(
     (agentType: AgentType, e: React.MouseEvent) => {
       e.stopPropagation();
-      
+
       const startX = e.clientX;
       const startY = e.clientY;
       let hasMoved = false;
@@ -252,8 +250,6 @@ export function AgentFlowCanvas({
     target: { x: number; y: number },
   ): string => {
     const dx = target.x - source.x;
-    const dy = target.y - source.y;
-
     // Determine if we should route horizontally or vertically first
     // Use horizontal-first routing for better visual flow
     const midX = source.x + dx / 2;
@@ -314,7 +310,7 @@ export function AgentFlowCanvas({
             />
           </marker>
         </defs>
-        
+
         {/* Invisible path for arrow marker */}
         <path
           d={path}
@@ -338,11 +334,7 @@ export function AgentFlowCanvas({
         backgroundSize: "24px 24px",
       }}
     >
-      <svg
-        ref={svgRef}
-        className="w-full h-full"
-        style={{ cursor: "grab" }}
-      >
+      <svg ref={svgRef} className="w-full h-full" style={{ cursor: "grab" }}>
         {/* Infinite grid pattern */}
         <defs>
           <pattern

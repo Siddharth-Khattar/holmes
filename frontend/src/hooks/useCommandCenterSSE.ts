@@ -8,7 +8,6 @@ interface UseCommandCenterSSEOptions {
   onAgentComplete?: (event: CommandCenterSSEEvent) => void;
   onAgentError?: (event: CommandCenterSSEEvent) => void;
   onProcessingComplete?: (event: CommandCenterSSEEvent) => void;
-  onError?: (error: Error) => void;
 }
 
 export function useCommandCenterSSE(
@@ -21,7 +20,6 @@ export function useCommandCenterSSE(
     onAgentComplete,
     onAgentError,
     onProcessingComplete,
-    onError,
   } = options;
 
   const [isConnected, setIsConnected] = useState(false);
@@ -70,7 +68,7 @@ export function useCommandCenterSSE(
         }
       });
 
-      eventSource.onerror = (error) => {
+      eventSource.onerror = () => {
         // Silently handle connection errors when endpoint doesn't exist yet
         // This is expected in demo mode before backend is implemented
         eventSource.close();
@@ -103,7 +101,7 @@ export function useCommandCenterSSE(
       };
 
       eventSourceRef.current = eventSource;
-    } catch (error) {
+    } catch {
       // Silently handle connection errors in demo mode
       console.debug("Command Center SSE not available (expected in demo mode)");
     }
@@ -114,7 +112,6 @@ export function useCommandCenterSSE(
     onAgentComplete,
     onAgentError,
     onProcessingComplete,
-    onError,
   ]);
 
   useEffect(() => {

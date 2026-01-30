@@ -29,7 +29,7 @@ export function AgentNode({
   onMouseLeave,
 }: AgentNodeProps) {
   const statusColor = STATUS_COLORS[agentState.status];
-  
+
   // Rectangular dimensions
   const nodeWidth = isSelected ? 200 : isHovered ? 190 : 180;
   const nodeHeight = isSelected ? 140 : isHovered ? 130 : 120;

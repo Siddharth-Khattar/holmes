@@ -48,13 +48,18 @@ export class MockCommandCenterEventGenerator {
     };
   }
 
-  generateAgentCompleteEvent(taskId: string, agentType: AgentType): AgentCompleteEvent {
+  generateAgentCompleteEvent(
+    taskId: string,
+    agentType: AgentType,
+  ): AgentCompleteEvent {
     const result: AgentResult = {
       taskId,
       agentType,
       outputs: this.generateMockOutputs(agentType),
       routingDecisions:
-        agentType === "triage" ? this.generateMockRoutingDecisions() : undefined,
+        agentType === "triage"
+          ? this.generateMockRoutingDecisions()
+          : undefined,
       toolsCalled: this.generateMockToolsCalled(agentType),
       metadata: {
         processingTime: Math.random() * 5000 + 1000,
@@ -70,7 +75,10 @@ export class MockCommandCenterEventGenerator {
     };
   }
 
-  generateAgentErrorEvent(taskId: string, agentType: AgentType): AgentErrorEvent {
+  generateAgentErrorEvent(
+    taskId: string,
+    agentType: AgentType,
+  ): AgentErrorEvent {
     const errors = [
       "Failed to parse document",
       "Timeout during processing",
@@ -124,18 +132,22 @@ export class MockCommandCenterEventGenerator {
 
   private generateMockToolsCalled(agentType: AgentType): string[] {
     const toolsByAgent: Record<AgentType, string[]> = {
-      triage: ["file_analyzer()", "content_classifier()", "metadata_extractor()"],
-      orchestrator: ["task_scheduler()", "resource_allocator()", "priority_queue()"],
+      triage: [
+        "file_analyzer()",
+        "content_classifier()",
+        "metadata_extractor()",
+      ],
+      orchestrator: [
+        "task_scheduler()",
+        "resource_allocator()",
+        "priority_queue()",
+      ],
       financial: [
         "pdf_table_extractor()",
         "transaction_analyzer()",
         "anomaly_detector()",
       ],
-      legal: [
-        "entity_extractor()",
-        "citation_parser()",
-        "clause_identifier()",
-      ],
+      legal: ["entity_extractor()", "citation_parser()", "clause_identifier()"],
       strategy: [
         "pattern_analyzer()",
         "cross_reference_finder()",
@@ -152,7 +164,8 @@ export class MockCommandCenterEventGenerator {
   }
 
   nextAgent() {
-    this.currentAgentIndex = (this.currentAgentIndex + 1) % AGENT_SEQUENCE.length;
+    this.currentAgentIndex =
+      (this.currentAgentIndex + 1) % AGENT_SEQUENCE.length;
     if (this.currentAgentIndex === 0) {
       this.currentFileIndex++;
     }
@@ -167,7 +180,13 @@ export class MockCommandCenterEventGenerator {
 
 // Simulate a processing flow
 export async function simulateProcessingFlow(
-  onEvent: (event: any) => void,
+  onEvent: (
+    event:
+      | AgentStartedEvent
+      | AgentCompleteEvent
+      | AgentErrorEvent
+      | ProcessingCompleteEvent,
+  ) => void,
   delayMs = 2000,
 ) {
   const generator = new MockCommandCenterEventGenerator();

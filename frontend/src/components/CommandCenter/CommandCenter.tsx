@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Activity, AlertCircle } from "lucide-react";
 import { AgentFlowCanvas } from "./AgentFlowCanvas";
 import { AgentDetailsPanel } from "./AgentDetailsPanel";
@@ -8,7 +8,6 @@ import { useCommandCenterSSE } from "@/hooks/useCommandCenterSSE";
 import {
   AGENT_CONFIGS,
   DEFAULT_CONNECTIONS,
-  STATUS_COLORS,
 } from "@/lib/command-center-config";
 import type {
   AgentState,
@@ -36,7 +35,7 @@ export function CommandCenter({ caseId, className }: CommandCenterProps) {
     useState<ProcessingSummary | null>(null);
 
   // Initialize agent states
-  useEffect(() => {
+  useState(() => {
     const initialStates = new Map<AgentType, AgentState>();
     Object.keys(AGENT_CONFIGS).forEach((type) => {
       const agentType = type as AgentType;
@@ -48,7 +47,8 @@ export function CommandCenter({ caseId, className }: CommandCenterProps) {
       });
     });
     setAgentStates(initialStates);
-  }, []);
+    return true;
+  });
 
   // Handle agent started event
   const handleAgentStarted = useCallback((event: CommandCenterSSEEvent) => {
@@ -155,7 +155,6 @@ export function CommandCenter({ caseId, className }: CommandCenterProps) {
     onAgentComplete: handleAgentComplete,
     onAgentError: handleAgentError,
     onProcessingComplete: handleProcessingComplete,
-    onError: (error) => console.error("Command Center SSE error:", error),
   });
 
   // Calculate connections with animation state
@@ -271,18 +270,15 @@ export function CommandCenter({ caseId, className }: CommandCenterProps) {
             </div>
           ) : lastProcessingSummary ? (
             <div className="text-stone">
-              Last Processing Complete •{" "}
-              {lastProcessingSummary.filesProcessed} files •{" "}
-              {lastProcessingSummary.entitiesCreated} entities •{" "}
+              Last Processing Complete • {lastProcessingSummary.filesProcessed}{" "}
+              files • {lastProcessingSummary.entitiesCreated} entities •{" "}
               {lastProcessingSummary.relationshipsCreated} relationships
             </div>
           ) : (
             <div className="text-stone">Idle</div>
           )}
 
-          <div className="text-stone/60">
-            {new Date().toLocaleTimeString()}
-          </div>
+          <div className="text-stone/60">{new Date().toLocaleTimeString()}</div>
         </div>
       </div>
     </div>

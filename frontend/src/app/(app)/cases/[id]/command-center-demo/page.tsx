@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CommandCenter } from "@/components/CommandCenter";
 import { Play, Pause, RotateCcw } from "lucide-react";
 import { simulateProcessingFlow } from "@/lib/mock-command-center-data";
@@ -28,7 +28,10 @@ export default function CommandCenterDemoPage() {
   };
 
   return (
-    <div className="w-full flex flex-col" style={{ height: "calc(100vh - 280px)" }}>
+    <div
+      className="w-full flex flex-col"
+      style={{ height: "calc(100vh - 280px)" }}
+    >
       {/* Demo Controls */}
       <div className="flex-none p-4 bg-jet border-b border-stone/15 rounded-t-lg">
         <div className="flex items-center justify-between">
@@ -37,8 +40,8 @@ export default function CommandCenterDemoPage() {
               Command Center Demo
             </h3>
             <p className="text-xs text-stone">
-              This is a demo page with mock data. In production, events come from
-              the backend SSE stream.
+              This is a demo page with mock data. In production, events come
+              from the backend SSE stream.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -73,7 +76,11 @@ export default function CommandCenterDemoPage() {
 
       {/* Command Center */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <CommandCenter key={simulationKey} caseId={caseId} className="h-full w-full" />
+        <CommandCenter
+          key={simulationKey}
+          caseId={caseId}
+          className="h-full w-full"
+        />
       </div>
     </div>
   );

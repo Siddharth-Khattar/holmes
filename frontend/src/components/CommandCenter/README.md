@@ -90,6 +90,7 @@ simulateProcessingFlow((event) => {
 The Command Center subscribes to the following SSE events:
 
 ### agent-started
+
 ```typescript
 {
   type: "agent-started",
@@ -101,6 +102,7 @@ The Command Center subscribes to the following SSE events:
 ```
 
 ### agent-complete
+
 ```typescript
 {
   type: "agent-complete",
@@ -117,6 +119,7 @@ The Command Center subscribes to the following SSE events:
 ```
 
 ### agent-error
+
 ```typescript
 {
   type: "agent-error",
@@ -127,6 +130,7 @@ The Command Center subscribes to the following SSE events:
 ```
 
 ### processing-complete
+
 ```typescript
 {
   type: "processing-complete",
@@ -165,6 +169,7 @@ The Command Center uses the Holmes design system with warm brown color palette:
 ## Backend Integration
 
 The Command Center expects an SSE endpoint at:
+
 ```
 /api/cases/{caseId}/command-center/stream
 ```

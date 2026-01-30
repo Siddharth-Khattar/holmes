@@ -22,7 +22,11 @@ interface ChatApiResponse {
   };
 }
 
-export function useChatbot({ context, onError, apiEndpoint = '/api/chat' }: UseChatbotOptions = {}) {
+export function useChatbot({
+  context,
+  onError,
+  apiEndpoint = "/api/chat",
+}: UseChatbotOptions = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
 
@@ -43,9 +47,9 @@ export function useChatbot({ context, onError, apiEndpoint = '/api/chat' }: UseC
       try {
         // Try to call the backend API
         const response = await fetch(apiEndpoint, {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             message: content,
@@ -57,7 +61,7 @@ export function useChatbot({ context, onError, apiEndpoint = '/api/chat' }: UseC
         if (response.ok) {
           // Backend is available - use real response
           const data: ChatApiResponse = await response.json();
-          
+
           const assistantMessage: ChatMessage = {
             id: (Date.now() + 1).toString(),
             role: "assistant",
@@ -72,8 +76,8 @@ export function useChatbot({ context, onError, apiEndpoint = '/api/chat' }: UseC
         }
       } catch (error) {
         // Backend not available or error occurred - use mock response
-        console.log('Using mock response (backend not available):', error);
-        
+        console.log("Using mock response (backend not available):", error);
+
         // Simulate network delay
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -85,11 +89,12 @@ export function useChatbot({ context, onError, apiEndpoint = '/api/chat' }: UseC
         };
 
         setMessages((prev) => [...prev, assistantMessage]);
-        
+
         // Only call onError if it's not a network/404 error (backend not ready)
         const isNetworkError = error instanceof TypeError;
-        const is404Error = error instanceof Error && error.message.includes('404');
-        
+        const is404Error =
+          error instanceof Error && error.message.includes("404");
+
         if (onError && !isNetworkError && !is404Error) {
           onError(error as Error);
         }
@@ -97,7 +102,7 @@ export function useChatbot({ context, onError, apiEndpoint = '/api/chat' }: UseC
         setIsTyping(false);
       }
     },
-    [context, onError, apiEndpoint, messages]
+    [context, onError, apiEndpoint, messages],
   );
 
   const clearMessages = useCallback(() => {
@@ -115,7 +120,7 @@ export function useChatbot({ context, onError, apiEndpoint = '/api/chat' }: UseC
 // Helper function to generate contextual responses
 function generateContextualResponse(
   userMessage: string,
-  context?: ChatbotContext
+  context?: ChatbotContext,
 ): string {
   const lowerMessage = userMessage.toLowerCase();
 
@@ -137,7 +142,10 @@ function generateContextualResponse(
       return `To add evidence to "${context.caseName}", go to the Upload tab where you can upload documents, images, and other files related to your case.`;
     }
 
-    if (lowerMessage.includes("help") || lowerMessage.includes("what can you do")) {
+    if (
+      lowerMessage.includes("help") ||
+      lowerMessage.includes("what can you do")
+    ) {
       return `I can help you with "${context.caseName}" by:
 - Answering questions about case status and progress
 - Guiding you through different features (Timeline, Knowledge Graph, Upload)

@@ -20,7 +20,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [inputValue, setInputValue] = useState("");
-  
+
   const { messages, isTyping, sendMessage } = useChatbot({
     context: {
       caseId,
@@ -29,12 +29,14 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
       caseStatus: caseContext?.status,
     },
   });
-  
+
   // Window dragging state
-  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  
+
   // Window resizing state
   const MIN_WIDTH = 320;
   const MIN_HEIGHT = 400;
@@ -42,8 +44,13 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
   const MAX_HEIGHT = 1320;
   const [size, setSize] = useState({ width: MAX_WIDTH, height: MAX_HEIGHT });
   const [isResizing, setIsResizing] = useState(false);
-  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
-  
+  const [resizeStart, setResizeStart] = useState({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  });
+
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -59,11 +66,11 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
     const handleMouseMove = (e: MouseEvent) => {
       const newX = e.clientX - dragOffset.x;
       const newY = e.clientY - dragOffset.y;
-      
+
       // Keep window within viewport bounds
       const maxX = window.innerWidth - 100; // Keep at least 100px visible
       const maxY = window.innerHeight - 60; // Keep header visible
-      
+
       setPosition({
         x: Math.max(0, Math.min(newX, maxX)),
         y: Math.max(0, Math.min(newY, maxY)),
@@ -90,11 +97,17 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
     const handleMouseMove = (e: MouseEvent) => {
       const deltaX = e.clientX - resizeStart.x;
       const deltaY = e.clientY - resizeStart.y;
-      
+
       // Calculate new dimensions with constraints
-      const newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, resizeStart.width + deltaX));
-      const newHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, resizeStart.height + deltaY));
-      
+      const newWidth = Math.max(
+        MIN_WIDTH,
+        Math.min(MAX_WIDTH, resizeStart.width + deltaX),
+      );
+      const newHeight = Math.max(
+        MIN_HEIGHT,
+        Math.min(MAX_HEIGHT, resizeStart.height + deltaY),
+      );
+
       setSize({
         width: newWidth,
         height: newHeight,
@@ -138,7 +151,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
-    
+
     const message = inputValue;
     setInputValue("");
     await sendMessage(message);
@@ -168,7 +181,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
               "w-14 h-14 rounded-full",
               "flex items-center justify-center",
               "shadow-lg hover:shadow-xl transition-shadow",
-              "bg-[#2a2825] dark:bg-[#f5f4ef]"
+              "bg-[#2a2825] dark:bg-[#f5f4ef]",
             )}
             aria-label="Open chat"
           >
@@ -183,8 +196,8 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
           <motion.div
             ref={chatWindowRef}
             initial={{ scale: 0, opacity: 0 }}
-            animate={{ 
-              scale: 1, 
+            animate={{
+              scale: 1,
               opacity: 1,
             }}
             exit={{ scale: 0, opacity: 0 }}
@@ -208,7 +221,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
               "bg-white/60 dark:bg-[#1a1816]/70",
               "backdrop-blur-xl backdrop-saturate-150",
               "border border-white/20 dark:border-white/10",
-              "flex flex-col"
+              "flex flex-col",
             )}
           >
             {/* Header - Draggable */}
@@ -220,7 +233,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                 "bg-white/30 dark:bg-[#2a2825]/50",
                 "backdrop-blur-md",
                 "border-b border-white/30 dark:border-white/10",
-                "cursor-move select-none"
+                "cursor-move select-none",
               )}
             >
               <div className="flex items-center gap-2">
@@ -274,29 +287,31 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                       animate={{ opacity: 1, y: 0 }}
                       className={clsx(
                         "flex gap-2",
-                        message.role === "user" ? "justify-end" : "justify-start"
+                        message.role === "user"
+                          ? "justify-end"
+                          : "justify-start",
                       )}
                     >
                       {/* Holmes Logo for Assistant Messages */}
                       {message.role === "assistant" && (
                         <div className="flex-shrink-0 mt-1">
-                          <Image 
-                            src="/logo-1x.png" 
-                            alt="Holmes" 
+                          <Image
+                            src="/logo-1x.png"
+                            alt="Holmes"
                             width={24}
                             height={24}
                             className="opacity-70"
                           />
                         </div>
                       )}
-                      
+
                       <div
                         className={clsx(
                           "rounded-lg px-4 py-2.5 shadow-sm",
                           "max-w-[85%] min-w-[120px]",
                           message.role === "user"
                             ? "bg-[#2a2825] dark:bg-[#f5f4ef] text-[#faf9f7] dark:text-[#050505]"
-                            : "bg-white/50 dark:bg-[#2a2825]/60 backdrop-blur-md text-[#1a1816] dark:text-[#faf9f7] border border-white/40 dark:border-white/10"
+                            : "bg-white/50 dark:bg-[#2a2825]/60 backdrop-blur-md text-[#1a1816] dark:text-[#faf9f7] border border-white/40 dark:border-white/10",
                         )}
                         style={{
                           wordWrap: "break-word",
@@ -307,12 +322,14 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                         <p className="text-sm whitespace-pre-wrap leading-relaxed font-medium">
                           {message.content}
                         </p>
-                        <span className={clsx(
-                          "text-xs mt-1.5 block font-medium",
-                          message.role === "user" 
-                            ? "opacity-70" 
-                            : "opacity-60"
-                        )}>
+                        <span
+                          className={clsx(
+                            "text-xs mt-1.5 block font-medium",
+                            message.role === "user"
+                              ? "opacity-70"
+                              : "opacity-60",
+                          )}
+                        >
                           {message.timestamp.toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
@@ -332,19 +349,19 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                       <div className="bg-white/50 dark:bg-[#2a2825]/60 backdrop-blur-md rounded-lg px-4 py-3 border border-white/40 dark:border-white/10 shadow-sm">
                         <div className="flex items-center gap-2">
                           {/* Holmes Logo */}
-                          <Image 
-                            src="/logo-1x.png" 
-                            alt="Holmes" 
+                          <Image
+                            src="/logo-1x.png"
+                            alt="Holmes"
                             width={20}
                             height={20}
                             className="opacity-80 flex-shrink-0 drop-shadow-sm"
                           />
-                          
+
                           {/* Thinking Text */}
                           <span className="text-sm text-[#1a1816] dark:text-[#faf9f7] font-medium">
                             Thinking
                           </span>
-                          
+
                           {/* Animated Dots */}
                           <div className="flex items-center gap-0.5">
                             <motion.span
@@ -416,9 +433,9 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                         "text-sm font-medium",
                         "shadow-sm",
                         "transition-all",
-                        "overflow-y-auto"
+                        "overflow-y-auto",
                       )}
-                      style={{ 
+                      style={{
                         maxHeight: "120px",
                         minHeight: "40px",
                       }}
@@ -435,7 +452,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                         "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100",
                         "transition-all duration-200",
                         "flex items-center justify-center",
-                        "shadow-md hover:shadow-lg"
+                        "shadow-md hover:shadow-lg",
                       )}
                     >
                       <Send className="w-4 h-4" />
@@ -449,21 +466,21 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                   className={clsx(
                     "absolute bottom-0 right-0 w-6 h-6 cursor-se-resize",
                     "opacity-30 hover:opacity-60 transition-opacity",
-                    "flex items-end justify-end p-1"
+                    "flex items-end justify-end p-1",
                   )}
                   title="Drag to resize"
                 >
-                  <svg 
-                    width="12" 
-                    height="12" 
-                    viewBox="0 0 12 12" 
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
                     className="text-[#2a2825] dark:text-[#f5f4ef]"
                   >
-                    <path 
-                      d="M11 11L11 7M11 11L7 11M11 11L6 6M11 3L11 1L9 1M3 11L1 11L1 9" 
-                      stroke="currentColor" 
-                      strokeWidth="1.5" 
-                      strokeLinecap="round" 
+                    <path
+                      d="M11 11L11 7M11 11L7 11M11 11L6 6M11 3L11 1L9 1M3 11L1 11L1 9"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
                       fill="none"
                     />
                   </svg>

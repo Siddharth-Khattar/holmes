@@ -181,6 +181,13 @@ Plans:
 
 **Status:** 🟡 FRONTEND_DONE — Backend integration required
 
+**Plans:** 3 plans in 3 waves
+
+Plans:
+- [ ] 03-01-PLAN.md — Database model (CaseFile), migration, Pydantic schemas
+- [ ] 03-02-PLAN.md — File upload endpoint with GCS chunked streaming
+- [ ] 03-03-PLAN.md — List/download/delete APIs, SSE events, frontend integration
+
 ### Frontend Completed (Yatharth, 2026-02-02)
 - ✅ Drag-and-drop file upload UI (`CaseLibrary.tsx`)
 - ✅ Case Library view with list layout
@@ -826,11 +833,12 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 1.5*
-*Updated: 2026-02-02 (Frontend work reconciliation)*
+*Roadmap Version: 1.6*
+*Updated: 2026-02-02 (Phase 3 planning)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
 *Phase 2 planned: 2026-01-24*
 *Phase 2 complete: 2026-01-25*
 *Frontend work by Yatharth: 2026-02-02 (Phases 3,5,7,9,10 frontend done)*
+*Phase 3 planned: 2026-02-02*

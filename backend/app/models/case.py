@@ -93,3 +93,8 @@ class Case(Base):
 
     # Relationship to User (no backref since User is read-only)
     user = relationship("User", back_populates=None)
+
+    # Relationship to CaseFiles
+    files = relationship(
+        "CaseFile", back_populates="case", cascade="all, delete-orphan"
+    )

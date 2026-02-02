@@ -14,6 +14,8 @@ env:
   FRONTEND_SERVICE: holmes-frontend
   # Stabilize any generation that may depend on hash iteration order.
   PYTHONHASHSEED: "0"
+  # Fast deploy mode for test-deployment branch (parallel builds, less defensive)
+  FAST_DEPLOY: ${{ github.ref_name == 'test-deployment' }}
 
 jobs:
   # Job 1: Type generation check
@@ -25,6 +27,13 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - name: Cache bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -93,12 +102,21 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push backend image
-        run: |
-          IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend
-          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest ./backend
-          docker push $IMAGE:${{ github.sha }}
-          docker push $IMAGE:latest
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:${{ github.sha }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:latest
+          cache-from: |
+            type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:cache-${{ github.ref_name }}
+            type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:cache-main
+          cache-to: type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:cache-${{ github.ref_name }},mode=max
 
       - name: Deploy backend to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
@@ -108,9 +126,11 @@ jobs:
           image: ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:${{ github.sha }}
 
   # Job 3: Frontend lint and build
+  # On test-deployment: runs in parallel with backend (fast mode)
+  # On main/development: waits for backend to complete first (defensive mode)
   frontend:
     runs-on: ubuntu-latest
-    needs: [types, backend] # Backend must deploy first for API URL
+    needs: types
     permissions:
       contents: read
       id-token: write
@@ -118,9 +138,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Defensive mode: wait for backend job to complete before proceeding
+      - name: Wait for backend deployment (defensive mode)
+        if: github.ref_name == 'main' || github.ref_name == 'development'
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.sha }}
+          check-name: backend
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - name: Cache bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
 
       - name: Install and lint
         run: |
@@ -141,8 +178,14 @@ jobs:
       - name: Get backend URL
         id: backend-url
         run: |
-          URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} --region=${{ env.REGION }} --format='value(status.url)')
+          # Fetch existing backend URL (should exist after first deploy)
+          URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} --region=${{ env.REGION }} --format='value(status.url)' 2>/dev/null || echo "")
+          if [ -z "$URL" ]; then
+            echo "::error::Backend service does not exist yet. Deploy backend first."
+            exit 1
+          fi
           echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "Backend URL: $URL"
 
       - name: Get frontend URL
         id: frontend-url
@@ -158,20 +201,27 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push frontend image
-        run: |
-          IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend
-          docker build \
-            --build-arg NEXT_PUBLIC_API_URL=${{ steps.backend-url.outputs.url }} \
-            --build-arg NEXT_PUBLIC_VIDEO_URL=https://storage.googleapis.com/${{ vars.GCP_PROJECT_ID }}-media/video.mp4 \
-            --build-arg NEXT_PUBLIC_APP_URL=${{ steps.frontend-url.outputs.url }} \
-            --build-arg BETTER_AUTH_URL=${{ steps.frontend-url.outputs.url }} \
-            -f frontend/Dockerfile \
-            -t $IMAGE:${{ github.sha }} \
-            -t $IMAGE:latest \
-            .
-          docker push $IMAGE:${{ github.sha }}
-          docker push $IMAGE:latest
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:${{ github.sha }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:latest
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ steps.backend-url.outputs.url }}
+            NEXT_PUBLIC_VIDEO_URL=https://storage.googleapis.com/${{ vars.GCP_PROJECT_ID }}-media/video.mp4
+            NEXT_PUBLIC_APP_URL=${{ steps.frontend-url.outputs.url }}
+            BETTER_AUTH_URL=${{ steps.frontend-url.outputs.url }}
+          cache-from: |
+            type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:cache-${{ github.ref_name }}
+            type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:cache-main
+          cache-to: type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:cache-${{ github.ref_name }},mode=max
 
       - name: Deploy frontend to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
@@ -194,6 +244,13 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - name: Cache bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -375,9 +432,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Wait for deployment to stabilize
-        run: sleep 30
-
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -398,21 +452,33 @@ jobs:
 
       - name: Verify backend health
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.urls.outputs.backend }}/health)
-          if [ "$STATUS" != "200" ]; then
-            echo "Backend health check failed with status $STATUS"
-            exit 1
-          fi
-          echo "Backend healthy at ${{ steps.urls.outputs.backend }}"
+          echo "Waiting for backend to be healthy..."
+          for i in $(seq 1 20); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${{ steps.urls.outputs.backend }}/health" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend healthy at ${{ steps.urls.outputs.backend }}"
+              exit 0
+            fi
+            echo "Attempt $i/20: got status $STATUS, retrying in $((i * 2))s..."
+            sleep $((i * 2))
+          done
+          echo "::error::Backend health check failed after 20 attempts"
+          exit 1
 
-      - name: Verify frontend
+      - name: Verify frontend health
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.urls.outputs.frontend }})
-          if [ "$STATUS" != "200" ]; then
-            echo "Frontend health check failed with status $STATUS"
-            exit 1
-          fi
-          echo "Frontend healthy at ${{ steps.urls.outputs.frontend }}"
+          echo "Waiting for frontend to be healthy..."
+          for i in $(seq 1 20); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${{ steps.urls.outputs.frontend }}" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Frontend healthy at ${{ steps.urls.outputs.frontend }}"
+              exit 0
+            fi
+            echo "Attempt $i/20: got status $STATUS, retrying in $((i * 2))s..."
+            sleep $((i * 2))
+          done
+          echo "::error::Frontend health check failed after 20 attempts"
+          exit 1
 
       - name: Output URLs
         run: |

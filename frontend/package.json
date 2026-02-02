@@ -13,6 +13,7 @@
   "dependencies": {
     "@holmes/types": "workspace:*",
     "@hookform/resolvers": "^5.2.2",
+    "@tabler/icons-react": "^3.36.1",
     "@tanstack/react-query": "^5.90.20",
     "better-auth": "^1.4.17",
     "clsx": "^2.1.1",
@@ -30,6 +31,7 @@
     "pg": "^8.17.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-dropzone": "^14.4.0",
     "react-hook-form": "^7.71.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",

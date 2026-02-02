@@ -8,8 +8,8 @@ export default function CasePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to upload page by default
-    router.replace(`/cases/${params.id}/upload`);
+    // Redirect to library page by default
+    router.replace(`/cases/${params.id}/library`);
   }, [params.id, router]);
 
   return null;

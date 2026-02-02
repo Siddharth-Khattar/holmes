@@ -75,7 +75,17 @@ class FileResponse(BaseModel):
     def from_orm_with_name(
         cls, obj: object, duplicate_of: UUID | None = None
     ) -> "FileResponse":
-        """Create FileResponse from ORM object, mapping original_filename to name."""
+        """Create FileResponse from ORM object, mapping original_filename to name.
+
+        Args:
+            obj: ORM object with file attributes
+            duplicate_of: Explicit duplicate_of value, or None to read from ORM object
+        """
+        # Use explicit duplicate_of if provided, otherwise read from ORM object
+        resolved_duplicate_of = duplicate_of
+        if resolved_duplicate_of is None:
+            resolved_duplicate_of = getattr(obj, "duplicate_of", None)
+
         data = {
             "id": obj.id,  # type: ignore[attr-defined]
             "case_id": obj.case_id,  # type: ignore[attr-defined]
@@ -95,7 +105,7 @@ class FileResponse(BaseModel):
             "longitude": obj.longitude,  # type: ignore[attr-defined]
             "created_at": obj.created_at,  # type: ignore[attr-defined]
             "updated_at": obj.updated_at,  # type: ignore[attr-defined]
-            "duplicate_of": duplicate_of,
+            "duplicate_of": resolved_duplicate_of,
         }
         return cls(**data)
 
@@ -125,3 +135,24 @@ class DownloadUrlResponse(BaseModel):
 
     download_url: str = Field(..., description="Signed URL for downloading the file")
     expires_in: int = Field(..., description="Seconds until the URL expires")
+
+
+class BulkDeleteRequest(BaseModel):
+    """Request model for bulk file deletion."""
+
+    file_ids: list[UUID] = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="List of file IDs to delete (max 100)",
+    )
+
+
+class BulkDeleteResponse(BaseModel):
+    """Response model for bulk file deletion."""
+
+    deleted_count: int = Field(..., description="Number of files successfully deleted")
+    failed_ids: list[UUID] = Field(
+        default_factory=list,
+        description="IDs of files that failed to delete",
+    )

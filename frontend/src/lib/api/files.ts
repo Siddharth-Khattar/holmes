@@ -126,3 +126,51 @@ export async function deleteFile(
     throw new Error(error.detail || "Failed to delete file");
   }
 }
+
+export async function dismissDuplicate(
+  caseId: string,
+  fileId: string,
+): Promise<FileResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${API_URL}/api/cases/${caseId}/files/${fileId}/dismiss-duplicate`,
+    {
+      method: "PATCH",
+      headers,
+    },
+  );
+  if (!res.ok) {
+    const error = await res
+      .json()
+      .catch(() => ({ detail: "Failed to dismiss duplicate" }));
+    throw new Error(error.detail || "Failed to dismiss duplicate");
+  }
+  return res.json();
+}
+
+export interface BulkDeleteResponse {
+  deleted_count: number;
+  failed_ids: string[];
+}
+
+export async function bulkDeleteFiles(
+  caseId: string,
+  fileIds: string[],
+): Promise<BulkDeleteResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/cases/${caseId}/files/bulk-delete`, {
+    method: "POST",
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ file_ids: fileIds }),
+  });
+  if (!res.ok) {
+    const error = await res
+      .json()
+      .catch(() => ({ detail: "Failed to delete files" }));
+    throw new Error(error.detail || "Failed to delete files");
+  }
+  return res.json();
+}

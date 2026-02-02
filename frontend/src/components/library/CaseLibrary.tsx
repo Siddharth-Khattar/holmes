@@ -9,21 +9,24 @@ import {
   Eye,
   Download,
   Trash2,
-  MoreVertical,
   AlertTriangle,
-  Upload,
   Search,
   Filter,
   Loader2,
+  Check,
+  Minus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { FileUpload } from "@/components/ui/file-upload";
 import {
   listFiles,
   getDownloadUrl,
   deleteFile,
+  dismissDuplicate,
+  bulkDeleteFiles,
   FileResponse,
 } from "@/lib/api/files";
-import { useFileUpload } from "@/hooks/useFileUpload";
+import { useFileUpload, FileUploadProgress } from "@/hooks/useFileUpload";
 
 // Types for UI display
 type SupportedFileType = "pdf" | "video" | "audio" | "image";
@@ -117,6 +120,7 @@ function mapToLibraryFile(file: FileResponse): LibraryFile {
     libraryFile.conflictInfo = {
       type: "duplicate",
       message: `This file is a duplicate of an existing file`,
+      existingFile: file.duplicate_of,
       suggestions: ["View Original", "Keep Both", "Remove Duplicate"],
     };
   }
@@ -130,15 +134,19 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<FileCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isDragging, setIsDragging] = useState(false);
+  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // File upload hook
   const {
     isUploading,
-    currentFile,
+    files: uploadingFiles,
     error: uploadError,
     upload,
     clearError,
+    clearCompleted,
   } = useFileUpload(caseId);
 
   // Fetch files on mount
@@ -249,34 +257,12 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
     });
   }, [files, selectedCategory, searchQuery]);
 
-  // Drag and drop handlers
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
-  const handleDrop = useCallback(
-    async (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragging(false);
-
-      const droppedFiles = Array.from(e.dataTransfer.files);
-      if (droppedFiles.length > 0) {
+  // File upload handler
+  const handleFileUpload = useCallback(
+    async (selectedFiles: File[]) => {
+      if (selectedFiles.length > 0) {
         clearError();
-        await upload(droppedFiles);
+        await upload(selectedFiles);
         // Refresh file list after upload
         await refreshFiles();
       }
@@ -320,6 +306,162 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
     },
     [caseId],
   );
+
+  // Conflict resolution handlers
+  const handleConflictAction = useCallback(
+    async (file: LibraryFile, action: string) => {
+      switch (action) {
+        case "View Original": {
+          // Get the original file ID from conflict info
+          const originalId = file.conflictInfo?.existingFile;
+          if (!originalId) {
+            console.warn("No original file ID found in conflict info");
+            break;
+          }
+
+          // Scroll to the original file row
+          const row = document.querySelector(`[data-file-id="${originalId}"]`);
+          if (row) {
+            row.scrollIntoView({ behavior: "smooth", block: "center" });
+            row.classList.add("ring-2", "ring-blue-500");
+            setTimeout(() => {
+              row.classList.remove("ring-2", "ring-blue-500");
+            }, 2000);
+          } else {
+            // Original file might not be visible (filtered out or on different page)
+            const originalFile = files.find((f) => f.id === originalId);
+            if (originalFile) {
+              alert(
+                `Original file: "${originalFile.name}"\n\nIt may be filtered out or on a different page.`,
+              );
+            } else {
+              alert("Original file not found. It may have been deleted.");
+            }
+          }
+          break;
+        }
+
+        case "Keep Both":
+          // Dismiss the duplicate status in backend and update local state
+          try {
+            await dismissDuplicate(caseId, file.id);
+            setFiles((prev) =>
+              prev.map((f) =>
+                f.id === file.id
+                  ? {
+                      ...f,
+                      status: "ready" as FileStatus,
+                      conflictInfo: undefined,
+                    }
+                  : f,
+              ),
+            );
+          } catch (err) {
+            console.error("Failed to dismiss duplicate:", err);
+            alert("Failed to dismiss duplicate status. Please try again.");
+          }
+          break;
+
+        case "Remove Duplicate":
+          // Delete the duplicate file
+          if (
+            !confirm(
+              `Remove duplicate "${file.name}"? This will permanently delete this file.`,
+            )
+          ) {
+            return;
+          }
+          try {
+            await deleteFile(caseId, file.id);
+            setFiles((prev) => prev.filter((f) => f.id !== file.id));
+          } catch (err) {
+            console.error("Failed to remove duplicate:", err);
+            alert("Failed to remove duplicate. Please try again.");
+          }
+          break;
+      }
+    },
+    [caseId, files],
+  );
+
+  // Selection handlers
+  const toggleFileSelection = useCallback((fileId: string) => {
+    setSelectedFileIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(fileId)) {
+        next.delete(fileId);
+      } else {
+        next.add(fileId);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedFileIds((prev) => {
+      // If all filtered files are selected, deselect all
+      const allSelected = filteredFiles.every((f) => prev.has(f.id));
+      if (allSelected) {
+        return new Set();
+      }
+      // Otherwise, select all filtered files
+      return new Set(filteredFiles.map((f) => f.id));
+    });
+  }, [filteredFiles]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedFileIds(new Set());
+  }, []);
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedFileIds.size === 0) return;
+
+    const count = selectedFileIds.size;
+    if (
+      !confirm(
+        `Delete ${count} file${count > 1 ? "s" : ""}? This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const result = await bulkDeleteFiles(caseId, Array.from(selectedFileIds));
+
+      // Remove deleted files from local state
+      setFiles((prev) =>
+        prev.filter(
+          (f) => !selectedFileIds.has(f.id) || result.failed_ids.includes(f.id),
+        ),
+      );
+
+      // Clear selection
+      setSelectedFileIds(new Set());
+
+      if (result.failed_ids.length > 0) {
+        alert(
+          `Deleted ${result.deleted_count} files. ${result.failed_ids.length} files failed to delete.`,
+        );
+      }
+    } catch (err) {
+      console.error("Bulk delete failed:", err);
+      alert("Failed to delete files. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [caseId, selectedFileIds]);
+
+  // Compute selection state for "select all" checkbox
+  const selectionState = useMemo(() => {
+    if (filteredFiles.length === 0) return "none";
+    const selectedCount = filteredFiles.filter((f) =>
+      selectedFileIds.has(f.id),
+    ).length;
+    if (selectedCount === 0) return "none";
+    if (selectedCount === filteredFiles.length) return "all";
+    return "partial";
+  }, [filteredFiles, selectedFileIds]);
 
   // Category badge color
   const getCategoryColor = (category: FileCategory) => {
@@ -374,43 +516,108 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
         </div>
       </div>
 
-      {/* Upload Status */}
+      {/* Upload Status - Multi-file progress */}
       <AnimatePresence>
-        {(isUploading || uploadError) && (
+        {uploadingFiles.length > 0 && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             className="flex-none mx-6 mt-4"
           >
-            {isUploading && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/50 rounded-lg p-4">
-                <div className="flex items-center space-x-3">
-                  <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
-                  <span className="text-sm text-blue-800 dark:text-blue-300">
-                    Uploading: {currentFile}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/50 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  {isUploading && (
+                    <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                  )}
+                  <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                    {isUploading
+                      ? `Uploading ${uploadingFiles.length} file${uploadingFiles.length > 1 ? "s" : ""}...`
+                      : "Upload complete"}
                   </span>
                 </div>
-              </div>
-            )}
-            {uploadError && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <AlertTriangle className="w-5 h-5 text-red-600" />
-                    <span className="text-sm text-red-800 dark:text-red-300">
-                      {uploadError}
-                    </span>
-                  </div>
+                {!isUploading && (
                   <button
-                    onClick={clearError}
-                    className="text-sm text-red-600 hover:text-red-800"
+                    onClick={() => {
+                      clearCompleted();
+                      refreshFiles();
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400"
                   >
                     Dismiss
                   </button>
-                </div>
+                )}
               </div>
-            )}
+              <div className="space-y-2">
+                {uploadingFiles.map((fileProgress: FileUploadProgress) => (
+                  <div
+                    key={fileProgress.id}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <span
+                      className="truncate max-w-[200px]"
+                      style={{ color: "var(--foreground)" }}
+                    >
+                      {fileProgress.file.name}
+                    </span>
+                    <div className="flex items-center space-x-2">
+                      {fileProgress.status === "pending" && (
+                        <span className="text-xs text-stone-500">Pending</span>
+                      )}
+                      {fileProgress.status === "uploading" && (
+                        <div className="flex items-center space-x-1">
+                          <Loader2 className="w-3 h-3 text-blue-600 animate-spin" />
+                          <span className="text-xs text-blue-600">
+                            Uploading
+                          </span>
+                        </div>
+                      )}
+                      {fileProgress.status === "completed" && (
+                        <span className="text-xs text-green-600">Done</span>
+                      )}
+                      {fileProgress.status === "error" && (
+                        <span
+                          className="text-xs text-red-600"
+                          title={fileProgress.error}
+                        >
+                          Failed
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Upload Error */}
+      <AnimatePresence>
+        {uploadError && !isUploading && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex-none mx-6 mt-4"
+          >
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                  <span className="text-sm text-red-800 dark:text-red-300">
+                    {uploadError}
+                  </span>
+                </div>
+                <button
+                  onClick={clearError}
+                  className="text-sm text-red-600 hover:text-red-800"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -442,37 +649,15 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
         )}
       </AnimatePresence>
 
-      {/* Drag & Drop Zone */}
-      <div
-        className="flex-none mx-6 mt-6"
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-      >
-        <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            isDragging
-              ? "border-blue-500 bg-blue-500/10"
-              : "border-stone/30 hover:border-stone/50"
-          } ${isUploading ? "opacity-50 pointer-events-none" : ""}`}
-        >
-          <Upload
-            className="w-8 h-8 mx-auto mb-2"
-            style={{
-              color: isDragging ? "#3b82f6" : "var(--muted-foreground)",
-            }}
+      {/* File Upload Zone */}
+      <div className="flex-none mx-6 mt-6">
+        <div className="border border-dashed border-neutral-700 rounded-lg overflow-hidden">
+          <FileUpload
+            onChange={handleFileUpload}
+            hideSelectedFiles={true}
+            multiple={true}
+            disabled={isUploading}
           />
-          <p
-            className="text-sm"
-            style={{
-              color: isDragging ? "#3b82f6" : "var(--muted-foreground)",
-            }}
-          >
-            {isUploading
-              ? "Upload in progress..."
-              : "Drag & drop files to add to case"}
-          </p>
         </div>
       </div>
 
@@ -580,6 +765,9 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                             (suggestion, index) => (
                               <button
                                 key={index}
+                                onClick={() =>
+                                  handleConflictAction(file, suggestion)
+                                }
                                 className="px-3 py-1 text-xs rounded bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors"
                               >
                                 {suggestion}
@@ -591,6 +779,45 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                     ))}
                 </div>
               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Actions Bar */}
+      <AnimatePresence>
+        {selectedFileIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex-none mx-6 mb-4"
+          >
+            <div className="flex items-center justify-between rounded-lg px-4 py-3 bg-blue-500/15 border border-blue-500/30">
+              <div className="flex items-center space-x-3">
+                <span className="text-sm font-medium text-blue-400">
+                  {selectedFileIds.size} file
+                  {selectedFileIds.size > 1 ? "s" : ""} selected
+                </span>
+                <button
+                  onClick={clearSelection}
+                  className="text-sm text-stone-400 hover:text-stone-300 underline hover:no-underline"
+                >
+                  Clear selection
+                </button>
+              </div>
+              <button
+                onClick={handleBulkDelete}
+                disabled={isDeleting}
+                className="flex items-center space-x-2 px-4 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                <span>Delete Selected</span>
+              </button>
             </div>
           </motion.div>
         )}
@@ -618,29 +845,66 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
             <table className="w-full">
               <thead>
                 <tr
-                  className="border-b text-left text-xs uppercase tracking-wide"
+                  className="border-b text-xs uppercase tracking-wide"
                   style={{
                     backgroundColor: "var(--muted)",
                     borderColor: "var(--border)",
                     color: "var(--muted-foreground)",
                   }}
                 >
-                  <th className="px-4 py-3 font-medium">File Name</th>
-                  <th className="px-4 py-3 font-medium">Type</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
+                  <th className="w-12 px-4 py-3">
+                    <button
+                      onClick={toggleSelectAll}
+                      className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${
+                        selectionState === "none"
+                          ? "border-stone-500 hover:border-stone-400"
+                          : "border-blue-500 bg-blue-500"
+                      }`}
+                      title={
+                        selectionState === "all" ? "Deselect all" : "Select all"
+                      }
+                    >
+                      {selectionState === "all" && (
+                        <Check className="w-3 h-3 text-stone-900" />
+                      )}
+                      {selectionState === "partial" && (
+                        <Minus className="w-3 h-3 text-stone-900" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 font-medium text-left">File Name</th>
+                  <th className="px-4 py-3 font-medium text-center">Type</th>
+                  <th className="px-4 py-3 font-medium text-left">Status</th>
+                  <th className="px-4 py-3 font-medium text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredFiles.map((file, index) => (
                   <motion.tr
                     key={file.id}
+                    data-file-id={file.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="border-b hover:bg-muted/50 transition-colors"
+                    className={`border-b hover:bg-muted/50 transition-colors ${
+                      selectedFileIds.has(file.id) ? "bg-blue-500/10" : ""
+                    }`}
                     style={{ borderColor: "var(--border)" }}
                   >
+                    <td className="w-12 px-4 py-4">
+                      <button
+                        onClick={() => toggleFileSelection(file.id)}
+                        className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${
+                          selectedFileIds.has(file.id)
+                            ? "border-blue-500 bg-blue-500"
+                            : "border-stone-600 hover:border-stone-500"
+                        }`}
+                      >
+                        {selectedFileIds.has(file.id) && (
+                          <Check className="w-3 h-3 text-stone-900" />
+                        )}
+                      </button>
+                    </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center space-x-3">
                         <div
@@ -665,7 +929,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4 text-center">
                       <span
                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(file.category)}`}
                       >
@@ -675,7 +939,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                     </td>
                     <td className="px-4 py-4">{getStatusIndicator(file)}</td>
                     <td className="px-4 py-4">
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center justify-center space-x-2">
                         <button
                           onClick={() => handleViewFile(file)}
                           className="p-1.5 rounded hover:bg-muted transition-colors"
@@ -702,15 +966,6 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                           title="Delete file"
                         >
                           <Trash2
-                            className="w-4 h-4"
-                            style={{ color: "var(--muted-foreground)" }}
-                          />
-                        </button>
-                        <button
-                          className="p-1.5 rounded hover:bg-muted transition-colors"
-                          title="More options"
-                        >
-                          <MoreVertical
                             className="w-4 h-4"
                             style={{ color: "var(--muted-foreground)" }}
                           />

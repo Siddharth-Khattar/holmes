@@ -15,7 +15,13 @@ from app.database import get_db
 from app.models import Case, CaseFile
 from app.models.file import FileCategory, FileStatus
 from app.schemas.common import ErrorResponse
-from app.schemas.file import DownloadUrlResponse, FileListResponse, FileResponse
+from app.schemas.file import (
+    BulkDeleteRequest,
+    BulkDeleteResponse,
+    DownloadUrlResponse,
+    FileListResponse,
+    FileResponse,
+)
 from app.services.file_service import (
     ALLOWED_MIME_TYPES,
     delete_from_gcs,
@@ -192,6 +198,7 @@ async def upload_file(
         description=description,
         latitude=latitude,
         longitude=longitude,
+        duplicate_of=duplicate_of,
     )
     db.add(case_file)
 
@@ -280,7 +287,10 @@ async def list_files(
     files = result.scalars().all()
 
     return FileListResponse(
-        files=[FileResponse.from_orm_with_name(f) for f in files],
+        files=[
+            FileResponse.from_orm_with_name(f, duplicate_of=f.duplicate_of)
+            for f in files
+        ],
         total=total,
         page=page,
         per_page=per_page,
@@ -336,6 +346,49 @@ async def get_download_url(
         download_url=download_url,
         expires_in=expiration_seconds,
     )
+
+
+@router.patch(
+    "/{file_id}/dismiss-duplicate",
+    response_model=FileResponse,
+    summary="Dismiss duplicate status for a file",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        404: {"model": ErrorResponse, "description": "File not found"},
+    },
+)
+async def dismiss_duplicate(
+    case_id: UUID,
+    file_id: UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> FileResponse:
+    """
+    Dismiss the duplicate status for a file.
+
+    This clears the duplicate_of field, indicating the user has acknowledged
+    the duplicate and chosen to keep both files.
+    """
+    # Validate file ownership
+    case_file = await get_user_file(db, case_id, file_id, current_user.id)
+    if not case_file:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found",
+        )
+
+    # Clear duplicate_of field
+    case_file.duplicate_of = None
+    await db.commit()
+    await db.refresh(case_file)
+
+    logger.info(
+        "Duplicate status dismissed: case=%s, file=%s",
+        case_id,
+        file_id,
+    )
+
+    return FileResponse.from_orm_with_name(case_file)
 
 
 @router.delete(
@@ -406,4 +459,99 @@ async def delete_file(
         str(case_id),
         "file-deleted",
         {"file_id": str(file_id)},
+    )
+
+
+@router.post(
+    "/bulk-delete",
+    response_model=BulkDeleteResponse,
+    summary="Delete multiple files from a case",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        404: {"model": ErrorResponse, "description": "Case not found"},
+    },
+)
+async def bulk_delete_files(
+    case_id: UUID,
+    request: BulkDeleteRequest,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> BulkDeleteResponse:
+    """
+    Delete multiple files from a case in a single operation.
+
+    This performs a hard delete, removing files from both GCS storage
+    and the database. Files that fail to delete (e.g., not found) are
+    reported in the response but don't cause the entire operation to fail.
+    """
+    # Validate case ownership
+    case = await get_user_case(db, case_id, current_user.id)
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found",
+        )
+
+    deleted_count = 0
+    failed_ids: list[UUID] = []
+
+    # Fetch all files in one query for efficiency
+    result = await db.execute(
+        select(CaseFile).where(
+            CaseFile.case_id == case_id,
+            CaseFile.id.in_(request.file_ids),
+        )
+    )
+    files_to_delete = {f.id: f for f in result.scalars().all()}
+
+    # Track which IDs weren't found
+    for file_id in request.file_ids:
+        if file_id not in files_to_delete:
+            failed_ids.append(file_id)
+
+    # Delete files
+    for file_id, case_file in files_to_delete.items():
+        try:
+            # Delete from GCS (log error but continue)
+            try:
+                await delete_from_gcs(case_file.storage_path)
+            except Exception as e:
+                logger.warning(
+                    "Failed to delete file from GCS during bulk delete: "
+                    "path=%s, error=%s",
+                    case_file.storage_path,
+                    e,
+                )
+
+            # Delete from database
+            await db.delete(case_file)
+            deleted_count += 1
+
+            # Publish SSE event
+            await publish_file_event(
+                str(case_id),
+                "file-deleted",
+                {"file_id": str(file_id)},
+            )
+
+        except Exception as e:
+            logger.error("Failed to delete file %s: %s", file_id, e)
+            failed_ids.append(file_id)
+
+    # Update case file count
+    if case and deleted_count > 0:
+        case.file_count = max(0, (case.file_count or 0) - deleted_count)
+
+    await db.commit()
+
+    logger.info(
+        "Bulk delete completed: case=%s, deleted=%d, failed=%d",
+        case_id,
+        deleted_count,
+        len(failed_ids),
+    )
+
+    return BulkDeleteResponse(
+        deleted_count=deleted_count,
+        failed_ids=failed_ids,
     )

@@ -4,11 +4,17 @@
 import hashlib
 import logging
 from datetime import timedelta
+from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import UploadFile
+from google.auth import default, impersonated_credentials
+from google.auth.credentials import Credentials
+from google.auth.transport import requests as google_auth_requests
+from google.cloud import storage
 
+from app.config import settings
 from app.models.file import FileCategory
 from app.storage import get_bucket
 
@@ -190,13 +196,74 @@ async def delete_from_gcs(storage_path: str) -> bool:
         raise
 
 
+def _get_signing_credentials() -> tuple[Credentials, str | None]:
+    """
+    Get credentials that can sign GCS URLs.
+
+    This handles different credential types:
+    1. Service account JSON key: Can sign directly
+    2. Workload identity (Cloud Run): Has service_account_email, use IAM signing
+    3. User credentials (local dev): Impersonate a service account for signing
+
+    Returns:
+        Tuple of (credentials, service_account_email)
+        - If credentials can sign directly, service_account_email is None
+        - If IAM signing needed, service_account_email is the account to sign as
+    """
+    credentials, _ = default()
+    auth_request = google_auth_requests.Request()
+    credentials.refresh(auth_request)
+
+    # Case 1: Credentials can sign directly (service account key)
+    sign_bytes_method = getattr(credentials, "sign_bytes", None)
+    if sign_bytes_method is not None and callable(sign_bytes_method):
+        logger.debug("Using direct signing with service account key")
+        return credentials, None
+
+    # Case 2: Workload identity (compute engine, Cloud Run)
+    # These credentials have service_account_email attribute
+    service_account_email = getattr(credentials, "service_account_email", None)
+    if service_account_email:
+        logger.debug(
+            "Using IAM signing with workload identity: %s", service_account_email
+        )
+        return credentials, service_account_email
+
+    # Case 3: User credentials - need to impersonate a service account
+    target_sa = settings.gcs_signing_service_account
+    if target_sa:
+        logger.debug("Impersonating service account for signing: %s", target_sa)
+        # Create impersonated credentials
+        impersonated = impersonated_credentials.Credentials(
+            source_credentials=credentials,
+            target_principal=target_sa,
+            target_scopes=["https://www.googleapis.com/auth/devstorage.read_only"],
+        )
+        impersonated.refresh(auth_request)
+        return impersonated, None  # Impersonated creds can sign directly
+
+    # Case 4: No way to sign - raise helpful error
+    raise ValueError(
+        "Cannot sign GCS URLs: credentials don't have signing capability. "
+        "Either:\n"
+        "  1. Set GOOGLE_APPLICATION_CREDENTIALS to a service account key file\n"
+        "  2. Run on Cloud Run with workload identity\n"
+        "  3. Set GCS_SIGNING_SERVICE_ACCOUNT to a service account email for impersonation"
+    )
+
+
 def generate_signed_url(
     storage_path: str,
     original_filename: str,
     expiration_seconds: int = 86400,
 ) -> str:
     """
-    Generate a V4 signed URL for downloading a file from GCS.
+    Generate a signed URL for downloading a file from GCS.
+
+    This function handles different credential types:
+    - Service account keys: Sign directly with the private key
+    - Workload identity: Use IAM Credentials API to sign
+    - User credentials: Impersonate a service account to sign
 
     Args:
         storage_path: The GCS path of the file
@@ -207,22 +274,36 @@ def generate_signed_url(
         Signed URL string
 
     Raises:
+        ValueError: If credentials can't sign and no impersonation configured
         Exception: On GCS signing errors
     """
-    bucket = get_bucket()
-    blob = bucket.blob(storage_path)
-
     # RFC 5987 encoding for Content-Disposition filename
     # This handles non-ASCII characters in filenames
     encoded_filename = quote(original_filename, safe="")
     content_disposition = f"attachment; filename*=UTF-8''{encoded_filename}"
 
-    url = blob.generate_signed_url(
-        version="v4",
-        expiration=timedelta(seconds=expiration_seconds),
-        method="GET",
-        response_disposition=content_disposition,
-    )
+    # Get credentials that can sign
+    credentials, service_account_email = _get_signing_credentials()
+
+    # Create a client with signing credentials
+    client = storage.Client(credentials=credentials)
+    bucket = client.bucket(get_bucket().name)
+    blob = bucket.blob(storage_path)
+
+    # Prepare signing arguments
+    sign_kwargs: dict[str, Any] = {
+        "version": "v4",
+        "expiration": timedelta(seconds=expiration_seconds),
+        "method": "GET",
+        "response_disposition": content_disposition,
+    }
+
+    # If we need IAM signing (workload identity), pass the credentials info
+    if service_account_email:
+        sign_kwargs["service_account_email"] = service_account_email
+        sign_kwargs["access_token"] = getattr(credentials, "token", None)
+
+    url = blob.generate_signed_url(**sign_kwargs)
 
     logger.info(
         "Generated signed URL: path=%s, expires_in=%ds",

@@ -84,6 +84,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sse/cases/{case_id}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * File Status Stream
+         * @description SSE endpoint for file status updates.
+         *
+         *     Streams events when:
+         *     - A file is uploaded (file-uploaded)
+         *     - A file's processing status changes (file-status)
+         *     - A file is deleted (file-deleted)
+         *     - An error occurs during processing (file-error)
+         *
+         *     Heartbeat events are sent every 15 seconds to keep the connection alive.
+         */
+        get: operations["file_status_stream_sse_cases__case_id__files_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/me": {
         parameters: {
             query?: never;
@@ -158,10 +186,180 @@ export interface paths {
         patch: operations["update_case_api_cases__case_id__patch"];
         trace?: never;
     };
+    "/api/cases/{case_id}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List files in a case
+         * @description List all files in a case with optional filtering.
+         *
+         *     Returns a paginated list of files ordered by creation date (newest first).
+         *     Files can be filtered by status or category.
+         */
+        get: operations["list_files_api_cases__case_id__files_get"];
+        put?: never;
+        /**
+         * Upload a file to a case
+         * @description Upload an evidence file to a case.
+         *
+         *     The file is streamed to GCS in chunks to handle large files (up to 500MB).
+         *     A SHA-256 content hash is computed during upload for duplicate detection.
+         *
+         *     Supported file types:
+         *     - Documents: PDF, DOCX, XLSX, PPTX
+         *     - Images: JPEG, PNG, GIF, WebP
+         *     - Video: MP4, MOV, WebM
+         *     - Audio: MP3, WAV, M4A
+         */
+        post: operations["upload_file_api_cases__case_id__files_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/files/{file_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a signed URL to download a file
+         * @description Generate a signed URL for downloading a file.
+         *
+         *     The URL is valid for 24 hours and includes the original filename
+         *     in the Content-Disposition header for proper download naming.
+         */
+        get: operations["get_download_url_api_cases__case_id__files__file_id__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/files/{file_id}/dismiss-duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Dismiss duplicate status for a file
+         * @description Dismiss the duplicate status for a file.
+         *
+         *     This clears the duplicate_of field, indicating the user has acknowledged
+         *     the duplicate and chosen to keep both files.
+         */
+        patch: operations["dismiss_duplicate_api_cases__case_id__files__file_id__dismiss_duplicate_patch"];
+        trace?: never;
+    };
+    "/api/cases/{case_id}/files/{file_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a file from a case
+         * @description Delete a file from a case.
+         *
+         *     This performs a hard delete, removing the file from both GCS storage
+         *     and the database. The operation cannot be undone.
+         */
+        delete: operations["delete_file_api_cases__case_id__files__file_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/files/bulk-delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delete multiple files from a case
+         * @description Delete multiple files from a case in a single operation.
+         *
+         *     This performs a hard delete, removing files from both GCS storage
+         *     and the database. Files that fail to delete (e.g., not found) are
+         *     reported in the response but don't cause the entire operation to fail.
+         */
+        post: operations["bulk_delete_files_api_cases__case_id__files_bulk_delete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Body_upload_file_api_cases__case_id__files_post */
+        Body_upload_file_api_cases__case_id__files_post: {
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
+            /** Description */
+            description?: string | null;
+            /** Latitude */
+            latitude?: number | null;
+            /** Longitude */
+            longitude?: number | null;
+        };
+        /**
+         * BulkDeleteRequest
+         * @description Request model for bulk file deletion.
+         */
+        BulkDeleteRequest: {
+            /**
+             * File Ids
+             * @description List of file IDs to delete (max 100)
+             */
+            file_ids: string[];
+        };
+        /**
+         * BulkDeleteResponse
+         * @description Response model for bulk file deletion.
+         */
+        BulkDeleteResponse: {
+            /**
+             * Deleted Count
+             * @description Number of files successfully deleted
+             */
+            deleted_count: number;
+            /**
+             * Failed Ids
+             * @description IDs of files that failed to delete
+             */
+            failed_ids?: string[];
+        };
         /**
          * CaseCreate
          * @description Request body for creating a new case.
@@ -284,6 +482,22 @@ export interface components {
             description?: string | null;
         };
         /**
+         * DownloadUrlResponse
+         * @description Response containing a signed download URL.
+         */
+        DownloadUrlResponse: {
+            /**
+             * Download Url
+             * @description Signed URL for downloading the file
+             */
+            download_url: string;
+            /**
+             * Expires In
+             * @description Seconds until the URL expires
+             */
+            expires_in: number;
+        };
+        /**
          * ErrorResponse
          * @description Standard error response format for API errors.
          * @example {
@@ -328,6 +542,148 @@ export interface components {
             suggested_action?: string | null;
         };
         /**
+         * FileCategory
+         * @description Category of file auto-detected from MIME type.
+         * @enum {string}
+         */
+        FileCategory: "DOCUMENT" | "IMAGE" | "VIDEO" | "AUDIO";
+        /**
+         * FileListResponse
+         * @description Response model for listing files with pagination.
+         */
+        FileListResponse: {
+            /**
+             * Files
+             * @description List of files
+             */
+            files: components["schemas"]["FileResponse"][];
+            /**
+             * Total
+             * @description Total number of files in the case
+             */
+            total: number;
+            /**
+             * Page
+             * @description Current page number
+             */
+            page: number;
+            /**
+             * Per Page
+             * @description Number of files per page
+             */
+            per_page: number;
+        };
+        /**
+         * FileResponse
+         * @description Response model for a single file.
+         */
+        FileResponse: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Unique identifier for the file
+             */
+            id: string;
+            /**
+             * Case Id
+             * Format: uuid
+             * @description ID of the case this file belongs to
+             */
+            case_id: string;
+            /**
+             * Name
+             * @description Display name (original filename)
+             */
+            name: string;
+            /**
+             * Original Filename
+             * @description Original filename as uploaded
+             */
+            original_filename: string;
+            /**
+             * Storage Path
+             * @description GCS storage path
+             */
+            storage_path: string;
+            /**
+             * Mime Type
+             * @description MIME type of the file
+             */
+            mime_type: string;
+            /**
+             * Size Bytes
+             * @description File size in bytes
+             */
+            size_bytes: number;
+            /** @description File category (DOCUMENT, IMAGE, etc.) */
+            category: components["schemas"]["FileCategory"];
+            /** @description Processing status */
+            status: components["schemas"]["FileStatus"];
+            /**
+             * Content Hash
+             * @description SHA-256 hash of file content
+             */
+            content_hash: string;
+            /**
+             * Description
+             * @description Optional file description
+             */
+            description?: string | null;
+            /**
+             * Error Message
+             * @description Error message if status is ERROR
+             */
+            error_message?: string | null;
+            /**
+             * Page Count
+             * @description Page count for documents
+             */
+            page_count?: number | null;
+            /**
+             * Duration Seconds
+             * @description Duration for audio/video files
+             */
+            duration_seconds?: number | null;
+            /**
+             * Latitude
+             * @description Latitude if geolocation provided
+             */
+            latitude?: number | null;
+            /**
+             * Longitude
+             * @description Longitude if geolocation provided
+             */
+            longitude?: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             * @description When the file was uploaded
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             * @description When the file was last updated
+             */
+            updated_at: string;
+            /**
+             * Duplicate Of
+             * @description ID of existing file if this is a duplicate (same content hash)
+             */
+            duplicate_of?: string | null;
+        };
+        /**
+         * FileStatus
+         * @description Processing status of a file in the ingestion pipeline.
+         * @enum {string}
+         */
+        FileStatus: "UPLOADING" | "UPLOADED" | "QUEUED" | "PROCESSING" | "ANALYZED" | "ERROR";
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
          * HealthResponse
          * @description Response model for health check endpoints.
          * @example {
@@ -366,6 +722,15 @@ export interface components {
              * @description Time when the health check was performed
              */
             timestamp: string;
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
         };
     };
     responses: never;
@@ -452,6 +817,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    file_status_stream_sse_cases__case_id__files_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -793,6 +1189,341 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_files_api_cases__case_id__files_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+                status?: components["schemas"]["FileStatus"] | null;
+                category?: components["schemas"]["FileCategory"] | null;
+            };
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileListResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Case not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_file_api_cases__case_id__files_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_file_api_cases__case_id__files_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileResponse"];
+                };
+            };
+            /** @description Invalid file type or size */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Case not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_download_url_api_cases__case_id__files__file_id__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadUrlResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description File not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Failed to generate download URL */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    dismiss_duplicate_api_cases__case_id__files__file_id__dismiss_duplicate_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description File not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_file_api_cases__case_id__files__file_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description File not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_delete_files_api_cases__case_id__files_bulk_delete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkDeleteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkDeleteResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Case not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

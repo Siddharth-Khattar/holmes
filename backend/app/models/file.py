@@ -55,6 +55,7 @@ class CaseFile(Base):
     __table_args__ = (
         Index("idx_case_files_case_id", "case_id"),
         Index("idx_case_files_duplicate_check", "case_id", "content_hash"),
+        Index("idx_case_files_duplicate_of", "duplicate_of"),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -118,6 +119,11 @@ class CaseFile(Base):
     )
     longitude: Mapped[float | None] = mapped_column(
         Float,
+        nullable=True,
+    )
+    duplicate_of: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("case_files.id", ondelete="SET NULL"),
         nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(

@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-02
 **Current Phase:** 3 of 12 (File Ingestion) — Backend focus
-**Current Plan:** Ready to continue Phase 3 (backend work)
+**Current Plan:** Plan 01 complete, ready for Plan 02 (GCS storage service)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -12,7 +12,7 @@
 | 1 | Foundation Infrastructure | ✅ COMPLETE | 2026-01-21 | 2026-01-22 | |
 | 1.1 | Frontend Design Foundation | ✅ COMPLETE | 2026-01-23 | 2026-01-24 | |
 | 2 | Authentication & Case Shell | ✅ COMPLETE | 2026-01-24 | 2026-01-25 | |
-| 3 | File Ingestion | 🟡 FRONTEND_DONE | - | - | Backend APIs needed |
+| 3 | File Ingestion | 🔵 IN_PROGRESS | 2026-02-02 | - | Plan 01 done: model + schemas |
 | 4 | Core Agent System | ⏳ NOT_STARTED | - | - | |
 | 5 | Agent Flow | 🟡 FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | ⏳ NOT_STARTED | - | - | |
@@ -30,17 +30,15 @@
 ## Current Context
 
 **What was just completed:**
-- **Frontend work by Yatharth** (2026-02-02)
-  - Knowledge Graph visualization (D3 force-directed)
-  - Timeline with zoom levels and filtering
-  - Chatbot UI (draggable, resizable, mock fallback)
-  - Command Center / Agent Flow visualization
-  - Evidence Library UI (file list, filters, conflict detection)
-  - All features use mock data; backend integration pending
-  - See `DEVELOPMENT_DOCS/YATHARTH_WORK_SUMMARY.md` for details
+- **Phase 3 Plan 01** (2026-02-02)
+  - CaseFile SQLAlchemy model with FileStatus and FileCategory enums
+  - Alembic migration for case_files table
+  - Pydantic schemas for file upload/download API
+  - Summary: `.planning/phases/03-file-ingestion/03-01-SUMMARY.md`
 
 **What's next:**
-- **Phase 3 Backend:** File upload APIs, GCS storage, file metadata
+- **Phase 3 Plan 02:** GCS storage service (upload, download, signed URLs)
+- **Phase 3 Plan 03:** File upload API endpoints
 - **Phase 4:** Core Agent System (ADK, Triage, Orchestrator)
 - Then: Backend integration for all frontend-done phases
 
@@ -213,6 +211,8 @@ All frontend features need these backend endpoints:
 | CI/CD migrations | Cloud Run job vs Cloud SQL Proxy | Cloud SQL Proxy | More reliable, no separate job infrastructure needed |
 | Secret management | Values in terraform vs References only | References only | Security best practice; values added manually via GCP Console |
 | Cross-service URLs | Build-time vs Post-deploy update | Post-deploy update | Solves chicken-and-egg URL problem with update-env job |
+| File content hash | MD5 vs SHA-256 | SHA-256 | 64-char hex string, industry standard, collision resistant |
+| File status lifecycle | 3-state vs 6-state | 6-state | UPLOADING/UPLOADED/QUEUED/PROCESSING/ANALYZED/ERROR for granular tracking |
 
 ---
 

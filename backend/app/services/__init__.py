@@ -7,6 +7,7 @@ from app.services.file_service import (
     MAX_FILE_SIZE,
     delete_from_gcs,
     detect_category,
+    generate_signed_url,
     upload_to_gcs,
 )
 
@@ -16,5 +17,6 @@ __all__ = [
     "MAX_FILE_SIZE",
     "delete_from_gcs",
     "detect_category",
+    "generate_signed_url",
     "upload_to_gcs",
 ]

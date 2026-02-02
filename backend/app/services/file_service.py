@@ -3,6 +3,8 @@
 
 import hashlib
 import logging
+from datetime import timedelta
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import UploadFile
@@ -186,3 +188,46 @@ async def delete_from_gcs(storage_path: str) -> bool:
     except Exception as e:
         logger.error("Failed to delete file from GCS: %s - %s", storage_path, e)
         raise
+
+
+def generate_signed_url(
+    storage_path: str,
+    original_filename: str,
+    expiration_seconds: int = 86400,
+) -> str:
+    """
+    Generate a V4 signed URL for downloading a file from GCS.
+
+    Args:
+        storage_path: The GCS path of the file
+        original_filename: The original filename for Content-Disposition header
+        expiration_seconds: URL validity period in seconds (default 24 hours)
+
+    Returns:
+        Signed URL string
+
+    Raises:
+        Exception: On GCS signing errors
+    """
+    bucket = get_bucket()
+    blob = bucket.blob(storage_path)
+
+    # RFC 5987 encoding for Content-Disposition filename
+    # This handles non-ASCII characters in filenames
+    encoded_filename = quote(original_filename, safe="")
+    content_disposition = f"attachment; filename*=UTF-8''{encoded_filename}"
+
+    url = blob.generate_signed_url(
+        version="v4",
+        expiration=timedelta(seconds=expiration_seconds),
+        method="GET",
+        response_disposition=content_disposition,
+    )
+
+    logger.info(
+        "Generated signed URL: path=%s, expires_in=%ds",
+        storage_path,
+        expiration_seconds,
+    )
+
+    return url

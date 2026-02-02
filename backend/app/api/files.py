@@ -5,8 +5,8 @@ import logging
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import CurrentUser
@@ -14,10 +14,12 @@ from app.database import get_db
 from app.models import Case, CaseFile
 from app.models.file import FileCategory, FileStatus
 from app.schemas.common import ErrorResponse
-from app.schemas.file import FileResponse
+from app.schemas.file import DownloadUrlResponse, FileListResponse, FileResponse
 from app.services.file_service import (
     ALLOWED_MIME_TYPES,
+    delete_from_gcs,
     detect_category,
+    generate_signed_url,
     upload_to_gcs,
 )
 
@@ -45,6 +47,37 @@ async def get_user_case(
     result = await db.execute(
         select(Case).where(
             Case.id == case_id,
+            Case.user_id == user_id,
+            Case.deleted_at.is_(None),
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_user_file(
+    db: AsyncSession,
+    case_id: UUID,
+    file_id: UUID,
+    user_id: str,
+) -> CaseFile | None:
+    """
+    Fetch a file ensuring case ownership and not deleted.
+
+    Args:
+        db: Database session
+        case_id: UUID of the case
+        file_id: UUID of the file
+        user_id: ID of the current user
+
+    Returns:
+        CaseFile if found and case is owned by user, None otherwise
+    """
+    result = await db.execute(
+        select(CaseFile)
+        .join(Case, CaseFile.case_id == Case.id)
+        .where(
+            CaseFile.id == file_id,
+            CaseFile.case_id == case_id,
             Case.user_id == user_id,
             Case.deleted_at.is_(None),
         )
@@ -176,3 +209,178 @@ async def upload_file(
     )
 
     return FileResponse.from_orm_with_name(case_file, duplicate_of=duplicate_of)
+
+
+@router.get(
+    "",
+    response_model=FileListResponse,
+    summary="List files in a case",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        404: {"model": ErrorResponse, "description": "Case not found"},
+    },
+)
+async def list_files(
+    case_id: UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    per_page: Annotated[int, Query(ge=1, le=100)] = 20,
+    file_status: Annotated[FileStatus | None, Query(alias="status")] = None,
+    category: Annotated[FileCategory | None, Query()] = None,
+) -> FileListResponse:
+    """
+    List all files in a case with optional filtering.
+
+    Returns a paginated list of files ordered by creation date (newest first).
+    Files can be filtered by status or category.
+    """
+    # Validate case ownership
+    case = await get_user_case(db, case_id, current_user.id)
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found",
+        )
+
+    # Build base query
+    base_query = select(CaseFile).where(CaseFile.case_id == case_id)
+
+    # Apply filters
+    if file_status is not None:
+        base_query = base_query.where(CaseFile.status == file_status)
+    if category is not None:
+        base_query = base_query.where(CaseFile.category == category)
+
+    # Get total count
+    count_query = select(func.count()).select_from(base_query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Apply pagination and ordering
+    offset = (page - 1) * per_page
+    paginated_query = (
+        base_query.order_by(CaseFile.created_at.desc()).offset(offset).limit(per_page)
+    )
+
+    result = await db.execute(paginated_query)
+    files = result.scalars().all()
+
+    return FileListResponse(
+        files=[FileResponse.from_orm_with_name(f) for f in files],
+        total=total,
+        page=page,
+        per_page=per_page,
+    )
+
+
+@router.get(
+    "/{file_id}/download",
+    response_model=DownloadUrlResponse,
+    summary="Get a signed URL to download a file",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        404: {"model": ErrorResponse, "description": "File not found"},
+        500: {"model": ErrorResponse, "description": "Failed to generate download URL"},
+    },
+)
+async def get_download_url(
+    case_id: UUID,
+    file_id: UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DownloadUrlResponse:
+    """
+    Generate a signed URL for downloading a file.
+
+    The URL is valid for 24 hours and includes the original filename
+    in the Content-Disposition header for proper download naming.
+    """
+    # Validate file ownership
+    case_file = await get_user_file(db, case_id, file_id, current_user.id)
+    if not case_file:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found",
+        )
+
+    # Generate signed URL with 24h expiration
+    expiration_seconds = 86400  # 24 hours
+    try:
+        download_url = generate_signed_url(
+            storage_path=case_file.storage_path,
+            original_filename=case_file.original_filename,
+            expiration_seconds=expiration_seconds,
+        )
+    except Exception as e:
+        logger.error("Failed to generate signed URL: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate download URL",
+        ) from None
+
+    return DownloadUrlResponse(
+        download_url=download_url,
+        expires_in=expiration_seconds,
+    )
+
+
+@router.delete(
+    "/{file_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a file from a case",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        404: {"model": ErrorResponse, "description": "File not found"},
+    },
+)
+async def delete_file(
+    case_id: UUID,
+    file_id: UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """
+    Delete a file from a case.
+
+    This performs a hard delete, removing the file from both GCS storage
+    and the database. The operation cannot be undone.
+    """
+    # Validate file ownership
+    case_file = await get_user_file(db, case_id, file_id, current_user.id)
+    if not case_file:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found",
+        )
+
+    # Get the case to update file count
+    case = await get_user_case(db, case_id, current_user.id)
+
+    # Delete from GCS (log error but proceed with DB delete if GCS fails)
+    try:
+        await delete_from_gcs(case_file.storage_path)
+    except Exception as e:
+        # Log but don't fail - orphan cleanup can happen later
+        logger.warning(
+            "Failed to delete file from GCS (will proceed with DB delete): "
+            "path=%s, error=%s",
+            case_file.storage_path,
+            e,
+        )
+
+    # Delete from database
+    await db.delete(case_file)
+
+    # Decrement case file count
+    if case and case.file_count and case.file_count > 0:
+        case.file_count -= 1
+
+    await db.commit()
+
+    logger.info(
+        "File deleted: case=%s, file=%s, name=%s",
+        case_id,
+        file_id,
+        case_file.original_filename,
+    )

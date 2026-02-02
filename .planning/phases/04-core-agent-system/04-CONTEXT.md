@@ -16,9 +16,13 @@ Establish Google ADK infrastructure and implement the first two agents: Triage A
 ### Triage Behavior
 - **Trigger:** Batch after uploads — user uploads files, then explicitly starts analysis for all files at once
 - **Domain scoring:** Confidence percentages (0-100) per domain, enabling weighted routing
-- **Entity extraction:** Basic entities only — names, organizations, dates, locations (domain agents do full extraction)
-- **Summaries:** Both short (1-2 sentences for list view) and detailed (paragraph, available on expand)
-- **Complexity assessment:** Simple tier (Low/Medium/High) per file for resource and specialist agent allocation
+- **Entity extraction:** Intermediate but quick entities extraction — names, organizations, dates, locations, legal terms (whatever can be used by the orchestrator to do a smarter routing and subagent assignment)
+- **Summaries:** Both short (1-2 sentences for list view) and detailed (paragraph, available on expand). Orchestrator gets detailed.
+- **Complexity assessment:** Hybrid approach combining:
+  - Simple tier (Low/Medium/High) per file
+  - Domain-weighted complexity (e.g., High for financial, Low for legal on same file)
+  - Exact token count from ADK metadata (⚠️ RESEARCH NEEDED: ADK provides token info via tool/metadata on input — investigate exact mechanism)
+  - Enables Orchestrator to make token-budget-aware batching and routing decisions
 - **Contradiction/gap detection:** Leave to Synthesis Agent — Triage stays simple
 - **File groupings:** Yes, suggest groupings (e.g., "these 3 files relate to same transaction") for Orchestrator batching
 - **Corrupted files:** Partial extraction — extract whatever possible, mark confidence as low

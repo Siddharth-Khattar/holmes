@@ -1,52 +1,52 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-02
-**Current Phase:** 3 of 12 (File Ingestion) — Backend focus
-**Current Plan:** Plan 02 complete, ready for Plan 03 (list, download, delete endpoints)
+**Current Phase:** 3 of 12 (File Ingestion) — COMPLETE
+**Current Plan:** Phase 3 complete, ready for Phase 4
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
 
 | Phase | Name | Status | Started | Completed | Notes |
 |-------|------|--------|---------|-----------|-------|
-| 1 | Foundation Infrastructure | ✅ COMPLETE | 2026-01-21 | 2026-01-22 | |
-| 1.1 | Frontend Design Foundation | ✅ COMPLETE | 2026-01-23 | 2026-01-24 | |
-| 2 | Authentication & Case Shell | ✅ COMPLETE | 2026-01-24 | 2026-01-25 | |
-| 3 | File Ingestion | 🔵 IN_PROGRESS | 2026-02-02 | - | Plan 02 done: upload endpoint |
-| 4 | Core Agent System | ⏳ NOT_STARTED | - | - | |
-| 5 | Agent Flow | 🟡 FRONTEND_DONE | - | - | Backend SSE needed |
-| 6 | Domain Agents | ⏳ NOT_STARTED | - | - | |
-| 7 | Synthesis & Knowledge Graph | 🟡 FRONTEND_DONE | - | - | Backend agents + APIs needed |
-| 8 | Intelligence Layer & Geospatial | ⏳ NOT_STARTED | - | - | |
-| 9 | Chat Interface & Research | 🟡 FRONTEND_DONE | - | - | Backend API needed |
-| 10 | Agent Flow & Source Panel | 🟡 FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
-| 11 | Corrections & Refinement | ⏳ NOT_STARTED | - | - | |
-| 12 | Demo Preparation | ⏳ NOT_STARTED | - | - | |
+| 1 | Foundation Infrastructure | COMPLETE | 2026-01-21 | 2026-01-22 | |
+| 1.1 | Frontend Design Foundation | COMPLETE | 2026-01-23 | 2026-01-24 | |
+| 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 | |
+| 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | All 3 plans done |
+| 4 | Core Agent System | NOT_STARTED | - | - | |
+| 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
+| 6 | Domain Agents | NOT_STARTED | - | - | |
+| 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
+| 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
+| 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
+| 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
+| 11 | Corrections & Refinement | NOT_STARTED | - | - | |
+| 12 | Demo Preparation | NOT_STARTED | - | - | |
 
-**Status Legend:** ✅ COMPLETE | 🟡 FRONTEND_DONE (backend pending and its connection to the frontend must also be made) | ⏳ NOT_STARTED
+**Status Legend:** COMPLETE | FRONTEND_DONE (backend pending and its connection to the frontend must also be made) | NOT_STARTED
 
 ---
 
 ## Current Context
 
 **What was just completed:**
-- **Phase 3 Plan 02** (2026-02-02)
-  - File upload endpoint: POST /api/cases/{case_id}/files
-  - GCS upload service with chunked streaming (8MB chunks)
-  - SHA-256 content hash for duplicate detection
-  - MIME type whitelist validation
-  - Summary: `.planning/phases/03-file-ingestion/03-02-SUMMARY.md`
+- **Phase 3 Plan 03** (2026-02-02)
+  - File list endpoint: GET /api/cases/{case_id}/files
+  - File download via signed URL: GET /api/cases/{case_id}/files/{file_id}/download
+  - File delete endpoint: DELETE /api/cases/{case_id}/files/{file_id}
+  - SSE endpoint: /sse/cases/{case_id}/files for real-time status
+  - Frontend CaseLibrary integrated with real APIs
+  - Summary: `.planning/phases/03-file-ingestion/03-03-SUMMARY.md`
 
 **What's next:**
-- **Phase 3 Plan 03:** File list, download (signed URLs), and delete endpoints
 - **Phase 4:** Core Agent System (ADK, Triage, Orchestrator)
 - Then: Backend integration for all frontend-done phases
 
 ---
 
-## Implementation Mapping: Requirements → Files
+## Implementation Mapping: Requirements -> Files
 
-### REQ-VIS-001: Agent Flow — 🟡 FRONTEND_DONE
+### REQ-VIS-001: Agent Flow — FRONTEND_DONE
 
 | Component | File Path |
 |-----------|-----------|
@@ -62,7 +62,7 @@
 
 ---
 
-### REQ-VIS-003: Knowledge Graph — 🟡 FRONTEND_DONE
+### REQ-VIS-003: Knowledge Graph — FRONTEND_DONE
 
 | Component | File Path |
 |-----------|-----------|
@@ -80,7 +80,7 @@
 
 ---
 
-### REQ-VIS-004: Timeline — 🟡 FRONTEND_DONE
+### REQ-VIS-004: Timeline — FRONTEND_DONE
 
 | Component | File Path |
 |-----------|-----------|
@@ -106,7 +106,7 @@
 
 ---
 
-### REQ-CHAT-001: Chat Interface — 🟡 FRONTEND_DONE
+### REQ-CHAT-001: Chat Interface — FRONTEND_DONE
 
 | Component | File Path |
 |-----------|-----------|
@@ -118,27 +118,24 @@
 
 ---
 
-### REQ-CASE-005: Case Library / Evidence Library — 🟡 FRONTEND_DONE
+### REQ-CASE-005: Case Library / Evidence Library — COMPLETE
 
 | Component | File Path |
 |-----------|-----------|
 | Library UI | `frontend/src/components/library/CaseLibrary.tsx` |
+| API client | `frontend/src/lib/api/files.ts` |
+| Upload hook | `frontend/src/hooks/useFileUpload.ts` |
 
-**Critical TODOs in code:**
-- `handleDrop` (~line 247): File upload handler stubbed
-- `handleViewFile` (~line 254): View handler stubbed
-- `handleDownloadFile` (~line 259): Download handler stubbed
-- `handleDeleteFile` (~line 264): Delete handler stubbed
-
-**Backend APIs Needed:**
-- `GET /api/cases/:caseId/files`
-- `POST /api/cases/:caseId/files` (multipart)
-- `DELETE /api/cases/:caseId/files/:fileId`
-- `GET /api/cases/:caseId/files/:fileId/download`
+**Backend APIs:** All complete
+- `GET /api/cases/:caseId/files` - List files
+- `POST /api/cases/:caseId/files` - Upload file
+- `DELETE /api/cases/:caseId/files/:fileId` - Delete file
+- `GET /api/cases/:caseId/files/:fileId/download` - Download via signed URL
+- `SSE /sse/cases/:caseId/files` - Real-time status updates
 
 ---
 
-### Navigation / Layout — ✅ COMPLETE
+### Navigation / Layout — COMPLETE
 
 | Component | File Path |
 |-----------|-----------|
@@ -151,17 +148,18 @@
 
 All frontend features need these backend endpoints:
 
-| Feature | Endpoint | Method | Priority |
-|---------|----------|--------|----------|
-| File Ingestion | `/api/cases/:caseId/files` | GET, ~~POST~~, DELETE | HIGH (POST done) |
-| File Download | `/api/cases/:caseId/files/:fileId/download` | GET | HIGH |
-| Chat | `/api/chat` | POST | HIGH |
-| Knowledge Graph | `/api/cases/:caseId/graph` | GET | HIGH |
-| KG Entities | `/api/cases/:caseId/entities` | POST, PATCH, DELETE | MEDIUM |
-| KG Relationships | `/api/cases/:caseId/relationships` | POST | MEDIUM |
-| Timeline Events | `/api/cases/:caseId/timeline/events` | GET, POST, PATCH, DELETE | MEDIUM |
-| Timeline SSE | `/api/cases/:caseId/timeline/stream` | SSE | MEDIUM |
-| Command Center SSE | `/api/cases/:caseId/command-center/stream` | SSE | HIGH |
+| Feature | Endpoint | Method | Priority | Status |
+|---------|----------|--------|----------|--------|
+| File Ingestion | `/api/cases/:caseId/files` | GET, POST, DELETE | HIGH | DONE |
+| File Download | `/api/cases/:caseId/files/:fileId/download` | GET | HIGH | DONE |
+| File SSE | `/sse/cases/:caseId/files` | SSE | HIGH | DONE |
+| Chat | `/api/chat` | POST | HIGH | TODO |
+| Knowledge Graph | `/api/cases/:caseId/graph` | GET | HIGH | TODO |
+| KG Entities | `/api/cases/:caseId/entities` | POST, PATCH, DELETE | MEDIUM | TODO |
+| KG Relationships | `/api/cases/:caseId/relationships` | POST | MEDIUM | TODO |
+| Timeline Events | `/api/cases/:caseId/timeline/events` | GET, POST, PATCH, DELETE | MEDIUM | TODO |
+| Timeline SSE | `/api/cases/:caseId/timeline/stream` | SSE | MEDIUM | TODO |
+| Command Center SSE | `/api/cases/:caseId/command-center/stream` | SSE | HIGH | TODO |
 
 ---
 
@@ -215,6 +213,8 @@ All frontend features need these backend endpoints:
 | File status lifecycle | 3-state vs 6-state | 6-state | UPLOADING/UPLOADED/QUEUED/PROCESSING/ANALYZED/ERROR for granular tracking |
 | GCS upload chunk size | 4MB vs 8MB vs 16MB | 8MB | Balance between memory usage and network round trips |
 | Services layer | Inline in routes vs Separate services/ | Separate services/ | Reusable business logic, cleaner route handlers |
+| Signed URL expiration | 1h vs 24h vs 7d | 24h | Balance between security and usability |
+| SSE pubsub | Redis vs In-memory | In-memory | Sufficient for single-instance hackathon deployment |
 
 ---
 

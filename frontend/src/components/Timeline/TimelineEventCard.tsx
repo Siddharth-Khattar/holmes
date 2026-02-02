@@ -34,9 +34,9 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
         }
       }}
       className={cn(
-        "group relative p-4 rounded-lg border-2 transition-all duration-200 bg-(--card)",
+        "group relative p-4 rounded-lg border-2 transition-all duration-200",
         "hover:shadow-lg hover:-translate-y-0.5 cursor-pointer",
-        "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-(--ring)",
+        "focus:outline-none focus:ring-2 focus:ring-offset-2",
         layerConfig.borderColor,
       )}
       style={{
@@ -91,19 +91,30 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
       </div>
 
       {/* Title */}
-      <h4 className="text-base font-semibold text-(--foreground) mb-1 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
+      <h4
+        className="text-base font-semibold mb-1 transition-colors"
+        style={{
+          color: "var(--color-smoke, #E5E5E5)",
+        }}
+      >
         {event.title}
       </h4>
 
       {/* Description */}
       {event.description && (
-        <p className="text-sm text-(--muted-foreground) line-clamp-2 mb-3">
+        <p
+          className="text-sm line-clamp-2 mb-3"
+          style={{ color: "var(--color-stone, #8A8A82)" }}
+        >
           {event.description}
         </p>
       )}
 
       {/* Footer metadata */}
-      <div className="flex flex-wrap items-center gap-3 text-xs text-(--muted-foreground)">
+      <div
+        className="flex flex-wrap items-center gap-3 text-xs"
+        style={{ color: "var(--color-stone, #8A8A82)" }}
+      >
         <time dateTime={event.date}>
           {format(new Date(event.date), "h:mm a")}
         </time>

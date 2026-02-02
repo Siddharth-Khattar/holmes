@@ -27,15 +27,25 @@ export function TimelineHeader({
 
   return (
     <div
-      className={cn("bg-(--background) border-b border-(--border)", className)}
+      className={cn("border-b", className)}
+      style={{
+        backgroundColor: "var(--color-charcoal, #1A1A1A)",
+        borderColor: "rgba(138, 138, 130, 0.15)",
+      }}
     >
       <div className="max-w-7xl mx-auto py-12 px-4 md:px-8 lg:px-10">
         {/* Title and description */}
         <div className="mb-8">
-          <h1 className="text-3xl md:text-5xl font-sans font-bold text-(--foreground) mb-3 tracking-tight">
+          <h1
+            className="text-3xl md:text-5xl font-sans font-bold mb-3 tracking-tight"
+            style={{ color: "var(--color-smoke, #E5E5E5)" }}
+          >
             Case Timeline
           </h1>
-          <p className="text-(--muted-foreground) text-base md:text-lg max-w-2xl tracking-body">
+          <p
+            className="text-base md:text-lg max-w-2xl tracking-body"
+            style={{ color: "var(--color-stone, #8A8A82)" }}
+          >
             Chronological visualization of case events extracted from documents,
             organized by evidence, legal proceedings, and strategic actions.
           </p>
@@ -44,31 +54,55 @@ export function TimelineHeader({
         {/* Statistics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total events card */}
-          <div className="bg-(--card) rounded-lg p-4 border border-(--border) shadow-sm transition-shadow hover:shadow-md">
+          <div
+            className="rounded-lg p-4 border shadow-sm transition-shadow hover:shadow-md"
+            style={{
+              backgroundColor: "rgba(17, 17, 17, 0.6)",
+              borderColor: "rgba(138, 138, 130, 0.3)",
+            }}
+          >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-(--muted-foreground)">
+              <span
+                className="text-sm font-medium"
+                style={{ color: "#8A8A82" }}
+              >
                 Total Events
               </span>
               <TrendingUp className="w-4 h-4" style={{ color: "#B89968" }} />
             </div>
-            <div className="text-3xl font-bold text-(--foreground)">
+            <div
+              className="text-3xl font-bold"
+              style={{ color: "var(--color-smoke, #E5E5E5)" }}
+            >
               {totalEvents}
             </div>
           </div>
 
           {/* Date range card */}
           {dateRange && (
-            <div className="bg-(--card) rounded-lg p-4 border border-(--border) shadow-sm transition-shadow hover:shadow-md">
+            <div
+              className="rounded-lg p-4 border shadow-sm transition-shadow hover:shadow-md"
+              style={{
+                backgroundColor: "rgba(17, 17, 17, 0.6)",
+                borderColor: "rgba(138, 138, 130, 0.3)",
+              }}
+            >
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-(--muted-foreground)">
+                <span
+                  className="text-sm font-medium"
+                  style={{ color: "#8A8A82" }}
+                >
                   Date Range
                 </span>
                 <Calendar className="w-4 h-4" style={{ color: "#8B7355" }} />
               </div>
-              <div className="text-sm font-semibold text-(--foreground)">
+              <div
+                className="text-sm font-semibold"
+                style={{ color: "var(--color-smoke, #E5E5E5)" }}
+              >
                 {format(new Date(dateRange.earliest), "MMM d, yyyy")}
               </div>
-              <div className="text-xs text-(--muted-foreground)">
+              <div className="text-xs" style={{ color: "#8A8A82" }}>
                 to {format(new Date(dateRange.latest), "MMM d, yyyy")}
               </div>
             </div>

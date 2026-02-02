@@ -100,7 +100,7 @@ export function Navigation() {
             e.preventDefault();
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
-          className="flex items-center justify-self-start transition-colors hover:opacity-80"
+          className="flex items-center justify-self-start cursor-pointer transition-colors hover:opacity-80"
         >
           <Image
             src="/logo-2x.png"
@@ -134,7 +134,7 @@ export function Navigation() {
               key={link.href}
               href={link.href}
               onClick={(e) => handleNavClick(e, link.href)}
-              className="text-base font-medium text-smoke/80 transition-colors hover:text-accent"
+              className="cursor-pointer text-base font-medium text-smoke/80 transition-colors hover:text-accent"
             >
               {link.label}
             </a>
@@ -211,7 +211,7 @@ export function Navigation() {
                 key={link.href}
                 href={link.href}
                 onClick={(e) => handleNavClick(e, link.href)}
-                className="block rounded-lg px-3 py-2 text-base font-medium text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke"
+                className="block cursor-pointer rounded-lg px-3 py-2 text-base font-medium text-smoke/80 transition-colors hover:bg-glass-light hover:text-smoke"
               >
                 {link.label}
               </a>

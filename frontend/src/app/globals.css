@@ -574,6 +574,14 @@
    BASE STYLES
    ============================================================ */
 
+/* Tailwind v4: Restore cursor-pointer for interactive elements */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 body {
   background-color: var(--background);
   color: var(--foreground);

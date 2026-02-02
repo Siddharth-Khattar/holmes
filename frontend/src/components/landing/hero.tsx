@@ -23,7 +23,7 @@ const VideoPlayerBase = forwardRef<HTMLVideoElement, VideoPlayerProps>(
     // Don't render if src is empty
     if (!src) {
       return (
-        <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-stone/5 to-stone/10 flex items-center justify-center">
+        <div className="absolute inset-0 h-full w-full bg-linear-to-br from-stone/5 to-stone/10 flex items-center justify-center">
           <p className="text-smoke/50 text-sm">Video placeholder</p>
         </div>
       );

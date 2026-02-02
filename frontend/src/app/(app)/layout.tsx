@@ -1,5 +1,5 @@
 // ABOUTME: App layout for authenticated users
-// ABOUTME: Validates session server-side and renders sidebar shell
+// ABOUTME: Validates session server-side and renders topbar shell
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 import { Toaster } from "sonner";
 
 import { auth } from "@/lib/auth";
-import { Sidebar } from "@/components/app/sidebar";
+import { Topbar } from "@/components/app/topbar";
 import { AuthListener } from "@/components/app/auth-listener";
 import { ClearInvalidSession } from "@/app/clear-invalid-session";
 
@@ -56,10 +56,10 @@ export default async function AppLayout({
 
   return (
     <div
-      className="theme-scope flex min-h-screen"
+      className="theme-scope flex flex-col min-h-screen"
       style={{ backgroundColor: "var(--background)" }}
     >
-      <Sidebar user={user} />
+      <Topbar user={user} />
       <main
         className="flex-1 bg-canvas text-foreground"
         style={{

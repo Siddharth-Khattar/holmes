@@ -20,6 +20,7 @@ import {
   forceManyBody,
   forceCenter,
   forceCollide,
+  forceRadial,
   type Simulation,
   type SimulationLinkDatum,
 } from "d3-force";
@@ -102,6 +103,11 @@ export function KnowledgeGraph({
   relationshipCount,
   onAddRelationship,
 }: KnowledgeGraphProps) {
+  // Helper function to get node ID from source/target
+  const getNodeId = (nodeOrId: string | GraphNode): string => {
+    return typeof nodeOrId === "string" ? nodeOrId : nodeOrId.id;
+  };
+
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const simulationRef = useRef<Simulation<ForceNode, ForceLink> | null>(null);
@@ -166,22 +172,30 @@ export function KnowledgeGraph({
           "link",
           forceLink<ForceNode, ForceLink>([])
             .id((d) => d.id)
-            .distance(120)
+            .distance(180) // Increased base distance
             .strength(0.5),
         )
         .force(
           "charge",
-          forceManyBody<ForceNode>().strength(-300).distanceMax(400),
+          forceManyBody<ForceNode>().strength(-500).distanceMax(600),
         )
         .force(
           "center",
           forceCenter(dimensions.width / 2, dimensions.height / 2).strength(
-            0.1,
+            0.05,
           ),
         )
         .force(
           "collide",
-          forceCollide<ForceNode>().radius(50).strength(0.9).iterations(3),
+          forceCollide<ForceNode>().radius(60).strength(0.9).iterations(3),
+        )
+        .force(
+          "radial",
+          forceRadial<ForceNode>(
+            Math.min(dimensions.width, dimensions.height) * 0.35,
+            dimensions.width / 2,
+            dimensions.height / 2
+          ).strength(0.05)
         )
         .alphaMin(0.001)
         .alphaDecay(0.0228)
@@ -223,6 +237,21 @@ export function KnowledgeGraph({
     [connections, localConnections],
   );
   const totalRelationshipCount = relationshipCount + localConnections.length;
+
+  // Build connection count map for dynamic force calculations
+  const connectionCountMap = useMemo(() => {
+    const map = new Map<string, number>();
+    nodes.forEach((node) => map.set(node.id, 0));
+    
+    allConnections.forEach((conn) => {
+      const sourceId = getNodeId(conn.source);
+      const targetId = getNodeId(conn.target);
+      map.set(sourceId, (map.get(sourceId) || 0) + 1);
+      map.set(targetId, (map.get(targetId) || 0) + 1);
+    });
+    
+    return map;
+  }, [nodes, allConnections]);
 
   // Update simulation when data changes
   useEffect(() => {
@@ -268,11 +297,89 @@ export function KnowledgeGraph({
     const sim = simulationRef.current;
     sim.nodes(forceNodes);
 
+    // Update link force with dynamic distance and strength
     const linkForce = sim.force("link") as
       | ReturnType<typeof forceLink<ForceNode, ForceLink>>
       | undefined;
     if (linkForce) {
-      linkForce.links(forceLinks);
+      linkForce
+        .links(forceLinks)
+        .distance((d) => {
+          // Dynamic link distance based on node connectivity
+          const sourceNode = d.source as ForceNode;
+          const targetNode = d.target as ForceNode;
+          
+          const sourceConnections = connectionCountMap.get(sourceNode.id) || 0;
+          const targetConnections = connectionCountMap.get(targetNode.id) || 0;
+          
+          // Higher connectivity = shorter links (pulls toward center)
+          const avgConnections = (sourceConnections + targetConnections) / 2;
+          const baseDistance = 180;
+          const scaleFactor = Math.max(0.6, 1 - (avgConnections * 0.08));
+          
+          return baseDistance * scaleFactor;
+        })
+        .strength((d) => {
+          // Stronger links for high-connectivity nodes
+          const sourceNode = d.source as ForceNode;
+          const targetNode = d.target as ForceNode;
+          
+          const sourceConnections = connectionCountMap.get(sourceNode.id) || 0;
+          const targetConnections = connectionCountMap.get(targetNode.id) || 0;
+          
+          const avgConnections = (sourceConnections + targetConnections) / 2;
+          return 0.3 + (avgConnections * 0.05);
+        });
+    }
+
+    // Update charge force with dynamic strength
+    const chargeForce = sim.force("charge") as
+      | ReturnType<typeof forceManyBody<ForceNode>>
+      | undefined;
+    if (chargeForce) {
+      chargeForce.strength((d) => {
+        const connections = connectionCountMap.get(d.id) || 0;
+        
+        // High-connectivity nodes have less repulsion (stay central)
+        const baseStrength = -500;
+        const scaleFactor = Math.max(0.5, 1 - (connections * 0.1));
+        
+        return baseStrength * scaleFactor;
+      });
+    }
+
+    // Update collision force with dynamic radius
+    const collideForce = sim.force("collide") as
+      | ReturnType<typeof forceCollide<ForceNode>>
+      | undefined;
+    if (collideForce) {
+      collideForce.radius((d) => {
+        const connections = connectionCountMap.get(d.id) || 0;
+        const baseRadius = 60;
+        return baseRadius + (connections * 5);
+      });
+    }
+
+    // Update radial force with dynamic radius
+    const radialForce = sim.force("radial") as
+      | ReturnType<typeof forceRadial<ForceNode>>
+      | undefined;
+    if (radialForce) {
+      radialForce
+        .radius((d) => {
+          const connections = connectionCountMap.get(d.id) || 0;
+          
+          // Low connectivity = pushed further from center
+          const minRadius = 50;
+          const maxRadius = Math.min(dimensions.width, dimensions.height) * 0.4;
+          return connections > 0 ? minRadius + (maxRadius - minRadius) / connections : maxRadius;
+        })
+        .strength((d) => {
+          const connections = connectionCountMap.get(d.id) || 0;
+          return connections === 0 ? 0.15 : 0.05;
+        })
+        .x(dimensions.width / 2)
+        .y(dimensions.height / 2);
     }
 
     // Update center force to current dimensions
@@ -291,7 +398,7 @@ export function KnowledgeGraph({
         setIsSimulationRunning(true);
       });
     }
-  }, [nodes, allConnections, dimensions.width, dimensions.height]);
+  }, [nodes, allConnections, dimensions.width, dimensions.height, connectionCountMap]);
 
   // Setup zoom and pan behavior
   useEffect(() => {
@@ -795,11 +902,6 @@ export function KnowledgeGraph({
     }
 
     return null;
-  };
-
-  // Helper function to get node ID from source/target
-  const getNodeId = (nodeOrId: string | GraphNode): string => {
-    return typeof nodeOrId === "string" ? nodeOrId : nodeOrId.id;
   };
 
   // Render connection

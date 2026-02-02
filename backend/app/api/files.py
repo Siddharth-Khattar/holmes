@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import CurrentUser
+from app.api.sse import publish_file_event
 from app.database import get_db
 from app.models import Case, CaseFile
 from app.models.file import FileCategory, FileStatus
@@ -208,6 +209,18 @@ async def upload_file(
         size_bytes,
     )
 
+    # Publish SSE event for real-time updates
+    await publish_file_event(
+        str(case_id),
+        "file-uploaded",
+        {
+            "file_id": str(case_file.id),
+            "filename": case_file.original_filename,
+            "status": case_file.status.value,
+            "duplicate_of": str(duplicate_of) if duplicate_of else None,
+        },
+    )
+
     return FileResponse.from_orm_with_name(case_file, duplicate_of=duplicate_of)
 
 
@@ -369,6 +382,9 @@ async def delete_file(
             e,
         )
 
+    # Store filename before delete for logging and SSE
+    original_filename = case_file.original_filename
+
     # Delete from database
     await db.delete(case_file)
 
@@ -382,5 +398,12 @@ async def delete_file(
         "File deleted: case=%s, file=%s, name=%s",
         case_id,
         file_id,
-        case_file.original_filename,
+        original_filename,
+    )
+
+    # Publish SSE event for real-time updates
+    await publish_file_event(
+        str(case_id),
+        "file-deleted",
+        {"file_id": str(file_id)},
     )

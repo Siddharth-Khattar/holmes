@@ -7,8 +7,12 @@ import type { NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Get the session cookie
-  const sessionCookie = request.cookies.get("better-auth.session_token");
+  // Get the session cookie - check both secure and non-secure names.
+  // When useSecureCookies is true (production HTTPS), Better Auth prefixes
+  // cookie names with "__Secure-". We check both to handle all environments.
+  const sessionCookie =
+    request.cookies.get("__Secure-better-auth.session_token") ||
+    request.cookies.get("better-auth.session_token");
 
   console.log("🔒 [MIDDLEWARE] Request received", {
     pathname,

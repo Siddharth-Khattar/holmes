@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
-import { ArrowLeft, Terminal, Network, Upload, Clock, FolderOpen } from "lucide-react";
+import {
+  ArrowLeft,
+  Terminal,
+  Network,
+  Upload,
+  Clock,
+  FolderOpen,
+} from "lucide-react";
 import Link from "next/link";
 import { clsx } from "clsx";
 
@@ -139,7 +146,10 @@ export default function CaseLayout({
         <div className="flex items-start justify-between mb-8">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-2xl font-medium" style={{ color: "var(--foreground)" }}>
+              <h1
+                className="text-2xl font-medium"
+                style={{ color: "var(--foreground)" }}
+              >
                 {caseData.name}
               </h1>
               <span
@@ -153,7 +163,10 @@ export default function CaseLayout({
               </span>
             </div>
             {caseData.description && (
-              <p className="max-w-2xl" style={{ color: "var(--muted-foreground)" }}>
+              <p
+                className="max-w-2xl"
+                style={{ color: "var(--muted-foreground)" }}
+              >
                 {caseData.description}
               </p>
             )}

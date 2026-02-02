@@ -19,21 +19,24 @@
 
 ## Phase Overview
 
-| Phase | Name | Focus | Requirements Covered |
-|-------|------|-------|---------------------|
-| 1 | Foundation Infrastructure | CI/CD, Database, Storage, SSE skeleton | REQ-INF-* |
-| 1.1 | Frontend Design Foundation (INSERTED) | Design system, Liquid Glass, Landing page | UX quality (foundational) |
-| 2 | Authentication & Case Shell | Auth system, Case CRUD, basic UI shell | REQ-AUTH-*, REQ-CASE-001/002/003 |
-| 3 | File Ingestion | Upload, storage, file management | REQ-CASE-004/005, REQ-SOURCE-* (basic) |
-| 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e |
-| 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 |
-| 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 |
-| 7 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, Hypothesis system, Task generation, 5-layer KG | REQ-AGENT-008/009, REQ-VIS-003, REQ-HYPO-001/004/005/006, REQ-TASK-001/002 |
-| 8 | Intelligence Layer & Geospatial | Contradictions, Gaps, Geospatial Agent, Map View, Earth Engine | REQ-WOW-*, REQ-VIS-005/006, REQ-GEO-* |
-| 9 | Chat Interface & Research | Chat UI, Research/Discovery (Chat + Orchestrator-triggered), Hypothesis View, Context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 |
-| 10 | Agent Flow & Source Panel | Full source viewers, Task Panel, Timeline | REQ-SOURCE-*, REQ-VIS-*, REQ-TASK-003/004/005/006/007 |
-| 11 | Corrections & Refinement | Error flagging, Verification, Regeneration | REQ-CORR-* |
-| 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i |
+| Phase | Name | Focus | Requirements Covered | Status |
+|-------|------|-------|---------------------|--------|
+| 1 | Foundation Infrastructure | CI/CD, Database, Storage, SSE skeleton | REQ-INF-* | ✅ COMPLETE |
+| 1.1 | Frontend Design Foundation (INSERTED) | Design system, Liquid Glass, Landing page | UX quality (foundational) | ✅ COMPLETE |
+| 2 | Authentication & Case Shell | Auth system, Case CRUD, basic UI shell | REQ-AUTH-*, REQ-CASE-001/002/003 | ✅ COMPLETE |
+| 3 | File Ingestion | Upload, storage, file management | REQ-CASE-004/005, REQ-SOURCE-* (basic) | 🟡 FRONTEND_DONE |
+| 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e | ⏳ NOT_STARTED |
+| 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 | 🟡 FRONTEND_DONE |
+| 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ⏳ NOT_STARTED |
+| 7 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, Hypothesis system, Task generation, 5-layer KG | REQ-AGENT-008/009, REQ-VIS-003, REQ-HYPO-001/004/005/006, REQ-TASK-001/002 | 🟡 FRONTEND_DONE |
+| 8 | Intelligence Layer & Geospatial | Contradictions, Gaps, Geospatial Agent, Map View, Earth Engine | REQ-WOW-*, REQ-VIS-005/006, REQ-GEO-* | ⏳ NOT_STARTED |
+| 9 | Chat Interface & Research | Chat UI, Research/Discovery (Chat + Orchestrator-triggered), Hypothesis View, Context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
+| 10 | Agent Flow & Source Panel | Full source viewers, Task Panel, Timeline | REQ-SOURCE-*, REQ-VIS-*, REQ-TASK-003/004/005/006/007 | 🟡 FRONTEND_DONE |
+| 11 | Corrections & Refinement | Error flagging, Verification, Regeneration | REQ-CORR-* | ⏳ NOT_STARTED |
+| 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i | ⏳ NOT_STARTED |
+
+> **Status Legend:** ✅ COMPLETE | 🟡 FRONTEND_DONE (backend pending) | ⏳ NOT_STARTED
+> **Note:** Phases 3, 5, 7, 9, 10 have frontend UI implemented by Yatharth (2026-02-02). Backend integration remains.
 
 **Post-MVP:**
 | Phase | Name | Focus | Requirements |
@@ -176,13 +179,30 @@ Plans:
 
 **Requirements:** REQ-CASE-004, REQ-CASE-005, REQ-SOURCE-001 (basic), REQ-SOURCE-002 (basic), REQ-SOURCE-003 (basic), REQ-SOURCE-004 (basic)
 
+**Status:** 🟡 FRONTEND_DONE — Backend integration required
+
+### Frontend Completed (Yatharth, 2026-02-02)
+- ✅ Drag-and-drop file upload UI (`CaseLibrary.tsx`)
+- ✅ Case Library view with list layout
+- ✅ File type icons and category badges
+- ✅ File status indicators (ready, processing, conflict, error)
+- ✅ Conflict detection UI with suggestions
+- ✅ Search and filter by category
+
+### Backend Work Remaining
+- ⏳ Files stored in GCS (case_id/file_id structure)
+- ⏳ File metadata in PostgreSQL (files table)
+- ⏳ Upload handler (`handleDrop` is stubbed)
+- ⏳ View/Download/Delete handlers (stubbed)
+- ⏳ Basic file viewers (PDF, video, audio, image)
+
 **Deliverables:**
-- Drag-and-drop file upload UI
+- ~~Drag-and-drop file upload UI~~ ✅
 - Multiple file upload with progress
 - Files stored in GCS (case_id/file_id structure)
 - File metadata in PostgreSQL
-- Case Library view (grid/list)
-- File type icons and thumbnails
+- ~~Case Library view (grid/list)~~ ✅
+- ~~File type icons and thumbnails~~ ✅ (icons done, thumbnails need backend)
 - Basic file viewers (PDF, video, audio, image)
 - File deletion
 
@@ -191,6 +211,7 @@ Plans:
 - Generate thumbnails async (or defer to Gemini)
 - Signed URLs for secure file access
 - File status: UPLOADED, PROCESSING, ANALYZED, ERROR
+- **Frontend file:** `frontend/src/components/library/CaseLibrary.tsx`
 
 **Exit Criteria:**
 - Upload multiple files to a case
@@ -247,31 +268,42 @@ Plans:
 
 **Requirements:** REQ-VIS-001, REQ-VIS-001a, REQ-VIS-002, REQ-INF-004 (complete)
 
+**Status:** 🟡 FRONTEND_DONE — Backend SSE integration required
+
+### Frontend Completed (Yatharth, 2026-02-02)
+- ✅ D3-based canvas for agent visualization (`AgentFlowCanvas.tsx`)
+- ✅ Agent nodes with type-based styling (6 agent types)
+- ✅ Animated edges during data flow (dashed line animations)
+- ✅ Click-to-expand agent detail panel (`AgentDetailsPanel.tsx`)
+- ✅ Detail view: input context, tools called, output findings
+- ✅ SSE hook ready (`useCommandCenterSSE.ts`)
+- ✅ Connection status indicator (Connected/Reconnecting/Demo Mode)
+
+### Backend Work Remaining
+- ⏳ Real-time updates via SSE with ADK callback mapping
+- ⏳ Thinking traces integration (needs `include_thoughts=True` data)
+- ⏳ Token usage display
+- ⏳ Execution timeline
+- ⏳ Human-in-the-loop confirmation dialogs (REQ-VIS-001a)
+
 **Deliverables:**
-- React Flow canvas for agent visualization
-- Agent nodes with type-based styling
-- Animated edges during data flow
-- Real-time updates via SSE with callback mapping:
-  - `before_agent_callback` → AGENT_SPAWNED (node appears)
-  - `after_agent_callback` → AGENT_COMPLETED (node completes)
-  - `before_tool_callback` → TOOL_INVOKED (tool indicator)
-  - `before_model_callback` → THINKING_UPDATE (reasoning started)
-  - `after_model_callback` → MODEL_RESPONSE (thinking traces available)
-- Click-to-expand agent detail panel
-- Detail view: model, input, tools, output, duration, thinking traces
+- ~~React Flow canvas for agent visualization~~ ✅ (D3-based, not React Flow)
+- ~~Agent nodes with type-based styling~~ ✅
+- ~~Animated edges during data flow~~ ✅
+- Real-time updates via SSE with callback mapping (hook ready, needs backend)
+- ~~Click-to-expand agent detail panel~~ ✅
+- ~~Detail view: model, input, tools, output, duration, thinking traces~~ ✅ (partial, needs real data)
 - Token usage display
 - Execution timeline
 - Human-in-the-loop confirmation dialogs (frontend implementation)
-  - Confirmation component with action preview
-  - Operations: delete file, apply correction, regenerate, delete case
-  - Timeout with auto-cancel (2 minutes)
 
 **Technical Notes:**
-- React Flow 12 (@xyflow/react)
+- ~~React Flow 12 (@xyflow/react)~~ → D3.js chosen for implementation
 - Memoization critical for performance
 - Async queue for callback → SSE event translation
 - Thinking traces from `include_thoughts=True` configuration
 - Frontend confirmation dialogs (ADK limitation: require_confirmation only works with InMemorySessionService)
+- **Frontend files:** `frontend/src/components/CommandCenter/`, `frontend/src/hooks/useCommandCenterSSE.ts`
 
 **Exit Criteria:**
 - Real-time agent flow visible during processing
@@ -341,20 +373,37 @@ Plans:
 
 **Requirements:** REQ-AGENT-008, REQ-AGENT-009, REQ-AGENT-010, REQ-VIS-003 (basic), REQ-HYPO-001, REQ-HYPO-004, REQ-HYPO-005, REQ-HYPO-006, REQ-TASK-001, REQ-TASK-002
 
+**Status:** 🟡 FRONTEND_DONE (KG Visualization) — Backend agents + API required
+
+### Frontend Completed (Yatharth, 2026-02-02)
+- ✅ **D3.js chosen** for Knowledge Graph visualization
+- ✅ Force-directed graph with zoom/pan (`knowledge-graph.tsx`)
+- ✅ Entity nodes (circles) with 6 types: person, organization, location, event, document, evidence
+- ✅ Evidence nodes (squares) with 5 types: text, image, video, audio, document
+- ✅ Manual relationship creation UI (click-to-connect)
+- ✅ Node details panel with entity info
+- ✅ Legend showing node types and colors
+- ✅ Evidence source panel (`evidence-source-panel.tsx`)
+- ✅ Hooks ready (`use-case-graph.ts`)
+
+### Backend Work Remaining
+- ⏳ Synthesis Agent implementation
+- ⏳ Knowledge Graph Agent implementation
+- ⏳ Cross-referencing logic for links, contradictions, gaps
+- ⏳ Hypothesis system integration (database tables, SSE)
+- ⏳ Investigation task generation
+- ⏳ Full entity taxonomy extraction (domain-specific types)
+- ⏳ Entity resolution: auto-merge with >85% similarity
+- ⏳ PostgreSQL schema for graph (nodes, edges tables)
+- ⏳ 5-layer system (current: 6 entity types, not 5 investigation layers)
+- ⏳ Graph query APIs
+- ⏳ Incremental graph updates
+
 **Deliverables:**
 - Synthesis Agent implementation
 - Cross-referencing logic for links, contradictions, gaps
-- **Hypothesis system integration:**
-  - `case_hypotheses` database table
-  - `hypothesis_evidence` database table
-  - Hypothesis status calculation (deterministic base + AI override)
-  - Hypothesis confidence scoring
-  - SSE events for hypothesis updates
-- **Investigation task generation from synthesis:**
-  - `investigation_tasks` database table
-  - Task creation for contradictions (resolve_contradiction)
-  - Task creation for gaps (obtain_evidence)
-  - SSE events for task creation
+- **Hypothesis system integration** (database tables pending)
+- **Investigation task generation from synthesis** (pending)
 - Knowledge Graph Agent implementation
 - **Full entity taxonomy extraction** (domain-specific types)
 - **Entity resolution: auto-merge with flag for >85% matches**
@@ -362,8 +411,8 @@ Plans:
 - PostgreSQL schema for graph (nodes, edges tables)
 - **5-layer Knowledge Graph:** Evidence (red), Legal (blue), Strategy (green), Temporal (amber), Hypothesis (pink)
 - Graph query APIs
-- **Evaluate graph library: vis-network vs D3.js** (choose during implementation)
-- Basic force-directed visualization
+- ~~**Evaluate graph library: vis-network vs D3.js**~~ → **D3.js chosen** ✅
+- ~~Basic force-directed visualization~~ ✅
 - Incremental graph updates
 
 **Technical Notes:**
@@ -374,7 +423,8 @@ Plans:
 - **Simplified hypothesis lifecycle: PENDING → SUPPORTED/REFUTED (user marks RESOLVED)**
 - **Task types: resolve_contradiction, obtain_evidence, verify_hypothesis, etc.**
 - **Task list injected into agent context for deduplication (no complex coordination)**
-- vis-network offers ForceAtlas2 physics, better interactivity; D3.js offers more customization
+- ~~vis-network offers ForceAtlas2 physics, better interactivity; D3.js offers more customization~~
+- **Frontend files:** `frontend/src/components/app/knowledge-graph.tsx`, `frontend/src/hooks/use-case-graph.ts`, `frontend/src/types/knowledge-graph.ts`
 
 **Exit Criteria:**
 - Synthesis Agent produces unified findings
@@ -384,7 +434,7 @@ Plans:
 - Knowledge Graph populated with entities and relationships
 - **5 layers toggleable in visualization**
 - **Entity resolution auto-merges >85% matches**
-- Basic graph visualization works
+- ~~Basic graph visualization works~~ ✅
 - New files update graph incrementally
 
 
@@ -448,37 +498,50 @@ Plans:
 
 **Requirements:** REQ-CHAT-001, REQ-CHAT-002, REQ-CHAT-003, REQ-CHAT-004, REQ-CHAT-005, REQ-AGENT-007f, REQ-AGENT-007g, REQ-SOURCE-005 (complete), REQ-RESEARCH-001, REQ-RESEARCH-002, REQ-RESEARCH-003, REQ-RESEARCH-005, REQ-RESEARCH-006, REQ-RESEARCH-007, REQ-RESEARCH-008, REQ-RESEARCH-009, REQ-HYPO-007, REQ-HYPO-008, REQ-GEO-010
 
+**Status:** 🟡 FRONTEND_DONE (Chat UI) — Backend agents + API required
+
+### Frontend Completed (Yatharth, 2026-02-02)
+- ✅ Floating chat button with animations (`chatbot.tsx`)
+- ✅ Draggable/resizable chat window
+- ✅ Message history display with user/assistant distinction
+- ✅ Typing indicator with animated dots
+- ✅ Case context awareness (name, status, description)
+- ✅ Minimize/maximize functionality
+- ✅ Liquid glass effect styling
+- ✅ Keyboard support (Enter to send, Shift+Enter newline)
+- ✅ Mock fallback when backend unavailable (`useChatbot.ts`)
+
+### Backend Work Remaining
+- ⏳ Chat API endpoint (`POST /api/chat`)
+- ⏳ Knowledge-first query pattern (KG lookup first)
+- ⏳ Agent escalation for novel questions
+- ⏳ Chat Agent implementation
+- ⏳ Research/Discovery invocation (all sub-items)
+- ⏳ Hypothesis View
+- ⏳ Context caching for cost optimization
+- ⏳ Context compaction for long sessions
+- ⏳ Inline citations in responses
+- ⏳ Citation hover preview
+- ⏳ Citation click to Source Panel
+- ⏳ Chat history persistence (database)
+
 **Deliverables:**
-- Chat UI with message history
-- Streaming responses
+- ~~Chat UI with message history~~ ✅
+- ~~Streaming responses~~ ✅ (UI ready)
 - Knowledge-first query pattern (KG lookup first)
 - Agent escalation for novel questions
 - Chat Agent implementation with `thinking_level="medium"`
-- **Research/Discovery invocation:**
-  - Research Agent invocable from chat ("Research [subject]")
-  - **Orchestrator-triggered Research** when evidence gaps detected (with user confirmation)
-  - Discovery Agent synthesizes external research
-  - Suggest-then-confirm flow for source retrieval
-  - Binary access classification (ACCESSIBLE / REQUIRES_ACTION)
-  - ResilientAgentWrapper for Research/Discovery
-- **Hypothesis View:**
-  - Dedicated hypothesis view (separate from KG)
-  - Hypothesis cards with status, confidence, evidence counts
-  - Fullscreen capability
+- **Research/Discovery invocation** (all pending)
+- **Hypothesis View** (pending)
 - **Optional temporal sync between Map View and Timeline**
-- **Context caching for cost optimization:**
-  - Create evidence cache when user opens case
-  - 2-hour TTL (session duration)
-  - 4x cost reduction for cached queries
-  - Cache invalidation on new evidence upload
-- **Context compaction for long sessions:**
-  - EventsCompactionConfig with 5 invocation interval
-  - LlmEventSummarizer with Gemini Flash
-  - Prevents context window exhaustion
+- **Context caching for cost optimization** (pending)
+- **Context compaction for long sessions** (pending)
 - Inline citations in responses
 - Citation hover preview
 - Citation click to Source Panel
 - Chat history persistence
+
+**Frontend Files:** `frontend/src/components/app/chatbot.tsx`, `frontend/src/hooks/useChatbot.ts`, `frontend/src/types/chatbot.ts`
 
 **Technical Notes:**
 - KG queries via SQL for fast responses
@@ -509,46 +572,67 @@ Plans:
 
 **Requirements:** REQ-SOURCE-001 (complete), REQ-SOURCE-002 (complete), REQ-SOURCE-003 (complete), REQ-SOURCE-004 (complete), REQ-VIS-001, REQ-VIS-001a, REQ-VIS-002, REQ-VIS-004, REQ-VIS-007, REQ-WOW-004, REQ-TASK-003, REQ-TASK-004, REQ-TASK-005, REQ-TASK-006, REQ-TASK-007
 
+**Status:** 🟡 FRONTEND_DONE (Timeline) — Source viewers + Task Panel pending
+
+### Frontend Completed (Yatharth, 2026-02-02)
+- ✅ Timeline view with events (`Timeline/`)
+  - Day/week/month/year zoom levels
+  - Layer filtering (evidence/legal/strategy)
+  - Event cards with click-to-detail
+  - Search with debouncing
+  - SSE hooks ready (`useTimelineSSE.ts`)
+  - React Query with caching (`useTimelineData.ts`)
+  - Skeleton loading states
+  - Framer Motion animations
+- ✅ Evidence source panel exists (`evidence-source-panel.tsx`)
+
+### Backend Work Remaining
+- ⏳ Timeline API endpoints (CRUD + SSE stream)
+- ⏳ PDF viewer with excerpt highlighting
+- ⏳ Video player with timestamp markers
+- ⏳ Audio player with waveform and transcript sync
+- ⏳ Image viewer with bounding box annotations
+- ⏳ Citation navigation (click → exact location)
+- ⏳ Narrative generation (executive summary, detailed)
+- ⏳ Export as PDF/DOCX
+- ⏳ Agent Flow refinements (most items)
+- ⏳ Investigation Task Panel (all items)
+
 **Deliverables:**
 - PDF viewer with excerpt highlighting
 - Video player with timestamp markers
 - Audio player with waveform and transcript sync
 - Image viewer with bounding box annotations
 - Citation navigation (click → exact location)
-- Timeline view with events
+- ~~Timeline view with events~~ ✅
 - Narrative generation (executive summary, detailed)
 - Export as PDF/DOCX
 - **Agent Flow refinements:**
-  - React Flow agent pipeline visualization
-  - Custom node components per agent type
-  - Agent color coding (defer specific colors to design)
-  - **Task count badges on agent nodes** (shows pending tasks per agent)
+  - ~~React Flow agent pipeline visualization~~ ✅ (D3-based, done in Phase 5)
+  - ~~Custom node components per agent type~~ ✅
+  - ~~Agent color coding~~ ✅
+  - **Task count badges on agent nodes** (pending)
   - Thinking overlay with streaming thoughts
   - Interactive time-scrubbing
   - Pause/resume workflow
   - Workflow playback with speed control
   - Frontend confirmation dialogs for sensitive operations
   - Fullscreen mode
-- **Investigation Task Panel:**
-  - Bottom drawer UI
-  - Filter/sort by priority, agent, type
-  - Task completion with type-dependent rules
-  - Task deduplication (agents check before creating)
-  - SSE streaming for task events
-  - Fullscreen capability
+- **Investigation Task Panel:** (all pending)
 
 **Technical Notes:**
 - PDF: react-pdf or pdf.js
 - Audio: wavesurfer.js
 - Video: native HTML5 with custom controls
-- Timeline: D3.js or vis-timeline
+- ~~Timeline: D3.js or vis-timeline~~ → Custom React implementation ✅
 - Narrative: Gemini generates from Synthesis output
 - **Task count badges update in real-time via SSE**
+- **Frontend files:** `frontend/src/components/Timeline/`, `frontend/src/hooks/useTimelineData.ts`, `frontend/src/hooks/useTimelineFilters.ts`, `frontend/src/hooks/useTimelineSSE.ts`
 
 **Exit Criteria:**
 - All source types viewable with full features
 - Citations navigate to exact locations
-- Timeline shows chronological events
+- ~~Timeline shows chronological events~~ ✅
 - Narrative generation works with citations
 - **Task panel shows pending investigation tasks**
 - **Task count badges visible on agent nodes**
@@ -742,9 +826,11 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 1.4*
-*Updated: 2026-01-24 (Phase 2 planned)*
+*Roadmap Version: 1.5*
+*Updated: 2026-02-02 (Frontend work reconciliation)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
 *Phase 2 planned: 2026-01-24*
+*Phase 2 complete: 2026-01-25*
+*Frontend work by Yatharth: 2026-02-02 (Phases 3,5,7,9,10 frontend done)*

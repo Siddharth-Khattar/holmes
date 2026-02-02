@@ -122,8 +122,7 @@ const mockLibraryFiles: LibraryFile[] = [
     uploadedAt: new Date("2024-01-19"),
     conflictInfo: {
       type: "contradiction",
-      message:
-        "New file says: Transfer date March 18 | Existing: March 15",
+      message: "New file says: Transfer date March 18 | Existing: March 15",
       existingFile: "bank_statements_2023.pdf",
       suggestions: [
         "View Side-by-Side",
@@ -137,8 +136,7 @@ const mockLibraryFiles: LibraryFile[] = [
 
 export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
   const [files] = useState<LibraryFile[]>(mockLibraryFiles);
-  const [selectedCategory, setSelectedCategory] =
-    useState<FileCategory>("all");
+  const [selectedCategory, setSelectedCategory] = useState<FileCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isDragging, setIsDragging] = useState(false);
 
@@ -289,17 +287,24 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-medium" style={{ color: "var(--foreground)" }}>
+            <h1
+              className="text-2xl font-medium"
+              style={{ color: "var(--foreground)" }}
+            >
               Evidence Library
             </h1>
             {caseName && (
-              <p className="text-sm mt-1" style={{ color: "var(--muted-foreground)" }}>
+              <p
+                className="text-sm mt-1"
+                style={{ color: "var(--muted-foreground)" }}
+              >
                 {caseName}
               </p>
             )}
           </div>
           <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-            {filteredFiles.length} {filteredFiles.length === 1 ? "file" : "files"}
+            {filteredFiles.length}{" "}
+            {filteredFiles.length === 1 ? "file" : "files"}
           </div>
         </div>
       </div>
@@ -321,11 +326,15 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
         >
           <Upload
             className="w-8 h-8 mx-auto mb-2"
-            style={{ color: isDragging ? "#3b82f6" : "var(--muted-foreground)" }}
+            style={{
+              color: isDragging ? "#3b82f6" : "var(--muted-foreground)",
+            }}
           />
           <p
             className="text-sm"
-            style={{ color: isDragging ? "#3b82f6" : "var(--muted-foreground)" }}
+            style={{
+              color: isDragging ? "#3b82f6" : "var(--muted-foreground)",
+            }}
           >
             Drag & drop files to add to case
           </p>
@@ -336,33 +345,47 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
       <div className="flex-none px-6 py-4 space-y-4">
         {/* Category Filters */}
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
-          <span className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+          <Filter
+            className="w-4 h-4"
+            style={{ color: "var(--muted-foreground)" }}
+          />
+          <span
+            className="text-sm"
+            style={{ color: "var(--muted-foreground)" }}
+          >
             Filter:
           </span>
-          {(["all", "evidence", "legal", "strategy", "reference"] as FileCategory[]).map(
-            (category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+          {(
+            [
+              "all",
+              "evidence",
+              "legal",
+              "strategy",
+              "reference",
+            ] as FileCategory[]
+          ).map((category) => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                selectedCategory === category
+                  ? "bg-accent text-accent-foreground"
+                  : "hover:bg-muted"
+              }`}
+              style={{
+                backgroundColor:
                   selectedCategory === category
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-muted"
-                }`}
-                style={{
-                  backgroundColor:
-                    selectedCategory === category ? "var(--accent)" : "transparent",
-                  color:
-                    selectedCategory === category
-                      ? "var(--accent-foreground)"
-                      : "var(--muted-foreground)",
-                }}
-              >
-                {category.charAt(0).toUpperCase() + category.slice(1)}
-              </button>
-            )
-          )}
+                    ? "var(--accent)"
+                    : "transparent",
+                color:
+                  selectedCategory === category
+                    ? "var(--accent-foreground)"
+                    : "var(--muted-foreground)",
+              }}
+            >
+              {category.charAt(0).toUpperCase() + category.slice(1)}
+            </button>
+          ))}
         </div>
 
         {/* Search */}
@@ -400,7 +423,12 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                 <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <h3 className="text-sm font-medium text-amber-900 dark:text-amber-300 mb-2">
-                    Attention Required ({filteredFiles.filter((f) => f.status === "conflict").length})
+                    Attention Required (
+                    {
+                      filteredFiles.filter((f) => f.status === "conflict")
+                        .length
+                    }
+                    )
                   </h3>
                   {filteredFiles
                     .filter((f) => f.status === "conflict")
@@ -413,14 +441,16 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                           {file.conflictInfo?.message}
                         </div>
                         <div className="flex items-center space-x-2 mt-2">
-                          {file.conflictInfo?.suggestions.map((suggestion, index) => (
-                            <button
-                              key={index}
-                              className="px-3 py-1 text-xs rounded bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors"
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
+                          {file.conflictInfo?.suggestions.map(
+                            (suggestion, index) => (
+                              <button
+                                key={index}
+                                className="px-3 py-1 text-xs rounded bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/60 transition-colors"
+                              >
+                                {suggestion}
+                              </button>
+                            ),
+                          )}
                         </div>
                       </div>
                     ))}
@@ -433,7 +463,10 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
 
       {/* File List */}
       <div className="flex-1 overflow-y-auto px-6 pb-6">
-        <div className="rounded-lg border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+        <div
+          className="rounded-lg border overflow-hidden"
+          style={{ borderColor: "var(--border)" }}
+        >
           <table className="w-full">
             <thead>
               <tr
@@ -488,7 +521,8 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                     <span
                       className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(file.category)}`}
                     >
-                      {file.category.charAt(0).toUpperCase() + file.category.slice(1)}
+                      {file.category.charAt(0).toUpperCase() +
+                        file.category.slice(1)}
                     </span>
                   </td>
                   <td className="px-4 py-4">{getStatusIndicator(file)}</td>
@@ -499,27 +533,39 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                         className="p-1.5 rounded hover:bg-muted transition-colors"
                         title="View file"
                       >
-                        <Eye className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
+                        <Eye
+                          className="w-4 h-4"
+                          style={{ color: "var(--muted-foreground)" }}
+                        />
                       </button>
                       <button
                         onClick={() => handleDownloadFile(file)}
                         className="p-1.5 rounded hover:bg-muted transition-colors"
                         title="Download file"
                       >
-                        <Download className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
+                        <Download
+                          className="w-4 h-4"
+                          style={{ color: "var(--muted-foreground)" }}
+                        />
                       </button>
                       <button
                         onClick={() => handleDeleteFile(file)}
                         className="p-1.5 rounded hover:bg-muted transition-colors"
                         title="Delete file"
                       >
-                        <Trash2 className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
+                        <Trash2
+                          className="w-4 h-4"
+                          style={{ color: "var(--muted-foreground)" }}
+                        />
                       </button>
                       <button
                         className="p-1.5 rounded hover:bg-muted transition-colors"
                         title="More options"
                       >
-                        <MoreVertical className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
+                        <MoreVertical
+                          className="w-4 h-4"
+                          style={{ color: "var(--muted-foreground)" }}
+                        />
                       </button>
                     </div>
                   </td>
@@ -539,8 +585,8 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
         }}
       >
         <p>
-          Quick Analysis Modal: Click{" "}
-          <Eye className="inline w-3 h-3" /> on any file to open detailed analysis
+          Quick Analysis Modal: Click <Eye className="inline w-3 h-3" /> on any
+          file to open detailed analysis
         </p>
       </div>
     </div>

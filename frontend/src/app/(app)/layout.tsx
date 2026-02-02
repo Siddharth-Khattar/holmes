@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import { auth } from "@/lib/auth";
 import { Sidebar } from "@/components/app/sidebar";
 import { AuthListener } from "@/components/app/auth-listener";
+import { ClearInvalidSession } from "@/app/clear-invalid-session";
 
 export default async function AppLayout({
   children,
@@ -77,6 +78,7 @@ export default async function AppLayout({
           }}
         />
         <AuthListener />
+        <ClearInvalidSession />
         {children}
       </main>
     </div>

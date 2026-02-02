@@ -12,7 +12,7 @@
 | 1 | Foundation Infrastructure | COMPLETE | 2026-01-21 | 2026-01-22 | |
 | 1.1 | Frontend Design Foundation | COMPLETE | 2026-01-23 | 2026-01-24 | |
 | 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 | |
-| 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | All 3 plans done |
+| 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
 | 4 | Core Agent System | NOT_STARTED | - | - | |
 | 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
@@ -30,13 +30,12 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 3 Plan 03** (2026-02-02)
-  - File list endpoint: GET /api/cases/{case_id}/files
-  - File download via signed URL: GET /api/cases/{case_id}/files/{file_id}/download
-  - File delete endpoint: DELETE /api/cases/{case_id}/files/{file_id}
-  - SSE endpoint: /sse/cases/{case_id}/files for real-time status
-  - Frontend CaseLibrary integrated with real APIs
-  - Summary: `.planning/phases/03-file-ingestion/03-03-SUMMARY.md`
+- **Phase 3 Verified** (2026-02-02)
+  - All 6 observable truths verified
+  - All 9 required artifacts exist and substantive
+  - All 7 key links confirmed wired
+  - Verification: `.planning/phases/03-file-ingestion/03-VERIFICATION.md`
+  - Key deliverables: File upload/download/delete, duplicate detection, bulk delete, SSE status, multi-select UI
 
 **What's next:**
 - **Phase 4:** Core Agent System (ADK, Triage, Orchestrator)

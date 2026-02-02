@@ -4,16 +4,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 import { signIn } from "@/lib/auth-client";
+import { hardRedirect } from "@/lib/navigation";
 
 export function LoginForm() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -70,7 +69,7 @@ export function LoginForm() {
     } else {
       console.log("✅ [LOGIN FORM] Login successful, redirecting to /cases");
       toast.success("Welcome back!");
-      router.push("/cases");
+      hardRedirect("/cases");
     }
   }
 

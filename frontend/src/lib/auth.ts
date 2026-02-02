@@ -6,8 +6,19 @@ import { nextCookies } from "better-auth/next-js";
 import { jwt } from "better-auth/plugins";
 import { Pool } from "pg";
 
+// Determine base URL with fallback chain:
+// 1. BETTER_AUTH_URL (runtime, set by CI/CD after deploy)
+// 2. NEXT_PUBLIC_APP_URL (build-time, baked into the bundle)
+// 3. localhost for local development
+const baseURL =
+  process.env.BETTER_AUTH_URL ||
+  process.env.NEXT_PUBLIC_APP_URL ||
+  "http://localhost:3000";
+
+const isProduction = baseURL.startsWith("https://");
+
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+  baseURL,
   secret: process.env.BETTER_AUTH_SECRET!,
 
   database: new Pool({
@@ -42,6 +53,16 @@ export const auth = betterAuth({
       maxAge: 5 * 60, // 5 min cache to reduce DB hits
     },
   },
+
+  // Production cookie and security settings
+  advanced: {
+    // Force secure cookies in production (Cloud Run is always HTTPS)
+    useSecureCookies: isProduction,
+  },
+
+  // Trust only the configured baseURL and localhost for development.
+  // Use Set to deduplicate in case baseURL is localhost.
+  trustedOrigins: [...new Set(["http://localhost:3000", baseURL])],
 
   plugins: [
     jwt(), // Exposes /api/auth/jwks and /api/auth/token endpoints

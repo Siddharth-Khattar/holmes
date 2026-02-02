@@ -25,7 +25,7 @@
 | 1.1 | Frontend Design Foundation (INSERTED) | Design system, Liquid Glass, Landing page | UX quality (foundational) | ✅ COMPLETE |
 | 2 | Authentication & Case Shell | Auth system, Case CRUD, basic UI shell | REQ-AUTH-*, REQ-CASE-001/002/003 | ✅ COMPLETE |
 | 3 | File Ingestion | Upload, storage, file management | REQ-CASE-004/005, REQ-SOURCE-* (basic) | ✅ COMPLETE |
-| 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e | ⏳ NOT_STARTED |
+| 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e | ⏳ PLANNED |
 | 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 | 🟡 FRONTEND_DONE |
 | 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ⏳ NOT_STARTED |
 | 7 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, Hypothesis system, Task generation, 5-layer KG | REQ-AGENT-008/009, REQ-VIS-003, REQ-HYPO-001/004/005/006, REQ-TASK-001/002 | 🟡 FRONTEND_DONE |
@@ -35,7 +35,7 @@
 | 11 | Corrections & Refinement | Error flagging, Verification, Regeneration | REQ-CORR-* | ⏳ NOT_STARTED |
 | 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i | ⏳ NOT_STARTED |
 
-> **Status Legend:** ✅ COMPLETE | 🟡 FRONTEND_DONE (backend pending) | ⏳ NOT_STARTED
+> **Status Legend:** ✅ COMPLETE | 🟡 FRONTEND_DONE (backend pending) | ⏳ NOT_STARTED | ⏳ PLANNED
 > **Note:** Phase 3 verified complete (2026-02-02, 6/6 truths). Phases 5, 7, 9, 10 have frontend UI implemented by Yatharth (2026-02-02). Backend integration remains.
 
 **Post-MVP:**
@@ -232,8 +232,17 @@ Plans:
 
 **Requirements:** REQ-AGENT-007, REQ-AGENT-007a, REQ-AGENT-007b, REQ-AGENT-007e, REQ-AGENT-001, REQ-AGENT-002 (partial)
 
+**Plans:** 5 plans in 3 waves
+
+Plans:
+- [ ] 04-01-PLAN.md — ADK infrastructure (dependencies, config, services, factory pattern)
+- [ ] 04-02-PLAN.md — Database models and schemas (agent execution logging, triage output)
+- [ ] 04-03-PLAN.md — Triage Agent implementation (prompts, processing, output parsing)
+- [ ] 04-04-PLAN.md — Orchestrator Agent skeleton (routing logic, research triggers)
+- [ ] 04-05-PLAN.md — API endpoints and SSE integration (start analysis, command center stream)
+
 **Deliverables:**
-- Google ADK 1.22.x integration
+- Google ADK 1.23.x integration
 - DatabaseSessionService with PostgreSQL
 - GcsArtifactService for versioned storage
 - Agent factory pattern (fresh instances per workflow)
@@ -242,7 +251,7 @@ Plans:
 - Triage outputs: domain scores, complexity, summary, entities
 - Orchestrator Agent skeleton with `thinking_level="high"`
 - **Orchestrator routing stubs for Research/Discovery agents** (future phases)
-- **Orchestrator → Research trigger logic** (with user confirmation SSE event)
+- **Orchestrator → Research trigger logic** (autonomous when gaps detected)
 - Agent execution logging to database
 - Callback-to-SSE mapping for visualization
 - ADK limitations documented and mitigated
@@ -831,8 +840,8 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 1.8*
-*Updated: 2026-02-02 (Phase 3 verified)*
+*Roadmap Version: 1.9*
+*Updated: 2026-02-02 (Phase 4 planned)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
@@ -841,3 +850,4 @@ For 2 developers working simultaneously:
 *Frontend work by Yatharth: 2026-02-02 (Phases 3,5,7,9,10 frontend done)*
 *Phase 3 planned: 2026-02-02*
 *Phase 3 verified: 2026-02-02 (6/6 observable truths)*
+*Phase 4 planned: 2026-02-02 (5 plans in 3 waves)*

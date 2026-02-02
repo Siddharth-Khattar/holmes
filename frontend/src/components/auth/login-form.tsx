@@ -4,16 +4,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 import { signIn } from "@/lib/auth-client";
+import { hardRedirect } from "@/lib/navigation";
 
 export function LoginForm() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -32,14 +31,31 @@ export function LoginForm() {
   async function onSubmit(data: LoginFormData) {
     setError(null);
 
+    console.log("🔐 [LOGIN FORM] Submitting login", {
+      email: data.email,
+      timestamp: new Date().toISOString(),
+    });
+
     const result = await signIn.email({
       email: data.email,
       password: data.password,
     });
 
+    console.log("🔐 [LOGIN FORM] Login result", {
+      success: !result.error,
+      error: result.error,
+      timestamp: new Date().toISOString(),
+    });
+
     if (result.error) {
       const errorCode = result.error.code;
       const errorStatus = result.error.status;
+
+      console.error("❌ [LOGIN FORM] Login failed", {
+        errorCode,
+        errorStatus,
+        errorMessage: result.error.message,
+      });
 
       if (errorStatus === 401 || errorCode === "INVALID_EMAIL_OR_PASSWORD") {
         setError("Invalid email or password. Please check your credentials.");
@@ -51,8 +67,9 @@ export function LoginForm() {
         );
       }
     } else {
+      console.log("✅ [LOGIN FORM] Login successful, redirecting to /cases");
       toast.success("Welcome back!");
-      router.push("/cases");
+      hardRedirect("/cases");
     }
   }
 

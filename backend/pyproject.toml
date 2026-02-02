@@ -16,6 +16,7 @@ dependencies = [
     "greenlet>=3.3.0",
     "PyJWT>=2.10.0",
     "cryptography>=43.0.0",
+    "python-multipart>=0.0.22",
 ]
 
 [dependency-groups]

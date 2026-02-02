@@ -34,7 +34,7 @@ export function Sidebar({ user }: SidebarProps) {
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
       className={clsx(
-        "flex flex-col h-screen",
+        "flex flex-col min-h-screen sticky top-0 self-start",
         "transition-[width] duration-200 ease-out",
         isExpanded ? "w-60" : "w-16",
       )}

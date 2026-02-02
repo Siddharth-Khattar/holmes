@@ -21,7 +21,7 @@ const statusConfig: Record<
 > = {
   DRAFT: {
     label: "Draft",
-    className: "text-[var(--muted-foreground)]",
+    className: "text-(--muted-foreground)",
     style: { backgroundColor: "var(--muted)" },
   },
   PROCESSING: {
@@ -93,11 +93,11 @@ export function CaseCard({
       >
         {/* Name */}
         <div className="flex-1 min-w-0">
-          <h3 className="text-[var(--foreground)] font-medium truncate">
+          <h3 className="text-(--foreground) font-medium truncate">
             {caseData.name}
           </h3>
           {caseData.description && (
-            <p className="text-[var(--muted-foreground)] text-sm truncate mt-0.5">
+            <p className="text-(--muted-foreground) text-sm truncate mt-0.5">
               {caseData.description}
             </p>
           )}
@@ -115,13 +115,13 @@ export function CaseCard({
         </span>
 
         {/* File count */}
-        <div className="flex items-center gap-1.5 text-[var(--muted-foreground)] text-sm w-20">
+        <div className="flex items-center gap-1.5 text-(--muted-foreground) text-sm w-20">
           <FileText className="w-4 h-4" />
           <span>{caseData.file_count} files</span>
         </div>
 
         {/* Last updated */}
-        <div className="flex items-center gap-1.5 text-[var(--muted-foreground)] text-sm w-24">
+        <div className="flex items-center gap-1.5 text-(--muted-foreground) text-sm w-24">
           <Clock className="w-4 h-4" />
           <span>{formatRelativeTime(caseData.updated_at)}</span>
         </div>
@@ -132,7 +132,7 @@ export function CaseCard({
           disabled={isDeleting}
           className={clsx(
             "p-2 rounded-lg transition-colors",
-            "text-[var(--muted-foreground)] hover:text-red-400 hover:bg-red-500/10",
+            "text-(--muted-foreground) hover:text-red-400 hover:bg-red-500/10",
             "focus:outline-none focus:ring-2 focus:ring-red-500/50",
           )}
           title="Delete case"
@@ -173,7 +173,7 @@ export function CaseCard({
           disabled={isDeleting}
           className={clsx(
             "p-1.5 rounded-lg transition-colors",
-            "text-[var(--muted-foreground)] hover:text-red-400 hover:bg-red-500/10",
+            "text-(--muted-foreground) hover:text-red-400 hover:bg-red-500/10",
             "focus:outline-none focus:ring-2 focus:ring-red-500/50",
           )}
           title="Delete case"
@@ -183,11 +183,11 @@ export function CaseCard({
       </div>
 
       {/* Name and description */}
-      <h3 className="text-[var(--foreground)] font-medium mb-1 line-clamp-1">
+      <h3 className="text-(--foreground) font-medium mb-1 line-clamp-1">
         {caseData.name}
       </h3>
       {caseData.description && (
-        <p className="text-[var(--muted-foreground)] text-sm line-clamp-2 mb-4">
+        <p className="text-(--muted-foreground) text-sm line-clamp-2 mb-4">
           {caseData.description}
         </p>
       )}
@@ -197,7 +197,7 @@ export function CaseCard({
 
       {/* Footer with metadata */}
       <div
-        className="flex items-center justify-between text-[var(--muted-foreground)] text-sm pt-3 border-t"
+        className="flex items-center justify-between text-(--muted-foreground) text-sm pt-3 border-t"
         style={{ borderColor: "var(--border)" }}
       >
         <div className="flex items-center gap-1.5">

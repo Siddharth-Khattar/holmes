@@ -1376,6 +1376,216 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ---
 
+## Implementation Status
+
+> **Note:** This section tracks implementation progress. Updated 2026-02-02 after Yatharth's frontend work.
+> See `DEVELOPMENT_DOCS/YATHARTH_WORK_SUMMARY.md` for detailed file paths and TODOs.
+
+### Status Legend
+- ✅ **COMPLETE** — Fully implemented
+- 🟡 **FRONTEND_COMPLETE** — UI done, backend integration pending
+- 🟠 **PARTIAL** — Some sub-criteria met
+- ⏳ **NOT_STARTED** — No implementation yet
+
+---
+
+### REQ-VIS: Visualization & UI
+
+#### REQ-VIS-001: Agent Flow — 🟡 FRONTEND_COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| React Flow canvas showing agent nodes | ✅ | D3-based canvas in `CommandCenter/AgentFlowCanvas.tsx` |
+| Animated edges during data flow | ✅ | Dashed line animations when data flows |
+| Color-coded by agent type | ✅ | 6 agent types with distinct colors |
+| Click node to expand details panel | ✅ | `AgentDetailsPanel.tsx` with collapsible sections |
+| Shows model, input, tools, output, duration | 🟡 | UI ready, needs real backend data |
+| Shows thinking traces | 🟡 | UI ready, needs ADK `include_thoughts=True` data |
+| Updates in real-time via SSE | 🟡 | `useCommandCenterSSE.ts` hook ready, needs backend SSE endpoint |
+| ADK callback-to-SSE mapping | ⏳ | Backend work required |
+
+**Backend APIs Needed:**
+- `SSE GET /api/cases/:caseId/command-center/stream` — Agent lifecycle events
+
+**Files:** `frontend/src/components/CommandCenter/`, `frontend/src/hooks/useCommandCenterSSE.ts`
+
+---
+
+#### REQ-VIS-001a: Human-in-the-Loop Confirmation — ⏳ NOT_STARTED
+
+No confirmation dialogs implemented yet.
+
+---
+
+#### REQ-VIS-002: Agent Detail View — 🟡 FRONTEND_COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Full thinking trace | 🟡 | UI section exists, needs backend data |
+| Complete input context | 🟡 | UI section exists, needs backend data |
+| Tool calls with inputs/outputs | 🟡 | "Tools Called" section exists |
+| Complete output findings | 🟡 | "Output Findings" section exists |
+| Token usage statistics | ⏳ | Not implemented |
+| Execution timeline | ⏳ | Not implemented |
+
+**Files:** `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx`
+
+---
+
+#### REQ-VIS-003: Knowledge Graph View — 🟡 FRONTEND_COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Force-directed graph | ✅ | D3.js chosen and implemented |
+| Nodes sized by connection count | ✅ | Implemented |
+| Edges labeled with relationship type | ✅ | Implemented |
+| Five toggleable layers | 🟠 | Layer concept exists but not 5-layer system yet |
+| Zoom and pan controls | ✅ | Full zoom/pan/reset controls |
+| Node search and highlight | ✅ | Implemented |
+| Click node for details | ✅ | Info panel shows on click |
+| Fullscreen capability | ⏳ | Not implemented |
+| Basic analytics | ⏳ | Not implemented |
+
+**Backend APIs Needed:**
+- `GET /api/cases/:caseId/graph` — Fetch graph data
+- `POST /api/cases/:caseId/entities` — Create entity
+- `POST /api/cases/:caseId/relationships` — Create relationship
+- `PATCH /api/cases/:caseId/entities/:entityId` — Update entity
+- `DELETE /api/cases/:caseId/entities/:entityId` — Delete entity
+
+**Files:** `frontend/src/components/app/knowledge-graph.tsx`, `frontend/src/hooks/use-case-graph.ts`, `frontend/src/types/knowledge-graph.ts`
+
+---
+
+#### REQ-VIS-004: Timeline View — 🟡 FRONTEND_COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Horizontal timeline with zoom | ✅ | Day/week/month/year zoom levels |
+| Events plotted by date/time | ✅ | Grouped by zoom level |
+| Events linked to source evidence | 🟡 | UI ready, needs backend evidence links |
+| Filter by entity, event type | ✅ | Layer filtering (evidence/legal/strategy) |
+| Gaps highlighted visually | 🟡 | Needs backend gap detection |
+| Click event for details | ✅ | Opens detail modal |
+
+**Backend APIs Needed:**
+- `GET /api/cases/:caseId/timeline/events` — Fetch events with filters
+- `POST /api/cases/:caseId/timeline/events` — Create event
+- `PATCH /api/cases/:caseId/timeline/events/:eventId` — Update event
+- `DELETE /api/cases/:caseId/timeline/events/:eventId` — Delete event
+- `SSE GET /api/cases/:caseId/timeline/stream` — Real-time updates
+
+**Files:** `frontend/src/components/Timeline/`, `frontend/src/hooks/useTimelineData.ts`, `frontend/src/hooks/useTimelineFilters.ts`, `frontend/src/hooks/useTimelineSSE.ts`
+
+---
+
+#### REQ-VIS-005: Contradictions Panel — 🟠 PARTIAL
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| List of contradiction pairs | 🟠 | Conflict UI in Evidence Library, not dedicated panel |
+| Each shows claim A, claim B, sources, severity | 🟠 | Basic conflict alerts exist |
+| Click to navigate to sources | ⏳ | Not implemented |
+| Filter by severity, entity | ⏳ | Not implemented |
+| Resolution status tracking | ⏳ | Not implemented |
+
+**Files:** `frontend/src/components/library/CaseLibrary.tsx` (conflict section)
+
+---
+
+#### REQ-VIS-006: Evidence Gaps Panel — ⏳ NOT_STARTED
+
+No dedicated gaps panel implemented.
+
+---
+
+### REQ-CASE: Case Management
+
+#### REQ-CASE-004: Evidence Upload — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Drag-and-drop upload UI | ✅ | Implemented in CaseLibrary.tsx |
+| Multiple file selection | ✅ | Supported via handleDrop |
+| Progress indicator per file | ✅ | Upload progress tracking via useFileUpload hook |
+| Automatic file type detection | ✅ | MIME type validation in backend |
+| Supported file types | ✅ | PDF, DOCX, MP4, MP3, WAV, JPG, PNG |
+| Max 500MB per file | ✅ | MAX_FILE_SIZE enforced in file_service.py |
+| Files stored in GCS with metadata | ✅ | GCS chunked upload + PostgreSQL metadata |
+
+**Backend APIs:**
+- `POST /api/cases/:caseId/files` — Upload file (multipart, chunked GCS streaming)
+
+**Files:** `backend/app/api/files.py`, `backend/app/services/file_service.py`, `frontend/src/hooks/useFileUpload.ts`
+
+---
+
+#### REQ-CASE-005: Case Library View — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Grid or list view toggle | ✅ | List view implemented |
+| File thumbnails | ✅ | Icons implemented (thumbnails deferred) |
+| File metadata display | ✅ | Name, type, size, status shown |
+| Filter by type, status | ✅ | Category filters (all/evidence/legal/strategy/reference) |
+| Select files for batch operations | ✅ | UI connected to real APIs |
+| Delete individual files | ✅ | DELETE endpoint with GCS cleanup |
+
+**Backend APIs:**
+- `GET /api/cases/:caseId/files` — List files with pagination/filters
+- `POST /api/cases/:caseId/files` — Upload file (multipart)
+- `DELETE /api/cases/:caseId/files/:fileId` — Delete file
+- `GET /api/cases/:caseId/files/:fileId/download` — Download via signed URL
+- `SSE /sse/cases/:caseId/files` — Real-time file status updates
+
+**Files:** `frontend/src/components/library/CaseLibrary.tsx`, `frontend/src/lib/api/files.ts`
+
+---
+
+### REQ-CHAT: Contextual Chat
+
+#### REQ-CHAT-001: Chat Interface — 🟡 FRONTEND_COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Message input with send button | ✅ | Full input with keyboard support |
+| Message history display | ✅ | Scrollable history |
+| Streaming response with typing indicator | ✅ | Animated typing dots |
+| Markdown rendering | ✅ | Implemented |
+| Code block formatting | ✅ | Implemented |
+| Mobile-responsive | ✅ | Responsive design |
+
+**Backend APIs Needed:**
+- `POST /api/chat` — Send message, receive response
+
+**Files:** `frontend/src/components/app/chatbot.tsx`, `frontend/src/hooks/useChatbot.ts`, `frontend/src/types/chatbot.ts`
+
+---
+
+### REQ-SOURCE: Source Panel
+
+#### REQ-SOURCE-005: Citation Navigation — ⏳ NOT_STARTED
+
+Evidence source panel exists (`evidence-source-panel.tsx`) but citation navigation not implemented.
+
+**Files:** `frontend/src/components/app/evidence-source-panel.tsx`
+
+---
+
+### Summary: Frontend Implementation Coverage
+
+| Category | Requirements | Complete | Frontend Done | Partial | Not Started |
+|----------|-------------|----------|---------------|---------|-------------|
+| Visualization (VIS) | 6 | 0 | 4 | 1 | 1 |
+| Case Management (CASE) | 5 | 5 | 0 | 0 | 0 |
+| Chat (CHAT) | 5 | 0 | 1 | 0 | 4 |
+| Source Panel (SOURCE) | 5 | 0 | 0 | 0 | 5 |
+
+*Phase 2 requirements (REQ-CASE-001, 002, 003) completed previously. Phase 3 requirements (REQ-CASE-004, 005) completed 2026-02-02.
+
+---
+
 *Generated: 2026-01-18*
-*Updated: 2026-01-21*
+*Updated: 2026-02-02*
 *Status: Complete - Integration features added (REQ-RESEARCH, REQ-HYPO, REQ-GEO, REQ-TASK)*
+*Frontend Status: Partial implementation by Yatharth (see DEVELOPMENT_DOCS/YATHARTH_WORK_SUMMARY.md)*

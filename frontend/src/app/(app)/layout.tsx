@@ -1,5 +1,5 @@
 // ABOUTME: App layout for authenticated users
-// ABOUTME: Validates session server-side and renders sidebar shell
+// ABOUTME: Validates session server-side and renders topbar shell
 
 export const dynamic = "force-dynamic";
 
@@ -9,8 +9,9 @@ import { redirect } from "next/navigation";
 import { Toaster } from "sonner";
 
 import { auth } from "@/lib/auth";
-import { Sidebar } from "@/components/app/sidebar";
+import { Topbar } from "@/components/app/topbar";
 import { AuthListener } from "@/components/app/auth-listener";
+import { ClearInvalidSession } from "@/app/clear-invalid-session";
 
 export default async function AppLayout({
   children,
@@ -21,14 +22,27 @@ export default async function AppLayout({
   // This prevents stale auth state (e.g. after logout) from leaving the UI stuck.
   noStore();
 
+  console.log("🏠 [APP LAYOUT] Checking session...");
+
   const session = await auth.api.getSession({
     headers: await headers(),
   });
 
+  console.log("🏠 [APP LAYOUT] Session check result", {
+    hasSession: !!session,
+    sessionUser: session?.user,
+    timestamp: new Date().toISOString(),
+  });
+
   // Double-check auth (middleware is first line, this is defense-in-depth)
   if (!session) {
-    redirect("/");
+    console.log(
+      "🚫 [APP LAYOUT] No valid session found, redirecting to /login (not /)",
+    );
+    redirect("/login");
   }
+
+  console.log("✅ [APP LAYOUT] Session valid, rendering app");
 
   // Normalize user object to match component prop types
   const user = {
@@ -38,14 +52,16 @@ export default async function AppLayout({
     image: session.user.image ?? null,
   };
 
+  console.log("👤 [APP LAYOUT] User data", user);
+
   return (
     <div
-      className="theme-scope flex min-h-screen"
+      className="theme-scope flex flex-col min-h-screen"
       style={{ backgroundColor: "var(--background)" }}
     >
-      <Sidebar user={user} />
+      <Topbar user={user} />
       <main
-        className="flex-1 overflow-auto bg-canvas text-foreground"
+        className="flex-1 bg-canvas text-foreground"
         style={{
           backgroundColor: "var(--background)",
           color: "var(--foreground)",
@@ -62,6 +78,7 @@ export default async function AppLayout({
           }}
         />
         <AuthListener />
+        <ClearInvalidSession />
         {children}
       </main>
     </div>

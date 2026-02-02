@@ -4,16 +4,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { signupSchema, type SignupFormData } from "@/lib/validations/auth";
 import { signUp } from "@/lib/auth-client";
+import { hardRedirect } from "@/lib/navigation";
 
 export function SignupForm() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -51,7 +50,7 @@ export function SignupForm() {
       }
     } else {
       toast.success("Account created successfully!");
-      router.push("/cases");
+      hardRedirect("/cases");
     }
   }
 

@@ -9,6 +9,13 @@ from app.schemas.case import (
     CaseUpdate,
 )
 from app.schemas.common import ErrorResponse, TimestampMixin
+from app.schemas.file import (
+    DownloadUrlResponse,
+    FileCreate,
+    FileListResponse,
+    FileResponse,
+    FileStatusUpdate,
+)
 from app.schemas.health import HealthResponse
 
 __all__ = [
@@ -17,7 +24,12 @@ __all__ = [
     "CaseListResponse",
     "CaseResponse",
     "CaseUpdate",
+    "DownloadUrlResponse",
     "ErrorResponse",
+    "FileCreate",
+    "FileListResponse",
+    "FileResponse",
+    "FileStatusUpdate",
     "HealthResponse",
     "TimestampMixin",
 ]

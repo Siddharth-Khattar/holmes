@@ -4,6 +4,7 @@
 from app.models.auth import Account, Jwks, Session, User, Verification
 from app.models.base import Base
 from app.models.case import Case, CaseStatus, CaseType
+from app.models.file import CaseFile, FileCategory, FileStatus
 
 __all__ = [
     "Base",
@@ -15,4 +16,7 @@ __all__ = [
     "Case",
     "CaseStatus",
     "CaseType",
+    "CaseFile",
+    "FileCategory",
+    "FileStatus",
 ]

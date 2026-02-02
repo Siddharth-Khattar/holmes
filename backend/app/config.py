@@ -2,8 +2,14 @@
 # ABOUTME: Loads settings from environment variables with type validation.
 
 from functools import cached_property
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Project root is two levels up from this file (backend/app/config.py -> project root)
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_ROOT_ENV = _PROJECT_ROOT / ".env"
+_BACKEND_ENV = _PROJECT_ROOT / "backend" / ".env"
 
 
 class Settings(BaseSettings):
@@ -17,9 +23,13 @@ class Settings(BaseSettings):
     debug: bool = False
     gcs_bucket: str | None = None
     frontend_url: str = "http://localhost:3000"  # For JWKS endpoint
+    # Service account email for signing GCS URLs when using user credentials locally
+    # For Cloud Run with workload identity, this is auto-detected from metadata
+    gcs_signing_service_account: str | None = None
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Look for .env in backend/ first, then project root (absolute paths)
+        env_file=(_BACKEND_ENV, _ROOT_ENV),
         case_sensitive=False,
         # Map CORS_ORIGINS env var to cors_origins_raw field
         env_prefix="",

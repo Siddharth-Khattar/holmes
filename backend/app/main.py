@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import auth, cases, health, sse
+from app.api import auth, cases, files, health, sse
 from app.config import get_settings
 from app.schemas import ErrorResponse
 
@@ -125,3 +125,4 @@ app.include_router(health.router, tags=["health"])
 app.include_router(sse.router, tags=["sse"])
 app.include_router(auth.router, tags=["auth"])
 app.include_router(cases.router, tags=["cases"])
+app.include_router(files.router, tags=["files"])

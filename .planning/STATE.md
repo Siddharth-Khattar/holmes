@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-02
 **Current Phase:** 3 of 12 (File Ingestion) — Backend focus
-**Current Plan:** Plan 01 complete, ready for Plan 02 (GCS storage service)
+**Current Plan:** Plan 02 complete, ready for Plan 03 (list, download, delete endpoints)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -12,7 +12,7 @@
 | 1 | Foundation Infrastructure | ✅ COMPLETE | 2026-01-21 | 2026-01-22 | |
 | 1.1 | Frontend Design Foundation | ✅ COMPLETE | 2026-01-23 | 2026-01-24 | |
 | 2 | Authentication & Case Shell | ✅ COMPLETE | 2026-01-24 | 2026-01-25 | |
-| 3 | File Ingestion | 🔵 IN_PROGRESS | 2026-02-02 | - | Plan 01 done: model + schemas |
+| 3 | File Ingestion | 🔵 IN_PROGRESS | 2026-02-02 | - | Plan 02 done: upload endpoint |
 | 4 | Core Agent System | ⏳ NOT_STARTED | - | - | |
 | 5 | Agent Flow | 🟡 FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | ⏳ NOT_STARTED | - | - | |
@@ -30,15 +30,15 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 3 Plan 01** (2026-02-02)
-  - CaseFile SQLAlchemy model with FileStatus and FileCategory enums
-  - Alembic migration for case_files table
-  - Pydantic schemas for file upload/download API
-  - Summary: `.planning/phases/03-file-ingestion/03-01-SUMMARY.md`
+- **Phase 3 Plan 02** (2026-02-02)
+  - File upload endpoint: POST /api/cases/{case_id}/files
+  - GCS upload service with chunked streaming (8MB chunks)
+  - SHA-256 content hash for duplicate detection
+  - MIME type whitelist validation
+  - Summary: `.planning/phases/03-file-ingestion/03-02-SUMMARY.md`
 
 **What's next:**
-- **Phase 3 Plan 02:** GCS storage service (upload, download, signed URLs)
-- **Phase 3 Plan 03:** File upload API endpoints
+- **Phase 3 Plan 03:** File list, download (signed URLs), and delete endpoints
 - **Phase 4:** Core Agent System (ADK, Triage, Orchestrator)
 - Then: Backend integration for all frontend-done phases
 
@@ -153,7 +153,7 @@ All frontend features need these backend endpoints:
 
 | Feature | Endpoint | Method | Priority |
 |---------|----------|--------|----------|
-| File Ingestion | `/api/cases/:caseId/files` | GET, POST, DELETE | HIGH |
+| File Ingestion | `/api/cases/:caseId/files` | GET, ~~POST~~, DELETE | HIGH (POST done) |
 | File Download | `/api/cases/:caseId/files/:fileId/download` | GET | HIGH |
 | Chat | `/api/chat` | POST | HIGH |
 | Knowledge Graph | `/api/cases/:caseId/graph` | GET | HIGH |
@@ -213,6 +213,8 @@ All frontend features need these backend endpoints:
 | Cross-service URLs | Build-time vs Post-deploy update | Post-deploy update | Solves chicken-and-egg URL problem with update-env job |
 | File content hash | MD5 vs SHA-256 | SHA-256 | 64-char hex string, industry standard, collision resistant |
 | File status lifecycle | 3-state vs 6-state | 6-state | UPLOADING/UPLOADED/QUEUED/PROCESSING/ANALYZED/ERROR for granular tracking |
+| GCS upload chunk size | 4MB vs 8MB vs 16MB | 8MB | Balance between memory usage and network round trips |
+| Services layer | Inline in routes vs Separate services/ | Separate services/ | Reusable business logic, cleaner route handlers |
 
 ---
 

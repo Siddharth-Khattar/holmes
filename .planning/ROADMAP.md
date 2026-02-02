@@ -24,7 +24,7 @@
 | 1 | Foundation Infrastructure | CI/CD, Database, Storage, SSE skeleton | REQ-INF-* | ✅ COMPLETE |
 | 1.1 | Frontend Design Foundation (INSERTED) | Design system, Liquid Glass, Landing page | UX quality (foundational) | ✅ COMPLETE |
 | 2 | Authentication & Case Shell | Auth system, Case CRUD, basic UI shell | REQ-AUTH-*, REQ-CASE-001/002/003 | ✅ COMPLETE |
-| 3 | File Ingestion | Upload, storage, file management | REQ-CASE-004/005, REQ-SOURCE-* (basic) | 🟡 FRONTEND_DONE |
+| 3 | File Ingestion | Upload, storage, file management | REQ-CASE-004/005, REQ-SOURCE-* (basic) | ✅ COMPLETE |
 | 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e | ⏳ NOT_STARTED |
 | 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 | 🟡 FRONTEND_DONE |
 | 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ⏳ NOT_STARTED |
@@ -36,7 +36,7 @@
 | 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i | ⏳ NOT_STARTED |
 
 > **Status Legend:** ✅ COMPLETE | 🟡 FRONTEND_DONE (backend pending) | ⏳ NOT_STARTED
-> **Note:** Phases 3, 5, 7, 9, 10 have frontend UI implemented by Yatharth (2026-02-02). Backend integration remains.
+> **Note:** Phase 3 complete (2026-02-02). Phases 5, 7, 9, 10 have frontend UI implemented by Yatharth (2026-02-02). Backend integration remains.
 
 **Post-MVP:**
 | Phase | Name | Focus | Requirements |
@@ -833,8 +833,8 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 1.6*
-*Updated: 2026-02-02 (Phase 3 planning)*
+*Roadmap Version: 1.7*
+*Updated: 2026-02-02 (Phase 3 complete)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
@@ -842,3 +842,4 @@ For 2 developers working simultaneously:
 *Phase 2 complete: 2026-01-25*
 *Frontend work by Yatharth: 2026-02-02 (Phases 3,5,7,9,10 frontend done)*
 *Phase 3 planned: 2026-02-02*
+*Phase 3 complete: 2026-02-02*

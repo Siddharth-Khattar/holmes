@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   FileText,
   Video,
@@ -14,10 +14,18 @@ import {
   Upload,
   Search,
   Filter,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import {
+  listFiles,
+  getDownloadUrl,
+  deleteFile,
+  FileResponse,
+} from "@/lib/api/files";
+import { useFileUpload } from "@/hooks/useFileUpload";
 
-// Types
+// Types for UI display
 type SupportedFileType = "pdf" | "video" | "audio" | "image";
 type FileCategory = "all" | "evidence" | "legal" | "strategy" | "reference";
 type FileStatus = "ready" | "processing" | "conflict" | "error";
@@ -47,97 +55,123 @@ interface CaseLibraryProps {
   caseName?: string;
 }
 
-// Mock data
-const mockLibraryFiles: LibraryFile[] = [
-  {
-    id: "file-1",
-    name: "bank_statements_2023.pdf",
-    type: "pdf",
-    size: 2500000,
-    url: "/files/bank_statements_2023.pdf",
-    category: "evidence",
-    status: "ready",
-    uploadedAt: new Date("2024-01-15"),
-  },
-  {
-    id: "file-2",
-    name: "warehouse_footage.mp4",
-    type: "video",
-    size: 45000000,
-    url: "/files/warehouse_footage.mp4",
-    category: "evidence",
-    status: "processing",
-    processingProgress: 78,
-    uploadedAt: new Date("2024-01-16"),
-  },
-  {
-    id: "file-3",
-    name: "delaware_corp_statute.pdf",
-    type: "pdf",
-    size: 1140000,
-    url: "/files/delaware_corp_statute.pdf",
-    category: "legal",
-    status: "ready",
-    uploadedAt: new Date("2024-01-14"),
-  },
-  {
-    id: "file-4",
-    name: "firm_fraud_playbook.docx",
-    type: "pdf",
-    size: 781250,
-    url: "/files/firm_fraud_playbook.docx",
-    category: "strategy",
-    status: "ready",
-    uploadedAt: new Date("2024-01-13"),
-  },
-  {
-    id: "file-5",
-    name: "receipt_scan_001.jpg",
-    type: "image",
-    size: 341300,
-    url: "/files/receipt_scan_001.jpg",
-    category: "evidence",
-    status: "ready",
-    uploadedAt: new Date("2024-01-17"),
-  },
-  {
-    id: "file-6",
-    name: "witness_deposition.mp3",
-    type: "audio",
-    size: 11440000,
-    url: "/files/witness_deposition.mp3",
-    category: "evidence",
-    status: "ready",
-    uploadedAt: new Date("2024-01-18"),
-  },
-  {
-    id: "file-7",
-    name: "additional_records.pdf",
-    type: "pdf",
-    size: 1800000,
-    url: "/files/additional_records.pdf",
-    category: "evidence",
-    status: "conflict",
-    uploadedAt: new Date("2024-01-19"),
-    conflictInfo: {
-      type: "contradiction",
-      message: "New file says: Transfer date March 18 | Existing: March 15",
-      existingFile: "bank_statements_2023.pdf",
-      suggestions: [
-        "View Side-by-Side",
-        "Trust New",
-        "Keep Existing",
-        "Flag for Review",
-      ],
-    },
-  },
-];
+/**
+ * Map backend file category to frontend category.
+ * Backend uses: DOCUMENT, IMAGE, VIDEO, AUDIO
+ * Frontend uses: evidence (default), legal, strategy, reference
+ */
+function mapCategory(backendCategory: string): FileCategory {
+  // For now, map all backend categories to "evidence"
+  // In the future, category could be stored as file metadata
+  void backendCategory;
+  return "evidence";
+}
 
-export function CaseLibrary({ caseName }: CaseLibraryProps) {
-  const [files] = useState<LibraryFile[]>(mockLibraryFiles);
+/**
+ * Map backend file status to frontend status.
+ */
+function mapStatus(backendStatus: string): FileStatus {
+  switch (backendStatus) {
+    case "UPLOADING":
+    case "QUEUED":
+    case "PROCESSING":
+      return "processing";
+    case "UPLOADED":
+    case "ANALYZED":
+      return "ready";
+    case "ERROR":
+      return "error";
+    default:
+      return "ready";
+  }
+}
+
+/**
+ * Map backend MIME type to frontend file type.
+ */
+function mapFileType(mimeType: string): SupportedFileType {
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  return "pdf"; // Default to pdf for documents
+}
+
+/**
+ * Convert backend FileResponse to frontend LibraryFile format.
+ */
+function mapToLibraryFile(file: FileResponse): LibraryFile {
+  const libraryFile: LibraryFile = {
+    id: file.id,
+    name: file.original_filename,
+    type: mapFileType(file.mime_type),
+    size: file.size_bytes,
+    url: "", // URL will be fetched on demand via signed URL
+    category: mapCategory(file.category),
+    status: mapStatus(file.status),
+    uploadedAt: new Date(file.created_at),
+  };
+
+  // Add conflict info if this is a duplicate
+  if (file.duplicate_of) {
+    libraryFile.status = "conflict";
+    libraryFile.conflictInfo = {
+      type: "duplicate",
+      message: `This file is a duplicate of an existing file`,
+      suggestions: ["View Original", "Keep Both", "Remove Duplicate"],
+    };
+  }
+
+  return libraryFile;
+}
+
+export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
+  const [files, setFiles] = useState<LibraryFile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<FileCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isDragging, setIsDragging] = useState(false);
+
+  // File upload hook
+  const {
+    isUploading,
+    currentFile,
+    error: uploadError,
+    upload,
+    clearError,
+  } = useFileUpload(caseId);
+
+  // Fetch files on mount
+  useEffect(() => {
+    async function fetchFiles() {
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const response = await listFiles(caseId);
+        setFiles(response.files.map(mapToLibraryFile));
+      } catch (err) {
+        setLoadError(
+          err instanceof Error ? err.message : "Failed to load files",
+        );
+        // Keep empty array on error - graceful degradation
+        setFiles([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchFiles();
+  }, [caseId]);
+
+  // Refresh file list
+  const refreshFiles = useCallback(async () => {
+    try {
+      const response = await listFiles(caseId);
+      setFiles(response.files.map(mapToLibraryFile));
+    } catch (err) {
+      console.error("Failed to refresh files:", err);
+    }
+  }, [caseId]);
 
   // File type icon mapping
   const getFileIcon = useCallback((type: SupportedFileType) => {
@@ -233,17 +267,22 @@ export function CaseLibrary({ caseName }: CaseLibraryProps) {
     e.stopPropagation();
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
 
-    const droppedFiles = Array.from(e.dataTransfer.files);
-    if (droppedFiles.length > 0) {
-      console.log("Files dropped:", droppedFiles);
-      // TODO: Handle file upload
-    }
-  }, []);
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      if (droppedFiles.length > 0) {
+        clearError();
+        await upload(droppedFiles);
+        // Refresh file list after upload
+        await refreshFiles();
+      }
+    },
+    [upload, refreshFiles, clearError],
+  );
 
   // File actions
   const handleViewFile = useCallback((file: LibraryFile) => {
@@ -251,15 +290,36 @@ export function CaseLibrary({ caseName }: CaseLibraryProps) {
     // TODO: Open in source panel
   }, []);
 
-  const handleDownloadFile = useCallback((file: LibraryFile) => {
-    console.log("Download file:", file);
-    // TODO: Trigger download
-  }, []);
+  const handleDownloadFile = useCallback(
+    async (file: LibraryFile) => {
+      try {
+        const url = await getDownloadUrl(caseId, file.id);
+        window.open(url, "_blank");
+      } catch (err) {
+        console.error("Failed to get download URL:", err);
+        alert("Failed to download file. Please try again.");
+      }
+    },
+    [caseId],
+  );
 
-  const handleDeleteFile = useCallback((file: LibraryFile) => {
-    console.log("Delete file:", file);
-    // TODO: Delete file
-  }, []);
+  const handleDeleteFile = useCallback(
+    async (file: LibraryFile) => {
+      if (!confirm(`Delete "${file.name}"? This cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        await deleteFile(caseId, file.id);
+        // Remove from local state
+        setFiles((prev) => prev.filter((f) => f.id !== file.id));
+      } catch (err) {
+        console.error("Failed to delete file:", err);
+        alert("Failed to delete file. Please try again.");
+      }
+    },
+    [caseId],
+  );
 
   // Category badge color
   const getCategoryColor = (category: FileCategory) => {
@@ -302,11 +362,85 @@ export function CaseLibrary({ caseName }: CaseLibraryProps) {
             )}
           </div>
           <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-            {filteredFiles.length}{" "}
-            {filteredFiles.length === 1 ? "file" : "files"}
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                {filteredFiles.length}{" "}
+                {filteredFiles.length === 1 ? "file" : "files"}
+              </>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Upload Status */}
+      <AnimatePresence>
+        {(isUploading || uploadError) && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex-none mx-6 mt-4"
+          >
+            {isUploading && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/50 rounded-lg p-4">
+                <div className="flex items-center space-x-3">
+                  <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                  <span className="text-sm text-blue-800 dark:text-blue-300">
+                    Uploading: {currentFile}
+                  </span>
+                </div>
+              </div>
+            )}
+            {uploadError && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                    <span className="text-sm text-red-800 dark:text-red-300">
+                      {uploadError}
+                    </span>
+                  </div>
+                  <button
+                    onClick={clearError}
+                    className="text-sm text-red-600 hover:text-red-800"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Load Error */}
+      <AnimatePresence>
+        {loadError && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex-none mx-6 mt-4"
+          >
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg p-4">
+              <div className="flex items-center space-x-3">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+                <span className="text-sm text-red-800 dark:text-red-300">
+                  {loadError}
+                </span>
+                <button
+                  onClick={refreshFiles}
+                  className="text-sm text-red-600 hover:text-red-800 underline"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Drag & Drop Zone */}
       <div
@@ -321,7 +455,7 @@ export function CaseLibrary({ caseName }: CaseLibraryProps) {
             isDragging
               ? "border-blue-500 bg-blue-500/10"
               : "border-stone/30 hover:border-stone/50"
-          }`}
+          } ${isUploading ? "opacity-50 pointer-events-none" : ""}`}
         >
           <Upload
             className="w-8 h-8 mx-auto mb-2"
@@ -335,7 +469,9 @@ export function CaseLibrary({ caseName }: CaseLibraryProps) {
               color: isDragging ? "#3b82f6" : "var(--muted-foreground)",
             }}
           >
-            Drag & drop files to add to case
+            {isUploading
+              ? "Upload in progress..."
+              : "Drag & drop files to add to case"}
           </p>
         </div>
       </div>
@@ -462,117 +598,131 @@ export function CaseLibrary({ caseName }: CaseLibraryProps) {
 
       {/* File List */}
       <div className="flex-1 overflow-y-auto px-6 pb-6">
-        <div
-          className="rounded-lg border overflow-hidden"
-          style={{ borderColor: "var(--border)" }}
-        >
-          <table className="w-full">
-            <thead>
-              <tr
-                className="border-b text-left text-xs uppercase tracking-wide"
-                style={{
-                  backgroundColor: "var(--muted)",
-                  borderColor: "var(--border)",
-                  color: "var(--muted-foreground)",
-                }}
-              >
-                <th className="px-4 py-3 font-medium">File Name</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredFiles.map((file, index) => (
-                <motion.tr
-                  key={file.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="border-b hover:bg-muted/50 transition-colors"
-                  style={{ borderColor: "var(--border)" }}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          </div>
+        ) : filteredFiles.length === 0 ? (
+          <div className="text-center py-12">
+            <p style={{ color: "var(--muted-foreground)" }}>
+              {files.length === 0
+                ? "No files uploaded yet. Drag & drop files above to get started."
+                : "No files match your search criteria."}
+            </p>
+          </div>
+        ) : (
+          <div
+            className="rounded-lg border overflow-hidden"
+            style={{ borderColor: "var(--border)" }}
+          >
+            <table className="w-full">
+              <thead>
+                <tr
+                  className="border-b text-left text-xs uppercase tracking-wide"
+                  style={{
+                    backgroundColor: "var(--muted)",
+                    borderColor: "var(--border)",
+                    color: "var(--muted-foreground)",
+                  }}
                 >
-                  <td className="px-4 py-4">
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className="shrink-0"
-                        style={{ color: "var(--muted-foreground)" }}
-                      >
-                        {getFileIcon(file.type)}
-                      </div>
-                      <div>
+                  <th className="px-4 py-3 font-medium">File Name</th>
+                  <th className="px-4 py-3 font-medium">Type</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredFiles.map((file, index) => (
+                  <motion.tr
+                    key={file.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="border-b hover:bg-muted/50 transition-colors"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    <td className="px-4 py-4">
+                      <div className="flex items-center space-x-3">
                         <div
-                          className="text-sm font-medium"
-                          style={{ color: "var(--foreground)" }}
-                        >
-                          {file.name}
-                        </div>
-                        <div
-                          className="text-xs"
+                          className="shrink-0"
                           style={{ color: "var(--muted-foreground)" }}
                         >
-                          {formatFileSize(file.size)}
+                          {getFileIcon(file.type)}
+                        </div>
+                        <div>
+                          <div
+                            className="text-sm font-medium"
+                            style={{ color: "var(--foreground)" }}
+                          >
+                            {file.name}
+                          </div>
+                          <div
+                            className="text-xs"
+                            style={{ color: "var(--muted-foreground)" }}
+                          >
+                            {formatFileSize(file.size)}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(file.category)}`}
-                    >
-                      {file.category.charAt(0).toUpperCase() +
-                        file.category.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4">{getStatusIndicator(file)}</td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleViewFile(file)}
-                        className="p-1.5 rounded hover:bg-muted transition-colors"
-                        title="View file"
+                    </td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(file.category)}`}
                       >
-                        <Eye
-                          className="w-4 h-4"
-                          style={{ color: "var(--muted-foreground)" }}
-                        />
-                      </button>
-                      <button
-                        onClick={() => handleDownloadFile(file)}
-                        className="p-1.5 rounded hover:bg-muted transition-colors"
-                        title="Download file"
-                      >
-                        <Download
-                          className="w-4 h-4"
-                          style={{ color: "var(--muted-foreground)" }}
-                        />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteFile(file)}
-                        className="p-1.5 rounded hover:bg-muted transition-colors"
-                        title="Delete file"
-                      >
-                        <Trash2
-                          className="w-4 h-4"
-                          style={{ color: "var(--muted-foreground)" }}
-                        />
-                      </button>
-                      <button
-                        className="p-1.5 rounded hover:bg-muted transition-colors"
-                        title="More options"
-                      >
-                        <MoreVertical
-                          className="w-4 h-4"
-                          style={{ color: "var(--muted-foreground)" }}
-                        />
-                      </button>
-                    </div>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                        {file.category.charAt(0).toUpperCase() +
+                          file.category.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">{getStatusIndicator(file)}</td>
+                    <td className="px-4 py-4">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleViewFile(file)}
+                          className="p-1.5 rounded hover:bg-muted transition-colors"
+                          title="View file"
+                        >
+                          <Eye
+                            className="w-4 h-4"
+                            style={{ color: "var(--muted-foreground)" }}
+                          />
+                        </button>
+                        <button
+                          onClick={() => handleDownloadFile(file)}
+                          className="p-1.5 rounded hover:bg-muted transition-colors"
+                          title="Download file"
+                        >
+                          <Download
+                            className="w-4 h-4"
+                            style={{ color: "var(--muted-foreground)" }}
+                          />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFile(file)}
+                          className="p-1.5 rounded hover:bg-muted transition-colors"
+                          title="Delete file"
+                        >
+                          <Trash2
+                            className="w-4 h-4"
+                            style={{ color: "var(--muted-foreground)" }}
+                          />
+                        </button>
+                        <button
+                          className="p-1.5 rounded hover:bg-muted transition-colors"
+                          title="More options"
+                        >
+                          <MoreVertical
+                            className="w-4 h-4"
+                            style={{ color: "var(--muted-foreground)" }}
+                          />
+                        </button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Footer */}

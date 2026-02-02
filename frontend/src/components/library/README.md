@@ -7,12 +7,14 @@ The **Evidence Library** is a centralized file management interface that provide
 ## Features
 
 ### 1. File Management
+
 - **Centralized View**: Single location to view all case-related files
 - **Multi-format Support**: Handles PDFs, videos, audio recordings, and images
 - **File Actions**: View, download, delete, and more options for each file
 
 ### 2. Organization & Filtering
-- **Category Filters**: 
+
+- **Category Filters**:
   - All (default view)
   - Evidence (primary evidence files)
   - Legal (statutes, regulations, case law)
@@ -22,12 +24,14 @@ The **Evidence Library** is a centralized file management interface that provide
 - **Visual Indicators**: Color-coded category badges
 
 ### 3. Status Tracking
+
 - **Ready** (Green): File processed and available
 - **Processing** (Blue): File being analyzed with progress bar
 - **Conflict** (Amber): Contradictions detected with other files
 - **Error** (Red): Processing failed or file corrupted
 
 ### 4. Conflict Detection
+
 - **Automatic Detection**: Identifies contradictions between files
 - **Conflict Types**:
   - Duplicate: Same file uploaded multiple times
@@ -40,6 +44,7 @@ The **Evidence Library** is a centralized file management interface that provide
   - Flag for Review
 
 ### 5. Drag & Drop Upload
+
 - Visual feedback during drag operation
 - Supports multiple file selection
 - Highlighted drop zone when files are dragged over
@@ -67,8 +72,8 @@ The Evidence Library is accessible as a dedicated page within each case:
 
 ```typescript
 interface CaseLibraryProps {
-  caseId: string;      // Current case identifier
-  caseName?: string;   // Optional case name for display
+  caseId: string; // Current case identifier
+  caseName?: string; // Optional case name for display
 }
 ```
 
@@ -79,10 +84,7 @@ import { CaseLibrary } from "@/components/library";
 
 export default function LibraryPage() {
   return (
-    <CaseLibrary 
-      caseId="case-123" 
-      caseName="Offshore Holdings Investigation" 
-    />
+    <CaseLibrary caseId="case-123" caseName="Offshore Holdings Investigation" />
   );
 }
 ```
@@ -93,16 +95,16 @@ export default function LibraryPage() {
 
 ```typescript
 interface LibraryFile {
-  id: string;                  // Unique file identifier
-  name: string;                // Display name
-  type: SupportedFileType;     // "pdf" | "video" | "audio" | "image"
-  size: number;                // File size in bytes
-  url: string;                 // File location
-  category: FileCategory;      // File category
-  status: FileStatus;          // Processing status
+  id: string; // Unique file identifier
+  name: string; // Display name
+  type: SupportedFileType; // "pdf" | "video" | "audio" | "image"
+  size: number; // File size in bytes
+  url: string; // File location
+  category: FileCategory; // File category
+  status: FileStatus; // Processing status
   processingProgress?: number; // 0-100 for processing files
   conflictInfo?: ConflictInfo; // Conflict details if applicable
-  uploadedAt: Date;            // Upload timestamp
+  uploadedAt: Date; // Upload timestamp
 }
 ```
 
@@ -126,6 +128,7 @@ interface LibraryFile {
 The Evidence Library follows the Holmes design system:
 
 ### Color Scheme
+
 - Supports both light and dark modes
 - Uses CSS variables for theming:
   - `--background`: Main background
@@ -138,12 +141,14 @@ The Evidence Library follows the Holmes design system:
 ### Category Badge Colors
 
 **Dark Mode:**
+
 - Evidence: Blue (`bg-blue-900/30 text-blue-300`)
 - Legal: Purple (`bg-purple-900/30 text-purple-300`)
 - Strategy: Green (`bg-green-900/30 text-green-300`)
 - Reference: Amber (`bg-amber-900/30 text-amber-300`)
 
 **Light Mode:**
+
 - Evidence: Blue (`bg-blue-100 text-blue-800`)
 - Legal: Purple (`bg-purple-100 text-purple-800`)
 - Strategy: Green (`bg-green-100 text-green-800`)
@@ -152,6 +157,7 @@ The Evidence Library follows the Holmes design system:
 ### Animations
 
 Uses Framer Motion for smooth transitions:
+
 - File list items fade in with staggered delay
 - Conflict alert slides in/out smoothly
 - Hover states on interactive elements
@@ -174,6 +180,7 @@ const navItems = [
 ## File Actions
 
 ### View File
+
 Opens the file in the Source Panel for detailed analysis.
 
 ```typescript
@@ -184,6 +191,7 @@ const handleViewFile = (file: LibraryFile) => {
 ```
 
 ### Download File
+
 Triggers file download to user's device.
 
 ```typescript
@@ -194,6 +202,7 @@ const handleDownloadFile = (file: LibraryFile) => {
 ```
 
 ### Delete File
+
 Removes file from the case.
 
 ```typescript
@@ -221,6 +230,7 @@ useEffect(() => {
 ## Future Enhancements
 
 ### Planned Features
+
 1. **Bulk Actions**: Select multiple files for batch operations
 2. **File Preview**: Thumbnail or quick preview on hover
 3. **Advanced Filters**: Filter by date, size, processing status
@@ -233,7 +243,9 @@ useEffect(() => {
 10. **Analytics**: File processing statistics and insights
 
 ### Conflict Resolution Workflow
+
 Future implementation should include:
+
 1. **Side-by-side comparison**: Visual diff of conflicting content
 2. **Merge tool**: Combine information from multiple sources
 3. **Audit trail**: Track conflict resolution decisions
@@ -275,12 +287,12 @@ Use Server-Sent Events (SSE) for real-time status updates:
 ```typescript
 useEffect(() => {
   const eventSource = new EventSource(`/api/cases/${caseId}/files/events`);
-  
-  eventSource.addEventListener('file-processing-update', (event) => {
+
+  eventSource.addEventListener("file-processing-update", (event) => {
     const data = JSON.parse(event.data);
     updateFileStatus(data.fileId, data.status, data.progress);
   });
-  
+
   return () => eventSource.close();
 }, [caseId]);
 ```
@@ -299,26 +311,30 @@ useEffect(() => {
 ```typescript
 // Debounced search
 const debouncedSearch = useMemo(
-  () => debounce((query: string) => {
-    setSearchQuery(query);
-  }, 300),
-  []
+  () =>
+    debounce((query: string) => {
+      setSearchQuery(query);
+    }, 300),
+  [],
 );
 ```
 
 ## Accessibility
 
 ### Keyboard Navigation
+
 - Tab through files
 - Enter to view file
 - Arrow keys to navigate table
 
 ### Screen Reader Support
+
 - ARIA labels for all actions
 - Semantic HTML structure
 - Status announcements
 
 ### Focus Management
+
 - Proper focus indicators
 - Focus trap in modals
 - Return focus on close
@@ -326,6 +342,7 @@ const debouncedSearch = useMemo(
 ## Testing
 
 ### Unit Tests
+
 - Filtering logic (category and search)
 - File actions (view, download, delete)
 - Drag and drop functionality
@@ -333,11 +350,13 @@ const debouncedSearch = useMemo(
 - Conflict display
 
 ### Integration Tests
+
 - Source Panel integration
 - Upload integration
 - Modal behavior
 
 ### Accessibility Tests
+
 - Keyboard navigation
 - Screen reader compatibility
 - Focus management
@@ -352,6 +371,7 @@ const debouncedSearch = useMemo(
 ## Support
 
 For questions or issues, refer to:
+
 - [Command Center Implementation Guide](../../DEVELOPMENT_DOCS/COMMAND-CENTER-GUIDE.md)
 - [Source Panel Technical Specification](../../DEVELOPMENT_DOCS/EVIDENCE-SOURCE-PANEL.md)
 - [Design System Documentation](../../DOCS/UI/DESIGN-SYSTEM.md)

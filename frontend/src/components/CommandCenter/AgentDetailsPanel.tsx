@@ -61,7 +61,7 @@ export function AgentDetailsPanel({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-stone/10 transition-colors flex-shrink-0"
+            className="p-1.5 rounded-lg hover:bg-stone/10 transition-colors shrink-0"
           >
             <X className="w-5 h-5 text-stone" />
           </button>
@@ -194,7 +194,7 @@ export function AgentDetailsPanel({
                         key={idx}
                         className="flex items-start gap-2 p-3 rounded-lg bg-jet/50 border border-stone/10"
                       >
-                        <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 flex-shrink-0" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 shrink-0" />
                         <span className="text-sm text-smoke font-mono">
                           {tool}
                         </span>
@@ -319,7 +319,7 @@ export function AgentDetailsPanel({
                           {task.fileName}
                         </div>
                         <div
-                          className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
+                          className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
                             task.status === "complete"
                               ? "bg-green-500"
                               : "bg-red-500"

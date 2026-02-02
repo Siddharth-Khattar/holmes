@@ -39,11 +39,11 @@ export function TimelineControls({
   const currentZoomIndex = ZOOM_LEVELS.indexOf(zoomLevel);
 
   return (
-    <div className="bg-[var(--card)] border-b border-[var(--border)] px-4 md:px-10 py-4">
+    <div className="bg-(--card) border-b border-(--border) px-4 md:px-10 py-4">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {/* Zoom controls */}
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-[var(--foreground)] mr-2">
+          <span className="text-sm font-medium text-(--foreground) mr-2">
             Zoom:
           </span>
 
@@ -54,13 +54,13 @@ export function TimelineControls({
               }
             }}
             disabled={currentZoomIndex === 0}
-            className="p-2 rounded-md hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-[var(--foreground)]"
+            className="p-2 rounded-md hover:bg-(--muted) disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-(--foreground)"
             aria-label="Zoom in"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
 
-          <div className="flex gap-1 bg-[var(--muted)] rounded-md p-1">
+          <div className="flex gap-1 bg-(--muted) rounded-md p-1">
             {ZOOM_LEVELS.map((level) => (
               <button
                 key={level}
@@ -68,8 +68,8 @@ export function TimelineControls({
                 className={cn(
                   "px-3 py-1.5 text-xs font-medium rounded transition-all",
                   level === zoomLevel
-                    ? "bg-[var(--background)] text-[var(--foreground)] shadow-sm"
-                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
+                    ? "bg-(--background) text-(--foreground) shadow-sm"
+                    : "text-(--muted-foreground) hover:text-(--foreground)",
                 )}
               >
                 {ZOOM_CONFIG[level].label}
@@ -84,7 +84,7 @@ export function TimelineControls({
               }
             }}
             disabled={currentZoomIndex === ZOOM_LEVELS.length - 1}
-            className="p-2 rounded-md hover:bg-[var(--muted)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-[var(--foreground)]"
+            className="p-2 rounded-md hover:bg-(--muted) disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-(--foreground)"
             aria-label="Zoom out"
           >
             <ZoomOut className="w-4 h-4" />
@@ -94,8 +94,8 @@ export function TimelineControls({
         {/* Layer filters */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-[var(--muted-foreground)]" />
-            <span className="text-sm font-medium text-[var(--foreground)]">
+            <Filter className="w-4 h-4 text-(--muted-foreground)" />
+            <span className="text-sm font-medium text-(--foreground)">
               Layers:
             </span>
           </div>
@@ -113,7 +113,7 @@ export function TimelineControls({
                     "px-3 py-1.5 text-xs font-medium rounded-md border-2 transition-all",
                     isSelected
                       ? `${config.bgColor} ${config.borderColor} ${config.color}`
-                      : "bg-transparent border-[var(--border)] text-[var(--muted-foreground)] hover:border-[var(--muted-foreground)]",
+                      : "bg-transparent border-(--border) text-(--muted-foreground) hover:border-(--muted-foreground)",
                   )}
                 >
                   {config.label}
@@ -123,8 +123,8 @@ export function TimelineControls({
           </div>
 
           {/* Event count */}
-          <div className="hidden lg:flex items-center gap-2 ml-4 px-3 py-1.5 bg-[var(--muted)] rounded-md">
-            <span className="text-xs text-[var(--muted-foreground)]">
+          <div className="hidden lg:flex items-center gap-2 ml-4 px-3 py-1.5 bg-(--muted) rounded-md">
+            <span className="text-xs text-(--muted-foreground)">
               Showing {filteredEvents} of {totalEvents} events
             </span>
           </div>

@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useMemo } from "react";
 import {
-  X,
   FileText,
   Video,
   Music,
@@ -134,7 +133,7 @@ const mockLibraryFiles: LibraryFile[] = [
   },
 ];
 
-export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
+export function CaseLibrary({ caseName }: CaseLibraryProps) {
   const [files] = useState<LibraryFile[]>(mockLibraryFiles);
   const [selectedCategory, setSelectedCategory] = useState<FileCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -420,7 +419,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
           >
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-4">
               <div className="flex items-start space-x-3">
-                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <h3 className="text-sm font-medium text-amber-900 dark:text-amber-300 mb-2">
                     Attention Required (
@@ -496,7 +495,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                   <td className="px-4 py-4">
                     <div className="flex items-center space-x-3">
                       <div
-                        className="flex-shrink-0"
+                        className="shrink-0"
                         style={{ color: "var(--muted-foreground)" }}
                       >
                         {getFileIcon(file.type)}

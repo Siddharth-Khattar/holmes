@@ -24,7 +24,7 @@ const statusConfig: Record<
 > = {
   DRAFT: {
     label: "Draft",
-    className: "text-[var(--muted-foreground)]",
+    className: "text-(--muted-foreground)",
     style: { backgroundColor: "var(--muted)" },
   },
   PROCESSING: {
@@ -173,7 +173,7 @@ export default function CaseLayout({
           </div>
 
           {/* Floating Navigation Tabs - Top Right */}
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             <ExpandableTabs
               tabs={navItems}
               activeTab={`/${currentSection}`}

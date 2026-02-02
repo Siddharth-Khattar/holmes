@@ -294,7 +294,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                     >
                       {/* Holmes Logo for Assistant Messages */}
                       {message.role === "assistant" && (
-                        <div className="flex-shrink-0 mt-1">
+                        <div className="shrink-0 mt-1">
                           <Image
                             src="/logo-1x.png"
                             alt="Holmes"
@@ -354,7 +354,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                             alt="Holmes"
                             width={20}
                             height={20}
-                            className="opacity-80 flex-shrink-0 drop-shadow-sm"
+                            className="opacity-80 shrink-0 drop-shadow-sm"
                           />
 
                           {/* Thinking Text */}
@@ -413,7 +413,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                 </div>
 
                 {/* Input Area */}
-                <div className="p-4 border-t border-white/30 dark:border-white/10 bg-white/30 dark:bg-[#2a2825]/50 backdrop-blur-md flex-shrink-0">
+                <div className="p-4 border-t border-white/30 dark:border-white/10 bg-white/30 dark:bg-[#2a2825]/50 backdrop-blur-md shrink-0">
                   <div className="flex gap-2 items-end">
                     <textarea
                       value={inputValue}
@@ -444,7 +444,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
                       onClick={handleSendMessage}
                       disabled={!inputValue.trim()}
                       className={clsx(
-                        "px-4 py-2.5 rounded-lg flex-shrink-0",
+                        "px-4 py-2.5 rounded-lg shrink-0",
                         "bg-[#2a2825] dark:bg-[#f5f4ef]",
                         "text-[#faf9f7] dark:text-[#050505]",
                         "hover:bg-[#3d3a36] dark:hover:bg-[#d4d3ce]",

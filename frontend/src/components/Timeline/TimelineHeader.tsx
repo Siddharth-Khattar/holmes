@@ -27,18 +27,15 @@ export function TimelineHeader({
 
   return (
     <div
-      className={cn(
-        "bg-[var(--background)] border-b border-[var(--border)]",
-        className,
-      )}
+      className={cn("bg-(--background) border-b border-(--border)", className)}
     >
       <div className="max-w-7xl mx-auto py-12 px-4 md:px-8 lg:px-10">
         {/* Title and description */}
         <div className="mb-8">
-          <h1 className="text-3xl md:text-5xl font-sans font-bold text-[var(--foreground)] mb-3 tracking-tight">
+          <h1 className="text-3xl md:text-5xl font-sans font-bold text-(--foreground) mb-3 tracking-tight">
             Case Timeline
           </h1>
-          <p className="text-[var(--muted-foreground)] text-base md:text-lg max-w-2xl tracking-body">
+          <p className="text-(--muted-foreground) text-base md:text-lg max-w-2xl tracking-body">
             Chronological visualization of case events extracted from documents,
             organized by evidence, legal proceedings, and strategic actions.
           </p>
@@ -47,31 +44,31 @@ export function TimelineHeader({
         {/* Statistics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total events card */}
-          <div className="bg-[var(--card)] rounded-lg p-4 border border-[var(--border)] shadow-sm transition-shadow hover:shadow-md">
+          <div className="bg-(--card) rounded-lg p-4 border border-(--border) shadow-sm transition-shadow hover:shadow-md">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-[var(--muted-foreground)]">
+              <span className="text-sm font-medium text-(--muted-foreground)">
                 Total Events
               </span>
               <TrendingUp className="w-4 h-4 text-blue-600" />
             </div>
-            <div className="text-3xl font-bold text-[var(--foreground)]">
+            <div className="text-3xl font-bold text-(--foreground)">
               {totalEvents}
             </div>
           </div>
 
           {/* Date range card */}
           {dateRange && (
-            <div className="bg-[var(--card)] rounded-lg p-4 border border-[var(--border)] shadow-sm transition-shadow hover:shadow-md">
+            <div className="bg-(--card) rounded-lg p-4 border border-(--border) shadow-sm transition-shadow hover:shadow-md">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-[var(--muted-foreground)]">
+                <span className="text-sm font-medium text-(--muted-foreground)">
                   Date Range
                 </span>
                 <Calendar className="w-4 h-4 text-purple-600" />
               </div>
-              <div className="text-sm font-semibold text-[var(--foreground)]">
+              <div className="text-sm font-semibold text-(--foreground)">
                 {format(new Date(dateRange.earliest), "MMM d, yyyy")}
               </div>
-              <div className="text-xs text-[var(--muted-foreground)]">
+              <div className="text-xs text-(--muted-foreground)">
                 to {format(new Date(dateRange.latest), "MMM d, yyyy")}
               </div>
             </div>

@@ -49,7 +49,7 @@ export function ExpandableTabs({
   };
 
   const Separator = () => (
-    <div className="mx-1 h-[24px] w-[1.2px] bg-border" aria-hidden="true" />
+    <div className="mx-1 h-6 w-[1.2px] bg-border" aria-hidden="true" />
   );
 
   return (
@@ -82,7 +82,7 @@ export function ExpandableTabs({
               "relative flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-300",
               isActive
                 ? cn(
-                    "bg-gradient-to-br from-white/25 to-white/10 dark:from-white/15 dark:to-white/5",
+                    "bg-linear-to-br from-white/25 to-white/10 dark:from-white/15 dark:to-white/5",
                     "shadow-[inset_0_1px_2px_0_rgba(255,255,255,0.4),0_2px_4px_0_rgba(0,0,0,0.15)] dark:shadow-[inset_0_1px_2px_0_rgba(255,255,255,0.2),0_2px_4px_0_rgba(0,0,0,0.4)]",
                     "backdrop-blur-sm border border-white/30 dark:border-white/15",
                     "text-foreground font-semibold",

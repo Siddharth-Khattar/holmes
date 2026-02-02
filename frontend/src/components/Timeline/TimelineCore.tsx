@@ -94,10 +94,10 @@ export function TimelineCore({
   if (sortedGroupKeys.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-4">
-        <div className="text-[var(--muted-foreground)] text-lg">
+        <div className="text-(--muted-foreground) text-lg">
           No timeline events found
         </div>
-        <p className="text-[var(--muted-foreground)] text-sm mt-2">
+        <p className="text-(--muted-foreground) text-sm mt-2">
           Try adjusting your filters or extract events from case documents
         </p>
       </div>
@@ -106,10 +106,7 @@ export function TimelineCore({
 
   return (
     <div
-      className={cn(
-        "w-full bg-[var(--background)] font-sans md:px-10",
-        className,
-      )}
+      className={cn("w-full bg-(--background) font-sans md:px-10", className)}
       ref={containerRef}
     >
       <div ref={ref} className="relative max-w-7xl mx-auto pb-20">
@@ -128,18 +125,18 @@ export function TimelineCore({
               >
                 {/* Timeline marker and date */}
                 <div className="sticky flex flex-col md:flex-row z-40 items-center top-40 self-start max-w-xs lg:max-w-sm md:w-full">
-                  <div className="h-10 absolute left-3 md:left-3 w-10 rounded-full bg-[var(--card)] flex items-center justify-center border-2 border-[var(--border)]">
+                  <div className="h-10 absolute left-3 md:left-3 w-10 rounded-full bg-(--card) flex items-center justify-center border-2 border-(--border)">
                     <div className="h-4 w-4 rounded-full bg-gradient-to-br from-blue-600 to-purple-600" />
                   </div>
 
-                  <h3 className="hidden md:block text-xl md:pl-20 md:text-5xl font-bold text-[var(--foreground)] tracking-tight">
+                  <h3 className="hidden md:block text-xl md:pl-20 md:text-5xl font-bold text-(--foreground) tracking-tight">
                     {formatGroupTitle(groupKey)}
                   </h3>
                 </div>
 
                 {/* Event cards */}
                 <div className="relative pl-20 pr-4 md:pl-4 w-full space-y-4">
-                  <h3 className="md:hidden block text-2xl mb-4 text-left font-bold text-[var(--foreground)] tracking-tight">
+                  <h3 className="md:hidden block text-2xl mb-4 text-left font-bold text-(--foreground) tracking-tight">
                     {formatGroupTitle(groupKey)}
                   </h3>
 
@@ -170,7 +167,7 @@ export function TimelineCore({
           style={{
             height: height + "px",
           }}
-          className="absolute md:left-8 left-8 top-0 overflow-hidden w-[2px] bg-[linear-gradient(to_bottom,var(--tw-gradient-stops))] from-transparent from-[0%] via-[var(--border)] to-transparent to-[99%] [mask-image:linear-gradient(to_bottom,transparent_0%,black_10%,black_90%,transparent_100%)]"
+          className="absolute md:left-8 left-8 top-0 overflow-hidden w-[2px] bg-[linear-gradient(to_bottom,var(--tw-gradient-stops))] from-transparent from-[0%] via-(--border) to-transparent to-[99%] [mask-image:linear-gradient(to_bottom,transparent_0%,black_10%,black_90%,transparent_100%)]"
         >
           <motion.div
             style={{

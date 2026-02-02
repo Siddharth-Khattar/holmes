@@ -11,7 +11,7 @@ import {
   AlertCircle,
   Check,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { format } from "date-fns";
 import { TimelineEvent } from "@/types/timeline.types";
 import { LAYER_CONFIG } from "@/constants/timeline.constants";
@@ -78,7 +78,7 @@ export function EventDetailModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -94,7 +94,7 @@ export function EventDetailModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ type: "spring", duration: 0.3 }}
-          className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden bg-[var(--card)] rounded-xl shadow-2xl border border-[var(--border)]"
+          className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden bg-(--card) rounded-xl shadow-2xl border border-(--border)"
         >
           {/* Header */}
           <div
@@ -137,10 +137,10 @@ export function EventDetailModal({
                   type="text"
                   value={editedTitle}
                   onChange={(e) => setEditedTitle(e.target.value)}
-                  className="text-2xl font-bold text-[var(--foreground)] w-full bg-transparent border-b-2 border-blue-600 focus:outline-none"
+                  className="text-2xl font-bold text-(--foreground) w-full bg-transparent border-b-2 border-blue-600 focus:outline-none"
                 />
               ) : (
-                <h2 className="text-2xl font-bold text-[var(--foreground)]">
+                <h2 className="text-2xl font-bold text-(--foreground)">
                   {event.title}
                 </h2>
               )}
@@ -148,7 +148,7 @@ export function EventDetailModal({
 
             <button
               onClick={onClose}
-              className="p-2 hover:bg-[var(--muted)] rounded-lg transition-colors text-[var(--foreground)]"
+              className="p-2 hover:bg-(--muted) rounded-lg transition-colors text-(--foreground)"
               aria-label="Close modal"
             >
               <X className="w-5 h-5" />
@@ -159,13 +159,13 @@ export function EventDetailModal({
           <div className="p-6 overflow-y-auto max-h-[calc(90vh-240px)]">
             {/* Date and time */}
             <div className="flex flex-wrap gap-4 mb-6">
-              <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
+              <div className="flex items-center gap-2 text-(--muted-foreground)">
                 <Calendar className="w-4 h-4" />
                 <span className="font-medium">
                   {format(new Date(event.date), "MMMM d, yyyy")}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
+              <div className="flex items-center gap-2 text-(--muted-foreground)">
                 <Clock className="w-4 h-4" />
                 <span className="font-medium">
                   {format(new Date(event.date), "h:mm a")}
@@ -175,7 +175,7 @@ export function EventDetailModal({
 
             {/* Description */}
             <div className="mb-6">
-              <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+              <h3 className="text-sm font-semibold text-(--foreground) mb-2">
                 Description
               </h3>
               {isEditing ? (
@@ -183,11 +183,11 @@ export function EventDetailModal({
                   value={editedDescription}
                   onChange={(e) => setEditedDescription(e.target.value)}
                   rows={4}
-                  className="w-full p-3 text-[var(--foreground)] bg-[var(--muted)] rounded-lg border-2 border-blue-600 focus:outline-none resize-none"
+                  className="w-full p-3 text-(--foreground) bg-(--muted) rounded-lg border-2 border-blue-600 focus:outline-none resize-none"
                   placeholder="Add a description..."
                 />
               ) : (
-                <p className="text-[var(--muted-foreground)]">
+                <p className="text-(--muted-foreground)">
                   {event.description || "No description provided"}
                 </p>
               )}
@@ -196,7 +196,7 @@ export function EventDetailModal({
             {/* Source documents */}
             {event.sourceIds && event.sourceIds.length > 0 && (
               <div className="mb-6">
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-(--foreground) mb-2 flex items-center gap-2">
                   <FileText className="w-4 h-4" />
                   Source Documents ({event.sourceIds.length})
                 </h3>
@@ -204,10 +204,10 @@ export function EventDetailModal({
                   {event.sourceIds.map((sourceId) => (
                     <div
                       key={sourceId}
-                      className="flex items-center gap-2 p-2 bg-[var(--muted)] rounded hover:bg-[var(--muted)]/80 transition-colors cursor-pointer"
+                      className="flex items-center gap-2 p-2 bg-(--muted) rounded hover:bg-(--muted)/80 transition-colors cursor-pointer"
                     >
-                      <FileText className="w-4 h-4 text-[var(--muted-foreground)]" />
-                      <span className="text-sm text-[var(--foreground)] font-mono">
+                      <FileText className="w-4 h-4 text-(--muted-foreground)" />
+                      <span className="text-sm text-(--foreground) font-mono">
                         {sourceId.slice(0, 8)}...
                       </span>
                     </div>
@@ -219,11 +219,11 @@ export function EventDetailModal({
             {/* Metadata */}
             {event.metadata && Object.keys(event.metadata).length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-[var(--foreground)] mb-2">
+                <h3 className="text-sm font-semibold text-(--foreground) mb-2">
                   Additional Information
                 </h3>
-                <div className="bg-[var(--muted)] rounded-lg p-3">
-                  <pre className="text-xs text-[var(--muted-foreground)] overflow-x-auto">
+                <div className="bg-(--muted) rounded-lg p-3">
+                  <pre className="text-xs text-(--muted-foreground) overflow-x-auto">
                     {JSON.stringify(event.metadata, null, 2)}
                   </pre>
                 </div>
@@ -232,7 +232,7 @@ export function EventDetailModal({
           </div>
 
           {/* Footer actions */}
-          <div className="flex items-center justify-between p-6 border-t border-[var(--border)] bg-[var(--muted)]/30">
+          <div className="flex items-center justify-between p-6 border-t border-(--border) bg-(--muted)/30">
             <div className="flex gap-2">
               {onUpdate &&
                 (isEditing ? (
@@ -249,7 +249,7 @@ export function EventDetailModal({
                         setEditedDescription(event.description || "");
                         setIsEditing(false);
                       }}
-                      className="px-4 py-2 bg-[var(--muted)] hover:bg-[var(--muted)]/80 text-[var(--foreground)] rounded-lg font-medium transition-colors"
+                      className="px-4 py-2 bg-(--muted) hover:bg-(--muted)/80 text-(--foreground) rounded-lg font-medium transition-colors"
                     >
                       Cancel
                     </button>
@@ -257,7 +257,7 @@ export function EventDetailModal({
                 ) : (
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-[var(--muted)] hover:bg-[var(--muted)]/80 text-[var(--foreground)] rounded-lg font-medium transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-(--muted) hover:bg-(--muted)/80 text-(--foreground) rounded-lg font-medium transition-colors"
                   >
                     <Edit2 className="w-4 h-4" />
                     Edit
@@ -269,7 +269,7 @@ export function EventDetailModal({
               <button
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="flex items-center gap-2 px-4 py-2 bg-[var(--destructive)] hover:bg-[var(--destructive)]/90 disabled:opacity-50 text-[var(--destructive-foreground)] rounded-lg font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-(--destructive) hover:bg-(--destructive)/90 disabled:opacity-50 text-(--destructive-foreground) rounded-lg font-medium transition-colors"
               >
                 {isDeleting ? (
                   <>

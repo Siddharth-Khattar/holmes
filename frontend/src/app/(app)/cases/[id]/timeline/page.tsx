@@ -8,7 +8,7 @@ export default function TimelinePage() {
   const caseId = params.id as string;
 
   return (
-    <div className="min-h-screen bg-[var(--background)]">
+    <div className="min-h-screen bg-(--background)">
       <Timeline
         caseId={caseId}
         enableRealtimeUpdates={false}

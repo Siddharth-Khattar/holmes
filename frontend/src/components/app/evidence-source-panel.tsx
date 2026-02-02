@@ -174,7 +174,7 @@ export function EvidenceSourcePanel({
         style={{ borderColor: "rgba(138, 138, 130, 0.15)" }}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <IconComponent size={18} className="text-stone flex-shrink-0" />
+          <IconComponent size={18} className="text-stone shrink-0" />
           <h3 className="text-sm font-medium text-smoke truncate">
             Source Panel
           </h3>

@@ -85,7 +85,10 @@ export function Timeline({
         >
           Failed to load timeline
         </div>
-        <p className="text-sm mt-2" style={{ color: "var(--color-stone, #8A8A82)" }}>
+        <p
+          className="text-sm mt-2"
+          style={{ color: "var(--color-stone, #8A8A82)" }}
+        >
           {error.message || "An unexpected error occurred"}
         </p>
         <button

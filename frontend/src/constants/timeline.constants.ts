@@ -86,7 +86,8 @@ export const PERFORMANCE_CONFIG = {
 
 // API configuration
 export const API_CONFIG = {
-  TIMELINE_BASE_PATH: (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080") + "/api/cases",
+  TIMELINE_BASE_PATH:
+    (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080") + "/api/cases",
   DEFAULT_PAGE_SIZE: 50,
   MAX_PAGE_SIZE: 200,
   REQUEST_TIMEOUT: 30000, // 30 seconds

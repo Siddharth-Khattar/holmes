@@ -94,10 +94,16 @@ export function TimelineCore({
   if (sortedGroupKeys.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-4">
-        <div className="text-lg" style={{ color: "var(--color-stone, #8A8A82)" }}>
+        <div
+          className="text-lg"
+          style={{ color: "var(--color-stone, #8A8A82)" }}
+        >
           No timeline events found
         </div>
-        <p className="text-sm mt-2" style={{ color: "var(--color-stone, #8A8A82)" }}>
+        <p
+          className="text-sm mt-2"
+          style={{ color: "var(--color-stone, #8A8A82)" }}
+        >
           Try adjusting your filters or extract events from case documents
         </p>
       </div>

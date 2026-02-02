@@ -67,7 +67,9 @@ export function TimelineControls({
             style={{
               color: "var(--color-smoke, #E5E5E5)",
               backgroundColor:
-                currentZoomIndex === 0 ? "transparent" : "rgba(138, 138, 130, 0.1)",
+                currentZoomIndex === 0
+                  ? "transparent"
+                  : "rgba(138, 138, 130, 0.1)",
             }}
             aria-label="Zoom in"
           >

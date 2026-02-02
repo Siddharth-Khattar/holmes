@@ -67,20 +67,20 @@ interface KnowledgeGraphProps {
 }
 
 const ENTITY_COLORS: Record<EntityType, string> = {
-  person: "#8B7355", // Warm brown - matches stone/muted palette
-  organization: "#6B5A47", // Deep warm brown
-  location: "#9D8B73", // Light warm brown
-  event: "#B89968", // Golden brown
-  document: "#7A6B5D", // Medium warm brown
-  evidence: "#A68A6A", // Tan brown
+  person: "#4A90E2", // Professional blue - trustworthy, human-centric
+  organization: "#7B68EE", // Royal purple - authority, corporate
+  location: "#50C878", // Emerald green - places, geography
+  event: "#FF6B6B", // Coral red - action, temporal events
+  document: "#F5A623", // Amber - information, records
+  evidence: "#95A5A6", // Slate gray - neutral evidence
 };
 
 const EVIDENCE_COLORS: Record<EvidenceType, string> = {
-  text: "#B89968", // Golden brown
-  image: "#A68A6A", // Tan brown
-  video: "#8B7355", // Warm brown
-  audio: "#9D8B73", // Light warm brown
-  document: "#7A6B5D", // Medium warm brown
+  text: "#F5A623", // Amber - written content
+  image: "#E74C3C", // Vibrant red - visual media
+  video: "#9B59B6", // Purple - rich media
+  audio: "#1ABC9C", // Teal - sound, audio
+  document: "#3498DB", // Blue - formal documents
 };
 
 const EVIDENCE_ICONS: Record<
@@ -575,21 +575,28 @@ export function KnowledgeGraph({
           }}
           style={{ cursor: connectingFrom ? "crosshair" : "grab" }}
         >
-          {/* Node circle */}
+          {/* Node circle with gradient */}
+          <defs>
+            <radialGradient id={`gradient-${node.id}`}>
+              <stop offset="0%" stopColor={color} stopOpacity="1" />
+              <stop offset="100%" stopColor={color} stopOpacity="0.85" />
+            </radialGradient>
+          </defs>
           <circle
             r={isSelected ? 35 : isHovered ? 32 : 30}
-            fill={color}
+            fill={`url(#gradient-${node.id})`}
             stroke={
               isConnecting
-                ? "var(--color-accent)"
+                ? "#F5F4EF"
                 : isSelected
-                  ? "var(--color-smoke)"
+                  ? "#F8F7F4"
                   : isHovered
-                    ? "var(--color-accent-muted)"
+                    ? "#D4D3CE"
                     : color
             }
             strokeWidth={isConnecting ? 4 : isSelected ? 4 : isHovered ? 3 : 2}
-            opacity={0.9}
+            opacity={1}
+            filter={isSelected || isHovered ? "url(#node-glow)" : undefined}
           />
 
           {/* Node label */}
@@ -634,12 +641,8 @@ export function KnowledgeGraph({
                 cx={35}
                 cy={0}
                 r={12}
-                fill={
-                  isConnecting
-                    ? "var(--color-accent)"
-                    : "var(--color-accent-muted)"
-                }
-                stroke="var(--color-smoke)"
+                fill={isConnecting ? "#4A90E2" : "#F5F4EF"}
+                stroke={isConnecting ? "#F8F7F4" : "#4A90E2"}
                 strokeWidth={2}
               />
               <text
@@ -647,7 +650,7 @@ export function KnowledgeGraph({
                 y={0}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill="var(--color-charcoal)"
+                fill={isConnecting ? "#F8F7F4" : "#4A90E2"}
                 fontSize="14"
                 fontWeight="600"
                 style={{ pointerEvents: "none" }}
@@ -682,25 +685,38 @@ export function KnowledgeGraph({
           }}
           style={{ cursor: connectingFrom ? "crosshair" : "grab" }}
         >
-          {/* Evidence node - square shape */}
+          {/* Evidence node - square shape with gradient */}
+          <defs>
+            <linearGradient
+              id={`gradient-${node.id}`}
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
+            >
+              <stop offset="0%" stopColor={color} stopOpacity="1" />
+              <stop offset="100%" stopColor={color} stopOpacity="0.85" />
+            </linearGradient>
+          </defs>
           <rect
             x={isSelected ? -35 : isHovered ? -32 : -30}
             y={isSelected ? -35 : isHovered ? -32 : -30}
             width={isSelected ? 70 : isHovered ? 64 : 60}
             height={isSelected ? 70 : isHovered ? 64 : 60}
             rx={8}
-            fill={color}
+            fill={`url(#gradient-${node.id})`}
             stroke={
               isConnecting
-                ? "var(--color-accent)"
+                ? "#F5F4EF"
                 : isSelected
-                  ? "var(--color-smoke)"
+                  ? "#F8F7F4"
                   : isHovered
-                    ? "var(--color-accent-muted)"
+                    ? "#D4D3CE"
                     : color
             }
             strokeWidth={isConnecting ? 4 : isSelected ? 4 : isHovered ? 3 : 2}
-            opacity={0.9}
+            opacity={1}
+            filter={isSelected || isHovered ? "url(#node-glow)" : undefined}
           />
 
           {/* Evidence icon */}
@@ -756,12 +772,8 @@ export function KnowledgeGraph({
                 cx={35}
                 cy={0}
                 r={12}
-                fill={
-                  isConnecting
-                    ? "var(--color-accent)"
-                    : "var(--color-accent-muted)"
-                }
-                stroke="var(--color-smoke)"
+                fill={isConnecting ? "#4A90E2" : "#F5F4EF"}
+                stroke={isConnecting ? "#F8F7F4" : "#4A90E2"}
                 strokeWidth={2}
               />
               <text
@@ -769,7 +781,7 @@ export function KnowledgeGraph({
                 y={0}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill="var(--color-charcoal)"
+                fill={isConnecting ? "#F8F7F4" : "#4A90E2"}
                 fontSize="14"
                 fontWeight="600"
                 style={{ pointerEvents: "none" }}
@@ -803,6 +815,28 @@ export function KnowledgeGraph({
     const midX = (sourcePos.x + targetPos.x) / 2;
     const midY = (sourcePos.y + targetPos.y) / 2;
 
+    // Color code connections based on relationship type
+    const getConnectionColor = (type: string) => {
+      switch (type) {
+        case "employment":
+          return "#4A90E2"; // Blue
+        case "ownership":
+          return "#7B68EE"; // Purple
+        case "location":
+          return "#50C878"; // Green
+        case "transaction":
+          return "#FF6B6B"; // Red
+        case "evidence":
+          return "#F5A623"; // Amber
+        case "governance":
+          return "#9B59B6"; // Purple
+        default:
+          return "#8A8A82"; // Stone gray
+      }
+    };
+
+    const connectionColor = getConnectionColor(conn.relationship.type);
+
     return (
       <g key={conn.id}>
         {/* Connection line */}
@@ -811,9 +845,9 @@ export function KnowledgeGraph({
           y1={sourcePos.y}
           x2={targetPos.x}
           y2={targetPos.y}
-          stroke="var(--color-stone)"
+          stroke={connectionColor}
           strokeWidth={2}
-          opacity={0.4}
+          opacity={0.6}
           strokeDasharray="5,5"
         />
 
@@ -900,7 +934,13 @@ export function KnowledgeGraph({
 
             <div className="flex items-center gap-2">
               {connectingFrom && (
-                <div className="px-3 py-1 rounded-lg bg-accent/10 text-accent text-xs">
+                <div
+                  className="px-3 py-1 rounded-lg text-xs font-medium"
+                  style={{
+                    backgroundColor: "rgba(74, 144, 226, 0.15)",
+                    color: "#4A90E2",
+                  }}
+                >
                   Click another node to connect
                 </div>
               )}
@@ -952,6 +992,21 @@ export function KnowledgeGraph({
                   opacity="0.2"
                 />
               </pattern>
+
+              {/* Glow filter for selected/hovered nodes */}
+              <filter
+                id="node-glow"
+                x="-50%"
+                y="-50%"
+                width="200%"
+                height="200%"
+              >
+                <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                <feMerge>
+                  <feMergeNode in="coloredBlur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
             </defs>
             <rect width="100%" height="100%" fill="url(#dotted-background)" />
 
@@ -970,10 +1025,10 @@ export function KnowledgeGraph({
                     y1={tempConnection.from.y}
                     x2={tempConnection.to.x}
                     y2={tempConnection.to.y}
-                    stroke="var(--color-accent)"
-                    strokeWidth={2}
-                    opacity={0.6}
-                    strokeDasharray="5,5"
+                    stroke="#4A90E2"
+                    strokeWidth={3}
+                    opacity={0.8}
+                    strokeDasharray="8,4"
                   />
                 )}
               </g>
@@ -1208,7 +1263,19 @@ export function KnowledgeGraph({
                               setSourcePanelEvidence(evidence);
                               setIsSourcePanelMinimized(false);
                             }}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent/20 hover:bg-accent/30 text-xs text-accent transition-colors"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                            style={{
+                              backgroundColor: "rgba(74, 144, 226, 0.2)",
+                              color: "#4A90E2",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor =
+                                "rgba(74, 144, 226, 0.3)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor =
+                                "rgba(74, 144, 226, 0.2)";
+                            }}
                           >
                             <ExternalLink className="w-3 h-3" />
                             View Details

@@ -1,34 +1,38 @@
 import { TimelineLayer, TimelineZoomLevel } from "@/types/timeline.types";
 
-// Layer styling configuration
+// Layer styling configuration - Warm brown palette matching Knowledge Graph
 export const LAYER_CONFIG: Record<
   TimelineLayer,
   {
     color: string;
     bgColor: string;
     borderColor: string;
+    hexColor: string;
     icon: string;
     label: string;
   }
 > = {
   evidence: {
-    color: "text-blue-700 dark:text-blue-400",
-    bgColor: "bg-blue-50 dark:bg-blue-950",
-    borderColor: "border-blue-200 dark:border-blue-800",
+    color: "text-[#B89968]",
+    bgColor: "bg-[#B89968]/10",
+    borderColor: "border-[#B89968]/30",
+    hexColor: "#B89968", // Golden brown
     icon: "FileText",
     label: "Evidence",
   },
   legal: {
-    color: "text-purple-700 dark:text-purple-400",
-    bgColor: "bg-purple-50 dark:bg-purple-950",
-    borderColor: "border-purple-200 dark:border-purple-800",
+    color: "text-[#8B7355]",
+    bgColor: "bg-[#8B7355]/10",
+    borderColor: "border-[#8B7355]/30",
+    hexColor: "#8B7355", // Warm brown
     icon: "Scale",
     label: "Legal",
   },
   strategy: {
-    color: "text-amber-700 dark:text-amber-400",
-    bgColor: "bg-amber-50 dark:bg-amber-950",
-    borderColor: "border-amber-200 dark:border-amber-800",
+    color: "text-[#A68A6A]",
+    bgColor: "bg-[#A68A6A]/10",
+    borderColor: "border-[#A68A6A]/30",
+    hexColor: "#A68A6A", // Tan brown
     icon: "Target",
     label: "Strategy",
   },

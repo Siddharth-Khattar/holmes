@@ -166,6 +166,8 @@ export function TimelineCore({
         <div
           style={{
             height: height + "px",
+            background:
+              "linear-gradient(to bottom, transparent 0%, rgba(138, 138, 130, 0.3) 10%, rgba(138, 138, 130, 0.3) 90%, transparent 100%)",
           }}
           className="absolute md:left-8 left-8 top-0 overflow-hidden w-[2px] bg-[linear-gradient(to_bottom,var(--tw-gradient-stops))] from-transparent from-[0%] via-(--border) to-transparent to-[99%] [mask-image:linear-gradient(to_bottom,transparent_0%,black_10%,black_90%,transparent_100%)]"
         >
@@ -173,8 +175,10 @@ export function TimelineCore({
             style={{
               height: heightTransform,
               opacity: opacityTransform,
+              background:
+                "linear-gradient(to top, #A68A6A 0%, #B89968 50%, transparent 100%)",
             }}
-            className="absolute inset-x-0 top-0 w-[2px] bg-gradient-to-t from-purple-600 via-blue-600 to-transparent from-[0%] via-[10%] rounded-full"
+            className="absolute inset-x-0 top-0 w-[2px] rounded-full"
           />
         </div>
       </div>

@@ -49,7 +49,7 @@ export function TimelineHeader({
               <span className="text-sm font-medium text-(--muted-foreground)">
                 Total Events
               </span>
-              <TrendingUp className="w-4 h-4 text-blue-600" />
+              <TrendingUp className="w-4 h-4" style={{ color: "#B89968" }} />
             </div>
             <div className="text-3xl font-bold text-(--foreground)">
               {totalEvents}
@@ -63,7 +63,7 @@ export function TimelineHeader({
                 <span className="text-sm font-medium text-(--muted-foreground)">
                   Date Range
                 </span>
-                <Calendar className="w-4 h-4 text-purple-600" />
+                <Calendar className="w-4 h-4" style={{ color: "#8B7355" }} />
               </div>
               <div className="text-sm font-semibold text-(--foreground)">
                 {format(new Date(dateRange.earliest), "MMM d, yyyy")}
@@ -85,19 +85,24 @@ export function TimelineHeader({
                 return (
                   <div
                     key={layer}
-                    className={cn(
-                      "rounded-lg p-4 border-2 shadow-sm transition-shadow hover:shadow-md",
-                      config.bgColor,
-                      config.borderColor,
-                      "bg-opacity-30 dark:bg-opacity-20",
-                    )}
+                    className="rounded-lg p-4 border-2 shadow-sm transition-shadow hover:shadow-md"
+                    style={{
+                      backgroundColor: config.hexColor + "15",
+                      borderColor: config.hexColor + "50",
+                    }}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className={cn("text-sm font-medium", config.color)}>
+                      <span
+                        className="text-sm font-medium"
+                        style={{ color: config.hexColor }}
+                      >
                         {config.label}
                       </span>
                     </div>
-                    <div className={cn("text-3xl font-bold", config.color)}>
+                    <div
+                      className="text-3xl font-bold"
+                      style={{ color: config.hexColor }}
+                    >
                       {count}
                     </div>
                   </div>

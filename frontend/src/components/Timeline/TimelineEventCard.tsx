@@ -39,24 +39,28 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
         "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-(--ring)",
         layerConfig.borderColor,
       )}
+      style={{
+        backgroundColor: "rgba(17, 17, 17, 0.6)",
+        borderColor: layerConfig.hexColor + "50",
+      }}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-2">
           <div
-            className={cn(
-              "p-1.5 rounded-md",
-              layerConfig.bgColor,
-              "bg-opacity-80 dark:bg-opacity-60",
-            )}
+            className="p-1.5 rounded-md"
+            style={{
+              backgroundColor: layerConfig.hexColor + "20",
+            }}
           >
-            <IconComponent className={cn("w-4 h-4", layerConfig.color)} />
+            <IconComponent
+              className="w-4 h-4"
+              style={{ color: layerConfig.hexColor }}
+            />
           </div>
           <span
-            className={cn(
-              "text-xs font-medium uppercase tracking-wide",
-              layerConfig.color,
-            )}
+            className="text-xs font-medium uppercase tracking-wide"
+            style={{ color: layerConfig.hexColor }}
           >
             {layerConfig.label}
           </span>
@@ -122,11 +126,10 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
 
       {/* Hover indicator */}
       <div
-        className={cn(
-          "absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none",
-          "ring-2 ring-inset",
-          layerConfig.borderColor,
-        )}
+        className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none ring-2 ring-inset"
+        style={{
+          borderColor: layerConfig.hexColor,
+        }}
       />
     </div>
   );

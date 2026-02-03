@@ -100,10 +100,10 @@ to the user for transparency.
 
 ## OUTPUT FORMAT
 
-Respond with a SINGLE JSON object matching this exact schema. Do not include any \
-text outside the JSON block.
+Respond with a SINGLE raw JSON object matching the schema below.
+Do NOT wrap your response in markdown code fences or any other formatting.
+Output ONLY the JSON object — no commentary, no preamble, no trailing text.
 
-```json
 {
   "routing_decisions": [
     {
@@ -140,7 +140,6 @@ text outside the JSON block.
     "File 'scan_003.pdf' has low confidence (0.2) due to poor scan quality -- domain agents may need to flag extraction issues."
   ]
 }
-```
 
 ---
 

@@ -26,6 +26,9 @@ from app.services.adk_service import (
 
 logger = logging.getLogger(__name__)
 
+# Maximum retries when LLM output fails to parse (1 retry = 2 total attempts)
+MAX_PARSE_RETRIES = 1
+
 # Type alias for the optional SSE publish callback
 PublishEventFn = Callable[[str, dict[str, object]], Coroutine[Any, Any, None] | None]
 
@@ -63,17 +66,22 @@ class TriageAgent:
 
 
 def _extract_json_from_text(text: str) -> str | None:
-    """Extract JSON from model response text, handling markdown code fences."""
-    # Try to find JSON in code fences first
-    if "```json" in text:
-        start = text.index("```json") + len("```json")
-        end = text.index("```", start)
-        return text[start:end].strip()
+    """Extract JSON from model response text, handling markdown code fences.
 
-    if "```" in text:
-        start = text.index("```") + len("```")
-        end = text.index("```", start)
-        return text[start:end].strip()
+    Tolerates missing closing fences — if the model opens a code block
+    but never closes it, everything after the opening fence is used.
+    """
+    # Try ```json fence first, then bare ``` fence
+    for fence in ("```json", "```"):
+        pos = text.find(fence)
+        if pos == -1:
+            continue
+        start = pos + len(fence)
+        end = text.find("```", start)
+        # No closing fence — take everything after the opening fence
+        candidate = text[start:end].strip() if end != -1 else text[start:].strip()
+        if candidate:
+            return candidate
 
     # Try the whole text as JSON
     text = text.strip()
@@ -229,40 +237,64 @@ async def run_triage(
         execution.started_at = datetime.now(tz=UTC)
         await db_session.flush()
 
-        # ---- Create agent and runner ----
-        triage = TriageAgent(
-            case_id=case_id,
-            file_ids=file_ids,
-            publish_fn=publish_event,
-        )
-        runner = create_stage_runner(triage.agent)
-
-        # ---- Create stage-isolated session ----
-        session = await get_or_create_stage_session(
-            user_id=user_id,
-            case_id=UUID(case_id),
-            workflow_id=UUID(workflow_id),
-            stage="triage",
-        )
-
-        # ---- Build multimodal content ----
+        # ---- Build multimodal content (shared across retries) ----
         content = await _prepare_triage_content(files, settings.gcs_bucket or "")
 
-        # ---- Run agent ----
-        all_events: list[Event] = []
-        async for event in runner.run_async(
-            user_id=user_id,
-            session_id=session.id,
-            new_message=content,
-        ):
-            all_events.append(event)
+        # ---- Run agent with retry on parse failure ----
+        triage_output: TriageOutput | None = None
+        total_input_tokens = 0
+        total_output_tokens = 0
+        all_thinking_traces: list[dict[str, object]] = []
 
-        # ---- Parse output ----
-        triage_output = parse_triage_output(all_events)
+        for attempt in range(1 + MAX_PARSE_RETRIES):
+            # Create agent and runner per attempt
+            triage = TriageAgent(
+                case_id=case_id,
+                file_ids=file_ids,
+                publish_fn=publish_event,
+            )
+            runner = create_stage_runner(triage.agent)
 
-        # ---- Extract metadata ----
-        input_tokens, output_tokens = _extract_token_usage(all_events)
-        thinking_traces = _extract_thinking_traces(all_events)
+            # Fresh session per attempt to avoid polluted context
+            stage = "triage" if attempt == 0 else f"triage_retry_{attempt}"
+            session = await get_or_create_stage_session(
+                user_id=user_id,
+                case_id=UUID(case_id),
+                workflow_id=UUID(workflow_id),
+                stage=stage,
+            )
+
+            attempt_events: list[Event] = []
+            async for event in runner.run_async(
+                user_id=user_id,
+                session_id=session.id,
+                new_message=content,
+            ):
+                attempt_events.append(event)
+
+            # Accumulate tokens across all attempts
+            attempt_in, attempt_out = _extract_token_usage(attempt_events)
+            total_input_tokens += attempt_in
+            total_output_tokens += attempt_out
+            all_thinking_traces.extend(_extract_thinking_traces(attempt_events))
+
+            triage_output = parse_triage_output(attempt_events)
+            if triage_output is not None:
+                break
+
+            if attempt < MAX_PARSE_RETRIES:
+                logger.warning(
+                    "Triage parse failed on attempt %d/%d for case=%s, "
+                    "retrying with fresh session...",
+                    attempt + 1,
+                    1 + MAX_PARSE_RETRIES,
+                    case_id,
+                )
+
+        # ---- Alias accumulated metadata ----
+        input_tokens = total_input_tokens
+        output_tokens = total_output_tokens
+        thinking_traces = all_thinking_traces
 
         # ---- Update execution record ----
         execution.status = (

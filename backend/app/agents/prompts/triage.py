@@ -88,10 +88,10 @@ process them all natively.
 
 ## OUTPUT FORMAT
 
-Respond with a SINGLE JSON object matching this exact schema. Do not include any \
-text outside the JSON block.
+Respond with a SINGLE raw JSON object matching the schema below.
+Do NOT wrap your response in markdown code fences or any other formatting.
+Output ONLY the JSON object — no commentary, no preamble, no trailing text.
 
-```json
 {
   "file_results": [
     {
@@ -130,7 +130,6 @@ text outside the JSON block.
   ],
   "total_token_estimate": null
 }
-```
 
 ---
 

@@ -26,6 +26,7 @@
 | 2 | Authentication & Case Shell | Auth system, Case CRUD, basic UI shell | REQ-AUTH-*, REQ-CASE-001/002/003 | ✅ COMPLETE |
 | 3 | File Ingestion | Upload, storage, file management | REQ-CASE-004/005, REQ-SOURCE-* (basic) | ✅ COMPLETE |
 | 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e | ✅ COMPLETE |
+| 4.1 | Agent Decision Tree Revamp (INSERTED) | Replace D3 Command Center with @xyflow/react + dagre decision tree | REQ-VIS-001 (visual quality) | ⏳ NOT_STARTED |
 | 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 | 🟡 FRONTEND_DONE |
 | 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ⏳ NOT_STARTED |
 | 7 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, Hypothesis system, Task generation, 5-layer KG | REQ-AGENT-008/009, REQ-VIS-003, REQ-HYPO-001/004/005/006, REQ-TASK-001/002 | 🟡 FRONTEND_DONE |
@@ -277,6 +278,76 @@ Plans:
 - ✅ Agent execution logged to database
 - ✅ SSE events fire for agent lifecycle (AGENT_SPAWNED, THINKING_UPDATE, AGENT_COMPLETED)
 - ✅ Thinking traces captured and available for display
+
+---
+
+## Phase 4.1: Agent Decision Tree Revamp (INSERTED)
+
+**Goal:** Completely revamp the Command Center agent visualization from the current D3-based static node layout to a @xyflow/react + dagre-powered decision tree with rich animations, chosen-path highlighting, smoothstep edges, portal tooltips, and a spring-animated details sidebar — matching the reference implementation from the agent-decision-tree-guide.
+
+**Depends on:** Phase 4
+
+**Requirements:** REQ-VIS-001 (visual quality improvement)
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 4.1 to break down)
+
+**Deliverables:**
+- Replace D3 SVG canvas (`AgentFlowCanvas.tsx`) with `@xyflow/react` + dagre auto-layout
+- Custom `DecisionNode` component with motion animations (entrance, floating, hover, pulse border, text glow)
+- Chosen-path highlighting: accent-colored edges with animated dashes, glowing drop-shadow
+- Unchosen nodes: muted dark gray with subtle hover brightening
+- Dagre top-to-bottom hierarchical layout (`rankdir: TB`, `ranksep: 120`, `nodesep: 150`)
+- Smoothstep edge connectors with animated chosen paths
+- Portal-rendered tooltip ("Click for more details") positioned via `getBoundingClientRect()`
+- Spring-animated `NodeDetailsSidebar` sliding from right (`AnimatePresence` + `motion.div`)
+- Color-coded sidebar sections (Reasoning, Description, Instructions, Metadata)
+- Dark canvas background (`hsl(0 0% 9%)`) with dot grid via ReactFlow `<Background>`
+- Auto-fit viewport with 1.5s smooth animation
+- Nodes not draggable (`nodesDraggable={false}`), pan and zoom enabled
+- Preserve all existing SSE integration and agent state management
+- Preserve all existing types (`command-center.ts`) and hooks (`useCommandCenterSSE.ts`)
+
+**Technical Notes:**
+- Install `@xyflow/react` and `dagre` + `@types/dagre` as dependencies
+- `motion` (v12+) already installed — use for node animations
+- Map existing `AgentType` (triage, orchestrator, financial, legal, strategy, knowledge-graph) to decision tree nodes
+- Map existing `DEFAULT_CONNECTIONS` to ReactFlow edges
+- Chosen path = agent with status `processing` or `complete`; unchosen = `idle`
+- Agent pipeline is a fixed tree: triage → orchestrator → [financial, legal, strategy] → knowledge-graph
+- Node dimensions: 300px wide, 100px tall, `rounded-lg` (~8px radius)
+- Color system: Use existing Holmes design tokens where possible, add accent variables for chosen-path highlighting
+- Sidebar replaces current `AgentDetailsPanel` with spring animation and color-coded sections
+- Wrap parent page in `<ReactFlowProvider>`
+- Import `@xyflow/react/dist/style.css`
+- **Reference: `DOCS/UI/agent-decision-tree-guide.md`** — READ THIS FIRST for pixel-level visual spec, data model, component breakdown, color system, animation specs, and layout geometry
+
+**Key files to modify:**
+- `frontend/src/components/CommandCenter/AgentFlowCanvas.tsx` → Complete rewrite with ReactFlow
+- `frontend/src/components/CommandCenter/AgentNode.tsx` → Complete rewrite as `DecisionNode`
+- `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx` → Rewrite as `NodeDetailsSidebar`
+- `frontend/src/components/CommandCenter/CommandCenter.tsx` → Update to use ReactFlowProvider + new components
+- `frontend/src/lib/command-center-config.ts` → Update colors, remove manual positions (dagre handles layout)
+
+**Files to preserve (no changes):**
+- `frontend/src/types/command-center.ts` — All types remain
+- `frontend/src/hooks/useCommandCenterSSE.ts` — SSE hook remains
+- `frontend/src/lib/command-center-validation.ts` — Validation remains
+- `frontend/src/lib/mock-command-center-data.ts` — Mock data remains
+
+**Exit Criteria:**
+- Agent decision tree renders with hierarchical dagre layout (top-to-bottom)
+- Active/chosen agents have accent-colored nodes with glow, floating animation, pulsing border
+- Inactive agents are muted dark gray with hover effects
+- Smoothstep edges animate along chosen path with glowing trail
+- Clicking any node opens spring-animated sidebar with color-coded sections
+- Portal tooltip appears on hover above each node
+- Canvas has dark background with dot grid pattern
+- Viewport auto-fits all nodes on mount
+- Pan/zoom works, nodes are not draggable
+- All existing SSE events and agent state management still functional
 
 ---
 

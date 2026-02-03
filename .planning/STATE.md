@@ -14,6 +14,7 @@
 | 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 | |
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
+| 4.1 | Agent Decision Tree Revamp | NOT_STARTED | - | - | INSERTED: Revamp Command Center UI |
 | 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
@@ -40,8 +41,8 @@
   - Verification: `.planning/phases/04-core-agent-system/04-VERIFICATION.md`
 
 **What's next:**
-- **Phase 5:** Agent Flow — Backend SSE integration for real-time agent visualization
-- Then: Domain Agents (Phase 6), Synthesis & KG (Phase 7)
+- **Phase 4.1:** Agent Decision Tree Revamp — Replace D3 Command Center with @xyflow/react + dagre decision tree matching reference design
+- Then: Phase 5 (Agent Flow backend SSE), Domain Agents (Phase 6), Synthesis & KG (Phase 7)
 
 ---
 
@@ -171,6 +172,9 @@ All frontend features need these backend endpoints:
 - **Phase 1.1 inserted after Phase 1:** Frontend Design Foundation (URGENT)
   - Reason: Establish robust frontend design foundation before subsequent phases build upon it
   - Reference: DOCS/UI/LANDING-INIT.md for landing page requirements
+
+- **Phase 4.1 inserted after Phase 4:** Agent Decision Tree Revamp (URGENT)
+  - Reason: Current D3-based Command Center visualization is visually poor (static layout, bad colors, no animations). Revamp with @xyflow/react + dagre to match reference design from agent-decision-tree-guide.md before proceeding to Phase 5 backend work.
 
 - **Yatharth's frontend work (2026-02-02):** Phases 3, 5, 7, 9, 10 have frontend UI complete
   - All use mock data with graceful fallbacks

@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-02
-**Current Phase:** 3 of 12 (File Ingestion) — COMPLETE
-**Current Plan:** Phase 3 complete, ready for Phase 4
+**Last Updated:** 2026-02-03
+**Current Phase:** 4 of 12 (Core Agent System) — IN PROGRESS
+**Current Plan:** 04-01 complete, ready for 04-02
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -13,7 +13,7 @@
 | 1.1 | Frontend Design Foundation | COMPLETE | 2026-01-23 | 2026-01-24 | |
 | 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 | |
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
-| 4 | Core Agent System | NOT_STARTED | - | - | |
+| 4 | Core Agent System | IN_PROGRESS | 2026-02-03 | - | Plan 01 (ADK infra) complete |
 | 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
@@ -30,15 +30,18 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 3 Verified** (2026-02-02)
-  - All 6 observable truths verified
-  - All 9 required artifacts exist and substantive
-  - All 7 key links confirmed wired
-  - Verification: `.planning/phases/03-file-ingestion/03-VERIFICATION.md`
-  - Key deliverables: File upload/download/delete, duplicate detection, bulk delete, SSE status, multi-select UI
+- **Phase 4 Plan 01** (2026-02-03): ADK Infrastructure
+  - google-adk dependency installed (v1.23.0)
+  - ADK service layer: DatabaseSessionService, GcsArtifactService, Runner factory
+  - Agent factory: fresh LlmAgent instances for triage (Flash) and orchestrator (Pro)
+  - Stage-isolated sessions via SHA-256 deterministic IDs
+  - Callback-to-SSE mapping for all 6 ADK hooks
+  - Tiered file preparation (inline <=100MB, File API >100MB)
+  - Summary: `.planning/phases/04-core-agent-system/04-01-SUMMARY.md`
 
 **What's next:**
-- **Phase 4:** Core Agent System (ADK, Triage, Orchestrator)
+- **Phase 4 Plan 02:** Triage Agent implementation (system prompt, output schema, pipeline integration)
+- **Phase 4 Plan 03:** Orchestrator Agent implementation
 - Then: Backend integration for all frontend-done phases
 
 ---
@@ -214,12 +217,24 @@ All frontend features need these backend endpoints:
 | Services layer | Inline in routes vs Separate services/ | Separate services/ | Reusable business logic, cleaner route handlers |
 | Signed URL expiration | 1h vs 24h vs 7d | 24h | Balance between security and usability |
 | SSE pubsub | Redis vs In-memory | In-memory | Sufficient for single-instance hackathon deployment |
+| ADK agent naming | Raw UUIDs vs Sanitized | Sanitized via regex | ADK requires valid Python identifiers; UUIDs have hyphens |
+| Thinking config | generate_content_config vs BuiltInPlanner | BuiltInPlanner | ADK best practice; cleaner integration with ThinkingConfig |
+| Model ID configurability | Hardcoded vs Env vars | Env vars (GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL) | Smooth preview-to-GA migration path |
+| SSE callback dispatch | Synchronous vs asyncio.create_task | asyncio.create_task | Non-blocking; graceful fallback when no event loop |
 
 ---
 
 ## Blockers
 
 None currently.
+
+---
+
+## Session Continuity
+
+Last session: 2026-02-03T05:28:13Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
 
 ---
 

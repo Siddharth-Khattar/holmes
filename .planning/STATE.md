@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-03
 **Current Phase:** 4 of 12 (Core Agent System) — IN PROGRESS
-**Current Plan:** 04-01 complete, ready for 04-02
+**Current Plan:** 04-02 complete, ready for 04-03
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -13,7 +13,7 @@
 | 1.1 | Frontend Design Foundation | COMPLETE | 2026-01-23 | 2026-01-24 | |
 | 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 | |
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
-| 4 | Core Agent System | IN_PROGRESS | 2026-02-03 | - | Plan 01 (ADK infra) complete |
+| 4 | Core Agent System | IN_PROGRESS | 2026-02-03 | - | Plans 01-02 complete |
 | 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
@@ -30,17 +30,15 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 4 Plan 01** (2026-02-03): ADK Infrastructure
-  - google-adk dependency installed (v1.23.0)
-  - ADK service layer: DatabaseSessionService, GcsArtifactService, Runner factory
-  - Agent factory: fresh LlmAgent instances for triage (Flash) and orchestrator (Pro)
-  - Stage-isolated sessions via SHA-256 deterministic IDs
-  - Callback-to-SSE mapping for all 6 ADK hooks
-  - Tiered file preparation (inline <=100MB, File API >100MB)
-  - Summary: `.planning/phases/04-core-agent-system/04-01-SUMMARY.md`
+- **Phase 4 Plan 02** (2026-02-03): Agent Execution Models & Schemas
+  - AgentExecution SQLAlchemy model with full audit trail (17 columns, JSONB I/O)
+  - AgentExecutionStatus enum: PENDING, RUNNING, COMPLETED, FAILED, RETRYING
+  - TriageOutput Pydantic schema with DomainScore, ExtractedEntity, FileSummary, ComplexityAssessment
+  - Agent execution CRUD schemas (Create/Update/Response)
+  - Alembic migration 0562cc9e65bd for agent_executions table
+  - Summary: `.planning/phases/04-core-agent-system/04-02-SUMMARY.md`
 
 **What's next:**
-- **Phase 4 Plan 02:** Triage Agent implementation (system prompt, output schema, pipeline integration)
 - **Phase 4 Plan 03:** Orchestrator Agent implementation
 - Then: Backend integration for all frontend-done phases
 
@@ -221,6 +219,9 @@ All frontend features need these backend endpoints:
 | Thinking config | generate_content_config vs BuiltInPlanner | BuiltInPlanner | ADK best practice; cleaner integration with ThinkingConfig |
 | Model ID configurability | Hardcoded vs Env vars | Env vars (GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL) | Smooth preview-to-GA migration path |
 | SSE callback dispatch | Synchronous vs asyncio.create_task | asyncio.create_task | Non-blocking; graceful fallback when no event loop |
+| Agent I/O storage | Typed columns vs JSONB | JSONB | Flexible schema for varied agent types; supports PostgreSQL indexing |
+| Agent parent tracking | Separate table vs Self-referential FK | Self-referential FK with SET NULL | Simpler schema; preserves child records |
+| Migration generation | Autogenerate vs Manual | Manual | No live database required during development |
 
 ---
 
@@ -232,8 +233,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-03T05:28:13Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-02-03T05:35:13Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
 
 ---

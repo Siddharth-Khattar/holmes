@@ -61,6 +61,7 @@ if _is_dev_auth_allowed():
         auto_error=False,  # Don't error if missing, fall through to JWT
     )
 
+
 # JWT Bearer scheme for production auth
 _bearer_scheme = HTTPBearer(
     scheme_name="BearerAuth",
@@ -122,24 +123,16 @@ async def _get_or_create_dev_user(db: AsyncSession) -> User:
 # =============================================================================
 
 
-async def get_current_user(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    bearer_token: Annotated[
-        HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)
-    ] = None,
-    dev_api_key: str | None = Depends(_dev_api_key_scheme)
-    if _dev_api_key_scheme
-    else None,
+async def _authenticate_user(
+    db: AsyncSession,
+    bearer_token: HTTPAuthorizationCredentials | None,
+    dev_api_key: str | None = None,
 ) -> User:
-    """Authenticate user via Dev API key (development) or JWT (production).
+    """Core authentication logic shared by both dev and production paths.
 
     Authentication priority:
     1. X-Dev-API-Key header (only when DEBUG=True and DEV_API_KEY configured)
     2. Authorization: Bearer <jwt> header (production JWT from Better Auth)
-
-    The Swagger UI "Authorize" button appears because we use:
-    - APIKeyHeader for dev API key
-    - HTTPBearer for JWT tokens
     """
     # Method 1: Dev API key (development only)
     if _dev_api_key_scheme and dev_api_key:
@@ -195,6 +188,33 @@ async def get_current_user(
         detail="Missing authentication. Provide X-Dev-API-Key or Bearer token.",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+
+# Conditionally define get_current_user with the appropriate FastAPI signature.
+# When dev auth is enabled, the dev_api_key header parameter is included;
+# when disabled, it is excluded entirely so it never leaks into the OpenAPI schema.
+if _dev_api_key_scheme:
+
+    async def get_current_user(
+        db: Annotated[AsyncSession, Depends(get_db)],
+        bearer_token: Annotated[
+            HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)
+        ] = None,
+        dev_api_key: str | None = Depends(_dev_api_key_scheme),
+    ) -> User:
+        """Authenticate via Dev API key (header) or JWT Bearer token."""
+        return await _authenticate_user(db, bearer_token, dev_api_key)
+
+else:
+
+    async def get_current_user(
+        db: Annotated[AsyncSession, Depends(get_db)],
+        bearer_token: Annotated[
+            HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)
+        ] = None,
+    ) -> User:
+        """Authenticate via JWT Bearer token."""
+        return await _authenticate_user(db, bearer_token)
 
 
 # Type alias for dependency injection in route handlers

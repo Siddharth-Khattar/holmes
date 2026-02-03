@@ -112,6 +112,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sse/cases/{case_id}/command-center/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Command Center Stream
+         * @description SSE endpoint for Command Center agent visualization.
+         *
+         *     Streams agent lifecycle events for real-time display in the
+         *     Command Center Agent Flow canvas:
+         *     - agent-started: When an agent begins processing
+         *     - agent-complete: When an agent finishes with results
+         *     - agent-error: When an agent encounters an error
+         *     - processing-complete: When all processing is done
+         *
+         *     Heartbeat every 15 seconds to keep connection alive on Cloud Run.
+         */
+        get: operations["command_center_stream_sse_cases__case_id__command_center_stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/me": {
         parameters: {
             query?: never;
@@ -315,10 +344,136 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cases/{case_id}/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start agent analysis for case files
+         * @description Start agent analysis for all uploaded files in a case.
+         *
+         *     Per CONTEXT.md: "Batch after uploads -- user explicitly starts analysis"
+         *
+         *     This triggers:
+         *     1. Triage Agent on all UPLOADED files
+         *     2. Orchestrator Agent with triage results
+         *     3. (Future) Domain agents based on routing
+         *     4. (Future) Synthesis agent for final output
+         *
+         *     Returns workflow_id for tracking progress via the status endpoint
+         *     or the Command Center SSE stream.
+         */
+        post: operations["start_analysis_api_cases__case_id__analyze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/analysis/{workflow_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get analysis workflow status
+         * @description Get current status of an analysis workflow.
+         *
+         *     Returns the pipeline stage, triage and orchestrator results when available,
+         *     and error information if the workflow failed.
+         */
+        get: operations["get_analysis_status_api_cases__case_id__analysis__workflow_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AnalysisStartResponse
+         * @description Response returned when an analysis workflow is started.
+         */
+        AnalysisStartResponse: {
+            /**
+             * Workflow Id
+             * Format: uuid
+             * @description Unique ID for tracking this workflow
+             */
+            workflow_id: string;
+            /**
+             * Case Id
+             * Format: uuid
+             * @description ID of the case being analyzed
+             */
+            case_id: string;
+            /**
+             * Files Queued
+             * @description Number of files queued for analysis
+             */
+            files_queued: number;
+            /**
+             * Message
+             * @description Human-readable status message
+             */
+            message: string;
+        };
+        /**
+         * AnalysisStatusResponse
+         * @description Current status of an analysis workflow.
+         */
+        AnalysisStatusResponse: {
+            /**
+             * Workflow Id
+             * Format: uuid
+             * @description Workflow tracking ID
+             */
+            workflow_id: string;
+            /**
+             * Case Id
+             * Format: uuid
+             * @description ID of the case
+             */
+            case_id: string;
+            /**
+             * Status
+             * @description Current pipeline stage
+             * @enum {string}
+             */
+            status: "pending" | "triage" | "orchestrating" | "domain_analysis" | "complete" | "error";
+            /** @description Triage output once complete */
+            triage_result?: components["schemas"]["TriageOutput"] | null;
+            /** @description Orchestrator output once complete */
+            orchestrator_result?: components["schemas"]["OrchestratorOutput"] | null;
+            /**
+             * Started At
+             * Format: date-time
+             * @description When the workflow started
+             */
+            started_at: string;
+            /**
+             * Completed At
+             * @description When the workflow completed
+             */
+            completed_at?: string | null;
+            /**
+             * Error
+             * @description Error message if failed
+             */
+            error?: string | null;
+        };
         /** Body_upload_file_api_cases__case_id__files_post */
         Body_upload_file_api_cases__case_id__files_post: {
             /**
@@ -482,6 +637,55 @@ export interface components {
             description?: string | null;
         };
         /**
+         * ComplexityAssessment
+         * @description Complexity tier assessment for routing to appropriate model/thinking level.
+         *
+         *     Uses a hybrid approach: AI estimates tier, token metadata refines when available.
+         */
+        ComplexityAssessment: {
+            /**
+             * Tier
+             * @description Complexity tier for model routing
+             * @enum {string}
+             */
+            tier: "low" | "medium" | "high";
+            /**
+             * Token Estimate
+             * @description Estimated token count from ADK metadata when available
+             */
+            token_estimate?: number | null;
+            /**
+             * Reasoning
+             * @description Rationale for the complexity assessment
+             */
+            reasoning?: string | null;
+        };
+        /**
+         * DomainScore
+         * @description Confidence score for a single investigation domain.
+         *
+         *     Each file is scored across domains (financial, legal, strategy, evidence)
+         *     to determine which domain specialists should process it.
+         */
+        DomainScore: {
+            /**
+             * Domain
+             * @description Investigation domain category
+             * @enum {string}
+             */
+            domain: "financial" | "legal" | "strategy" | "evidence";
+            /**
+             * Score
+             * @description Confidence score 0-100
+             */
+            score: number;
+            /**
+             * Reasoning
+             * @description Brief rationale for the score
+             */
+            reasoning?: string | null;
+        };
+        /**
          * DownloadUrlResponse
          * @description Response containing a signed download URL.
          */
@@ -542,11 +746,92 @@ export interface components {
             suggested_action?: string | null;
         };
         /**
+         * ExtractedEntity
+         * @description Entity extracted from a file during triage.
+         *
+         *     Quick entity extraction provides an initial knowledge graph seed
+         *     before full domain analysis.
+         */
+        ExtractedEntity: {
+            /**
+             * Type
+             * @description Entity type category
+             * @enum {string}
+             */
+            type: "person" | "organization" | "date" | "location" | "amount" | "legal_term";
+            /**
+             * Value
+             * @description Extracted entity value
+             */
+            value: string;
+            /**
+             * Context
+             * @description Surrounding text for disambiguation
+             */
+            context?: string | null;
+            /**
+             * Confidence
+             * @description Extraction confidence 0-1
+             * @default 1
+             */
+            confidence: number;
+        };
+        /**
          * FileCategory
          * @description Category of file auto-detected from MIME type.
          * @enum {string}
          */
         FileCategory: "DOCUMENT" | "IMAGE" | "VIDEO" | "AUDIO";
+        /**
+         * FileGroupForProcessing
+         * @description Group of related files to be sent together to domain agents.
+         *
+         *     Grouping provides richer context when files relate to the same transaction,
+         *     entity, or event.
+         */
+        FileGroupForProcessing: {
+            /**
+             * Group Id
+             * @description Unique identifier for this group
+             */
+            group_id: string;
+            /**
+             * File Ids
+             * @description IDs of files in this processing group
+             */
+            file_ids: string[];
+            /**
+             * Target Agents
+             * @description Domain agents that should receive this group
+             */
+            target_agents: string[];
+            /**
+             * Shared Context
+             * @description Why these files are grouped together
+             */
+            shared_context: string;
+        };
+        /**
+         * FileGrouping
+         * @description Suggested grouping of related files for batch processing.
+         */
+        FileGrouping: {
+            /**
+             * Group Name
+             * @description Descriptive name for the group
+             */
+            group_name: string;
+            /**
+             * File Ids
+             * @description IDs of files in this group
+             */
+            file_ids: string[];
+            /**
+             * Reason
+             * @description Why these files should be processed together
+             */
+            reason: string;
+        };
         /**
          * FileListResponse
          * @description Response model for listing files with pagination.
@@ -678,6 +963,22 @@ export interface components {
          * @enum {string}
          */
         FileStatus: "UPLOADING" | "UPLOADED" | "QUEUED" | "PROCESSING" | "ANALYZED" | "ERROR";
+        /**
+         * FileSummary
+         * @description Short and detailed summaries of a file's content.
+         */
+        FileSummary: {
+            /**
+             * Short
+             * @description 1-2 sentence summary
+             */
+            short: string;
+            /**
+             * Detailed
+             * @description Paragraph-length summary
+             */
+            detailed: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -722,6 +1023,228 @@ export interface components {
              * @description Time when the health check was performed
              */
             timestamp: string;
+        };
+        /**
+         * OrchestratorOutput
+         * @description Complete output from the Orchestrator Agent.
+         *
+         *     Contains routing decisions, file groupings, execution ordering,
+         *     research triggers, and a human-readable routing summary.
+         */
+        OrchestratorOutput: {
+            /**
+             * Routing Decisions
+             * @description Per-file routing decisions with reasoning
+             */
+            routing_decisions: components["schemas"]["RoutingDecision"][];
+            /**
+             * File Groups
+             * @description File groups for batch processing
+             */
+            file_groups?: components["schemas"]["FileGroupForProcessing"][];
+            /**
+             * Parallel Agents
+             * @description Domain agents that can run concurrently
+             */
+            parallel_agents?: string[];
+            /**
+             * Sequential Agents
+             * @description Domain agents that must run in order (with dependencies)
+             */
+            sequential_agents?: string[];
+            /** @description Research/Discovery trigger decision */
+            research_trigger: components["schemas"]["ResearchTrigger"];
+            /**
+             * Overall Complexity
+             * @description Aggregate complexity across all files
+             * @enum {string}
+             */
+            overall_complexity: "low" | "medium" | "high";
+            /**
+             * Routing Summary
+             * @description Human-readable summary of the routing plan
+             */
+            routing_summary: string;
+            /**
+             * Warnings
+             * @description Concerns, edge cases, or caveats noted during routing
+             */
+            warnings?: string[];
+        };
+        /**
+         * ResearchTrigger
+         * @description Decision about whether to trigger autonomous research.
+         *
+         *     The Orchestrator evaluates whether gaps in triage data warrant
+         *     triggering the Research/Discovery agent for additional context.
+         */
+        ResearchTrigger: {
+            /**
+             * Should Trigger
+             * @description Whether research should be triggered
+             */
+            should_trigger: boolean;
+            /**
+             * Reason
+             * @description Why research is or isn't needed
+             */
+            reason?: string | null;
+            /**
+             * Research Queries
+             * @description Suggested research directions
+             */
+            research_queries?: string[];
+            /**
+             * Priority
+             * @description Urgency of the research if triggered
+             * @default medium
+             * @enum {string}
+             */
+            priority: "high" | "medium" | "low";
+        };
+        /**
+         * RoutingDecision
+         * @description Per-file routing decision with detailed reasoning.
+         *
+         *     The Orchestrator evaluates triage results and decides which domain agents
+         *     should process each file, with explicit justification for every assignment.
+         */
+        RoutingDecision: {
+            /**
+             * File Id
+             * @description ID of the file being routed
+             */
+            file_id: string;
+            /**
+             * File Name
+             * @description Original filename for readability
+             */
+            file_name?: string | null;
+            /**
+             * Target Agents
+             * @description Domain agents that should process this file
+             */
+            target_agents: ("financial" | "legal" | "strategy" | "evidence")[];
+            /**
+             * Reasoning
+             * @description Detailed explanation of why these agents were chosen
+             */
+            reasoning: string;
+            /**
+             * Priority
+             * @description Processing priority for this file
+             * @default medium
+             * @enum {string}
+             */
+            priority: "high" | "medium" | "low";
+            /** @description Triage domain scores carried forward for reference */
+            domain_scores?: components["schemas"]["RoutingDomainScores"];
+        };
+        /**
+         * RoutingDomainScores
+         * @description Triage domain scores carried forward into the routing decision.
+         *
+         *     Uses explicit fields instead of a generic dict so the Gemini structured
+         *     output schema stays compatible with constrained decoding.
+         */
+        RoutingDomainScores: {
+            /**
+             * Financial
+             * @description Financial score
+             * @default 0
+             */
+            financial: number;
+            /**
+             * Legal
+             * @description Legal score
+             * @default 0
+             */
+            legal: number;
+            /**
+             * Strategy
+             * @description Strategy score
+             * @default 0
+             */
+            strategy: number;
+            /**
+             * Evidence
+             * @description Evidence score
+             * @default 0
+             */
+            evidence: number;
+        };
+        /**
+         * TriageFileResult
+         * @description Triage output for a single file.
+         *
+         *     Contains domain scores, extracted entities, summaries, complexity
+         *     assessment, and corruption detection results.
+         */
+        TriageFileResult: {
+            /**
+             * File Id
+             * @description ID of the analyzed file
+             */
+            file_id: string;
+            /**
+             * File Name
+             * @description Original filename, populated from multimodal content labels
+             */
+            file_name?: string | null;
+            /**
+             * Domain Scores
+             * @description Confidence scores per investigation domain
+             */
+            domain_scores: components["schemas"]["DomainScore"][];
+            /**
+             * Entities
+             * @description Entities extracted from the file
+             */
+            entities?: components["schemas"]["ExtractedEntity"][];
+            /** @description Short and detailed file summaries */
+            summary: components["schemas"]["FileSummary"];
+            /** @description Complexity tier assessment */
+            complexity: components["schemas"]["ComplexityAssessment"];
+            /**
+             * Confidence
+             * @description Overall extraction confidence for this file
+             */
+            confidence: number;
+            /**
+             * Is Corrupted
+             * @description Whether the file appears corrupted or unreadable
+             * @default false
+             */
+            is_corrupted: boolean;
+            /**
+             * Corruption Notes
+             * @description Details about corruption if detected
+             */
+            corruption_notes?: string | null;
+        };
+        /**
+         * TriageOutput
+         * @description Complete output from the Triage Agent for a set of files.
+         *
+         *     Aggregates per-file results with cross-file grouping suggestions
+         *     and total token estimates for downstream planning.
+         */
+        TriageOutput: {
+            /**
+             * File Results
+             * @description Per-file triage results
+             */
+            file_results: components["schemas"]["TriageFileResult"][];
+            /**
+             * Suggested Groupings
+             * @description Suggested file groupings for batch processing
+             */
+            suggested_groupings?: components["schemas"]["FileGrouping"][];
+            /**
+             * Total Token Estimate
+             * @description Estimated total tokens across all files
+             */
+            total_token_estimate?: number | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -822,6 +1345,37 @@ export interface operations {
         };
     };
     file_status_stream_sse_cases__case_id__files_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    command_center_stream_sse_cases__case_id__command_center_stream_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1509,6 +2063,114 @@ export interface operations {
                 };
             };
             /** @description Case not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_analysis_api_cases__case_id__analyze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisStartResponse"];
+                };
+            };
+            /** @description No files to analyze */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Case not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_analysis_status_api_cases__case_id__analysis__workflow_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                workflow_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalysisStatusResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Workflow or case not found */
             404: {
                 headers: {
                     [name: string]: unknown;

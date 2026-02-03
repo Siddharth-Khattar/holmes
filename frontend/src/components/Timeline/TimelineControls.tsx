@@ -40,19 +40,12 @@ export function TimelineControls({
 
   return (
     <div
-      className="border-b px-4 md:px-10 py-4"
-      style={{
-        backgroundColor: "rgba(17, 17, 17, 0.8)",
-        borderColor: "rgba(138, 138, 130, 0.15)",
-      }}
+      className="border-b px-4 md:px-10 py-4 bg-white/90 dark:bg-[rgba(17,17,17,0.8)] border-warm-gray/12 dark:border-stone/15"
     >
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {/* Zoom controls */}
         <div className="flex items-center gap-2">
-          <span
-            className="text-sm font-medium mr-2"
-            style={{ color: "var(--color-smoke, #E5E5E5)" }}
-          >
+          <span className="text-sm font-medium mr-2 text-foreground">
             Zoom:
           </span>
 
@@ -63,33 +56,23 @@ export function TimelineControls({
               }
             }}
             disabled={currentZoomIndex === 0}
-            className="p-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              color: "var(--color-smoke, #E5E5E5)",
-              backgroundColor:
-                currentZoomIndex === 0
-                  ? "transparent"
-                  : "rgba(138, 138, 130, 0.1)",
-            }}
+            className="p-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-foreground bg-warm-gray/8 dark:bg-stone/10 disabled:bg-transparent"
             aria-label="Zoom in"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
 
-          <div
-            className="flex gap-1 rounded-md p-1"
-            style={{ backgroundColor: "rgba(138, 138, 130, 0.1)" }}
-          >
+          <div className="flex gap-1 rounded-md p-1 bg-warm-gray/8 dark:bg-stone/10">
             {ZOOM_LEVELS.map((level) => (
               <button
                 key={level}
                 onClick={() => onZoomChange(level)}
-                className="px-3 py-1.5 text-xs font-medium rounded transition-all"
-                style={{
-                  backgroundColor:
-                    level === zoomLevel ? "#B89968" : "transparent",
-                  color: level === zoomLevel ? "#111111" : "#8A8A82",
-                }}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded transition-all",
+                  level === zoomLevel
+                    ? "bg-[#8B7355] text-white"
+                    : "bg-transparent text-muted-foreground"
+                )}
               >
                 {ZOOM_CONFIG[level].label}
               </button>
@@ -103,14 +86,7 @@ export function TimelineControls({
               }
             }}
             disabled={currentZoomIndex === ZOOM_LEVELS.length - 1}
-            className="p-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              color: "var(--color-smoke, #E5E5E5)",
-              backgroundColor:
-                currentZoomIndex === ZOOM_LEVELS.length - 1
-                  ? "transparent"
-                  : "rgba(138, 138, 130, 0.1)",
-            }}
+            className="p-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-foreground bg-warm-gray/8 dark:bg-stone/10 disabled:bg-transparent"
             aria-label="Zoom out"
           >
             <ZoomOut className="w-4 h-4" />
@@ -120,14 +96,8 @@ export function TimelineControls({
         {/* Layer filters */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Filter
-              className="w-4 h-4"
-              style={{ color: "var(--color-stone, #8A8A82)" }}
-            />
-            <span
-              className="text-sm font-medium"
-              style={{ color: "var(--color-smoke, #E5E5E5)" }}
-            >
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-foreground">
               Layers:
             </span>
           </div>
@@ -144,12 +114,12 @@ export function TimelineControls({
                   className="px-3 py-1.5 text-xs font-medium rounded-md border-2 transition-all"
                   style={{
                     backgroundColor: isSelected
-                      ? config.hexColor + "20"
+                      ? config.hexColor + "14"
                       : "transparent",
                     borderColor: isSelected
                       ? config.hexColor
-                      : "rgba(138, 138, 130, 0.3)",
-                    color: isSelected ? config.hexColor : "#8A8A82",
+                      : "rgba(107, 101, 96, 0.2)",
+                    color: isSelected ? config.hexColor : "var(--muted-foreground)",
                   }}
                 >
                   {config.label}
@@ -159,11 +129,8 @@ export function TimelineControls({
           </div>
 
           {/* Event count */}
-          <div
-            className="hidden lg:flex items-center gap-2 ml-4 px-3 py-1.5 rounded-md"
-            style={{ backgroundColor: "rgba(138, 138, 130, 0.1)" }}
-          >
-            <span className="text-xs" style={{ color: "#8A8A82" }}>
+          <div className="hidden lg:flex items-center gap-2 ml-4 px-3 py-1.5 rounded-md bg-warm-gray/8 dark:bg-stone/10">
+            <span className="text-xs text-muted-foreground">
               Showing {filteredEvents} of {totalEvents} events
             </span>
           </div>

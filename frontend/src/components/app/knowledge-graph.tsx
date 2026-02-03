@@ -970,15 +970,29 @@ export function KnowledgeGraph({
 
   return (
     <div
-      className="relative w-full h-full rounded-lg shadow-2xl flex gap-2 overflow-hidden border border-stone/10"
+      className="relative w-full h-full rounded-lg shadow-2xl flex gap-2 overflow-hidden border-2 border-warm-gray/30 dark:border-stone/30 bg-background dark:bg-jet"
       style={{
-        backgroundColor: "var(--color-jet)",
         minHeight: "600px",
-        backgroundImage:
-          "radial-gradient(circle at 1px 1px, rgba(138, 138, 130, 0.08) 1px, transparent 0)",
-        backgroundSize: "24px 24px",
       }}
     >
+      {/* Background pattern - Light mode */}
+      <div
+        className="absolute inset-0 pointer-events-none dark:hidden"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(107, 101, 96, 0.25) 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
+      />
+      {/* Background pattern - Dark mode */}
+      <div
+        className="absolute inset-0 pointer-events-none hidden dark:block"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(138, 138, 130, 0.25) 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
+      />
       {/* Source Panel - Left Side */}
       <div
         className="flex-none overflow-hidden transition-all duration-300 ease-in-out"
@@ -1017,15 +1031,14 @@ export function KnowledgeGraph({
       <div className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
         {/* Header */}
         <div
-          className="flex-none px-6 py-4 border-b"
-          style={{ borderColor: "rgba(138, 138, 130, 0.15)" }}
+          className="flex-none px-6 py-4 border-b border-warm-gray/15 dark:border-stone/15 relative z-10"
         >
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-xl font-medium text-smoke mb-2">
+              <h2 className="text-xl font-medium text-foreground mb-2">
                 Knowledge Graph
               </h2>
-              <div className="flex items-center gap-6 text-xs text-stone">
+              <div className="flex items-center gap-6 text-xs text-muted-foreground">
                 <span>{entityCount} entities</span>
                 <span>•</span>
                 <span>{evidenceCount} evidence items</span>
@@ -1037,20 +1050,16 @@ export function KnowledgeGraph({
             <div className="flex items-center gap-2">
               {connectingFrom && (
                 <div
-                  className="px-3 py-1 rounded-lg text-xs font-medium"
-                  style={{
-                    backgroundColor: "rgba(74, 144, 226, 0.15)",
-                    color: "#4A90E2",
-                  }}
+                  className="px-3 py-1 rounded-lg text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400"
                 >
                   Click another node to connect
                 </div>
               )}
               <button
-                className="p-2 rounded-lg hover:bg-stone/10 transition-colors"
+                className="p-2 rounded-lg hover:bg-muted transition-colors"
                 title="Filters"
               >
-                <Filter className="w-5 h-5 text-stone" />
+                <Filter className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
           </div>
@@ -1070,9 +1079,8 @@ export function KnowledgeGraph({
         >
           <svg
             ref={svgRef}
-            className="w-full h-full"
+            className="w-full h-full bg-background dark:bg-charcoal"
             style={{
-              backgroundColor: "var(--color-charcoal)",
               cursor: connectingFrom ? "crosshair" : "grab",
             }}
           >
@@ -1146,36 +1154,36 @@ export function KnowledgeGraph({
           <div className="absolute bottom-4 right-4 flex flex-col gap-2">
             <button
               onClick={handleZoomIn}
-              className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
+              className="w-10 h-10 rounded-lg bg-white/90 dark:bg-jet/90 hover:bg-white dark:hover:bg-jet text-foreground flex items-center justify-center transition-colors border border-warm-gray/20 dark:border-stone/20"
               title="Zoom In"
             >
               <ZoomIn className="w-5 h-5" />
             </button>
             <button
               onClick={handleZoomOut}
-              className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
+              className="w-10 h-10 rounded-lg bg-white/90 dark:bg-jet/90 hover:bg-white dark:hover:bg-jet text-foreground flex items-center justify-center transition-colors border border-warm-gray/20 dark:border-stone/20"
               title="Zoom Out"
             >
               <ZoomOut className="w-5 h-5" />
             </button>
             <button
               onClick={handleResetZoom}
-              className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
+              className="w-10 h-10 rounded-lg bg-white/90 dark:bg-jet/90 hover:bg-white dark:hover:bg-jet text-foreground flex items-center justify-center transition-colors border border-warm-gray/20 dark:border-stone/20"
               title="Reset Zoom"
             >
               <RotateCcw className="w-5 h-5" />
             </button>
 
             {/* Divider */}
-            <div className="h-px bg-stone/20 my-1" />
+            <div className="h-px bg-warm-gray/20 dark:bg-stone/20 my-1" />
 
             {/* Stop/Start Simulation */}
             <button
               onClick={handleToggleSimulation}
               className={clsx(
-                "w-10 h-10 rounded-lg text-smoke flex items-center justify-center transition-colors border border-stone/20",
+                "w-10 h-10 rounded-lg text-foreground flex items-center justify-center transition-colors border border-warm-gray/20 dark:border-stone/20",
                 isSimulationRunning
-                  ? "bg-jet/90 hover:bg-jet"
+                  ? "bg-white/90 dark:bg-jet/90 hover:bg-white dark:hover:bg-jet"
                   : "bg-accent/20 hover:bg-accent/30",
               )}
               title={isSimulationRunning ? "Freeze Graph" : "Unfreeze Graph"}
@@ -1209,14 +1217,13 @@ export function KnowledgeGraph({
 
           {/* Legend - Top Left */}
           <div
-            className="absolute top-4 left-4 p-4 rounded-lg shadow-lg border border-stone/20"
-            style={{ backgroundColor: "rgba(17, 17, 17, 0.95)" }}
+            className="absolute top-4 left-4 p-4 rounded-lg shadow-lg border border-warm-gray/20 dark:border-stone/20 bg-white/95 dark:bg-[rgba(17,17,17,0.95)]"
           >
-            <h3 className="text-smoke font-medium text-sm mb-3">Node Legend</h3>
+            <h3 className="text-foreground font-medium text-sm mb-3">Node Legend</h3>
 
             {/* Entity Types */}
             <div className="mb-3">
-              <p className="text-stone text-xs mb-2">Entities (Circles)</p>
+              <p className="text-muted-foreground text-xs mb-2">Entities (Circles)</p>
               <div className="space-y-1.5">
                 {Object.entries(ENTITY_COLORS).map(([type, color]) => (
                   <div key={type} className="flex items-center gap-2">
@@ -1229,7 +1236,7 @@ export function KnowledgeGraph({
                         opacity="0.9"
                       />
                     </svg>
-                    <span className="text-smoke text-xs capitalize">
+                    <span className="text-foreground text-xs capitalize">
                       {type}
                     </span>
                   </div>
@@ -1239,7 +1246,7 @@ export function KnowledgeGraph({
 
             {/* Evidence Types */}
             <div>
-              <p className="text-stone text-xs mb-2">Evidence (Squares)</p>
+              <p className="text-muted-foreground text-xs mb-2">Evidence (Squares)</p>
               <div className="space-y-1.5">
                 {Object.entries(EVIDENCE_COLORS).map(([type]) => {
                   return (
@@ -1255,7 +1262,7 @@ export function KnowledgeGraph({
                           opacity="0.9"
                         />
                       </svg>
-                      <span className="text-smoke text-xs capitalize">
+                      <span className="text-foreground text-xs capitalize">
                         {type}
                       </span>
                     </div>
@@ -1268,10 +1275,9 @@ export function KnowledgeGraph({
           {/* Node info panel - only show when node is selected */}
           {selectedNode && (
             <div
-              className="absolute top-4 right-4 p-4 rounded-lg shadow-lg max-w-xs border border-stone/20"
-              style={{ backgroundColor: "rgba(17, 17, 17, 0.95)" }}
+              className="absolute top-4 right-4 p-4 rounded-lg shadow-lg max-w-xs border border-warm-gray/20 dark:border-stone/20 bg-white/95 dark:bg-[rgba(17,17,17,0.95)]"
             >
-              <div className="text-smoke">
+              <div className="text-foreground">
                 {(() => {
                   const node = nodes.find((n) => n.id === selectedNode);
                   if (!node) return null;
@@ -1290,7 +1296,7 @@ export function KnowledgeGraph({
                               opacity="0.9"
                             />
                           </svg>
-                          <span className="text-xs text-stone capitalize">
+                          <span className="text-xs text-muted-foreground capitalize">
                             {entity.type}
                           </span>
                         </div>
@@ -1298,13 +1304,13 @@ export function KnowledgeGraph({
                           {entity.name}
                         </h3>
                         {entity.description && (
-                          <p className="text-sm text-stone mb-3">
+                          <p className="text-sm text-muted-foreground mb-3">
                             {entity.description}
                           </p>
                         )}
                         <button
                           onClick={() => setSelectedNode(null)}
-                          className="text-xs text-accent hover:text-accent-muted"
+                          className="text-xs text-primary hover:text-primary/80"
                         >
                           Close
                         </button>
@@ -1328,7 +1334,7 @@ export function KnowledgeGraph({
                               opacity="0.9"
                             />
                           </svg>
-                          <span className="text-xs text-stone capitalize">
+                          <span className="text-xs text-muted-foreground capitalize">
                             {evidence.type}
                           </span>
                         </div>
@@ -1336,19 +1342,19 @@ export function KnowledgeGraph({
                           {evidence.title}
                         </h3>
                         {evidence.content && (
-                          <p className="text-sm text-stone mb-2">
+                          <p className="text-sm text-muted-foreground mb-2">
                             {evidence.content.length > 100
                               ? evidence.content.substring(0, 100) + "..."
                               : evidence.content}
                           </p>
                         )}
                         {evidence.url && (
-                          <p className="text-xs text-stone/60 mb-2">
+                          <p className="text-xs text-muted-foreground/60 mb-2">
                             {evidence.url}
                           </p>
                         )}
                         {evidence.metadata && (
-                          <div className="text-xs text-stone mb-3">
+                          <div className="text-xs text-muted-foreground mb-3">
                             {Object.entries(evidence.metadata)
                               .slice(0, 2)
                               .map(([key, value]) => (
@@ -1365,26 +1371,14 @@ export function KnowledgeGraph({
                               setSourcePanelEvidence(evidence);
                               setIsSourcePanelMinimized(false);
                             }}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                            style={{
-                              backgroundColor: "rgba(74, 144, 226, 0.2)",
-                              color: "#4A90E2",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor =
-                                "rgba(74, 144, 226, 0.3)";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor =
-                                "rgba(74, 144, 226, 0.2)";
-                            }}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors bg-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/30"
                           >
                             <ExternalLink className="w-3 h-3" />
                             View Details
                           </button>
                           <button
                             onClick={() => setSelectedNode(null)}
-                            className="text-xs text-stone hover:text-smoke"
+                            className="text-xs text-muted-foreground hover:text-foreground"
                           >
                             Close
                           </button>

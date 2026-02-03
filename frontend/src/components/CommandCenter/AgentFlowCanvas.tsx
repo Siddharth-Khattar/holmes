@@ -326,14 +326,22 @@ export function AgentFlowCanvas({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full"
+      className="relative w-full h-full bg-background dark:bg-charcoal"
       style={{
-        backgroundColor: "var(--color-charcoal)",
         backgroundImage:
-          "radial-gradient(circle at 1px 1px, rgba(138, 138, 130, 0.08) 1px, transparent 0)",
+          "radial-gradient(circle at 1px 1px, rgba(107, 101, 96, 0.25) 1px, transparent 1px)",
         backgroundSize: "24px 24px",
       }}
     >
+      {/* Dark mode pattern overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none hidden dark:block"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(138, 138, 130, 0.25) 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
+      />
       <svg ref={svgRef} className="w-full h-full" style={{ cursor: "grab" }}>
         {/* Infinite grid pattern */}
         <defs>
@@ -396,28 +404,28 @@ export function AgentFlowCanvas({
       <div className="absolute bottom-4 right-4 flex flex-col gap-2">
         <button
           onClick={handleZoomIn}
-          className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
+          className="w-10 h-10 rounded-lg bg-white/90 dark:bg-jet/90 hover:bg-white dark:hover:bg-jet text-foreground flex items-center justify-center transition-colors border border-warm-gray/20 dark:border-stone/20"
           title="Zoom In"
         >
           <ZoomIn className="w-5 h-5" />
         </button>
         <button
           onClick={handleZoomOut}
-          className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
+          className="w-10 h-10 rounded-lg bg-white/90 dark:bg-jet/90 hover:bg-white dark:hover:bg-jet text-foreground flex items-center justify-center transition-colors border border-warm-gray/20 dark:border-stone/20"
           title="Zoom Out"
         >
           <ZoomOut className="w-5 h-5" />
         </button>
         <button
           onClick={handleResetZoom}
-          className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
+          className="w-10 h-10 rounded-lg bg-white/90 dark:bg-jet/90 hover:bg-white dark:hover:bg-jet text-foreground flex items-center justify-center transition-colors border border-warm-gray/20 dark:border-stone/20"
           title="Reset Zoom"
         >
           <RotateCcw className="w-5 h-5" />
         </button>
         <button
           onClick={handleFitView}
-          className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
+          className="w-10 h-10 rounded-lg bg-white/90 dark:bg-jet/90 hover:bg-white dark:hover:bg-jet text-foreground flex items-center justify-center transition-colors border border-warm-gray/20 dark:border-stone/20"
           title="Fit View"
         >
           <Maximize2 className="w-5 h-5" />

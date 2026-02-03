@@ -37,11 +37,12 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
         "group relative p-4 rounded-lg border-2 transition-all duration-200",
         "hover:shadow-lg hover:-translate-y-0.5 cursor-pointer",
         "focus:outline-none focus:ring-2 focus:ring-offset-2",
+        "bg-white/90 dark:bg-[rgba(17,17,17,0.6)]",
+        "shadow-[0_2px_8px_rgba(26,24,22,0.06)] dark:shadow-none",
         layerConfig.borderColor,
       )}
       style={{
-        backgroundColor: "rgba(17, 17, 17, 0.6)",
-        borderColor: layerConfig.hexColor + "50",
+        borderColor: layerConfig.hexColor + "66",
       }}
     >
       {/* Header */}
@@ -70,7 +71,7 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
         <div className="flex items-center gap-1">
           {event.isUserCorrected ? (
             <div
-              className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400"
+              className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-green-500/12 text-green-700 dark:text-green-400"
               title="User verified"
             >
               <Check className="w-3 h-3" />
@@ -78,7 +79,7 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
             </div>
           ) : event.confidence < 0.7 ? (
             <div
-              className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400"
+              className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-amber-500/12 text-amber-700 dark:text-amber-400"
               title={`Confidence: ${Math.round(event.confidence * 100)}%`}
             >
               <AlertCircle className="w-3 h-3" />
@@ -91,30 +92,19 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
       </div>
 
       {/* Title */}
-      <h4
-        className="text-base font-semibold mb-1 transition-colors"
-        style={{
-          color: "var(--color-smoke, #E5E5E5)",
-        }}
-      >
+      <h4 className="text-base font-semibold mb-1 transition-colors text-foreground">
         {event.title}
       </h4>
 
       {/* Description */}
       {event.description && (
-        <p
-          className="text-sm line-clamp-2 mb-3"
-          style={{ color: "var(--color-stone, #8A8A82)" }}
-        >
+        <p className="text-sm line-clamp-2 mb-3 text-muted-foreground">
           {event.description}
         </p>
       )}
 
       {/* Footer metadata */}
-      <div
-        className="flex flex-wrap items-center gap-3 text-xs"
-        style={{ color: "var(--color-stone, #8A8A82)" }}
-      >
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         <time dateTime={event.date}>
           {format(new Date(event.date), "h:mm a")}
         </time>

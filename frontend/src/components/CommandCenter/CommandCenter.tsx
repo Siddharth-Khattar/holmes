@@ -190,7 +190,7 @@ export function CommandCenter({ caseId, className }: CommandCenterProps) {
 
   return (
     <div
-      className={`flex flex-col w-full h-full bg-charcoal rounded-lg overflow-hidden border border-stone/10 ${className || ""}`}
+      className={`flex flex-col w-full h-full bg-background dark:bg-charcoal rounded-lg overflow-hidden border-2 border-warm-gray/30 dark:border-stone/30 ${className || ""}`}
     >
       {/* Header */}
       <div className="flex-none px-6 py-4 border-b border-stone/15">

@@ -13,26 +13,13 @@ from app.agents.base import (
     create_agent_callbacks,
     create_thinking_planner,
 )
+from app.agents.prompts.triage import TRIAGE_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Placeholder system prompts (expanded in later plans: 04-02, 04-03)
+# Orchestrator system prompt (placeholder, expanded in a later plan)
 # ---------------------------------------------------------------------------
-
-_TRIAGE_SYSTEM_PROMPT = """\
-You are the Triage Agent for the Holmes investigative intelligence platform.
-
-Your job is to analyze uploaded evidence files and produce a structured
-assessment for the Orchestrator. For each file you receive, determine:
-1. Domain relevance scores (financial, legal, strategic, evidentiary).
-2. A short summary (1-2 sentences) and a detailed summary (paragraph).
-3. Complexity tier (LOW / MEDIUM / HIGH).
-4. Key entities (names, organisations, dates, locations, legal terms).
-5. Suggested file groupings for related documents.
-
-Respond with structured JSON matching the TriageOutput schema.
-"""
 
 _ORCHESTRATOR_SYSTEM_PROMPT = """\
 You are the Orchestrator Agent for the Holmes investigative intelligence platform.
@@ -91,7 +78,7 @@ class AgentFactory:
         return LlmAgent(
             name=_safe_name("triage", case_id),
             model=MODEL_FLASH,
-            instruction=_TRIAGE_SYSTEM_PROMPT,
+            instruction=TRIAGE_SYSTEM_PROMPT,
             planner=create_thinking_planner("high"),
             output_key="triage_result",
             **callbacks,

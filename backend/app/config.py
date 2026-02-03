@@ -31,6 +31,23 @@ class Settings(BaseSettings):
     # Set DEV_API_KEY in .env to enable API testing without frontend auth
     dev_api_key: str | None = None
 
+    # --- ADK / Gemini configuration ---
+    # API key for Gemini (ADK uses GOOGLE_API_KEY, NOT GEMINI_API_KEY)
+    google_api_key: str | None = None
+    # Whether to use Vertex AI backend instead of AI Studio
+    use_vertex_ai: bool = False
+    # GCP region for Vertex AI (env: GOOGLE_CLOUD_LOCATION)
+    google_cloud_location: str = "europe-west3"
+    # GCS bucket for ADK artifact storage; falls back to gcs_bucket if not set
+    adk_artifacts_bucket: str | None = None
+    # Application name for ADK session namespacing
+    adk_app_name: str = "holmes"
+    # Gemini model IDs (configurable for model updates / GA migration)
+    gemini_flash_model: str = "gemini-3-flash-preview"
+    gemini_pro_model: str = "gemini-3-pro-preview"
+    # File size (bytes) above which to use Gemini File API instead of inline data
+    file_api_threshold: int = 100_000_000
+
     model_config = SettingsConfigDict(
         # Look for .env in backend/ first, then project root (absolute paths)
         env_file=(_BACKEND_ENV, _ROOT_ENV),

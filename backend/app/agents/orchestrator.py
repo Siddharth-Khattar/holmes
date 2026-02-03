@@ -85,7 +85,8 @@ def parse_orchestrator_output(events: list[Event]) -> OrchestratorOutput | None:
     """Parse OrchestratorOutput from ADK events.
 
     Scans events in reverse to find the final agent response containing
-    the structured JSON output.
+    the structured JSON output. Schema correctness is enforced at the model
+    level via ``output_schema`` (constrained decoding).
 
     Args:
         events: List of ADK events from runner execution.

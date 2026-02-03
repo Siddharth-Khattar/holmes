@@ -138,6 +138,19 @@ class TriageOutput(BaseModel):
 # --- Orchestrator output schemas ---
 
 
+class RoutingDomainScores(BaseModel):
+    """Triage domain scores carried forward into the routing decision.
+
+    Uses explicit fields instead of a generic dict so the Gemini structured
+    output schema stays compatible with constrained decoding.
+    """
+
+    financial: float = Field(default=0.0, ge=0, le=100, description="Financial score")
+    legal: float = Field(default=0.0, ge=0, le=100, description="Legal score")
+    strategy: float = Field(default=0.0, ge=0, le=100, description="Strategy score")
+    evidence: float = Field(default=0.0, ge=0, le=100, description="Evidence score")
+
+
 class RoutingDecision(BaseModel):
     """Per-file routing decision with detailed reasoning.
 
@@ -156,8 +169,8 @@ class RoutingDecision(BaseModel):
     priority: Literal["high", "medium", "low"] = Field(
         default="medium", description="Processing priority for this file"
     )
-    domain_scores: dict[str, float] = Field(
-        default_factory=dict,
+    domain_scores: RoutingDomainScores = Field(
+        default_factory=RoutingDomainScores,
         description="Triage domain scores carried forward for reference",
     )
 

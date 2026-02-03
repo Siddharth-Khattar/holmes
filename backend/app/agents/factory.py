@@ -15,6 +15,7 @@ from app.agents.base import (
 )
 from app.agents.prompts.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT
 from app.agents.prompts.triage import TRIAGE_SYSTEM_PROMPT
+from app.schemas.agent import OrchestratorOutput, TriageOutput
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ class AgentFactory:
             model=MODEL_FLASH,
             instruction=TRIAGE_SYSTEM_PROMPT,
             planner=create_thinking_planner("high"),
+            output_schema=TriageOutput,
             output_key="triage_result",
             **callbacks,
         )
@@ -93,6 +95,7 @@ class AgentFactory:
             model=MODEL_PRO,
             instruction=ORCHESTRATOR_SYSTEM_PROMPT,
             planner=create_thinking_planner("high"),
+            output_schema=OrchestratorOutput,
             output_key="orchestrator_result",
             **callbacks,
         )

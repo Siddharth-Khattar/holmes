@@ -1,15 +1,24 @@
 # ABOUTME: Application configuration using pydantic-settings.
 # ABOUTME: Loads settings from environment variables with type validation.
 
+import os
 from functools import cached_property
 from pathlib import Path
 
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Project root is two levels up from this file (backend/app/config.py -> project root)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _ROOT_ENV = _PROJECT_ROOT / ".env"
 _BACKEND_ENV = _PROJECT_ROOT / "backend" / ".env"
+
+# Load .env files into os.environ so third-party libs (ADK, genai, GCS)
+# that read env vars directly will find them.
+# override=False: real env vars always take precedence over .env values.
+# Backend .env loaded first (higher priority), then root .env as fallback.
+load_dotenv(_BACKEND_ENV, override=False)
+load_dotenv(_ROOT_ENV, override=False)
 
 
 class Settings(BaseSettings):
@@ -104,6 +113,16 @@ class Settings(BaseSettings):
         return origins
 
 
+def _ensure_adk_env(s: Settings) -> None:
+    """Sync derived ADK env vars that the ADK reads directly from os.environ.
+
+    Called once after Settings is first created so that values computed from
+    the typed settings object are visible to google-adk / google-genai.
+    """
+    # ADK checks GOOGLE_GENAI_USE_VERTEXAI to decide between AI Studio and Vertex
+    os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", str(s.use_vertex_ai).upper())
+
+
 _settings: Settings | None = None
 
 
@@ -117,6 +136,7 @@ def get_settings() -> Settings:
     global _settings
     if _settings is None:
         _settings = Settings()  # type: ignore[call-arg]
+        _ensure_adk_env(_settings)
     return _settings
 
 

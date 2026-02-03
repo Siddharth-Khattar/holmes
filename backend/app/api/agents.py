@@ -281,9 +281,12 @@ async def run_analysis_workflow(
                                 if rd.target_agents
                                 else "unknown",
                                 "reason": rd.reasoning,
-                                "domainScore": max(rd.domain_scores.values())
-                                if rd.domain_scores
-                                else 0,
+                                "domainScore": max(
+                                    rd.domain_scores.financial,
+                                    rd.domain_scores.legal,
+                                    rd.domain_scores.strategy,
+                                    rd.domain_scores.evidence,
+                                ),
                             }
                             for rd in orchestrator_output.routing_decisions
                         ],

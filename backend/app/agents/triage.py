@@ -14,6 +14,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.base import PublishFn
 from app.agents.factory import AgentFactory
+from app.agents.parsing import (
+    extract_json_from_text,
+    extract_thinking_traces,
+    extract_token_usage,
+)
 from app.config import get_settings
 from app.models.agent_execution import AgentExecution, AgentExecutionStatus
 from app.models.file import CaseFile
@@ -65,32 +70,6 @@ class TriageAgent:
 # ---------------------------------------------------------------------------
 
 
-def _extract_json_from_text(text: str) -> str | None:
-    """Extract JSON from model response text, handling markdown code fences.
-
-    Tolerates missing closing fences — if the model opens a code block
-    but never closes it, everything after the opening fence is used.
-    """
-    # Try ```json fence first, then bare ``` fence
-    for fence in ("```json", "```"):
-        pos = text.find(fence)
-        if pos == -1:
-            continue
-        start = pos + len(fence)
-        end = text.find("```", start)
-        # No closing fence — take everything after the opening fence
-        candidate = text[start:end].strip() if end != -1 else text[start:].strip()
-        if candidate:
-            return candidate
-
-    # Try the whole text as JSON
-    text = text.strip()
-    if text.startswith("{"):
-        return text
-
-    return None
-
-
 def parse_triage_output(events: list[Event]) -> TriageOutput | None:
     """Parse TriageOutput from ADK events.
 
@@ -111,7 +90,7 @@ def parse_triage_output(events: list[Event]) -> TriageOutput | None:
         if event.content and event.content.parts:
             for part in event.content.parts:
                 if part.text:
-                    json_str = _extract_json_from_text(part.text)
+                    json_str = extract_json_from_text(part.text)
                     if json_str is None:
                         continue
                     try:
@@ -126,41 +105,6 @@ def parse_triage_output(events: list[Event]) -> TriageOutput | None:
 
     logger.error("No valid triage output found in agent events")
     return None
-
-
-def _extract_token_usage(events: list[Event]) -> tuple[int, int]:
-    """Accumulate token usage across all events.
-
-    Returns:
-        Tuple of (input_tokens, output_tokens).
-    """
-    input_tokens = 0
-    output_tokens = 0
-    for event in events:
-        if event.usage_metadata:
-            if event.usage_metadata.prompt_token_count:
-                input_tokens += event.usage_metadata.prompt_token_count
-            if event.usage_metadata.candidates_token_count:
-                output_tokens += event.usage_metadata.candidates_token_count
-    return input_tokens, output_tokens
-
-
-def _extract_thinking_traces(events: list[Event]) -> list[dict[str, object]]:
-    """Extract thinking traces from events for audit logging."""
-    traces: list[dict[str, object]] = []
-    for event in events:
-        if not event.content or not event.content.parts:
-            continue
-        for part in event.content.parts:
-            if part.thought and part.text:
-                traces.append(
-                    {
-                        "agent": event.author,
-                        "thought": part.text[:2000],  # Cap individual thoughts
-                        "timestamp": event.timestamp,
-                    }
-                )
-    return traces
 
 
 # ---------------------------------------------------------------------------
@@ -273,10 +217,10 @@ async def run_triage(
                 attempt_events.append(event)
 
             # Accumulate tokens across all attempts
-            attempt_in, attempt_out = _extract_token_usage(attempt_events)
+            attempt_in, attempt_out = extract_token_usage(attempt_events)
             total_input_tokens += attempt_in
             total_output_tokens += attempt_out
-            all_thinking_traces.extend(_extract_thinking_traces(attempt_events))
+            all_thinking_traces.extend(extract_thinking_traces(attempt_events))
 
             triage_output = parse_triage_output(attempt_events)
             if triage_output is not None:

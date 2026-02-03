@@ -9,7 +9,8 @@ from app.agents.base import (
     create_thinking_planner,
 )
 from app.agents.factory import AgentFactory
-from app.agents.prompts import TRIAGE_SYSTEM_PROMPT
+from app.agents.orchestrator import OrchestratorAgent, run_orchestrator
+from app.agents.prompts import ORCHESTRATOR_SYSTEM_PROMPT, TRIAGE_SYSTEM_PROMPT
 from app.agents.triage import TriageAgent, run_triage
 
 __all__ = [
@@ -24,4 +25,8 @@ __all__ = [
     "TriageAgent",
     "run_triage",
     "TRIAGE_SYSTEM_PROMPT",
+    # Orchestrator Agent
+    "OrchestratorAgent",
+    "run_orchestrator",
+    "ORCHESTRATOR_SYSTEM_PROMPT",
 ]

@@ -13,27 +13,10 @@ from app.agents.base import (
     create_agent_callbacks,
     create_thinking_planner,
 )
+from app.agents.prompts.orchestrator import ORCHESTRATOR_SYSTEM_PROMPT
 from app.agents.prompts.triage import TRIAGE_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Orchestrator system prompt (placeholder, expanded in a later plan)
-# ---------------------------------------------------------------------------
-
-_ORCHESTRATOR_SYSTEM_PROMPT = """\
-You are the Orchestrator Agent for the Holmes investigative intelligence platform.
-
-Based on the Triage results you receive, determine the optimal routing of files
-to domain-specialist agents. Your responsibilities:
-1. Decide which domain agents to invoke (Financial, Legal, Strategy, Evidence).
-2. Assign files (or file groups) to each agent with clear reasoning.
-3. Determine execution order: parallel where independent, sequential where needed.
-4. Set context budgets so no single agent exceeds its context window.
-5. Provide detailed routing reasoning for the execution log.
-
-Respond with structured JSON matching the OrchestratorOutput schema.
-"""
 
 
 def _safe_name(prefix: str, case_id: str) -> str:
@@ -108,7 +91,7 @@ class AgentFactory:
         return LlmAgent(
             name=_safe_name("orchestrator", case_id),
             model=MODEL_PRO,
-            instruction=_ORCHESTRATOR_SYSTEM_PROMPT,
+            instruction=ORCHESTRATOR_SYSTEM_PROMPT,
             planner=create_thinking_planner("high"),
             output_key="orchestrator_result",
             **callbacks,

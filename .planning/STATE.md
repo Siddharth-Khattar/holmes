@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-04
-**Current Phase:** 4.1 of 12 (Agent Decision Tree Revamp) — IN PROGRESS
-**Current Plan:** 04.1-02 complete (2 of 3 plans done)
+**Current Phase:** 4.1 of 12 (Agent Decision Tree Revamp) — COMPLETE (pending visual verification)
+**Current Plan:** 04.1-03 complete (3 of 3 plans done)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -14,7 +14,7 @@
 | 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 | |
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
-| 4.1 | Agent Decision Tree Revamp | IN_PROGRESS | 2026-02-04 | - | Plan 02/03 complete: deps, config, DecisionNode, NodeDetailsSidebar |
+| 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | All 3 plans done: deps/config, DecisionNode/Sidebar, ReactFlow canvas integration |
 | 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
@@ -31,18 +31,16 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 4.1 Plan 02 Complete** (2026-02-04): NodeDetailsSidebar with spring animation and agent-type-specific sections
-  - Created NodeDetailsSidebar component (1052 lines) with spring animation (damping: 20, stiffness: 300)
-  - Built CollapsibleSection helper with color-coded left borders and icon support
-  - Implemented 4 agent-type section components: TriageSections, OrchestratorSections, DomainAgentSections, KnowledgeGraphSections
-  - Triage: domain score pills, entity badges, complexity badge
-  - Orchestrator: routing table, warnings, file groups
-  - Shared sections: thinking traces (monospace), input context, output findings, tools called, processing history
-  - Summary: `.planning/phases/04.1-agent-decision-tree-revamp/04.1-02-SUMMARY.md`
+- **Phase 4.1 Plan 03 Complete** (2026-02-04): ReactFlow canvas integration, dagre layout, full wiring
+  - Rewrote AgentFlowCanvas from D3 SVG to ReactFlow + dagre (142 lines)
+  - Created FileGroupNode for intermediate file group layer (143 lines)
+  - Rewrote CommandCenter with ReactFlowProvider, progressive tree build, file group extraction, edge styling (289 lines)
+  - Updated barrel exports (DecisionNode, FileGroupNode, NodeDetailsSidebar added; AgentNode, AgentDetailsPanel removed)
+  - Zero TypeScript errors, build passes, lint clean on modified files
+  - Summary: `.planning/phases/04.1-agent-decision-tree-revamp/04.1-03-SUMMARY.md`
 
 **What's next:**
-- **Phase 4.1 Plan 03:** ReactFlow canvas integration, dagre layout, edge styling, full wiring
-- Then: Phase 5 (Agent Flow backend SSE), Domain Agents (Phase 6), Synthesis & KG (Phase 7)
+- Phase 5 (Agent Flow backend SSE), Domain Agents (Phase 6), Synthesis & KG (Phase 7)
 
 ---
 
@@ -54,10 +52,11 @@
 |-----------|-----------|
 | Main container | `frontend/src/components/CommandCenter/CommandCenter.tsx` |
 | Agent canvas | `frontend/src/components/CommandCenter/AgentFlowCanvas.tsx` |
-| Agent nodes (legacy SVG) | `frontend/src/components/CommandCenter/AgentNode.tsx` |
+| Agent nodes (legacy, dead code) | `frontend/src/components/CommandCenter/AgentNode.tsx` |
 | Decision nodes (ReactFlow) | `frontend/src/components/CommandCenter/DecisionNode.tsx` |
-| Details panel (legacy) | `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx` |
-| Details sidebar (new) | `frontend/src/components/CommandCenter/NodeDetailsSidebar.tsx` |
+| File group nodes (ReactFlow) | `frontend/src/components/CommandCenter/FileGroupNode.tsx` |
+| Details panel (legacy, dead code) | `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx` |
+| Details sidebar | `frontend/src/components/CommandCenter/NodeDetailsSidebar.tsx` |
 | SSE hook | `frontend/src/hooks/useCommandCenterSSE.ts` |
 | Config | `frontend/src/lib/command-center-config.ts` |
 | Types | `frontend/src/types/command-center.ts` |
@@ -247,6 +246,9 @@ All frontend features need these backend endpoints:
 | Command Center accent scope | Global CSS vars vs Scoped selector | Scoped .command-center-scope | Teal accent isolated from Holmes warm neutral palette |
 | Sidebar positioning | Fixed vs Absolute within CC container | Absolute within CC container | Avoids overlapping case layout chrome; sidebar scoped to Command Center |
 | Sidebar output extraction | Unsafe casts vs Generic helper | Generic extractFromOutputs<T> | Type-safe extraction from AgentOutput[] without any casts |
+| Canvas layout with sidebar | Flex split vs Absolute overlay | Absolute overlay | Full-width canvas; sidebar overlays instead of shrinking canvas |
+| File group click behavior | Open sidebar vs No action | No sidebar (setSelectedAgent null) | File group nodes are intermediate grouping; no detailed agent data to show |
+| ReactFlow nodeTypes placement | Inside component vs Outside | Outside component body | Prevents infinite re-renders per ReactFlow best practice |
 
 ---
 
@@ -258,8 +260,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-03T23:44:40Z
-Stopped at: Completed 04.1-02-PLAN.md (Phase 4.1 Plan 02)
+Last session: 2026-02-03T23:52:03Z
+Stopped at: Completed 04.1-03-PLAN.md (Phase 4.1 Plan 03) - awaiting visual verification checkpoint
 Resume file: None
 
 ---

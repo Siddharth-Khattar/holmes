@@ -122,6 +122,19 @@
   --radius: 0.5rem;
 }
 
+/* Command Center scoped accent -- does not affect global Holmes palette */
+.command-center-scope {
+  --cc-accent: 180 60% 45%;
+  --cc-accent-glow: 180 60% 50%;
+  --cc-financial-tint: 140 40% 20%;
+  --cc-legal-tint: 220 40% 25%;
+  --cc-strategy-tint: 30 40% 22%;
+  --cc-evidence-tint: 50 35% 22%;
+  --cc-kg-tint: 270 30% 22%;
+  --cc-triage-tint: 200 35% 22%;
+  --cc-orchestrator-tint: 260 30% 22%;
+}
+
 /* Light mode variant - Following LIGHT-MODE-REFERENCE.MD */
 .light {
   /* Background & Foreground */

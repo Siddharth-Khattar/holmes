@@ -9,6 +9,16 @@ from app.services.adk_service import (
     get_session_service,
     prepare_file_for_agent,
 )
+from app.services.agent_events import (
+    AgentEventType,
+    emit_agent_complete,
+    emit_agent_error,
+    emit_agent_started,
+    emit_processing_complete,
+    publish_agent_event,
+    subscribe_to_agent_events,
+    unsubscribe_from_agent_events,
+)
 from app.services.file_service import (
     ALLOWED_MIME_TYPES,
     CHUNK_SIZE,
@@ -27,6 +37,15 @@ __all__ = [
     "get_or_create_stage_session",
     "get_session_service",
     "prepare_file_for_agent",
+    # Agent event services
+    "AgentEventType",
+    "emit_agent_complete",
+    "emit_agent_error",
+    "emit_agent_started",
+    "emit_processing_complete",
+    "publish_agent_event",
+    "subscribe_to_agent_events",
+    "unsubscribe_from_agent_events",
     # File services
     "ALLOWED_MIME_TYPES",
     "CHUNK_SIZE",

@@ -1600,7 +1600,92 @@ Evidence source panel exists (`evidence-source-panel.tsx`) but citation navigati
 
 ---
 
-### Summary: Frontend Implementation Coverage
+### REQ-AGENT: Agentic Processing Pipeline
+
+#### REQ-AGENT-001: Triage Agent — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Receives files via tiered handling | ✅ | `build_agent_content()` in `adk_service.py` |
+| Uses Gemini 3 Flash | ✅ | `MODEL_FLASH` in factory |
+| Stage-isolated ADK session | ✅ | `create_stage_runner()` per stage |
+| Domain scores (Financial, Legal, Strategy, Evidence) | ✅ | `DomainScore` schema, 0-100 range |
+| Complexity tier output | ✅ | `ComplexityAssessment` schema |
+| File summary (short + detailed) | ✅ | `FileSummary` schema |
+| Entity extraction | ✅ | `ExtractedEntity` with 6 types |
+| Stores TriageOutput in agent_executions | ✅ | JSONB output_data column |
+
+**Files:** `backend/app/agents/triage.py`, `backend/app/agents/prompts/triage.py`, `backend/app/schemas/agent.py`
+
+---
+
+#### REQ-AGENT-002: Orchestrator Agent — 🟠 PARTIAL
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| LlmAgent with Gemini 3 Pro | ✅ | `MODEL_PRO` in factory |
+| Receives triage results | ✅ | `run_orchestrator(triage_output=...)` |
+| Routes to domain agents | ✅ | `RoutingDecision` schema with reasoning |
+| Manages parallel execution | ⏳ | Stub; domain agents not yet implemented (Phase 6) |
+| Aggregates domain outputs | ⏳ | Not yet; depends on domain agents |
+| Handles agent failures | ⏳ | Not yet; depends on domain agents |
+
+**Files:** `backend/app/agents/orchestrator.py`, `backend/app/agents/prompts/orchestrator.py`
+
+---
+
+#### REQ-AGENT-007: ADK Runner Infrastructure — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| ADK integrated with FastAPI | ✅ | `google-adk>=1.2.0` in pyproject.toml |
+| DatabaseSessionService with PostgreSQL | ✅ | `get_session_service()` in adk_service.py |
+| Stage-isolated sessions | ✅ | `create_stage_runner()` per stage |
+| Session ID deterministic | ✅ | SHA-256 of case_id:workflow_id:stage |
+| Fresh agent instances per stage | ✅ | `AgentFactory` pattern |
+| Tiered file handling | ✅ | `build_agent_content()` inline + File API |
+| GcsArtifactService | ✅ | `get_artifact_service()` configured |
+| Pipeline orchestration via Python | ✅ | `run_analysis_workflow()` in agents.py |
+
+**Files:** `backend/app/services/adk_service.py`, `backend/app/agents/factory.py`
+
+---
+
+#### REQ-AGENT-007a: ADK Limitations Documentation — ✅ COMPLETE
+
+Limitations documented in code comments and mitigated:
+- Tool confirmation → frontend dialogs (noted in factory.py)
+- Single parent rule → AgentFactory fresh instances
+- Temperature at 1.0 → not overridden
+
+---
+
+#### REQ-AGENT-007b: Thinking Mode Configuration — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| BuiltInPlanner with ThinkingConfig | ✅ | `create_thinking_planner()` in base.py |
+| All agents HIGH thinking | ✅ | Factory passes `"high"` for all |
+| include_thoughts=True | ✅ | Set in ThinkingConfig |
+| Thinking traces captured | ✅ | `_extract_thinking_traces()` in triage.py/orchestrator.py |
+| Factory helper function | ✅ | `create_thinking_planner(level)` |
+
+**Files:** `backend/app/agents/base.py`
+
+---
+
+#### REQ-AGENT-007e: ADK Artifact Service — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| GcsArtifactService configured | ✅ | `get_artifact_service()` with dedicated bucket |
+| Runner initialized with artifact_service | ✅ | `create_stage_runner()` includes it |
+
+**Files:** `backend/app/services/adk_service.py`
+
+---
+
+### Summary: Implementation Coverage
 
 | Category | Requirements | Complete | Frontend Done | Partial | Not Started |
 |----------|-------------|----------|---------------|---------|-------------|
@@ -1608,12 +1693,15 @@ Evidence source panel exists (`evidence-source-panel.tsx`) but citation navigati
 | Case Management (CASE) | 5 | 5 | 0 | 0 | 0 |
 | Chat (CHAT) | 5 | 0 | 1 | 0 | 4 |
 | Source Panel (SOURCE) | 5 | 0 | 0 | 0 | 5 |
+| Agents (Core) | 2 | 1 | 0 | 1 | 0 |
+| Agents (ADK Config) | 4 | 4 | 0 | 0 | 0 |
 
-*Phase 2 requirements (REQ-CASE-001, 002, 003) completed previously. Phase 3 requirements (REQ-CASE-004, 005) completed 2026-02-02.
+*Phase 2 requirements (REQ-CASE-001, 002, 003) completed previously. Phase 3 requirements (REQ-CASE-004, 005) completed 2026-02-02. Phase 4 requirements (REQ-AGENT-001, 007, 007a, 007b, 007e) completed 2026-02-03. REQ-AGENT-002 partial (routing logic done, domain agent execution pending Phase 6).*
 
 ---
 
 *Generated: 2026-01-18*
-*Updated: 2026-02-02*
+*Updated: 2026-02-03*
 *Status: Complete - Integration features added (REQ-RESEARCH, REQ-HYPO, REQ-GEO, REQ-TASK)*
 *Frontend Status: Partial implementation by Yatharth (see DEVELOPMENT_DOCS/YATHARTH_WORK_SUMMARY.md)*
+*Phase 4 Agent requirements tracked: 2026-02-03*

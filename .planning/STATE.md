@@ -13,7 +13,7 @@
 | 1.1 | Frontend Design Foundation | COMPLETE | 2026-01-23 | 2026-01-24 | |
 | 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 | |
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
-| 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | All 5 plans complete |
+| 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
 | 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
@@ -30,18 +30,18 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 4 Plan 05** (2026-02-03): Agent API & SSE Integration
-  - Agent event publishing service with 6 typed events matching frontend CommandCenterSSEEvent
-  - Command center SSE endpoint at /sse/cases/{case_id}/command-center/stream
-  - POST /api/cases/{case_id}/analyze to start analysis workflows
-  - GET /api/cases/{case_id}/analysis/{workflow_id} for pipeline status
-  - Background analysis pipeline: triage -> orchestrator with file status transitions
-  - SSE events emitted at each stage (started, complete, error, processing-complete)
-  - Summary: `.planning/phases/04-core-agent-system/04-05-SUMMARY.md`
+- **Phase 4 Complete** (2026-02-03): Core Agent System — verified 6/6 must-haves
+  - ADK infrastructure: Runner, DatabaseSessionService, GcsArtifactService, AgentFactory
+  - Agent execution logging: AgentExecution model with 17 columns, JSONB I/O
+  - Triage Agent: Flash model, 6176-char prompt, domain scores/entities/summaries/complexity
+  - Orchestrator Agent: Pro model, 6484-char prompt, routing decisions/research triggers
+  - API: POST /analyze, GET /analysis/{workflow_id}, SSE command-center/stream
+  - 6 ADK callbacks mapped to SSE events, thinking traces capped at 2000 chars
+  - Verification: `.planning/phases/04-core-agent-system/04-VERIFICATION.md`
 
 **What's next:**
-- **Phase 5/6:** Domain agents and backend integration for frontend-done phases
-- Connect command center SSE to frontend useCommandCenterSSE hook
+- **Phase 5:** Agent Flow — Backend SSE integration for real-time agent visualization
+- Then: Domain Agents (Phase 6), Synthesis & KG (Phase 7)
 
 ---
 

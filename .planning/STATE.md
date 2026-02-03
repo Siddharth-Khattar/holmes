@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-03
-**Current Phase:** 4 of 12 (Core Agent System) — COMPLETE
-**Current Plan:** 04-05 complete (all 5 plans done)
+**Last Updated:** 2026-02-04
+**Current Phase:** 4.1 of 12 (Agent Decision Tree Revamp) — IN PROGRESS
+**Current Plan:** 04.1-01 complete (1 of 3 plans done)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -14,7 +14,7 @@
 | 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 | |
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
-| 4.1 | Agent Decision Tree Revamp | NOT_STARTED | - | - | INSERTED: Revamp Command Center UI |
+| 4.1 | Agent Decision Tree Revamp | IN_PROGRESS | 2026-02-04 | - | Plan 01/03 complete: deps, config, DecisionNode |
 | 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
@@ -31,17 +31,16 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 4 Complete** (2026-02-03): Core Agent System — verified 6/6 must-haves
-  - ADK infrastructure: Runner, DatabaseSessionService, GcsArtifactService, AgentFactory
-  - Agent execution logging: AgentExecution model with 17 columns, JSONB I/O
-  - Triage Agent: Flash model, 6176-char prompt, domain scores/entities/summaries/complexity
-  - Orchestrator Agent: Pro model, 6484-char prompt, routing decisions/research triggers
-  - API: POST /analyze, GET /analysis/{workflow_id}, SSE command-center/stream
-  - 6 ADK callbacks mapped to SSE events, thinking traces capped at 2000 chars
-  - Verification: `.planning/phases/04-core-agent-system/04-VERIFICATION.md`
+- **Phase 4.1 Plan 01 Complete** (2026-02-04): Dependencies, config, and DecisionNode
+  - Installed @xyflow/react v12.10.0 and @dagrejs/dagre v2.0.3
+  - Added scoped .command-center-scope CSS variables with teal accent and agent-type hue tints
+  - Created DecisionNode component (350 lines) with motion animations, portal tooltip
+  - Updated command-center-config with AGENT_TYPE_TINTS, NODE_WIDTH, NODE_HEIGHT
+  - Summary: `.planning/phases/04.1-agent-decision-tree-revamp/04.1-01-SUMMARY.md`
 
 **What's next:**
-- **Phase 4.1:** Agent Decision Tree Revamp — Replace D3 Command Center with @xyflow/react + dagre decision tree matching reference design
+- **Phase 4.1 Plan 02:** Spring-animated sidebar (NodeDetailsSidebar) with collapsible sections
+- **Phase 4.1 Plan 03:** ReactFlow canvas integration, dagre layout, edge styling, full wiring
 - Then: Phase 5 (Agent Flow backend SSE), Domain Agents (Phase 6), Synthesis & KG (Phase 7)
 
 ---
@@ -54,7 +53,8 @@
 |-----------|-----------|
 | Main container | `frontend/src/components/CommandCenter/CommandCenter.tsx` |
 | Agent canvas | `frontend/src/components/CommandCenter/AgentFlowCanvas.tsx` |
-| Agent nodes | `frontend/src/components/CommandCenter/AgentNode.tsx` |
+| Agent nodes (legacy SVG) | `frontend/src/components/CommandCenter/AgentNode.tsx` |
+| Decision nodes (ReactFlow) | `frontend/src/components/CommandCenter/DecisionNode.tsx` |
 | Details panel | `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx` |
 | SSE hook | `frontend/src/hooks/useCommandCenterSSE.ts` |
 | Config | `frontend/src/lib/command-center-config.ts` |
@@ -240,6 +240,9 @@ All frontend features need these backend endpoints:
 | Pipeline status tracking | Separate workflow table vs Derived from execution records | Derived from execution records | Avoids extra table; status computed from triage/orchestrator execution states |
 | Background task DB session | FastAPI dependency vs Own session factory | Own session factory | Background tasks run outside request lifecycle; need independent DB access |
 | Command center SSE path | /api/ prefix vs /sse/ prefix | /sse/ prefix | Consistent with file SSE pattern; frontend proxy or update can align |
+| Motion easing types | String literals vs Cubic-bezier arrays | Cubic-bezier arrays | Satisfies motion/react strict Easing type without casts |
+| Node animation layering | Single motion.div vs Nested wrappers | Nested wrappers | Separates floating (infinite loop) from entrance (one-shot) to avoid prop conflicts |
+| Command Center accent scope | Global CSS vars vs Scoped selector | Scoped .command-center-scope | Teal accent isolated from Holmes warm neutral palette |
 
 ---
 
@@ -251,8 +254,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-03T06:04:00Z
-Stopped at: Completed 04-05-PLAN.md (Phase 4 complete)
+Last session: 2026-02-04T00:38:00Z
+Stopped at: Completed 04.1-01-PLAN.md (Phase 4.1 Plan 01)
 Resume file: None
 
 ---

@@ -31,15 +31,26 @@ async def lifespan(app: FastAPI):
             "(It may be omitted for tooling like OpenAPI/type generation.)"
         )
 
+    # Log dev API key availability
+    if settings.debug and settings.dev_api_key:
+        logger.info(
+            "Dev API key enabled for Swagger UI testing. "
+            "Use X-Dev-API-Key header to authenticate."
+        )
+
     yield
     logger.info("Holmes API shutting down...")
 
+
+# Note: Security schemes (Authorize button) are automatically added by
+# APIKeyHeader and HTTPBearer dependencies in app/api/auth.py
 
 app = FastAPI(
     title="Holmes API",
     version="0.1.0",
     description="Legal intelligence platform backend",
     lifespan=lifespan,
+    swagger_ui_parameters={"persistAuthorization": True},  # Remember auth in browser
 )
 
 

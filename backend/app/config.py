@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     # For Cloud Run with workload identity, this is auto-detected from metadata
     gcs_signing_service_account: str | None = None
 
+    # Development API key for testing via Swagger UI (only works when debug=True)
+    # Set DEV_API_KEY in .env to enable API testing without frontend auth
+    dev_api_key: str | None = None
+
     model_config = SettingsConfigDict(
         # Look for .env in backend/ first, then project root (absolute paths)
         env_file=(_BACKEND_ENV, _ROOT_ENV),

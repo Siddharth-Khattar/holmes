@@ -125,14 +125,12 @@ export function TimelineCore({
               >
                 {/* Timeline marker and date */}
                 <div className="sticky flex flex-col md:flex-row z-40 items-center top-40 self-start max-w-xs lg:max-w-sm md:w-full">
-                  <div
-                    className="h-10 absolute left-3 md:left-3 w-10 rounded-full flex items-center justify-center border-2 shadow-sm dark:shadow-none bg-white/95 dark:bg-[rgba(17,17,17,0.9)] border-warm-gray/25 dark:border-stone/30"
-                  >
+                  <div className="h-10 absolute left-3 md:left-3 w-10 rounded-full flex items-center justify-center border-2 shadow-sm dark:shadow-none bg-white/95 dark:bg-[rgba(17,17,17,0.9)] border-blue-200 dark:border-blue-800/50">
                     <div
                       className="h-4 w-4 rounded-full"
                       style={{
                         background:
-                          "linear-gradient(135deg, #A68A6A 0%, #8B7355 100%)",
+                          "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
                       }}
                     />
                   </div>
@@ -175,7 +173,7 @@ export function TimelineCore({
           style={{
             height: height + "px",
             background:
-              "linear-gradient(to bottom, transparent 0%, rgba(107, 101, 96, 0.2) 10%, rgba(107, 101, 96, 0.2) 90%, transparent 100%)",
+              "linear-gradient(to bottom, transparent 0%, rgba(59, 130, 246, 0.15) 10%, rgba(59, 130, 246, 0.15) 90%, transparent 100%)",
           }}
           className="absolute md:left-8 left-8 top-0 overflow-hidden w-[2px]"
         >
@@ -184,7 +182,7 @@ export function TimelineCore({
               height: heightTransform,
               opacity: opacityTransform,
               background:
-                "linear-gradient(to top, #8B7355 0%, #A68A6A 50%, transparent 100%)",
+                "linear-gradient(to top, #2563eb 0%, #3b82f6 50%, transparent 100%)",
             }}
             className="absolute inset-x-0 top-0 w-[2px] rounded-full"
           />

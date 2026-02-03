@@ -499,7 +499,8 @@
 
   .light .theme-scope .liquid-glass-card > .liquid-glass-filter {
     backdrop-filter: blur(40px) saturate(180%) brightness(1.02) contrast(1.02);
-    -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.02) contrast(1.02);
+    -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.02)
+      contrast(1.02);
   }
 
   .light .theme-scope .liquid-glass-card > .liquid-glass-overlay {

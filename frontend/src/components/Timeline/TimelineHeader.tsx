@@ -29,7 +29,7 @@ export function TimelineHeader({
     <div
       className={cn(
         "border-b bg-background dark:bg-charcoal border-border",
-        className
+        className,
       )}
     >
       <div className="max-w-7xl mx-auto py-12 px-4 md:px-8 lg:px-10">
@@ -47,14 +47,12 @@ export function TimelineHeader({
         {/* Statistics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total events card */}
-          <div
-            className="rounded-lg p-4 border shadow-sm transition-shadow hover:shadow-md bg-white/95 dark:bg-[rgba(17,17,17,0.6)] border-warm-gray/15 dark:border-stone/30"
-          >
+          <div className="rounded-lg p-4 border shadow-sm transition-shadow hover:shadow-md bg-white/95 dark:bg-[rgba(17,17,17,0.6)] border-blue-200 dark:border-blue-800/50">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-muted-foreground">
                 Total Events
               </span>
-              <TrendingUp className="w-4 h-4 text-[#B89968]" />
+              <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="text-3xl font-bold text-foreground">
               {totalEvents}
@@ -63,14 +61,12 @@ export function TimelineHeader({
 
           {/* Date range card */}
           {dateRange && (
-            <div
-              className="rounded-lg p-4 border shadow-sm transition-shadow hover:shadow-md bg-white/95 dark:bg-[rgba(17,17,17,0.6)] border-warm-gray/15 dark:border-stone/30"
-            >
+            <div className="rounded-lg p-4 border shadow-sm transition-shadow hover:shadow-md bg-white/95 dark:bg-[rgba(17,17,17,0.6)] border-purple-200 dark:border-purple-800/50">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-muted-foreground">
                   Date Range
                 </span>
-                <Calendar className="w-4 h-4 text-[#A68A6A]" />
+                <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               </div>
               <div className="text-sm font-semibold text-foreground">
                 {format(new Date(dateRange.earliest), "MMM d, yyyy")}

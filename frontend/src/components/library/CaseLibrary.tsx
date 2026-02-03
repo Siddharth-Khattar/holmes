@@ -489,9 +489,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
               Evidence Library
             </h1>
             {caseName && (
-              <p className="text-sm mt-1 text-muted-foreground">
-                {caseName}
-              </p>
+              <p className="text-sm mt-1 text-muted-foreground">{caseName}</p>
             )}
           </div>
           <div className="text-sm text-muted-foreground">

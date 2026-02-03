@@ -79,25 +79,15 @@ export function Timeline({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-4">
-        <div
-          className="text-lg font-medium"
-          style={{ color: "var(--color-accent, #D4A574)" }}
-        >
+        <div className="text-lg font-medium text-blue-600 dark:text-blue-400">
           Failed to load timeline
         </div>
-        <p
-          className="text-sm mt-2"
-          style={{ color: "var(--color-stone, #8A8A82)" }}
-        >
+        <p className="text-sm mt-2 text-muted-foreground">
           {error.message || "An unexpected error occurred"}
         </p>
         <button
           onClick={() => refetch()}
-          className="mt-4 px-4 py-2 rounded-md transition-colors font-medium"
-          style={{
-            backgroundColor: "#B89968",
-            color: "#111111",
-          }}
+          className="mt-4 px-4 py-2 rounded-md transition-colors font-medium bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white"
         >
           Retry
         </button>

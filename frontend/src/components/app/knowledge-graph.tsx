@@ -194,8 +194,8 @@ export function KnowledgeGraph({
           forceRadial<ForceNode>(
             Math.min(dimensions.width, dimensions.height) * 0.35,
             dimensions.width / 2,
-            dimensions.height / 2
-          ).strength(0.05)
+            dimensions.height / 2,
+          ).strength(0.05),
         )
         .alphaMin(0.001)
         .alphaDecay(0.0228)
@@ -242,14 +242,14 @@ export function KnowledgeGraph({
   const connectionCountMap = useMemo(() => {
     const map = new Map<string, number>();
     nodes.forEach((node) => map.set(node.id, 0));
-    
+
     allConnections.forEach((conn) => {
       const sourceId = getNodeId(conn.source);
       const targetId = getNodeId(conn.target);
       map.set(sourceId, (map.get(sourceId) || 0) + 1);
       map.set(targetId, (map.get(targetId) || 0) + 1);
     });
-    
+
     return map;
   }, [nodes, allConnections]);
 
@@ -308,27 +308,27 @@ export function KnowledgeGraph({
           // Dynamic link distance based on node connectivity
           const sourceNode = d.source as ForceNode;
           const targetNode = d.target as ForceNode;
-          
+
           const sourceConnections = connectionCountMap.get(sourceNode.id) || 0;
           const targetConnections = connectionCountMap.get(targetNode.id) || 0;
-          
+
           // Higher connectivity = shorter links (pulls toward center)
           const avgConnections = (sourceConnections + targetConnections) / 2;
           const baseDistance = 180;
-          const scaleFactor = Math.max(0.6, 1 - (avgConnections * 0.08));
-          
+          const scaleFactor = Math.max(0.6, 1 - avgConnections * 0.08);
+
           return baseDistance * scaleFactor;
         })
         .strength((d) => {
           // Stronger links for high-connectivity nodes
           const sourceNode = d.source as ForceNode;
           const targetNode = d.target as ForceNode;
-          
+
           const sourceConnections = connectionCountMap.get(sourceNode.id) || 0;
           const targetConnections = connectionCountMap.get(targetNode.id) || 0;
-          
+
           const avgConnections = (sourceConnections + targetConnections) / 2;
-          return 0.3 + (avgConnections * 0.05);
+          return 0.3 + avgConnections * 0.05;
         });
     }
 
@@ -339,11 +339,11 @@ export function KnowledgeGraph({
     if (chargeForce) {
       chargeForce.strength((d) => {
         const connections = connectionCountMap.get(d.id) || 0;
-        
+
         // High-connectivity nodes have less repulsion (stay central)
         const baseStrength = -500;
-        const scaleFactor = Math.max(0.5, 1 - (connections * 0.1));
-        
+        const scaleFactor = Math.max(0.5, 1 - connections * 0.1);
+
         return baseStrength * scaleFactor;
       });
     }
@@ -356,7 +356,7 @@ export function KnowledgeGraph({
       collideForce.radius((d) => {
         const connections = connectionCountMap.get(d.id) || 0;
         const baseRadius = 60;
-        return baseRadius + (connections * 5);
+        return baseRadius + connections * 5;
       });
     }
 
@@ -368,11 +368,13 @@ export function KnowledgeGraph({
       radialForce
         .radius((d) => {
           const connections = connectionCountMap.get(d.id) || 0;
-          
+
           // Low connectivity = pushed further from center
           const minRadius = 50;
           const maxRadius = Math.min(dimensions.width, dimensions.height) * 0.4;
-          return connections > 0 ? minRadius + (maxRadius - minRadius) / connections : maxRadius;
+          return connections > 0
+            ? minRadius + (maxRadius - minRadius) / connections
+            : maxRadius;
         })
         .strength((d) => {
           const connections = connectionCountMap.get(d.id) || 0;
@@ -398,7 +400,13 @@ export function KnowledgeGraph({
         setIsSimulationRunning(true);
       });
     }
-  }, [nodes, allConnections, dimensions.width, dimensions.height, connectionCountMap]);
+  }, [
+    nodes,
+    allConnections,
+    dimensions.width,
+    dimensions.height,
+    connectionCountMap,
+  ]);
 
   // Setup zoom and pan behavior
   useEffect(() => {
@@ -1030,9 +1038,7 @@ export function KnowledgeGraph({
       {/* Main Graph Container */}
       <div className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
         {/* Header */}
-        <div
-          className="flex-none px-6 py-4 border-b border-warm-gray/15 dark:border-stone/15 relative z-10"
-        >
+        <div className="flex-none px-6 py-4 border-b border-warm-gray/15 dark:border-stone/15 relative z-10">
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-xl font-medium text-foreground mb-2">
@@ -1049,9 +1055,7 @@ export function KnowledgeGraph({
 
             <div className="flex items-center gap-2">
               {connectingFrom && (
-                <div
-                  className="px-3 py-1 rounded-lg text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400"
-                >
+                <div className="px-3 py-1 rounded-lg text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400">
                   Click another node to connect
                 </div>
               )}
@@ -1216,14 +1220,16 @@ export function KnowledgeGraph({
           </div>
 
           {/* Legend - Top Left */}
-          <div
-            className="absolute top-4 left-4 p-4 rounded-lg shadow-lg border border-warm-gray/20 dark:border-stone/20 bg-white/95 dark:bg-[rgba(17,17,17,0.95)]"
-          >
-            <h3 className="text-foreground font-medium text-sm mb-3">Node Legend</h3>
+          <div className="absolute top-4 left-4 p-4 rounded-lg shadow-lg border border-warm-gray/20 dark:border-stone/20 bg-white/95 dark:bg-[rgba(17,17,17,0.95)]">
+            <h3 className="text-foreground font-medium text-sm mb-3">
+              Node Legend
+            </h3>
 
             {/* Entity Types */}
             <div className="mb-3">
-              <p className="text-muted-foreground text-xs mb-2">Entities (Circles)</p>
+              <p className="text-muted-foreground text-xs mb-2">
+                Entities (Circles)
+              </p>
               <div className="space-y-1.5">
                 {Object.entries(ENTITY_COLORS).map(([type, color]) => (
                   <div key={type} className="flex items-center gap-2">
@@ -1246,7 +1252,9 @@ export function KnowledgeGraph({
 
             {/* Evidence Types */}
             <div>
-              <p className="text-muted-foreground text-xs mb-2">Evidence (Squares)</p>
+              <p className="text-muted-foreground text-xs mb-2">
+                Evidence (Squares)
+              </p>
               <div className="space-y-1.5">
                 {Object.entries(EVIDENCE_COLORS).map(([type]) => {
                   return (
@@ -1274,9 +1282,7 @@ export function KnowledgeGraph({
 
           {/* Node info panel - only show when node is selected */}
           {selectedNode && (
-            <div
-              className="absolute top-4 right-4 p-4 rounded-lg shadow-lg max-w-xs border border-warm-gray/20 dark:border-stone/20 bg-white/95 dark:bg-[rgba(17,17,17,0.95)]"
-            >
+            <div className="absolute top-4 right-4 p-4 rounded-lg shadow-lg max-w-xs border border-warm-gray/20 dark:border-stone/20 bg-white/95 dark:bg-[rgba(17,17,17,0.95)]">
               <div className="text-foreground">
                 {(() => {
                   const node = nodes.find((n) => n.id === selectedNode);

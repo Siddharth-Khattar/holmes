@@ -1,6 +1,6 @@
 import { TimelineLayer, TimelineZoomLevel } from "@/types/timeline.types";
 
-// Layer styling configuration - Warm brown palette matching Knowledge Graph
+// Layer styling configuration - Professional vibrant palette matching Evidence Library
 export const LAYER_CONFIG: Record<
   TimelineLayer,
   {
@@ -13,26 +13,26 @@ export const LAYER_CONFIG: Record<
   }
 > = {
   evidence: {
-    color: "text-[#B89968]",
-    bgColor: "bg-[#B89968]/10",
-    borderColor: "border-[#B89968]/30",
-    hexColor: "#B89968", // Golden brown
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-100 dark:bg-blue-900/30",
+    borderColor: "border-blue-500 dark:border-blue-600",
+    hexColor: "#3b82f6", // Professional blue
     icon: "FileText",
     label: "Evidence",
   },
   legal: {
-    color: "text-[#8B7355]",
-    bgColor: "bg-[#8B7355]/10",
-    borderColor: "border-[#8B7355]/30",
-    hexColor: "#8B7355", // Warm brown
+    color: "text-purple-600 dark:text-purple-400",
+    bgColor: "bg-purple-100 dark:bg-purple-900/30",
+    borderColor: "border-purple-500 dark:border-purple-600",
+    hexColor: "#9333ea", // Royal purple
     icon: "Scale",
     label: "Legal",
   },
   strategy: {
-    color: "text-[#A68A6A]",
-    bgColor: "bg-[#A68A6A]/10",
-    borderColor: "border-[#A68A6A]/30",
-    hexColor: "#A68A6A", // Tan brown
+    color: "text-emerald-600 dark:text-emerald-400",
+    bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
+    borderColor: "border-emerald-500 dark:border-emerald-600",
+    hexColor: "#10b981", // Professional green
     icon: "Target",
     label: "Strategy",
   },

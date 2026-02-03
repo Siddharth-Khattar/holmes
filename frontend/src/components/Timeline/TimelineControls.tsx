@@ -39,9 +39,7 @@ export function TimelineControls({
   const currentZoomIndex = ZOOM_LEVELS.indexOf(zoomLevel);
 
   return (
-    <div
-      className="border-b px-4 md:px-10 py-4 bg-white/90 dark:bg-[rgba(17,17,17,0.8)] border-warm-gray/12 dark:border-stone/15"
-    >
+    <div className="border-b px-4 md:px-10 py-4 bg-white/90 dark:bg-[rgba(17,17,17,0.8)] border-warm-gray/12 dark:border-stone/15">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {/* Zoom controls */}
         <div className="flex items-center gap-2">
@@ -70,8 +68,8 @@ export function TimelineControls({
                 className={cn(
                   "px-3 py-1.5 text-xs font-medium rounded transition-all",
                   level === zoomLevel
-                    ? "bg-[#8B7355] text-white"
-                    : "bg-transparent text-muted-foreground"
+                    ? "bg-blue-600 dark:bg-blue-500 text-white"
+                    : "bg-transparent text-muted-foreground hover:bg-warm-gray/12 dark:hover:bg-stone/15",
                 )}
               >
                 {ZOOM_CONFIG[level].label}
@@ -97,9 +95,7 @@ export function TimelineControls({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-foreground">
-              Layers:
-            </span>
+            <span className="text-sm font-medium text-foreground">Layers:</span>
           </div>
 
           <div className="flex gap-2">
@@ -111,15 +107,17 @@ export function TimelineControls({
                 <button
                   key={layer}
                   onClick={() => toggleLayer(layer)}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md border-2 transition-all"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border-2 transition-all hover:shadow-sm"
                   style={{
                     backgroundColor: isSelected
                       ? config.hexColor + "14"
                       : "transparent",
                     borderColor: isSelected
                       ? config.hexColor
-                      : "rgba(107, 101, 96, 0.2)",
-                    color: isSelected ? config.hexColor : "var(--muted-foreground)",
+                      : "rgba(107, 101, 96, 0.15)",
+                    color: isSelected
+                      ? config.hexColor
+                      : "var(--muted-foreground)",
                   }}
                 >
                   {config.label}

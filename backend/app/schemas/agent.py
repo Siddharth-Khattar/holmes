@@ -1,5 +1,5 @@
-# ABOUTME: Pydantic schemas for agent execution logging and triage output.
-# ABOUTME: Defines structured output types for Triage Agent results and CRUD schemas for execution records.
+# ABOUTME: Pydantic schemas for agent execution logging, triage output, and orchestrator routing.
+# ABOUTME: Defines structured output types for Triage and Orchestrator agents plus CRUD schemas for execution records.
 
 from datetime import datetime
 from typing import Literal
@@ -132,6 +132,107 @@ class TriageOutput(BaseModel):
     total_token_estimate: int | None = Field(
         default=None,
         description="Estimated total tokens across all files",
+    )
+
+
+# --- Orchestrator output schemas ---
+
+
+class RoutingDecision(BaseModel):
+    """Per-file routing decision with detailed reasoning.
+
+    The Orchestrator evaluates triage results and decides which domain agents
+    should process each file, with explicit justification for every assignment.
+    """
+
+    file_id: str = Field(..., description="ID of the file being routed")
+    file_name: str = Field(..., description="Original filename for readability")
+    target_agents: list[Literal["financial", "legal", "strategy", "evidence"]] = Field(
+        ..., description="Domain agents that should process this file"
+    )
+    reasoning: str = Field(
+        ..., description="Detailed explanation of why these agents were chosen"
+    )
+    priority: Literal["high", "medium", "low"] = Field(
+        default="medium", description="Processing priority for this file"
+    )
+    domain_scores: dict[str, float] = Field(
+        default_factory=dict,
+        description="Triage domain scores carried forward for reference",
+    )
+
+
+class FileGroupForProcessing(BaseModel):
+    """Group of related files to be sent together to domain agents.
+
+    Grouping provides richer context when files relate to the same transaction,
+    entity, or event.
+    """
+
+    group_id: str = Field(..., description="Unique identifier for this group")
+    file_ids: list[str] = Field(
+        ..., description="IDs of files in this processing group"
+    )
+    target_agents: list[str] = Field(
+        ..., description="Domain agents that should receive this group"
+    )
+    shared_context: str = Field(..., description="Why these files are grouped together")
+
+
+class ResearchTrigger(BaseModel):
+    """Decision about whether to trigger autonomous research.
+
+    The Orchestrator evaluates whether gaps in triage data warrant
+    triggering the Research/Discovery agent for additional context.
+    """
+
+    should_trigger: bool = Field(
+        ..., description="Whether research should be triggered"
+    )
+    reason: str | None = Field(
+        default=None, description="Why research is or isn't needed"
+    )
+    research_queries: list[str] = Field(
+        default_factory=list, description="Suggested research directions"
+    )
+    priority: Literal["high", "medium", "low"] = Field(
+        default="medium", description="Urgency of the research if triggered"
+    )
+
+
+class OrchestratorOutput(BaseModel):
+    """Complete output from the Orchestrator Agent.
+
+    Contains routing decisions, file groupings, execution ordering,
+    research triggers, and a human-readable routing summary.
+    """
+
+    routing_decisions: list[RoutingDecision] = Field(
+        ..., description="Per-file routing decisions with reasoning"
+    )
+    file_groups: list[FileGroupForProcessing] = Field(
+        default_factory=list, description="File groups for batch processing"
+    )
+    parallel_agents: list[str] = Field(
+        default_factory=list,
+        description="Domain agents that can run concurrently",
+    )
+    sequential_agents: list[str] = Field(
+        default_factory=list,
+        description="Domain agents that must run in order (with dependencies)",
+    )
+    research_trigger: ResearchTrigger = Field(
+        ..., description="Research/Discovery trigger decision"
+    )
+    overall_complexity: Literal["low", "medium", "high"] = Field(
+        ..., description="Aggregate complexity across all files"
+    )
+    routing_summary: str = Field(
+        ..., description="Human-readable summary of the routing plan"
+    )
+    warnings: list[str] = Field(
+        default_factory=list,
+        description="Concerns, edge cases, or caveats noted during routing",
     )
 
 

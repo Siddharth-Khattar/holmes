@@ -282,12 +282,24 @@ async def run_triage(
             execution.error_message = "Failed to parse structured output from model"
 
         await db_session.flush()
+
+        duration_s = (
+            (execution.completed_at - execution.started_at).total_seconds()
+            if execution.completed_at and execution.started_at
+            else None
+        )
         logger.info(
-            "Triage completed for case=%s workflow=%s execution=%s status=%s",
+            "Triage completed case=%s workflow=%s execution=%s status=%s "
+            "duration_s=%.2f model=%s input_tokens=%s output_tokens=%s files=%d",
             case_id,
             workflow_id,
             execution_id,
             execution.status.value,
+            duration_s or 0.0,
+            settings.gemini_flash_model,
+            input_tokens or 0,
+            output_tokens or 0,
+            len(files),
         )
         return triage_output
 

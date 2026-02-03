@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     database_url: str | None = None
     cors_origins_raw: str = ""
     debug: bool = False
+    sql_echo: bool = False
     gcs_bucket: str | None = None
     frontend_url: str = "http://localhost:3000"  # For JWKS endpoint
     # Service account email for signing GCS URLs when using user credentials locally

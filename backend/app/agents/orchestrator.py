@@ -384,12 +384,22 @@ async def run_orchestrator(
         if orchestrator_output:
             await _invoke_domain_agents_stub(orchestrator_output)
 
+        duration_s = (
+            (execution.completed_at - execution.started_at).total_seconds()
+            if execution.completed_at and execution.started_at
+            else None
+        )
         logger.info(
-            "Orchestrator completed for case=%s workflow=%s execution=%s status=%s",
+            "Orchestrator completed case=%s workflow=%s execution=%s status=%s "
+            "duration_s=%.2f model=%s input_tokens=%s output_tokens=%s",
             case_id,
             workflow_id,
             execution_id,
             execution.status.value,
+            duration_s or 0.0,
+            settings.gemini_pro_model,
+            input_tokens or 0,
+            output_tokens or 0,
         )
         return orchestrator_output
 

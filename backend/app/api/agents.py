@@ -2,6 +2,7 @@
 # ABOUTME: Provides POST to start analysis, GET for status, and background task orchestration.
 
 import logging
+import time
 from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
@@ -125,6 +126,7 @@ async def run_analysis_workflow(
     from app.database import _get_sessionmaker
 
     session_factory = _get_sessionmaker()
+    pipeline_start = time.monotonic()
 
     async with session_factory() as db:
         try:
@@ -159,6 +161,13 @@ async def run_analysis_workflow(
             await db.commit()
 
             # ---- Stage 1: Triage ----
+            logger.info(
+                "Pipeline starting stage=triage case=%s workflow=%s files=%d",
+                case_id,
+                workflow_id,
+                len(files),
+            )
+            triage_start = time.monotonic()
             triage_task_id = str(uuid4())
 
             # Emit started event for first file (representing the batch)
@@ -215,6 +224,13 @@ async def run_analysis_workflow(
             )
 
             # ---- Stage 2: Orchestrator ----
+            triage_duration_s = time.monotonic() - triage_start
+            logger.info(
+                "Pipeline starting stage=orchestrator case=%s workflow=%s triage_duration_s=%.2f",
+                case_id,
+                workflow_id,
+                triage_duration_s,
+            )
             # Find triage execution record for parent chain
             triage_exec_result = await db.execute(
                 select(AgentExecution)
@@ -311,18 +327,24 @@ async def run_analysis_workflow(
                 relationships_created=0,  # Relationships created by domain agents in Phase 6
             )
 
+            total_duration_s = time.monotonic() - pipeline_start
             logger.info(
-                "Analysis workflow complete: case=%s workflow=%s files=%d",
+                "Pipeline complete case=%s workflow=%s files=%d "
+                "total_duration_s=%.2f entities=%d",
                 case_id,
                 workflow_id,
                 len(files),
+                total_duration_s,
+                total_entities,
             )
 
         except Exception as exc:
+            pipeline_duration_s = time.monotonic() - pipeline_start
             logger.exception(
-                "Analysis workflow failed: case=%s workflow=%s error=%s",
+                "Pipeline failed case=%s workflow=%s duration_s=%.2f error=%s",
                 case_id,
                 workflow_id,
+                pipeline_duration_s,
                 exc,
             )
             # Update file statuses to ERROR

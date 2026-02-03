@@ -86,6 +86,11 @@ export const AGENT_TYPE_TINTS: Record<AgentType, string> = {
 export const NODE_WIDTH = 300;
 export const NODE_HEIGHT = 100;
 
+// File group node dimensions for dagre layout. FileGroupNode enforces the same
+// fixed dimensions via inline styles (w-[240px] h-[80px]).
+export const FILE_GROUP_NODE_WIDTH = 240;
+export const FILE_GROUP_NODE_HEIGHT = 80;
+
 // Status colors - retained for backward compatibility with AgentNode.tsx (SVG).
 // Will be removed when AgentNode.tsx is replaced by DecisionNode in Plan 03.
 export const STATUS_COLORS = {

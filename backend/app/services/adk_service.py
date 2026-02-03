@@ -1,6 +1,7 @@
 # ABOUTME: ADK service layer for Runner, session, and artifact management.
 # ABOUTME: Provides stage-isolated sessions, file preparation, and service singletons.
 
+import asyncio
 import hashlib
 import logging
 import os
@@ -170,7 +171,7 @@ async def prepare_file_inline(
     client = storage.Client()
     bucket = client.bucket(gcs_bucket)
     blob = bucket.blob(storage_path)
-    file_bytes = blob.download_as_bytes()
+    file_bytes = await asyncio.to_thread(blob.download_as_bytes)
 
     return types.Part(
         inline_data=types.Blob(
@@ -191,8 +192,6 @@ async def prepare_file_via_api(
     File API supports up to 2 GB per file, 20 GB per project.
     Files are retained for 48 hours and reusable across multiple calls.
     """
-    import asyncio
-
     from google import genai
 
     # Download from GCS to a temp file
@@ -208,7 +207,7 @@ async def prepare_file_via_api(
     os.close(fd)
 
     try:
-        blob.download_to_filename(tmp_path)
+        await asyncio.to_thread(blob.download_to_filename, tmp_path)
 
         # Upload to Gemini File API
         genai_client = genai.Client()
@@ -217,9 +216,18 @@ async def prepare_file_via_api(
             config={"mime_type": mime_type, "display_name": original_filename},
         )
 
-        # Wait for processing (needed for video/audio)
+        # Wait for processing with timeout and backoff (needed for video/audio)
+        max_file_api_wait_s = 300  # 5 min
+        elapsed = 0.0
+        poll_interval = 2.0
         while uploaded.state and uploaded.state.name == "PROCESSING":
-            await asyncio.sleep(2)
+            if elapsed >= max_file_api_wait_s:
+                raise RuntimeError(
+                    f"File API timed out after {max_file_api_wait_s}s: {uploaded.name}"
+                )
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+            poll_interval = min(poll_interval * 1.5, 15.0)
             uploaded = genai_client.files.get(name=uploaded.name)
 
         if uploaded.state and uploaded.state.name == "FAILED":

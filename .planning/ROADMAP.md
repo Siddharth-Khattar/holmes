@@ -289,10 +289,12 @@ Plans:
 
 **Requirements:** REQ-VIS-001 (visual quality improvement)
 
-**Plans:** 0 plans
+**Plans:** 3 plans in 2 waves
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 4.1 to break down)
+- [ ] 04.1-01-PLAN.md — Dependencies, scoped CSS variables, config update, DecisionNode component
+- [ ] 04.1-02-PLAN.md — NodeDetailsSidebar with spring animation and color-coded sections
+- [ ] 04.1-03-PLAN.md — ReactFlow canvas with dagre layout, CommandCenter integration, visual verification
 
 **Deliverables:**
 - Replace D3 SVG canvas (`AgentFlowCanvas.tsx`) with `@xyflow/react` + dagre auto-layout
@@ -916,7 +918,7 @@ For 2 developers working simultaneously:
 ---
 
 *Roadmap Version: 2.0*
-*Updated: 2026-02-03 (Phase 4 complete)*
+*Updated: 2026-02-04 (Phase 4.1 planned)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
@@ -927,3 +929,4 @@ For 2 developers working simultaneously:
 *Phase 3 verified: 2026-02-02 (6/6 observable truths)*
 *Phase 4 planned: 2026-02-02 (5 plans in 3 waves)*
 *Phase 4 verified: 2026-02-03 (6/6 must-haves)*
+*Phase 4.1 planned: 2026-02-04 (3 plans in 2 waves)*

@@ -98,3 +98,8 @@ class Case(Base):
     files = relationship(
         "CaseFile", back_populates="case", cascade="all, delete-orphan"
     )
+
+    # Relationship to AgentExecutions
+    agent_executions = relationship(
+        "AgentExecution", back_populates="case", cascade="all, delete-orphan"
+    )

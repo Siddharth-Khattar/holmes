@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-02
-**Current Phase:** 3 of 12 (File Ingestion) — COMPLETE
-**Current Plan:** Phase 3 complete, ready for Phase 4
+**Last Updated:** 2026-02-03
+**Current Phase:** 4 of 12 (Core Agent System) — COMPLETE
+**Current Plan:** 04-05 complete (all 5 plans done)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -13,7 +13,7 @@
 | 1.1 | Frontend Design Foundation | COMPLETE | 2026-01-23 | 2026-01-24 | |
 | 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 | |
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
-| 4 | Core Agent System | NOT_STARTED | - | - | |
+| 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
 | 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
@@ -30,16 +30,18 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 3 Verified** (2026-02-02)
-  - All 6 observable truths verified
-  - All 9 required artifacts exist and substantive
-  - All 7 key links confirmed wired
-  - Verification: `.planning/phases/03-file-ingestion/03-VERIFICATION.md`
-  - Key deliverables: File upload/download/delete, duplicate detection, bulk delete, SSE status, multi-select UI
+- **Phase 4 Complete** (2026-02-03): Core Agent System — verified 6/6 must-haves
+  - ADK infrastructure: Runner, DatabaseSessionService, GcsArtifactService, AgentFactory
+  - Agent execution logging: AgentExecution model with 17 columns, JSONB I/O
+  - Triage Agent: Flash model, 6176-char prompt, domain scores/entities/summaries/complexity
+  - Orchestrator Agent: Pro model, 6484-char prompt, routing decisions/research triggers
+  - API: POST /analyze, GET /analysis/{workflow_id}, SSE command-center/stream
+  - 6 ADK callbacks mapped to SSE events, thinking traces capped at 2000 chars
+  - Verification: `.planning/phases/04-core-agent-system/04-VERIFICATION.md`
 
 **What's next:**
-- **Phase 4:** Core Agent System (ADK, Triage, Orchestrator)
-- Then: Backend integration for all frontend-done phases
+- **Phase 5:** Agent Flow — Backend SSE integration for real-time agent visualization
+- Then: Domain Agents (Phase 6), Synthesis & KG (Phase 7)
 
 ---
 
@@ -158,7 +160,9 @@ All frontend features need these backend endpoints:
 | KG Relationships | `/api/cases/:caseId/relationships` | POST | MEDIUM | TODO |
 | Timeline Events | `/api/cases/:caseId/timeline/events` | GET, POST, PATCH, DELETE | MEDIUM | TODO |
 | Timeline SSE | `/api/cases/:caseId/timeline/stream` | SSE | MEDIUM | TODO |
-| Command Center SSE | `/api/cases/:caseId/command-center/stream` | SSE | HIGH | TODO |
+| Command Center SSE | `/sse/cases/:caseId/command-center/stream` | SSE | HIGH | DONE |
+| Start Analysis | `/api/cases/:caseId/analyze` | POST | HIGH | DONE |
+| Analysis Status | `/api/cases/:caseId/analysis/:workflowId` | GET | HIGH | DONE |
 
 ---
 
@@ -214,12 +218,38 @@ All frontend features need these backend endpoints:
 | Services layer | Inline in routes vs Separate services/ | Separate services/ | Reusable business logic, cleaner route handlers |
 | Signed URL expiration | 1h vs 24h vs 7d | 24h | Balance between security and usability |
 | SSE pubsub | Redis vs In-memory | In-memory | Sufficient for single-instance hackathon deployment |
+| ADK agent naming | Raw UUIDs vs Sanitized | Sanitized via regex | ADK requires valid Python identifiers; UUIDs have hyphens |
+| Thinking config | generate_content_config vs BuiltInPlanner | BuiltInPlanner | ADK best practice; cleaner integration with ThinkingConfig |
+| Model ID configurability | Hardcoded vs Env vars | Env vars (GEMINI_FLASH_MODEL, GEMINI_PRO_MODEL) | Smooth preview-to-GA migration path |
+| SSE callback dispatch | Synchronous vs asyncio.create_task | asyncio.create_task | Non-blocking; graceful fallback when no event loop |
+| Agent I/O storage | Typed columns vs JSONB | JSONB | Flexible schema for varied agent types; supports PostgreSQL indexing |
+| Agent parent tracking | Separate table vs Self-referential FK | Self-referential FK with SET NULL | Simpler schema; preserves child records |
+| Migration generation | Autogenerate vs Manual | Manual | No live database required during development |
+| Triage prompt location | Inline in factory vs Separate prompts/ module | Separate prompts/ | Maintainability; prompts can be iterated without touching agent logic |
+| Triage output parsing | Strict JSON vs Code-fence tolerant | Code-fence tolerant | Handles model responses with or without markdown code fences |
+| Thinking trace storage | Full text vs Capped at 2000 chars | Capped at 2000 chars | Prevents JSONB column bloat in execution records |
+| Orchestrator model | Flash vs Pro | Gemini Pro | Complex routing reasoning needs higher capability model |
+| Orchestrator input | Full file content vs Text-only triage JSON | Text-only triage JSON | Keeps context ~10-50K tokens; orchestrator reasons about metadata, not files |
+| Routing threshold | Fixed score cutoff vs Dynamic reasoning | Dynamic reasoning | No fixed threshold; orchestrator considers full picture per file |
+| Orchestrator prompt location | Inline in factory vs Separate prompts/ module | Separate prompts/ | Consistent with triage pattern; prompts iterable without touching agent logic |
+| Agent event pub/sub | Redis vs In-memory asyncio.Queue | In-memory asyncio.Queue | Same pattern as file events; single-instance hackathon deployment |
+| Pipeline status tracking | Separate workflow table vs Derived from execution records | Derived from execution records | Avoids extra table; status computed from triage/orchestrator execution states |
+| Background task DB session | FastAPI dependency vs Own session factory | Own session factory | Background tasks run outside request lifecycle; need independent DB access |
+| Command center SSE path | /api/ prefix vs /sse/ prefix | /sse/ prefix | Consistent with file SSE pattern; frontend proxy or update can align |
 
 ---
 
 ## Blockers
 
 None currently.
+
+---
+
+## Session Continuity
+
+Last session: 2026-02-03T06:04:00Z
+Stopped at: Completed 04-05-PLAN.md (Phase 4 complete)
+Resume file: None
 
 ---
 

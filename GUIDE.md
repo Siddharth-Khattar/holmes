@@ -87,6 +87,7 @@ holmes/
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://postgres:postgres@localhost:5432/holmes` |
 | `CORS_ORIGINS` | Allowed origins (comma-separated) | `http://localhost:3000` |
 | `DEBUG` | Enable debug mode | `true` |
+| `DEV_API_KEY` | API key for Swagger UI testing (requires `DEBUG=true`) | (optional) |
 | `GCS_BUCKET` | GCS bucket for file storage | (optional) |
 
 ### Frontend (`frontend/.env.local`)
@@ -209,6 +210,28 @@ docker build -f frontend/Dockerfile -t holmes-frontend .
 ```bash
 cd backend && uv run uvicorn app.main:app --reload --port 8080
 ```
+
+### Local API Testing (Swagger UI)
+
+Test authenticated API endpoints without the frontend auth flow using a dev API key.
+
+**Setup:**
+
+1. Generate a key and add to `.env`:
+   ```bash
+   # Generate key
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+   # Add to .env
+   DEBUG=true
+   DEV_API_KEY=<your-generated-key>
+   ```
+
+2. Open http://localhost:8080/docs → Click **Authorize** → Enter key in `DevAPIKey` → **Authorize**
+
+All Swagger API calls will now authenticate as `dev@localhost`.
+
+**Safety:** Dev auth only works when both `DEBUG=true` AND `DEV_API_KEY` are set. Warnings are logged if cloud environment is detected.
 
 ### Replace Hero Video
 

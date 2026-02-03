@@ -25,7 +25,7 @@
 | 1.1 | Frontend Design Foundation (INSERTED) | Design system, Liquid Glass, Landing page | UX quality (foundational) | ✅ COMPLETE |
 | 2 | Authentication & Case Shell | Auth system, Case CRUD, basic UI shell | REQ-AUTH-*, REQ-CASE-001/002/003 | ✅ COMPLETE |
 | 3 | File Ingestion | Upload, storage, file management | REQ-CASE-004/005, REQ-SOURCE-* (basic) | ✅ COMPLETE |
-| 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e | ⏳ PLANNED |
+| 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e | ✅ COMPLETE |
 | 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 | 🟡 FRONTEND_DONE |
 | 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ⏳ NOT_STARTED |
 | 7 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, Hypothesis system, Task generation, 5-layer KG | REQ-AGENT-008/009, REQ-VIS-003, REQ-HYPO-001/004/005/006, REQ-TASK-001/002 | 🟡 FRONTEND_DONE |
@@ -36,7 +36,7 @@
 | 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i | ⏳ NOT_STARTED |
 
 > **Status Legend:** ✅ COMPLETE | 🟡 FRONTEND_DONE (backend pending) | ⏳ NOT_STARTED | ⏳ PLANNED
-> **Note:** Phase 3 verified complete (2026-02-02, 6/6 truths). Phases 5, 7, 9, 10 have frontend UI implemented by Yatharth (2026-02-02). Backend integration remains.
+> **Note:** Phase 4 verified complete (2026-02-03, 6/6 must-haves). Phases 5, 7, 9, 10 have frontend UI implemented by Yatharth (2026-02-02). Backend integration remains.
 
 **Post-MVP:**
 | Phase | Name | Focus | Requirements |
@@ -235,11 +235,11 @@ Plans:
 **Plans:** 5 plans in 3 waves
 
 Plans:
-- [ ] 04-01-PLAN.md — ADK infrastructure (dependencies, config, services, factory pattern)
-- [ ] 04-02-PLAN.md — Database models and schemas (agent execution logging, triage output)
-- [ ] 04-03-PLAN.md — Triage Agent implementation (prompts, processing, output parsing)
-- [ ] 04-04-PLAN.md — Orchestrator Agent skeleton (routing logic, research triggers)
-- [ ] 04-05-PLAN.md — API endpoints and SSE integration (start analysis, command center stream)
+- [x] 04-01-PLAN.md — ADK infrastructure (dependencies, config, services, factory pattern)
+- [x] 04-02-PLAN.md — Database models and schemas (agent execution logging, triage output)
+- [x] 04-03-PLAN.md — Triage Agent implementation (prompts, processing, output parsing)
+- [x] 04-04-PLAN.md — Orchestrator Agent skeleton (routing logic, research triggers)
+- [x] 04-05-PLAN.md — API endpoints and SSE integration (start analysis, command center stream)
 
 **Deliverables:**
 - Google ADK 1.23.x integration
@@ -266,13 +266,17 @@ Plans:
 - Tool confirmation NOT available with DatabaseSessionService (use frontend)
 - Orchestrator routing logic prepared for Research/Discovery invocation
 
-**Exit Criteria:**
-- Triage Agent processes uploaded files
-- Domain scores and entities extracted
-- Orchestrator receives triage output
-- Agent execution logged to database
-- SSE events fire for agent lifecycle (AGENT_SPAWNED, THINKING_UPDATE, AGENT_COMPLETED)
-- Thinking traces captured and available for display
+**Status:** ✅ COMPLETE
+
+**Verification:** `.planning/phases/04-core-agent-system/04-VERIFICATION.md` — 6/6 must-haves verified
+
+**Exit Criteria:** ✓ ALL MET
+- ✅ Triage Agent processes uploaded files
+- ✅ Domain scores and entities extracted
+- ✅ Orchestrator receives triage output
+- ✅ Agent execution logged to database
+- ✅ SSE events fire for agent lifecycle (AGENT_SPAWNED, THINKING_UPDATE, AGENT_COMPLETED)
+- ✅ Thinking traces captured and available for display
 
 ---
 
@@ -840,8 +844,8 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 1.9*
-*Updated: 2026-02-02 (Phase 4 planned)*
+*Roadmap Version: 2.0*
+*Updated: 2026-02-03 (Phase 4 complete)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
@@ -851,3 +855,4 @@ For 2 developers working simultaneously:
 *Phase 3 planned: 2026-02-02*
 *Phase 3 verified: 2026-02-02 (6/6 observable truths)*
 *Phase 4 planned: 2026-02-02 (5 plans in 3 waves)*
+*Phase 4 verified: 2026-02-03 (6/6 must-haves)*

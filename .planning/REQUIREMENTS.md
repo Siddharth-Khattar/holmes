@@ -43,6 +43,10 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Signed URLs for secure access
 - Maximum file size: 500MB
 - Supported types: PDF, DOCX, MP4, MP3, JPG, PNG, WAV
+- **Tiered agent delivery:**
+  - ≤100MB files: Downloaded from GCS, encoded as inline_data for Gemini
+  - >100MB files: Downloaded from GCS, uploaded to Gemini File API (2GB max, 48hr retention, free)
+  - File API URIs reusable across all pipeline stages
 **Dependencies:** REQ-INF-001
 
 ### REQ-INF-004: SSE Streaming Infrastructure
@@ -167,13 +171,16 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 **Priority:** CRITICAL
 **Description:** Initial agent that classifies files by domain relevance.
 **Acceptance Criteria:**
-- Receives file from GCS (via signed URL or content)
+- Receives files via tiered handling: inline (≤100MB) or File API (>100MB, up to 2GB)
 - Uses Gemini 3 Flash for speed
-- Outputs domain scores: Financial (0-1), Legal (0-1), Strategy (0-1)
-- Outputs complexity score (1-5)
-- Outputs file summary (200 words max)
-- Outputs detected entities (people, orgs, dates, amounts)
-- Processing time < 30 seconds per file
+- Runs in a **fresh stage-isolated ADK session** (no shared context with other stages)
+- Outputs domain scores: Financial (0-100), Legal (0-100), Strategy (0-100), Evidence (0-100)
+- Outputs complexity tier (Low/Medium/High)
+- Outputs file summary: short (1-2 sentences) and detailed (paragraph)
+- Outputs detected entities (people, orgs, dates, locations, amounts, legal terms)
+- `media_resolution: "medium"` for speed (classification, not forensic)
+- Stores TriageOutput in `agent_executions` table for downstream stages
+- Handles multimodal evidence: PDF, video (MP4), audio (MP3/WAV), images (JPG/PNG)
 **Dependencies:** REQ-INF-003, REQ-AGENT-007
 
 ### REQ-AGENT-002: Orchestrator Agent
@@ -286,18 +293,26 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 **Priority:** CRITICAL
 **Description:** Google ADK integration for agent orchestration.
 **Acceptance Criteria:**
-- ADK 1.22.x integrated with FastAPI
-- DatabaseSessionService with PostgreSQL
-- Fresh agent instances per workflow (ADK constraint: single parent rule)
+- ADK >=1.22.0 integrated with FastAPI
+- DatabaseSessionService with PostgreSQL (asyncpg)
+- **Stage-isolated sessions**: Each pipeline stage (Triage, Orchestrator, Domain, Synthesis) gets a FRESH ADK session to prevent multimodal file content from bloating downstream contexts
+- Session ID: SHA-256 hash of `case_id:workflow_id:stage` (deterministic, idempotent)
+- Inter-stage data flows via database (`agent_executions` table), not session state
+- Intra-stage data uses ADK `output_key` and `{key}` template injection
+- Fresh agent instances per stage (ADK constraint: single parent rule)
 - State namespacing per user/case with scope prefixes:
   - No prefix: Current session (case-specific data)
   - `user:` prefix: All user sessions (investigator preferences)
   - `app:` prefix: Global application (system configuration)
   - `temp:` prefix: Current invocation only (intermediate processing)
+- **Tiered file handling**: inline (≤100MB) or File API (>100MB, up to 2GB)
+- File API references reusable across pipeline stages (48hr retention)
 - Tool registration and execution
 - Error handling and retry logic
 - GcsArtifactService for evidence and report storage with versioning
 - Thought signature handling for multi-turn function calling (SDK handles automatically)
+- Pipeline orchestration via Python code (NOT a single ADK SequentialAgent across stages)
+- ParallelAgent used WITHIN Stage 3 for concurrent domain agents
 **Dependencies:** REQ-INF-002
 
 ### REQ-AGENT-007a: ADK Limitations Documentation
@@ -320,36 +335,46 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ### REQ-AGENT-007b: Thinking Mode Configuration
 **Priority:** HIGH
-**Description:** Configure appropriate thinking levels per agent type for optimal performance/cost balance.
+**Description:** Configure thinking levels using `BuiltInPlanner` with `ThinkingConfig` (ADK best practice).
 **Acceptance Criteria:**
-- All agents include explicit `thinking_config` in `generate_content_config`
-- Thinking level assignments:
-  - **Triage Agent:** `thinking_level="low"` (speed priority, simple classification)
+- All agents use `BuiltInPlanner(thinking_config=ThinkingConfig(thinking_level=..., include_thoughts=True))`
+- **NOT** using `generate_content_config` directly (use `BuiltInPlanner` instead)
+- **NOT** using `thinking_budget` (that's for Gemini 2.5, not Gemini 3)
+- Thinking level assignments — **ALL agents use HIGH per user preference**:
+  - **Triage Agent:** `thinking_level="high"` (user requested HIGH for all)
   - **Orchestrator Agent:** `thinking_level="high"` (complex routing decisions)
-  - **Financial Agent:** `thinking_level="medium"` (balanced analysis)
-  - **Legal Agent:** `thinking_level="high"` (nuanced legal interpretation)
-  - **Strategy Agent:** `thinking_level="medium"` (balanced synthesis)
+  - **Financial Agent:** `thinking_level="high"`
+  - **Legal Agent:** `thinking_level="high"`
+  - **Strategy Agent:** `thinking_level="high"`
   - **Evidence Agent:** `thinking_level="high"` (forensic-level authenticity analysis)
   - **Synthesis Agent:** `thinking_level="high"` (complex cross-referencing)
-  - **KG Agent:** `thinking_level="medium"` (entity resolution)
-  - **Chat Agent:** `thinking_level="medium"` (responsive Q&A)
+  - **KG Agent:** `thinking_level="high"`
+  - **Chat Agent:** `thinking_level="high"`
   - **Verification Agent:** `thinking_level="high"` (critical accuracy)
 - All agents set `include_thoughts=True` for Agent Flow transparency
 - Thinking traces captured and stored for display in visualization
+- Factory helper: `create_thinking_planner(level="high") -> BuiltInPlanner`
 **Dependencies:** REQ-AGENT-007
 
 ### REQ-AGENT-007c: Media Resolution Configuration
 **Priority:** HIGH
-**Description:** Configure high media resolution for dense legal document processing.
+**Description:** Configure media resolution per agent type for optimal quality/cost balance.
 **Acceptance Criteria:**
-- All domain agents processing documents use `media_resolution="high"` in generation config
-- Enables accurate extraction of:
-  - Small text and fine print
-  - Signatures and initials
-  - Dense tables and financial figures
-  - Watermarks and annotations
-  - Scanned document details
-- Config applied via `generation_config={"media_resolution": "high"}`
+- Gemini 3 `media_resolution` parameter controls tokens per image/video frame:
+  - `low`: 280 tokens/image, 70 tokens/video frame (fast, cheap)
+  - `medium`: 560 tokens/image, 70 tokens/video frame (balanced)
+  - `high`: 1,120 tokens/image, 280 tokens/video frame (detailed, expensive)
+- Per-agent configuration:
+  - **Triage Agent:** `media_resolution="medium"` (classification speed)
+  - **Financial Agent:** `media_resolution="high"` (dense tables, fine figures)
+  - **Legal Agent:** `media_resolution="high"` (fine print, signatures)
+  - **Strategy Agent:** `media_resolution="medium"` (general content)
+  - **Evidence Agent:** `media_resolution="high"` (forensic detail, OCR, manipulation detection)
+  - **Research/Discovery:** `media_resolution="low"` (web content, not evidence)
+- Enables accurate extraction of: small text, signatures, dense tables, watermarks, annotations
+- Config applied via `generation_config={"media_resolution": "high"}` or equivalent
+- Multimodal token rates: Video 263 tok/sec, Audio 32 tok/sec, PDF ~258 tok/page (image)
+- Gemini 3 native PDF text extraction is FREE (only image tokens charged)
 **Dependencies:** REQ-AGENT-007
 
 ### REQ-AGENT-007d: Video/Audio Processing with Metadata
@@ -408,23 +433,26 @@ This document defines formal requirements for Holmes v1. Requirements are derive
   ```
 **Dependencies:** REQ-AGENT-007, REQ-CHAT-001
 
-### REQ-AGENT-007g: Context Compaction for Long Sessions
+### REQ-AGENT-007g: Context Compaction for Chat Sessions Only
 **Priority:** MEDIUM
-**Description:** Implement context compaction to handle long investigation sessions.
+**Description:** Implement context compaction for the Chat Agent's iterative conversation sessions.
 **Acceptance Criteria:**
-- Configure `EventsCompactionConfig` for long-running investigations
+- **NOT used for the analysis pipeline** — pipeline uses stage-isolated sessions (no history to compact)
+- **Only for Chat Agent** (REQ-CHAT) which has iterative multi-turn conversations
+- Configure `EventsCompactionConfig` for Chat Agent sessions
 - Compaction interval: every 5 invocations
 - Overlap size: 2 events preserved in summary
 - Use `LlmEventSummarizer` with Gemini Flash for cost efficiency
-- Prevents context window exhaustion in complex cases
 - Implementation:
   ```python
+  # ONLY for Chat Agent's App configuration
   events_compaction_config=EventsCompactionConfig(
       compaction_interval=5,
       overlap_size=2,
       summarizer=LlmEventSummarizer(llm=Gemini(model="gemini-3-flash-preview"))
   )
   ```
+- **Why not for pipeline?** Each pipeline stage (Triage→Orchestrator→Domain→Synthesis) runs in a fresh session. There's no conversation history to compact. Stage isolation is the primary context management strategy.
 **Dependencies:** REQ-AGENT-007, REQ-CHAT-005
 
 ### REQ-AGENT-007h: Resilient Agent Wrapper
@@ -1352,14 +1380,14 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 | Requirement | Priority | Purpose |
 |-------------|----------|---------|
-| REQ-AGENT-007 | CRITICAL | Core ADK infrastructure with session service, artifact service |
+| REQ-AGENT-007 | CRITICAL | Core ADK infrastructure: stage-isolated sessions, tiered file handling, pipeline orchestration |
 | REQ-AGENT-007a | HIGH | Document and mitigate ADK limitations |
-| REQ-AGENT-007b | HIGH | Thinking mode configuration per agent |
-| REQ-AGENT-007c | HIGH | Media resolution for dense documents |
+| REQ-AGENT-007b | HIGH | Thinking mode: BuiltInPlanner with ThinkingConfig, ALL agents HIGH |
+| REQ-AGENT-007c | HIGH | Media resolution per agent: medium (Triage), high (Domain/Evidence) |
 | REQ-AGENT-007d | HIGH | Video/audio metadata for precise timestamps |
 | REQ-AGENT-007e | HIGH | ADK artifact service with versioning |
-| REQ-AGENT-007f | MEDIUM | Context caching for cost optimization |
-| REQ-AGENT-007g | MEDIUM | Context compaction for long sessions |
+| REQ-AGENT-007f | MEDIUM | Context caching for File API URIs shared across agents |
+| REQ-AGENT-007g | MEDIUM | Context compaction for Chat Agent ONLY (not pipeline) |
 | REQ-AGENT-007h | HIGH | Resilient agent wrapper for graceful degradation |
 | REQ-AGENT-007i | LOW | Deep Research agent for background research |
 | REQ-VIS-001a | HIGH | Frontend HITL confirmation (ADK limitation workaround) |
@@ -1572,7 +1600,92 @@ Evidence source panel exists (`evidence-source-panel.tsx`) but citation navigati
 
 ---
 
-### Summary: Frontend Implementation Coverage
+### REQ-AGENT: Agentic Processing Pipeline
+
+#### REQ-AGENT-001: Triage Agent — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Receives files via tiered handling | ✅ | `build_agent_content()` in `adk_service.py` |
+| Uses Gemini 3 Flash | ✅ | `MODEL_FLASH` in factory |
+| Stage-isolated ADK session | ✅ | `create_stage_runner()` per stage |
+| Domain scores (Financial, Legal, Strategy, Evidence) | ✅ | `DomainScore` schema, 0-100 range |
+| Complexity tier output | ✅ | `ComplexityAssessment` schema |
+| File summary (short + detailed) | ✅ | `FileSummary` schema |
+| Entity extraction | ✅ | `ExtractedEntity` with 6 types |
+| Stores TriageOutput in agent_executions | ✅ | JSONB output_data column |
+
+**Files:** `backend/app/agents/triage.py`, `backend/app/agents/prompts/triage.py`, `backend/app/schemas/agent.py`
+
+---
+
+#### REQ-AGENT-002: Orchestrator Agent — 🟠 PARTIAL
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| LlmAgent with Gemini 3 Pro | ✅ | `MODEL_PRO` in factory |
+| Receives triage results | ✅ | `run_orchestrator(triage_output=...)` |
+| Routes to domain agents | ✅ | `RoutingDecision` schema with reasoning |
+| Manages parallel execution | ⏳ | Stub; domain agents not yet implemented (Phase 6) |
+| Aggregates domain outputs | ⏳ | Not yet; depends on domain agents |
+| Handles agent failures | ⏳ | Not yet; depends on domain agents |
+
+**Files:** `backend/app/agents/orchestrator.py`, `backend/app/agents/prompts/orchestrator.py`
+
+---
+
+#### REQ-AGENT-007: ADK Runner Infrastructure — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| ADK integrated with FastAPI | ✅ | `google-adk>=1.2.0` in pyproject.toml |
+| DatabaseSessionService with PostgreSQL | ✅ | `get_session_service()` in adk_service.py |
+| Stage-isolated sessions | ✅ | `create_stage_runner()` per stage |
+| Session ID deterministic | ✅ | SHA-256 of case_id:workflow_id:stage |
+| Fresh agent instances per stage | ✅ | `AgentFactory` pattern |
+| Tiered file handling | ✅ | `build_agent_content()` inline + File API |
+| GcsArtifactService | ✅ | `get_artifact_service()` configured |
+| Pipeline orchestration via Python | ✅ | `run_analysis_workflow()` in agents.py |
+
+**Files:** `backend/app/services/adk_service.py`, `backend/app/agents/factory.py`
+
+---
+
+#### REQ-AGENT-007a: ADK Limitations Documentation — ✅ COMPLETE
+
+Limitations documented in code comments and mitigated:
+- Tool confirmation → frontend dialogs (noted in factory.py)
+- Single parent rule → AgentFactory fresh instances
+- Temperature at 1.0 → not overridden
+
+---
+
+#### REQ-AGENT-007b: Thinking Mode Configuration — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| BuiltInPlanner with ThinkingConfig | ✅ | `create_thinking_planner()` in base.py |
+| All agents HIGH thinking | ✅ | Factory passes `"high"` for all |
+| include_thoughts=True | ✅ | Set in ThinkingConfig |
+| Thinking traces captured | ✅ | `_extract_thinking_traces()` in triage.py/orchestrator.py |
+| Factory helper function | ✅ | `create_thinking_planner(level)` |
+
+**Files:** `backend/app/agents/base.py`
+
+---
+
+#### REQ-AGENT-007e: ADK Artifact Service — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| GcsArtifactService configured | ✅ | `get_artifact_service()` with dedicated bucket |
+| Runner initialized with artifact_service | ✅ | `create_stage_runner()` includes it |
+
+**Files:** `backend/app/services/adk_service.py`
+
+---
+
+### Summary: Implementation Coverage
 
 | Category | Requirements | Complete | Frontend Done | Partial | Not Started |
 |----------|-------------|----------|---------------|---------|-------------|
@@ -1580,12 +1693,15 @@ Evidence source panel exists (`evidence-source-panel.tsx`) but citation navigati
 | Case Management (CASE) | 5 | 5 | 0 | 0 | 0 |
 | Chat (CHAT) | 5 | 0 | 1 | 0 | 4 |
 | Source Panel (SOURCE) | 5 | 0 | 0 | 0 | 5 |
+| Agents (Core) | 2 | 1 | 0 | 1 | 0 |
+| Agents (ADK Config) | 4 | 4 | 0 | 0 | 0 |
 
-*Phase 2 requirements (REQ-CASE-001, 002, 003) completed previously. Phase 3 requirements (REQ-CASE-004, 005) completed 2026-02-02.
+*Phase 2 requirements (REQ-CASE-001, 002, 003) completed previously. Phase 3 requirements (REQ-CASE-004, 005) completed 2026-02-02. Phase 4 requirements (REQ-AGENT-001, 007, 007a, 007b, 007e) completed 2026-02-03. REQ-AGENT-002 partial (routing logic done, domain agent execution pending Phase 6).*
 
 ---
 
 *Generated: 2026-01-18*
-*Updated: 2026-02-02*
+*Updated: 2026-02-03*
 *Status: Complete - Integration features added (REQ-RESEARCH, REQ-HYPO, REQ-GEO, REQ-TASK)*
 *Frontend Status: Partial implementation by Yatharth (see DEVELOPMENT_DOCS/YATHARTH_WORK_SUMMARY.md)*
+*Phase 4 Agent requirements tracked: 2026-02-03*

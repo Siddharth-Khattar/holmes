@@ -2,6 +2,7 @@
 # ABOUTME: Configures middleware, includes routers, and handles application lifecycle.
 
 import logging
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -10,8 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import auth, cases, files, health, sse
+from app.api import agents, auth, cases, files, health, sse
 from app.config import get_settings
+from app.logging_config import setup_logging
 from app.schemas import ErrorResponse
 
 # DO NOT import GZipMiddleware - incompatible with SSE
@@ -22,6 +24,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler for startup/shutdown events."""
+    setup_logging()
     logger.info("Holmes API starting up...")
 
     settings = get_settings()
@@ -31,15 +34,26 @@ async def lifespan(app: FastAPI):
             "(It may be omitted for tooling like OpenAPI/type generation.)"
         )
 
+    # Log dev API key availability
+    if settings.debug and settings.dev_api_key:
+        logger.info(
+            "Dev API key enabled for Swagger UI testing. "
+            "Use X-Dev-API-Key header to authenticate."
+        )
+
     yield
     logger.info("Holmes API shutting down...")
 
+
+# Note: Security schemes (Authorize button) are automatically added by
+# APIKeyHeader and HTTPBearer dependencies in app/api/auth.py
 
 app = FastAPI(
     title="Holmes API",
     version="0.1.0",
     description="Legal intelligence platform backend",
     lifespan=lifespan,
+    swagger_ui_parameters={"persistAuthorization": True},  # Remember auth in browser
 )
 
 
@@ -120,9 +134,34 @@ app.add_middleware(
 
 # NOTE: Do NOT add GZipMiddleware - breaks SSE streaming
 
+# Paths excluded from request logging (noisy or long-lived SSE connections)
+_SKIP_LOG_PREFIXES = ("/health", "/sse/")
+
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    """Log method, path, status, and duration for each HTTP request."""
+    path = request.url.path
+    if any(path.startswith(prefix) for prefix in _SKIP_LOG_PREFIXES):
+        return await call_next(request)
+
+    start = time.monotonic()
+    response = await call_next(request)
+    duration_ms = (time.monotonic() - start) * 1000
+    logger.info(
+        "HTTP %s %s status=%d duration_ms=%.1f",
+        request.method,
+        path,
+        response.status_code,
+        duration_ms,
+    )
+    return response
+
+
 # Include routers
 app.include_router(health.router, tags=["health"])
 app.include_router(sse.router, tags=["sse"])
 app.include_router(auth.router, tags=["auth"])
 app.include_router(cases.router, tags=["cases"])
 app.include_router(files.router, tags=["files"])
+app.include_router(agents.router, tags=["agents"])

@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-03
-**Current Phase:** 4 of 12 (Core Agent System) — IN PROGRESS
-**Current Plan:** 04-04 complete, ready for 04-05
+**Current Phase:** 4 of 12 (Core Agent System) — COMPLETE
+**Current Plan:** 04-05 complete (all 5 plans done)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -13,7 +13,7 @@
 | 1.1 | Frontend Design Foundation | COMPLETE | 2026-01-23 | 2026-01-24 | |
 | 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 | |
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
-| 4 | Core Agent System | IN_PROGRESS | 2026-02-03 | - | Plans 01-04 complete |
+| 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | All 5 plans complete |
 | 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
@@ -30,19 +30,18 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 4 Plan 04** (2026-02-03): Orchestrator Agent Implementation
-  - ORCHESTRATOR_SYSTEM_PROMPT with dynamic routing, guardrails, research triggers (6484 chars)
-  - OrchestratorAgent wrapper class over ADK LlmAgent using Gemini Pro
-  - run_orchestrator async function with stage-isolated sessions and execution audit trail
-  - Text-only input preparation from TriageOutput (no file content in orchestrator context)
-  - Orchestrator output schemas (RoutingDecision, FileGroupForProcessing, ResearchTrigger, OrchestratorOutput)
-  - Factory updated to use real prompt from prompts module
-  - Domain agent invocation stub for Phase 6
-  - Summary: `.planning/phases/04-core-agent-system/04-04-SUMMARY.md`
+- **Phase 4 Plan 05** (2026-02-03): Agent API & SSE Integration
+  - Agent event publishing service with 6 typed events matching frontend CommandCenterSSEEvent
+  - Command center SSE endpoint at /sse/cases/{case_id}/command-center/stream
+  - POST /api/cases/{case_id}/analyze to start analysis workflows
+  - GET /api/cases/{case_id}/analysis/{workflow_id} for pipeline status
+  - Background analysis pipeline: triage -> orchestrator with file status transitions
+  - SSE events emitted at each stage (started, complete, error, processing-complete)
+  - Summary: `.planning/phases/04-core-agent-system/04-05-SUMMARY.md`
 
 **What's next:**
-- **Phase 4 Plan 05:** Error handling and retry logic
-- Then: Backend integration for all frontend-done phases
+- **Phase 5/6:** Domain agents and backend integration for frontend-done phases
+- Connect command center SSE to frontend useCommandCenterSSE hook
 
 ---
 
@@ -161,7 +160,9 @@ All frontend features need these backend endpoints:
 | KG Relationships | `/api/cases/:caseId/relationships` | POST | MEDIUM | TODO |
 | Timeline Events | `/api/cases/:caseId/timeline/events` | GET, POST, PATCH, DELETE | MEDIUM | TODO |
 | Timeline SSE | `/api/cases/:caseId/timeline/stream` | SSE | MEDIUM | TODO |
-| Command Center SSE | `/api/cases/:caseId/command-center/stream` | SSE | HIGH | TODO |
+| Command Center SSE | `/sse/cases/:caseId/command-center/stream` | SSE | HIGH | DONE |
+| Start Analysis | `/api/cases/:caseId/analyze` | POST | HIGH | DONE |
+| Analysis Status | `/api/cases/:caseId/analysis/:workflowId` | GET | HIGH | DONE |
 
 ---
 
@@ -231,6 +232,10 @@ All frontend features need these backend endpoints:
 | Orchestrator input | Full file content vs Text-only triage JSON | Text-only triage JSON | Keeps context ~10-50K tokens; orchestrator reasons about metadata, not files |
 | Routing threshold | Fixed score cutoff vs Dynamic reasoning | Dynamic reasoning | No fixed threshold; orchestrator considers full picture per file |
 | Orchestrator prompt location | Inline in factory vs Separate prompts/ module | Separate prompts/ | Consistent with triage pattern; prompts iterable without touching agent logic |
+| Agent event pub/sub | Redis vs In-memory asyncio.Queue | In-memory asyncio.Queue | Same pattern as file events; single-instance hackathon deployment |
+| Pipeline status tracking | Separate workflow table vs Derived from execution records | Derived from execution records | Avoids extra table; status computed from triage/orchestrator execution states |
+| Background task DB session | FastAPI dependency vs Own session factory | Own session factory | Background tasks run outside request lifecycle; need independent DB access |
+| Command center SSE path | /api/ prefix vs /sse/ prefix | /sse/ prefix | Consistent with file SSE pattern; frontend proxy or update can align |
 
 ---
 
@@ -242,8 +247,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-03T05:48:40Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-02-03T06:04:00Z
+Stopped at: Completed 04-05-PLAN.md (Phase 4 complete)
 Resume file: None
 
 ---

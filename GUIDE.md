@@ -255,3 +255,42 @@ The landing page video is served from GCS (not the repo) because Next.js standal
 3. Clear browser cache or wait for CDN propagation
 
 **Local development:** Place video at `frontend/public/video.mp4` (gitignored). The app falls back to this when `NEXT_PUBLIC_VIDEO_URL` is unset.
+
+### Accessing the Deployed Cloud SQL Database
+
+Connect to the production PostgreSQL instance via Cloud SQL Proxy.
+
+**Connection details:**
+
+| Field | Value |
+|-------|-------|
+| Project | `holmes-gemini-3-hack` |
+| Instance | `holmes-db-prod` |
+| Region | `europe-west3` |
+| Database | `holmes` |
+| User | `backend` |
+| Password | Stored in Secret Manager as `db-password` |
+
+**Step 1 — Retrieve the password:**
+
+```bash
+gcloud secrets versions access latest --secret=db-password --project=holmes-gemini-3-hack
+```
+
+**Step 2 — Start Cloud SQL Proxy:**
+
+```bash
+# Install: https://cloud.google.com/sql/docs/postgres/connect-auth-proxy
+cloud-sql-proxy holmes-gemini-3-hack:europe-west3:holmes-db-prod --port=5433
+```
+
+Port 5433 avoids conflicting with any local PostgreSQL on 5432.
+
+**Step 3 — Connect:**
+
+```bash
+# Via psql
+psql "postgresql://backend:<password>@127.0.0.1:5433/holmes"
+```
+
+Or point any PostgreSQL client (TablePlus, DBeaver, Adminer, etc.) at `127.0.0.1:5433` with user `backend` and the password from Step 1.

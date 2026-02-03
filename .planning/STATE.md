@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-03
 **Current Phase:** 4 of 12 (Core Agent System) — IN PROGRESS
-**Current Plan:** 04-03 complete, ready for 04-04
+**Current Plan:** 04-04 complete, ready for 04-05
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -13,7 +13,7 @@
 | 1.1 | Frontend Design Foundation | COMPLETE | 2026-01-23 | 2026-01-24 | |
 | 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 | |
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
-| 4 | Core Agent System | IN_PROGRESS | 2026-02-03 | - | Plans 01-03 complete |
+| 4 | Core Agent System | IN_PROGRESS | 2026-02-03 | - | Plans 01-04 complete |
 | 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
@@ -30,17 +30,18 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 4 Plan 03** (2026-02-03): Triage Agent Implementation
-  - TRIAGE_SYSTEM_PROMPT with domain scoring, entity extraction, summaries, complexity, groupings (6176 chars)
-  - TriageAgent wrapper class over ADK LlmAgent
-  - run_triage async function with stage-isolated sessions and execution audit trail
-  - Output parsing (JSON extraction from model responses with code fence handling)
-  - Token usage and thinking trace extraction from ADK events
-  - Factory updated to use real prompt replacing placeholder
-  - Summary: `.planning/phases/04-core-agent-system/04-03-SUMMARY.md`
+- **Phase 4 Plan 04** (2026-02-03): Orchestrator Agent Implementation
+  - ORCHESTRATOR_SYSTEM_PROMPT with dynamic routing, guardrails, research triggers (6484 chars)
+  - OrchestratorAgent wrapper class over ADK LlmAgent using Gemini Pro
+  - run_orchestrator async function with stage-isolated sessions and execution audit trail
+  - Text-only input preparation from TriageOutput (no file content in orchestrator context)
+  - Orchestrator output schemas (RoutingDecision, FileGroupForProcessing, ResearchTrigger, OrchestratorOutput)
+  - Factory updated to use real prompt from prompts module
+  - Domain agent invocation stub for Phase 6
+  - Summary: `.planning/phases/04-core-agent-system/04-04-SUMMARY.md`
 
 **What's next:**
-- **Phase 4 Plan 04:** Orchestrator Agent implementation
+- **Phase 4 Plan 05:** Error handling and retry logic
 - Then: Backend integration for all frontend-done phases
 
 ---
@@ -226,6 +227,10 @@ All frontend features need these backend endpoints:
 | Triage prompt location | Inline in factory vs Separate prompts/ module | Separate prompts/ | Maintainability; prompts can be iterated without touching agent logic |
 | Triage output parsing | Strict JSON vs Code-fence tolerant | Code-fence tolerant | Handles model responses with or without markdown code fences |
 | Thinking trace storage | Full text vs Capped at 2000 chars | Capped at 2000 chars | Prevents JSONB column bloat in execution records |
+| Orchestrator model | Flash vs Pro | Gemini Pro | Complex routing reasoning needs higher capability model |
+| Orchestrator input | Full file content vs Text-only triage JSON | Text-only triage JSON | Keeps context ~10-50K tokens; orchestrator reasons about metadata, not files |
+| Routing threshold | Fixed score cutoff vs Dynamic reasoning | Dynamic reasoning | No fixed threshold; orchestrator considers full picture per file |
+| Orchestrator prompt location | Inline in factory vs Separate prompts/ module | Separate prompts/ | Consistent with triage pattern; prompts iterable without touching agent logic |
 
 ---
 
@@ -237,8 +242,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-03T05:41:52Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-02-03T05:48:40Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
 
 ---

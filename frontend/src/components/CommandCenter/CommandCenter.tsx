@@ -1,9 +1,13 @@
+// ABOUTME: Main Command Center container with ReactFlowProvider wrapping, progressive
+// ABOUTME: tree build from SSE events, file group intermediate nodes, and sidebar integration.
+
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { ReactFlowProvider, type Node, type Edge } from "@xyflow/react";
 import { Activity, AlertCircle } from "lucide-react";
-import { AgentFlowCanvas } from "./AgentFlowCanvas";
-import { AgentDetailsPanel } from "./AgentDetailsPanel";
+import { AgentFlowCanvas, getLayoutedElements } from "./AgentFlowCanvas";
+import { NodeDetailsSidebar } from "./NodeDetailsSidebar";
 import { useCommandCenterSSE } from "@/hooks/useCommandCenterSSE";
 import {
   AGENT_CONFIGS,
@@ -12,7 +16,7 @@ import {
 import type {
   AgentState,
   AgentType,
-  AgentConnection,
+  AgentResult,
   CommandCenterSSEEvent,
   ProcessingSummary,
   AgentStartedEvent,
@@ -21,12 +25,132 @@ import type {
   ProcessingCompleteEvent,
 } from "@/types/command-center";
 
+// -----------------------------------------------------------------------
+// Props
+// -----------------------------------------------------------------------
 interface CommandCenterProps {
   caseId: string;
   className?: string;
 }
 
-export function CommandCenter({ caseId, className }: CommandCenterProps) {
+// -----------------------------------------------------------------------
+// File group data extracted from orchestrator output
+// -----------------------------------------------------------------------
+interface FileGroupData {
+  groupId: string;
+  groupName: string;
+  fileCount: number;
+  sharedContext: string;
+  targetAgents: string[];
+}
+
+// -----------------------------------------------------------------------
+// Helpers (outside component to avoid re-creation)
+// -----------------------------------------------------------------------
+
+/**
+ * Extract file groups from orchestrator's lastResult.
+ * Backend OrchestratorOutput has file_groups with group_id, file_ids,
+ * target_agents, shared_context fields.
+ */
+function extractFileGroups(result: AgentResult): FileGroupData[] {
+  const rawGroups =
+    (result.metadata?.file_groups as
+      | Array<{
+          group_id: string;
+          file_ids: string[];
+          target_agents: string[];
+          shared_context: string;
+        }>
+      | undefined) ?? [];
+
+  return rawGroups.map((g) => ({
+    groupId: g.group_id,
+    groupName: g.shared_context.slice(0, 40) || g.group_id,
+    fileCount: g.file_ids.length,
+    sharedContext: g.shared_context,
+    targetAgents: g.target_agents,
+  }));
+}
+
+/**
+ * Progressive tree build: determines whether a given agent node should be
+ * visible based on the current pipeline state. Triage is always visible;
+ * orchestrator appears after triage completes; domain agents and KG appear
+ * after orchestrator completes.
+ */
+function determineNodeVisibility(
+  type: AgentType,
+  states: Map<AgentType, AgentState>,
+): boolean {
+  // Triage is always visible (root node)
+  if (type === "triage") return true;
+
+  const state = states.get(type);
+  if (!state) return false;
+
+  // If this agent has ever been active, show it
+  if (state.status !== "idle") return true;
+  if (state.lastResult !== undefined) return true;
+  if (state.processingHistory.length > 0) return true;
+
+  // Orchestrator: visible once triage completes
+  if (type === "orchestrator") {
+    const triageState = states.get("triage");
+    return (
+      triageState?.status === "complete" ||
+      triageState?.lastResult !== undefined ||
+      (triageState?.status === "idle" &&
+        triageState?.processingHistory.length > 0)
+    );
+  }
+
+  // Domain agents + KG: visible once orchestrator completes
+  const orchState = states.get("orchestrator");
+  if (
+    orchState?.status === "complete" ||
+    orchState?.lastResult !== undefined ||
+    (orchState?.status === "idle" && orchState?.processingHistory.length > 0)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Build a single ReactFlow edge with chosen/processing styling.
+ */
+function buildEdge(
+  sourceId: string,
+  targetId: string,
+  isChosen: boolean,
+  isProcessing: boolean,
+): Edge {
+  return {
+    id: `edge-${sourceId}-${targetId}`,
+    source: sourceId,
+    target: targetId,
+    type: "smoothstep",
+    animated: isChosen || isProcessing,
+    style:
+      isChosen || isProcessing
+        ? {
+            stroke: "hsl(var(--cc-accent))",
+            strokeWidth: 3,
+            filter: "drop-shadow(0 0 6px hsl(var(--cc-accent) / 0.6))",
+          }
+        : {
+            stroke: "hsl(0 0% 50% / 0.3)",
+            strokeWidth: 1,
+          },
+  };
+}
+
+// -----------------------------------------------------------------------
+// Inner component (uses useReactFlow via canvas child)
+// -----------------------------------------------------------------------
+function CommandCenterInner({ caseId, className }: CommandCenterProps) {
   const [agentStates, setAgentStates] = useState<Map<AgentType, AgentState>>(
     new Map(),
   );
@@ -50,7 +174,8 @@ export function CommandCenter({ caseId, className }: CommandCenterProps) {
     return true;
   });
 
-  // Handle agent started event
+  // ------- SSE event handlers (preserved from original) -------
+
   const handleAgentStarted = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as AgentStartedEvent;
     setAgentStates((prev) => {
@@ -73,7 +198,6 @@ export function CommandCenter({ caseId, className }: CommandCenterProps) {
     });
   }, []);
 
-  // Handle agent complete event
   const handleAgentComplete = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as AgentCompleteEvent;
     setAgentStates((prev) => {
@@ -104,7 +228,6 @@ export function CommandCenter({ caseId, className }: CommandCenterProps) {
     });
   }, []);
 
-  // Handle agent error event
   const handleAgentError = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as AgentErrorEvent;
     setAgentStates((prev) => {
@@ -134,7 +257,6 @@ export function CommandCenter({ caseId, className }: CommandCenterProps) {
     });
   }, []);
 
-  // Handle processing complete event
   const handleProcessingComplete = useCallback(
     (event: CommandCenterSSEEvent) => {
       const e = event as ProcessingCompleteEvent;
@@ -157,29 +279,134 @@ export function CommandCenter({ caseId, className }: CommandCenterProps) {
     onProcessingComplete: handleProcessingComplete,
   });
 
-  // Calculate connections with animation state
-  const connections = useMemo<AgentConnection[]>(() => {
-    return DEFAULT_CONNECTIONS.map((conn) => {
+  // ------- Data transformation: agentStates -> ReactFlow nodes/edges -------
+
+  const { nodes, edges } = useMemo(() => {
+    const rfNodes: Node[] = [];
+    const rfEdges: Edge[] = [];
+
+    // Build agent nodes with progressive visibility
+    agentStates.forEach((state, type) => {
+      const isChosen =
+        state.status === "processing" ||
+        state.status === "complete" ||
+        (state.status === "idle" && state.lastResult !== undefined);
+
+      const shouldShow = determineNodeVisibility(type, agentStates);
+      if (!shouldShow) return;
+
+      rfNodes.push({
+        id: type,
+        type: "decision",
+        position: { x: 0, y: 0 }, // dagre will compute
+        data: {
+          agentType: type,
+          agentState: state,
+          isChosen,
+          isSelected: selectedAgent === type,
+          onNodeClick: (agentType: AgentType) => setSelectedAgent(agentType),
+        },
+      });
+    });
+
+    // --- FILE GROUP NODES ---
+    const orchState = agentStates.get("orchestrator");
+    if (orchState?.lastResult) {
+      const fileGroups = extractFileGroups(orchState.lastResult);
+
+      fileGroups.forEach((group) => {
+        const isActive = group.targetAgents.some((agentId) => {
+          const agentState = agentStates.get(agentId as AgentType);
+          return (
+            agentState?.status === "processing" ||
+            agentState?.status === "complete"
+          );
+        });
+
+        rfNodes.push({
+          id: `file-group-${group.groupId}`,
+          type: "fileGroup",
+          position: { x: 0, y: 0 }, // dagre will compute
+          data: {
+            groupId: group.groupId,
+            groupName: group.groupName,
+            fileCount: group.fileCount,
+            sharedContext: group.sharedContext,
+            targetAgents: group.targetAgents,
+            isActive,
+            onNodeClick: () => setSelectedAgent(null),
+          },
+        });
+      });
+    }
+
+    // --- EDGES ---
+    const fileGroupNodes = rfNodes.filter((n) => n.type === "fileGroup");
+
+    DEFAULT_CONNECTIONS.forEach((conn) => {
+      const sourceVisible = rfNodes.some((n) => n.id === conn.source);
+      const targetVisible = rfNodes.some((n) => n.id === conn.target);
+      if (!sourceVisible || !targetVisible) return;
+
       const sourceState = agentStates.get(conn.source);
       const targetState = agentStates.get(conn.target);
 
-      // Animate when source has completed and target is processing
-      const animated =
-        sourceState?.status === "idle" &&
-        sourceState?.lastResult !== undefined &&
-        targetState?.status === "processing";
+      // Determine if edge is on the chosen/active path
+      const sourceIsActive =
+        sourceState?.status === "processing" ||
+        sourceState?.status === "complete" ||
+        (sourceState?.status === "idle" &&
+          sourceState?.lastResult !== undefined);
+      const targetIsActive =
+        targetState?.status === "processing" ||
+        targetState?.status === "complete" ||
+        (targetState?.status === "idle" &&
+          targetState?.lastResult !== undefined);
+      const isChosen = sourceIsActive && targetIsActive;
+      const isProcessing = targetState?.status === "processing";
 
-      return {
-        id: `${conn.source}-${conn.target}`,
-        source: conn.source,
-        target: conn.target,
-        animated,
-        metadata: {
-          routingDecisions: sourceState?.lastResult?.routingDecisions,
-        },
-      };
+      // Route through file group nodes when present (orchestrator -> domain agent)
+      if (conn.source === "orchestrator" && fileGroupNodes.length > 0) {
+        const matchingGroups = fileGroupNodes.filter((fgNode) => {
+          const fgData = fgNode.data as { targetAgents: string[] };
+          return fgData.targetAgents.includes(conn.target);
+        });
+
+        if (matchingGroups.length > 0) {
+          matchingGroups.forEach((fgNode) => {
+            // Edge: orchestrator -> file group (deduplicate)
+            if (
+              !rfEdges.some(
+                (e) => e.source === conn.source && e.target === fgNode.id,
+              )
+            ) {
+              rfEdges.push(
+                buildEdge(conn.source, fgNode.id, sourceIsActive, false),
+              );
+            }
+            // Edge: file group -> target agent
+            rfEdges.push(
+              buildEdge(
+                fgNode.id,
+                conn.target,
+                isChosen,
+                isProcessing ?? false,
+              ),
+            );
+          });
+          return; // Skip the direct edge
+        }
+      }
+
+      // Direct edge (no file group interception)
+      rfEdges.push(
+        buildEdge(conn.source, conn.target, isChosen, isProcessing ?? false),
+      );
     });
-  }, [agentStates]);
+
+    // Apply dagre layout
+    return getLayoutedElements(rfNodes, rfEdges);
+  }, [agentStates, selectedAgent]);
 
   // Check if any agent is processing
   const isProcessing = useMemo(() => {
@@ -190,7 +417,7 @@ export function CommandCenter({ caseId, className }: CommandCenterProps) {
 
   return (
     <div
-      className={`flex flex-col w-full h-full bg-background dark:bg-charcoal rounded-lg overflow-hidden border-2 border-warm-gray/30 dark:border-stone/30 ${className || ""}`}
+      className={`command-center-scope flex flex-col w-full h-full bg-background dark:bg-charcoal rounded-lg overflow-hidden border-2 border-warm-gray/30 dark:border-stone/30 ${className || ""}`}
     >
       {/* Header */}
       <div className="flex-none px-6 py-4 border-b border-stone/15">
@@ -226,38 +453,27 @@ export function CommandCenter({ caseId, className }: CommandCenterProps) {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex gap-0 overflow-hidden min-h-0">
-        {/* Agent Flow Canvas */}
-        <div
-          className="transition-all duration-300 ease-in-out overflow-hidden"
-          style={{
-            width: selectedAgent ? "60%" : "100%",
+      {/* Main Content - canvas full width, sidebar overlays */}
+      <div className="flex-1 relative overflow-hidden min-h-0">
+        <AgentFlowCanvas
+          nodes={nodes}
+          edges={edges}
+          onNodeClick={(nodeId) => {
+            // Only open sidebar for agent nodes, not file group nodes
+            if (!nodeId.startsWith("file-group-")) {
+              setSelectedAgent(nodeId as AgentType);
+            }
           }}
-        >
-          <AgentFlowCanvas
-            agentStates={agentStates}
-            connections={connections}
-            onAgentClick={setSelectedAgent}
-            selectedAgent={selectedAgent}
-          />
-        </div>
-
-        {/* Agent Details Panel */}
-        <div
-          className="transition-all duration-300 ease-in-out overflow-hidden"
-          style={{
-            width: selectedAgent ? "40%" : "0%",
-            opacity: selectedAgent ? 1 : 0,
-          }}
-        >
-          {selectedAgent && (
-            <AgentDetailsPanel
-              agentState={agentStates.get(selectedAgent)}
-              onClose={() => setSelectedAgent(null)}
-            />
-          )}
-        </div>
+          selectedNodeId={selectedAgent}
+        />
+        <NodeDetailsSidebar
+          isOpen={selectedAgent !== null}
+          agentType={selectedAgent}
+          agentState={
+            selectedAgent ? (agentStates.get(selectedAgent) ?? null) : null
+          }
+          onClose={() => setSelectedAgent(null)}
+        />
       </div>
 
       {/* Footer */}
@@ -282,5 +498,16 @@ export function CommandCenter({ caseId, className }: CommandCenterProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+// -----------------------------------------------------------------------
+// Public export wraps inner content in ReactFlowProvider
+// -----------------------------------------------------------------------
+export function CommandCenter({ caseId, className }: CommandCenterProps) {
+  return (
+    <ReactFlowProvider>
+      <CommandCenterInner caseId={caseId} className={className} />
+    </ReactFlowProvider>
   );
 }

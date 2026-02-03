@@ -1,4 +1,5 @@
 export { CommandCenter } from "./CommandCenter";
 export { AgentFlowCanvas } from "./AgentFlowCanvas";
-export { AgentNode } from "./AgentNode";
-export { AgentDetailsPanel } from "./AgentDetailsPanel";
+export { DecisionNode } from "./DecisionNode";
+export { FileGroupNode } from "./FileGroupNode";
+export { NodeDetailsSidebar } from "./NodeDetailsSidebar";

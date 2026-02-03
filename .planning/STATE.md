@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-03
 **Current Phase:** 4 of 12 (Core Agent System) — IN PROGRESS
-**Current Plan:** 04-02 complete, ready for 04-03
+**Current Plan:** 04-03 complete, ready for 04-04
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -13,7 +13,7 @@
 | 1.1 | Frontend Design Foundation | COMPLETE | 2026-01-23 | 2026-01-24 | |
 | 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 | |
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
-| 4 | Core Agent System | IN_PROGRESS | 2026-02-03 | - | Plans 01-02 complete |
+| 4 | Core Agent System | IN_PROGRESS | 2026-02-03 | - | Plans 01-03 complete |
 | 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
@@ -30,16 +30,17 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 4 Plan 02** (2026-02-03): Agent Execution Models & Schemas
-  - AgentExecution SQLAlchemy model with full audit trail (17 columns, JSONB I/O)
-  - AgentExecutionStatus enum: PENDING, RUNNING, COMPLETED, FAILED, RETRYING
-  - TriageOutput Pydantic schema with DomainScore, ExtractedEntity, FileSummary, ComplexityAssessment
-  - Agent execution CRUD schemas (Create/Update/Response)
-  - Alembic migration 0562cc9e65bd for agent_executions table
-  - Summary: `.planning/phases/04-core-agent-system/04-02-SUMMARY.md`
+- **Phase 4 Plan 03** (2026-02-03): Triage Agent Implementation
+  - TRIAGE_SYSTEM_PROMPT with domain scoring, entity extraction, summaries, complexity, groupings (6176 chars)
+  - TriageAgent wrapper class over ADK LlmAgent
+  - run_triage async function with stage-isolated sessions and execution audit trail
+  - Output parsing (JSON extraction from model responses with code fence handling)
+  - Token usage and thinking trace extraction from ADK events
+  - Factory updated to use real prompt replacing placeholder
+  - Summary: `.planning/phases/04-core-agent-system/04-03-SUMMARY.md`
 
 **What's next:**
-- **Phase 4 Plan 03:** Orchestrator Agent implementation
+- **Phase 4 Plan 04:** Orchestrator Agent implementation
 - Then: Backend integration for all frontend-done phases
 
 ---
@@ -222,6 +223,9 @@ All frontend features need these backend endpoints:
 | Agent I/O storage | Typed columns vs JSONB | JSONB | Flexible schema for varied agent types; supports PostgreSQL indexing |
 | Agent parent tracking | Separate table vs Self-referential FK | Self-referential FK with SET NULL | Simpler schema; preserves child records |
 | Migration generation | Autogenerate vs Manual | Manual | No live database required during development |
+| Triage prompt location | Inline in factory vs Separate prompts/ module | Separate prompts/ | Maintainability; prompts can be iterated without touching agent logic |
+| Triage output parsing | Strict JSON vs Code-fence tolerant | Code-fence tolerant | Handles model responses with or without markdown code fences |
+| Thinking trace storage | Full text vs Capped at 2000 chars | Capped at 2000 chars | Prevents JSONB column bloat in execution records |
 
 ---
 
@@ -233,8 +237,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-03T05:35:13Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-02-03T05:41:52Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None
 
 ---

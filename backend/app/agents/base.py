@@ -98,10 +98,9 @@ def create_agent_callbacks(
     def _fire(event_type: str, data: dict[str, object]) -> None:
         """Schedule an SSE publish without blocking the agent loop."""
         try:
-            loop = asyncio.get_running_loop()
             result = publish_fn(event_type, data)
             if result is not None:
-                asyncio.ensure_future(result, loop=loop)
+                asyncio.ensure_future(result)
         except RuntimeError:
             # No running event loop (e.g. during tests); log instead.
             logger.debug("No event loop for SSE publish: %s %s", event_type, data)

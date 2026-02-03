@@ -20,8 +20,9 @@ Establish Google ADK infrastructure and implement the first two agents: Triage A
 - **Summaries:** Both short (1-2 sentences for list view) and detailed (paragraph, available on expand). Orchestrator gets detailed.
 - **Complexity assessment:** Hybrid approach combining:
   - Simple tier (Low/Medium/High) per file
-  - Exact token count from ADK metadata (⚠️ RESEARCH NEEDED: ADK provides token info via tool/metadata on input — investigate through web search exact mechanism from official google and ADK docs)
+  - Exact token count from ADK `usage_metadata` on events (VERIFIED: prompt_token_count, candidates_token_count, total_token_count)
   - Enables Orchestrator to make token-budget-aware batching and routing decisions
+- **Thinking level:** HIGH for all agents per user preference (using BuiltInPlanner with ThinkingConfig)
 - **Contradiction/gap detection:** Leave to Synthesis Agent — Triage stays simple
 - **File groupings:** Yes, suggest groupings (e.g., "these 3 files relate to same transaction") for Orchestrator batching
 - **Corrupted files:** Partial extraction — extract whatever possible, mark confidence as low
@@ -87,5 +88,75 @@ None — discussion stayed within phase scope
 
 ---
 
+<verification_notes>
+## Verification Notes (Added 2026-02-03)
+
+### Model IDs Verified ✅
+Cross-referenced against https://ai.google.dev/gemini-api/docs/gemini-3:
+- `gemini-3-flash-preview` - Correct
+- `gemini-3-pro-preview` - Correct
+- Pricing: Flash $0.50/$3 per 1M tokens, Pro $2/$12 per 1M tokens
+- Context: 1M input / 64k output for both
+
+### Thinking Configuration ✅
+- Using `thinking_level` (correct for Gemini 3)
+- NOT using `thinking_budget` (that's for Gemini 2.5)
+- Using HIGH level for ALL agents per user preference
+- Implemented via `BuiltInPlanner` with `ThinkingConfig` (ADK best practice)
+
+### Model IDs Configurable ✅
+- `GEMINI_FLASH_MODEL` env var with default `gemini-3-flash-preview`
+- `GEMINI_PRO_MODEL` env var with default `gemini-3-pro-preview`
+
+### API Key Configuration ✅
+- ADK uses `GOOGLE_API_KEY` (NOT `GEMINI_API_KEY`)
+- Config field: `google_api_key` with env `GOOGLE_API_KEY`
+- Optional: `use_vertex_ai` for Vertex AI backend (default: False)
+
+### File Handling: Tiered (Inline + File API) ✅
+- ≤100MB: Download from GCS, encode as `inline_data` (fast, simple)
+- >100MB–2GB: Upload to Gemini File API, get URI reference (48hr retention, free)
+- File API works universally with API key auth, no Vertex AI needed
+- `media_resolution` parameter controls token budget per modality:
+  - Triage: `medium` (speed priority)
+  - Domain agents: `high` (detail priority)
+  - Evidence Agent: `high` (forensic analysis)
+- Multimodal evidence types: PDF, video (MP4), audio (MP3/WAV), images (JPG/PNG)
+- Video: 263 tokens/sec, Audio: 32 tokens/sec, Image (high): 1,120 tokens
+- Heavy files (approaching 1M context): single-file-per-invocation pattern
+
+### Session Management: Stage-Isolated ✅
+- One FRESH session per pipeline STAGE (not per workflow)
+- Session ID: SHA-256 hash of `case_id:workflow_id:stage` (64 chars)
+- Idempotent creation: get_or_create pattern
+- Inter-stage data flows via DATABASE (agent_executions table)
+- Intra-stage data uses ADK `output_key` and `{key}` template injection
+- Stage isolation prevents multimodal file content from bloating downstream agent contexts
+- Each agent gets full 1M context window dedicated to its task
+
+### Context Management ✅
+- Pipeline workflow: NO compaction needed (each stage = single invocation)
+- Compaction reserved for future CHAT agent (iterative conversation)
+- Context caching (`ContextCacheConfig`) for File API URIs reused across agents
+- AgentTool pattern for context-isolated sub-tasks (Research/Discovery)
+
+### Regional Configuration ✅
+- Location: `europe-west3` (not us-central1)
+- Env var: `GOOGLE_CLOUD_LOCATION=europe-west3`
+
+### Reference Architecture Aligned ✅
+- Adapted from hierarchical-workflow-automation (adk-samples) and context engineering blog
+- Stage-isolated invocations (our code orchestrates stages, NOT a single SequentialAgent)
+- ParallelAgent used WITHIN Stage 3 for concurrent domain agents
+- AgentTool for context-isolated sub-tasks (Research/Discovery)
+- `output_key` for intra-stage state passing
+- Database for inter-stage data flow (agent_executions table)
+- Context caching for files shared across multiple agents
+
+</verification_notes>
+
+---
+
 *Phase: 04-core-agent-system*
 *Context gathered: 2026-02-02*
+*Verified: 2026-02-03*

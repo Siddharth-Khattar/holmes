@@ -41,6 +41,17 @@ resource "google_cloud_run_v2_service" "backend" {
         value = "postgresql+asyncpg://${google_sql_user.backend.name}:${random_password.db_password.result}@/${google_sql_database.holmes.name}?host=/cloudsql/${google_sql_database_instance.main.connection_name}"
       }
 
+      # Gemini API key for ADK agent pipeline (from Secret Manager)
+      env {
+        name = "GOOGLE_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.google_api_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+
       # Frontend URL for JWKS endpoint - updated by CI/CD after frontend deploys
       env {
         name  = "FRONTEND_URL"
@@ -54,8 +65,8 @@ resource "google_cloud_run_v2_service" "backend" {
 
       resources {
         limits = {
-          cpu    = "1"
-          memory = "512Mi"
+          cpu    = "2"
+          memory = "1Gi"
         }
       }
     }

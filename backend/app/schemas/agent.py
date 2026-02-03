@@ -89,6 +89,10 @@ class TriageFileResult(BaseModel):
     """
 
     file_id: str = Field(..., description="ID of the analyzed file")
+    file_name: str | None = Field(
+        default=None,
+        description="Original filename, populated from multimodal content labels",
+    )
     domain_scores: list[DomainScore] = Field(
         ..., description="Confidence scores per investigation domain"
     )
@@ -159,7 +163,9 @@ class RoutingDecision(BaseModel):
     """
 
     file_id: str = Field(..., description="ID of the file being routed")
-    file_name: str = Field(..., description="Original filename for readability")
+    file_name: str | None = Field(
+        default=None, description="Original filename for readability"
+    )
     target_agents: list[Literal["financial", "legal", "strategy", "evidence"]] = Field(
         ..., description="Domain agents that should process this file"
     )

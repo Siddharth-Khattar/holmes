@@ -45,6 +45,18 @@ resource "google_secret_manager_secret" "google_client_secret" {
   depends_on = [google_project_service.secretmanager]
 }
 
+# Gemini API key for ADK agent pipeline (value added manually via GCP Console)
+resource "google_secret_manager_secret" "google_api_key" {
+  project   = var.project_id
+  secret_id = "google-api-key"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.secretmanager]
+}
+
 # Database password for the Cloud SQL "backend" user (used by CI migrations and Cloud Run)
 resource "google_secret_manager_secret" "db_password" {
   project   = var.project_id
@@ -85,6 +97,14 @@ resource "google_secret_manager_secret_iam_member" "frontend_google_client_secre
   secret_id = google_secret_manager_secret.google_client_secret.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.frontend.email}"
+}
+
+# IAM: Allow backend service account to access Gemini API key
+resource "google_secret_manager_secret_iam_member" "backend_google_api_key" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.google_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.backend.email}"
 }
 
 # IAM: Allow GitHub Actions service account to access secrets needed in CI

@@ -163,15 +163,20 @@ async def upload_file(
             detail="Failed to upload file. Please try again.",
         ) from None
 
-    # Check for duplicate content within the same case
+    # Check for duplicate content within the same case.
+    # Multiple files with the same hash can exist (prior duplicates), so we
+    # pick the oldest match — the true original — to record as the duplicate source.
     duplicate_of: UUID | None = None
     result = await db.execute(
-        select(CaseFile).where(
+        select(CaseFile)
+        .where(
             CaseFile.case_id == case_id,
             CaseFile.content_hash == content_hash,
         )
+        .order_by(CaseFile.created_at.asc())
+        .limit(1)
     )
-    existing_file = result.scalar_one_or_none()
+    existing_file = result.scalars().first()
     if existing_file:
         duplicate_of = existing_file.id
         logger.info(

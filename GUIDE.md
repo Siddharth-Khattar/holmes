@@ -87,6 +87,7 @@ holmes/
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://postgres:postgres@localhost:5432/holmes` |
 | `CORS_ORIGINS` | Allowed origins (comma-separated) | `http://localhost:3000` |
 | `DEBUG` | Enable debug mode | `true` |
+| `DEV_API_KEY` | API key for Swagger UI testing (requires `DEBUG=true`) | (optional) |
 | `GCS_BUCKET` | GCS bucket for file storage | (optional) |
 
 ### Frontend (`frontend/.env.local`)
@@ -210,6 +211,28 @@ docker build -f frontend/Dockerfile -t holmes-frontend .
 cd backend && uv run uvicorn app.main:app --reload --port 8080
 ```
 
+### Local API Testing (Swagger UI)
+
+Test authenticated API endpoints without the frontend auth flow using a dev API key.
+
+**Setup:**
+
+1. Generate a key and add to `.env`:
+   ```bash
+   # Generate key
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+   # Add to .env
+   DEBUG=true
+   DEV_API_KEY=<your-generated-key>
+   ```
+
+2. Open http://localhost:8080/docs → Click **Authorize** → Enter key in `DevAPIKey` → **Authorize**
+
+All Swagger API calls will now authenticate as `dev@localhost`.
+
+**Safety:** Dev auth only works when both `DEBUG=true` AND `DEV_API_KEY` are set. Warnings are logged if cloud environment is detected.
+
 ### Replace Hero Video
 
 The landing page video is served from GCS (not the repo) because Next.js standalone mode doesn't serve `/public` files.
@@ -232,3 +255,42 @@ The landing page video is served from GCS (not the repo) because Next.js standal
 3. Clear browser cache or wait for CDN propagation
 
 **Local development:** Place video at `frontend/public/video.mp4` (gitignored). The app falls back to this when `NEXT_PUBLIC_VIDEO_URL` is unset.
+
+### Accessing the Deployed Cloud SQL Database
+
+Connect to the production PostgreSQL instance via Cloud SQL Proxy.
+
+**Connection details:**
+
+| Field | Value |
+|-------|-------|
+| Project | `holmes-gemini-3-hack` |
+| Instance | `holmes-db-prod` |
+| Region | `europe-west3` |
+| Database | `holmes` |
+| User | `backend` |
+| Password | Stored in Secret Manager as `db-password` |
+
+**Step 1 — Retrieve the password:**
+
+```bash
+gcloud secrets versions access latest --secret=db-password --project=holmes-gemini-3-hack
+```
+
+**Step 2 — Start Cloud SQL Proxy:**
+
+```bash
+# Install: https://cloud.google.com/sql/docs/postgres/connect-auth-proxy
+cloud-sql-proxy holmes-gemini-3-hack:europe-west3:holmes-db-prod --port=5433
+```
+
+Port 5433 avoids conflicting with any local PostgreSQL on 5432.
+
+**Step 3 — Connect:**
+
+```bash
+# Via psql
+psql "postgresql://backend:<password>@127.0.0.1:5433/holmes"
+```
+
+Or point any PostgreSQL client (TablePlus, DBeaver, Adminer, etc.) at `127.0.0.1:5433` with user `backend` and the password from Step 1.

@@ -1,12 +1,15 @@
 # ABOUTME: Database models package.
 # ABOUTME: Exports Base and all model classes for use by Alembic and the application.
 
+from app.models.agent_execution import AgentExecution, AgentExecutionStatus
 from app.models.auth import Account, Jwks, Session, User, Verification
 from app.models.base import Base
 from app.models.case import Case, CaseStatus, CaseType
 from app.models.file import CaseFile, FileCategory, FileStatus
 
 __all__ = [
+    "AgentExecution",
+    "AgentExecutionStatus",
     "Base",
     "User",
     "Session",

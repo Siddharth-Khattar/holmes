@@ -32,7 +32,7 @@ def _get_engine() -> AsyncEngine:
             max_overflow=10,  # Allow bursting
             pool_pre_ping=True,  # Verify connections before use
             pool_recycle=1800,  # Recycle connections every 30 min
-            echo=settings.debug,
+            echo=settings.sql_echo,
         )
     return _engine
 

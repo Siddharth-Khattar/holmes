@@ -19,7 +19,7 @@ export default function CommandCenterPage() {
   return (
     <div
       className="command-center-scope flex flex-row w-full"
-      style={{ height: "calc(100vh - 280px)" }}
+      style={{ height: "calc(100vh - 200px)" }}
     >
       <div className="flex-1 min-w-0">
         <CommandCenter

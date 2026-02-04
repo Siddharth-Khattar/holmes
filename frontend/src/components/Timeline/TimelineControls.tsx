@@ -39,11 +39,11 @@ export function TimelineControls({
   const currentZoomIndex = ZOOM_LEVELS.indexOf(zoomLevel);
 
   return (
-    <div className="border-b px-4 md:px-10 py-4 bg-white/90 dark:bg-[rgba(17,17,17,0.8)] border-warm-gray/12 dark:border-stone/15">
-      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="border-b border-warm-gray/12 dark:border-stone/15">
+      <div className="max-w-5xl mx-auto px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {/* Zoom controls */}
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium mr-2 text-foreground">
+          <span className="text-xs font-medium mr-2 text-foreground">
             Zoom:
           </span>
 
@@ -68,7 +68,7 @@ export function TimelineControls({
                 className={cn(
                   "px-3 py-1.5 text-xs font-medium rounded transition-all",
                   level === zoomLevel
-                    ? "bg-blue-600 dark:bg-blue-500 text-white"
+                    ? "bg-stone/20 dark:bg-stone/25 text-foreground"
                     : "bg-transparent text-muted-foreground hover:bg-warm-gray/12 dark:hover:bg-stone/15",
                 )}
               >
@@ -95,7 +95,7 @@ export function TimelineControls({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-foreground">Layers:</span>
+            <span className="text-xs font-medium text-foreground">Layers:</span>
           </div>
 
           <div className="flex gap-2">
@@ -107,17 +107,18 @@ export function TimelineControls({
                 <button
                   key={layer}
                   onClick={() => toggleLayer(layer)}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md border-2 transition-all hover:shadow-sm"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md border transition-all"
                   style={{
                     backgroundColor: isSelected
-                      ? config.hexColor + "14"
+                      ? config.hexColor + "0c"
                       : "transparent",
                     borderColor: isSelected
-                      ? config.hexColor
+                      ? config.hexColor + "40"
                       : "rgba(107, 101, 96, 0.15)",
                     color: isSelected
                       ? config.hexColor
                       : "var(--muted-foreground)",
+                    opacity: isSelected ? 0.8 : 1,
                   }}
                 >
                   {config.label}

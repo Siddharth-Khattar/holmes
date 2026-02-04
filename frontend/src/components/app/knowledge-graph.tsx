@@ -1036,10 +1036,10 @@ export function KnowledgeGraph({
       {/* Main Graph Container */}
       <div className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
         {/* Header */}
-        <div className="flex-none px-6 py-4 border-b border-warm-gray/15 dark:border-stone/15 relative z-10">
+        <div className="flex-none px-6 py-3 border-b border-warm-gray/15 dark:border-stone/15 relative z-10">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-xl font-medium text-foreground mb-2">
+              <h2 className="text-base font-medium text-foreground mb-1">
                 Knowledge Graph
               </h2>
               <div className="flex items-center gap-6 text-xs text-muted-foreground">

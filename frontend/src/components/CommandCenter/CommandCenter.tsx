@@ -90,13 +90,13 @@ function CommandCenterInner({
       className={`command-center-scope flex flex-col w-full h-full bg-background dark:bg-charcoal rounded-lg overflow-hidden border-2 border-warm-gray/30 dark:border-stone/30 ${className || ""}`}
     >
       {/* Header */}
-      <div className="flex-none px-6 py-4 border-b border-stone/15">
+      <div className="flex-none px-6 py-3 border-b border-stone/15">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-medium text-smoke mb-1">
+            <h2 className="text-base font-medium text-smoke mb-0.5">
               Command Center
             </h2>
-            <p className="text-sm text-stone">
+            <p className="text-xs text-stone">
               Real-time agent processing visualization
             </p>
           </div>

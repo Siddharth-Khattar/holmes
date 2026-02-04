@@ -15,6 +15,7 @@ import {
   Loader2,
   Check,
   Minus,
+  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { FileUpload } from "@/components/ui/file-upload";
@@ -27,6 +28,7 @@ import {
   FileResponse,
 } from "@/lib/api/files";
 import { useFileUpload, FileUploadProgress } from "@/hooks/useFileUpload";
+import { RedactModal } from "./RedactModal";
 
 // Types for UI display
 type SupportedFileType = "pdf" | "video" | "audio" | "image";
@@ -138,6 +140,9 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
     new Set(),
   );
   const [isDeleting, setIsDeleting] = useState(false);
+  const [redactModalFile, setRedactModalFile] = useState<LibraryFile | null>(
+    null,
+  );
 
   // File upload hook
   const {
@@ -275,6 +280,44 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
     console.log("View file:", file);
     // TODO: Open in source panel
   }, []);
+
+  const handleRedactFile = useCallback(
+    async (file: LibraryFile) => {
+      // For demonstration, use mock URLs
+      // In production, this would fetch the actual file URL from the backend
+      
+      // Use mock URL directly for now to avoid API errors during demo
+      const mockUrl = getMockFileUrl(file.type);
+      setRedactModalFile({ ...file, url: mockUrl });
+      
+      // TODO: Uncomment when backend is ready
+      // try {
+      //   const url = await getDownloadUrl(caseId, file.id);
+      //   setRedactModalFile({ ...file, url });
+      // } catch (err) {
+      //   console.error("Failed to get file URL:", err);
+      //   const mockUrl = getMockFileUrl(file.type);
+      //   setRedactModalFile({ ...file, url: mockUrl });
+      // }
+    },
+    [caseId],
+  );
+
+  // Helper function to get mock file URLs for demonstration
+  const getMockFileUrl = (fileType: SupportedFileType): string => {
+    switch (fileType) {
+      case "image":
+        return "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=800&h=600&fit=crop";
+      case "video":
+        return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
+      case "pdf":
+        return "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+      case "audio":
+        return "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+      default:
+        return "";
+    }
+  };
 
   const handleDownloadFile = useCallback(
     async (file: LibraryFile) => {
@@ -482,14 +525,14 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
   return (
     <div className="flex flex-col h-full w-full">
       {/* Header */}
-      <div className="flex-none px-6 py-4 border-b border-warm-gray/15 dark:border-stone/15">
+      <div className="flex-none px-6 py-3 border-b border-warm-gray/15 dark:border-stone/15">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-medium text-foreground">
+            <h1 className="text-base font-medium text-foreground">
               Evidence Library
             </h1>
             {caseName && (
-              <p className="text-sm mt-1 text-muted-foreground">{caseName}</p>
+              <p className="text-xs mt-0.5 text-stone">{caseName}</p>
             )}
           </div>
           <div className="text-sm text-muted-foreground">
@@ -545,7 +588,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                     className="flex items-center justify-between text-sm"
                   >
                     <span
-                      className="truncate max-w-[200px]"
+                      className="truncate max-w-50"
                       style={{ color: "var(--foreground)" }}
                     >
                       {fileProgress.file.name}
@@ -655,7 +698,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
         {/* Category Filters */}
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Filter:</span>
+          <span className="text-xs text-muted-foreground">Filter:</span>
           {(
             [
               "all",
@@ -668,9 +711,9 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+              className={`px-2.5 py-0.5 text-xs rounded-lg transition-colors ${
                 selectedCategory === category
-                  ? "bg-[#2a2825] dark:bg-[#f5f4ef] text-[#faf9f7] dark:text-[#050505]"
+                  ? "bg-accent-light dark:bg-[#f5f4ef] text-cream dark:text-charcoal"
                   : "bg-warm-gray/8 dark:bg-stone/10 text-muted-foreground hover:bg-warm-gray/12 dark:hover:bg-stone/15"
               }`}
             >
@@ -687,7 +730,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
             placeholder="Search files..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-warm-gray/15 dark:border-stone/15 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#2a2825]/30 dark:focus:ring-[#f5f4ef]/30 transition-colors"
+            className="w-full pl-10 pr-4 py-1.5 text-sm rounded-lg border border-warm-gray/15 dark:border-stone/15 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent-light/30 dark:focus:ring-[#f5f4ef]/30 transition-colors"
           />
         </div>
       </div>
@@ -794,7 +837,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
           </div>
         ) : filteredFiles.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {files.length === 0
                 ? "No files uploaded yet. Drag & drop files above to get started."
                 : "No files match your search criteria."}
@@ -884,11 +927,11 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-center space-x-2">
                         <button
-                          onClick={() => handleViewFile(file)}
+                          onClick={() => handleRedactFile(file)}
                           className="p-1.5 rounded hover:bg-warm-gray/12 dark:hover:bg-stone/15 transition-colors"
-                          title="View file"
+                          title="Redact & Download"
                         >
-                          <Eye className="w-4 h-4 text-muted-foreground" />
+                          <Sparkles className="w-4 h-4 text-purple-500" />
                         </button>
                         <button
                           onClick={() => handleDownloadFile(file)}
@@ -917,10 +960,25 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
       {/* Footer */}
       <div className="flex-none px-6 py-3 border-t border-warm-gray/15 dark:border-stone/15 text-xs text-muted-foreground">
         <p>
-          Quick Analysis Modal: Click <Eye className="inline w-3 h-3" /> on any
-          file to open detailed analysis
+          Quick Analysis Modal: Click{" "}
+          <Sparkles className="inline w-3 h-3 text-purple-500" /> on any file to
+          redact and download
         </p>
       </div>
+
+      {/* Redact Modal */}
+      {redactModalFile && (
+        <RedactModal
+          isOpen={!!redactModalFile}
+          onClose={() => setRedactModalFile(null)}
+          file={{
+            id: redactModalFile.id,
+            name: redactModalFile.name,
+            type: redactModalFile.type,
+            url: redactModalFile.url,
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -296,7 +296,7 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     (event: CommandCenterSSEEvent) => {
       const e = event as ConfirmationResolvedEvent;
       setPendingConfirmations((prev) =>
-        prev.filter((c) => c.requestId !== e.requestId),
+        prev.filter((c) => c.taskId !== e.taskId),
       );
     },
     [],

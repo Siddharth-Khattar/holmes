@@ -323,7 +323,7 @@ function OrchestratorSections({ agentState }: AgentSectionsProps) {
                         {decision.targetAgent}
                       </td>
                       <td className="py-2 pl-2 text-right text-stone">
-                        {Math.round(decision.domainScore * 100)}%
+                        {Math.round(decision.domainScore)}%
                       </td>
                     </tr>
                   ),
@@ -1022,7 +1022,7 @@ export function NodeDetailsSidebar({
                             &rarr; {decision.targetAgent}
                           </span>
                           <span className="text-xs text-[hsl(var(--cc-accent))]">
-                            {(decision.domainScore * 100).toFixed(0)}%
+                            {Math.round(decision.domainScore)}%
                           </span>
                         </div>
                         <div className="text-xs text-stone">

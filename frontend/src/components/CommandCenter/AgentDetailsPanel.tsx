@@ -268,7 +268,7 @@ export function AgentDetailsPanel({
                                   → {decision.targetAgent}
                                 </span>
                                 <span className="text-xs text-accent">
-                                  {(decision.domainScore * 100).toFixed(0)}%
+                                  {Math.round(decision.domainScore)}%
                                 </span>
                               </div>
                               <div className="text-xs text-stone">

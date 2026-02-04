@@ -121,13 +121,13 @@ export class MockCommandCenterEventGenerator {
         fileId: `file-${this.currentFileIndex}`,
         targetAgent: "financial" as AgentType,
         reason: "Financial content detected",
-        domainScore: 0.85,
+        domainScore: 85, // 0-100 scale matching backend
       },
       {
         fileId: `file-${this.currentFileIndex}`,
         targetAgent: "legal" as AgentType,
         reason: "Legal terminology found",
-        domainScore: 0.72,
+        domainScore: 72, // 0-100 scale matching backend
       },
     ];
   }
@@ -217,19 +217,19 @@ export function createDemoAgentStates(): Map<AgentType, AgentState> {
           fileId: "file-1",
           targetAgent: "financial",
           reason: "Bank statements and transaction records detected",
-          domainScore: 0.91,
+          domainScore: 91, // 0-100 scale matching backend
         },
         {
           fileId: "file-2",
           targetAgent: "legal",
           reason: "Contract documents with legal terminology",
-          domainScore: 0.87,
+          domainScore: 87, // 0-100 scale matching backend
         },
         {
           fileId: "file-3",
           targetAgent: "strategy",
           reason: "Communication patterns suggest strategic coordination",
-          domainScore: 0.74,
+          domainScore: 74, // 0-100 scale matching backend
         },
       ],
       toolsCalled: [

@@ -113,7 +113,7 @@ function validateAgentCompleteEvent(data: unknown): data is AgentCompleteEvent {
         typeof decision.reason !== "string" ||
         typeof decision.domainScore !== "number" ||
         decision.domainScore < 0 ||
-        decision.domainScore > 1
+        decision.domainScore > 100
       ) {
         return false;
       }
@@ -197,12 +197,21 @@ function validateThinkingUpdateEvent(
 
   const event = data as Record<string, unknown>;
 
-  return (
-    event.type === "thinking-update" &&
-    isValidAgentType(event.agentType) &&
-    typeof event.thought === "string" &&
-    typeof event.timestamp === "string"
-  );
+  // timestamp is optional (present in ADK callbacks, may be absent in direct emissions)
+  if (
+    event.type !== "thinking-update" ||
+    !isValidAgentType(event.agentType) ||
+    typeof event.thought !== "string"
+  ) {
+    return false;
+  }
+
+  // Validate optional timestamp if present
+  if (event.timestamp !== undefined && typeof event.timestamp !== "string") {
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -282,13 +291,33 @@ function validateConfirmationRequiredEvent(
 
   const event = data as Record<string, unknown>;
 
-  return (
-    event.type === "confirmation-required" &&
-    typeof event.requestId === "string" &&
-    isValidAgentType(event.agentType) &&
-    typeof event.actionDescription === "string" &&
-    Array.isArray(event.affectedItems)
-  );
+  // Required fields
+  if (
+    event.type !== "confirmation-required" ||
+    typeof event.taskId !== "string" ||
+    !isValidAgentType(event.agentType) ||
+    typeof event.actionDescription !== "string"
+  ) {
+    return false;
+  }
+
+  // Optional affectedItems must be an array if present
+  if (
+    event.affectedItems !== undefined &&
+    !Array.isArray(event.affectedItems)
+  ) {
+    return false;
+  }
+
+  // Optional context must be an object if present
+  if (
+    event.context !== undefined &&
+    (typeof event.context !== "object" || event.context === null)
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -301,11 +330,22 @@ function validateConfirmationResolvedEvent(
 
   const event = data as Record<string, unknown>;
 
-  return (
-    event.type === "confirmation-resolved" &&
-    typeof event.requestId === "string" &&
-    typeof event.approved === "boolean"
-  );
+  // Required fields: type, taskId, agentType, approved
+  if (
+    event.type !== "confirmation-resolved" ||
+    typeof event.taskId !== "string" ||
+    !isValidAgentType(event.agentType) ||
+    typeof event.approved !== "boolean"
+  ) {
+    return false;
+  }
+
+  // Optional reason must be string if present
+  if (event.reason !== undefined && typeof event.reason !== "string") {
+    return false;
+  }
+
+  return true;
 }
 
 /**

@@ -31,7 +31,7 @@ export interface RoutingDecision {
   fileId: string;
   targetAgent: AgentType;
   reason: string;
-  domainScore: number;
+  domainScore: number; // Confidence score 0-100 (percentage)
 }
 
 export interface AgentResult {
@@ -101,7 +101,7 @@ export interface ThinkingUpdateEvent {
   type: "thinking-update";
   agentType: AgentType;
   thought: string;
-  timestamp: string;
+  timestamp?: string; // Optional: present in ADK callback events, may be absent in direct emissions
   tokenDelta?: {
     inputTokens: number;
     outputTokens: number;
@@ -131,16 +131,17 @@ export interface StateSnapshotEvent {
 
 export interface ConfirmationRequiredEvent {
   type: "confirmation-required";
-  requestId: string;
+  taskId: string;
   agentType: AgentType;
   actionDescription: string;
-  affectedItems: string[];
-  context: Record<string, unknown>;
+  affectedItems?: string[]; // Optional: may not be sent by backend
+  context?: Record<string, unknown>; // Optional: backend sends when available
 }
 
 export interface ConfirmationResolvedEvent {
   type: "confirmation-resolved";
-  requestId: string;
+  taskId: string;
+  agentType: AgentType;
   approved: boolean;
   reason?: string;
 }

@@ -256,6 +256,7 @@ async def emit_thinking_update(
     agent_type: str,
     thought: str,
     token_delta: dict[str, int] | None = None,
+    timestamp: str | None = None,
 ) -> None:
     """Emit a thinking-update event with real-time thinking trace text.
 
@@ -268,11 +269,15 @@ async def emit_thinking_update(
         thought: Full untruncated thinking text from the model.
         token_delta: Optional per-turn token usage delta with keys
             inputTokens, outputTokens, thoughtsTokens.
+        timestamp: Optional ISO timestamp. If not provided, current UTC time is used.
     """
+    from datetime import UTC, datetime
+
     data: dict[str, Any] = {
         "type": AgentEventType.THINKING_UPDATE.value,
         "agentType": agent_type,
         "thought": thought,
+        "timestamp": timestamp or datetime.now(tz=UTC).isoformat(),
     }
     if token_delta is not None:
         data["tokenDelta"] = token_delta

@@ -17,7 +17,7 @@ import type { ConfirmationRequiredEvent } from "@/types/command-center";
 interface ConfirmationModalProps {
   confirmation: ConfirmationRequiredEvent;
   caseId: string;
-  onResolved: (requestId: string) => void;
+  onResolved: (taskId: string) => void;
 }
 
 // -----------------------------------------------------------------------
@@ -47,11 +47,11 @@ export function ConfirmationModal({
       try {
         await respondToConfirmation(
           caseId,
-          confirmation.requestId,
+          confirmation.taskId,
           approved,
           reason.trim() || undefined,
         );
-        onResolved(confirmation.requestId);
+        onResolved(confirmation.taskId);
       } catch (err) {
         // Display error to user for retry
         const message =
@@ -62,13 +62,15 @@ export function ConfirmationModal({
         setIsSubmitting(false);
       }
     },
-    [caseId, confirmation.requestId, reason, onResolved],
+    [caseId, confirmation.taskId, reason, onResolved],
   );
 
-  // Extract context entries for display
-  const contextEntries = Object.entries(confirmation.context).filter(
-    ([, value]) => value !== null && value !== undefined,
-  );
+  // Extract context entries for display (context is optional)
+  const contextEntries = confirmation.context
+    ? Object.entries(confirmation.context).filter(
+        ([, value]) => value !== null && value !== undefined,
+      )
+    : [];
 
   return (
     <div
@@ -145,29 +147,30 @@ export function ConfirmationModal({
             </p>
           </div>
 
-          {/* Affected items */}
-          {confirmation.affectedItems.length > 0 && (
-            <div>
-              <label className="text-xs font-medium text-stone uppercase tracking-wide">
-                Affected Items
-              </label>
-              <div className="mt-1.5 space-y-1">
-                {confirmation.affectedItems.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-smoke"
-                    style={{
-                      background: "hsl(0 0% 15% / 0.5)",
-                      border: "1px solid hsl(0 0% 20% / 0.3)",
-                    }}
-                  >
-                    <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--cc-accent))] shrink-0" />
-                    {item}
-                  </div>
-                ))}
+          {/* Affected items (optional from backend) */}
+          {confirmation.affectedItems &&
+            confirmation.affectedItems.length > 0 && (
+              <div>
+                <label className="text-xs font-medium text-stone uppercase tracking-wide">
+                  Affected Items
+                </label>
+                <div className="mt-1.5 space-y-1">
+                  {confirmation.affectedItems.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-smoke"
+                      style={{
+                        background: "hsl(0 0% 15% / 0.5)",
+                        border: "1px solid hsl(0 0% 20% / 0.3)",
+                      }}
+                    >
+                      <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--cc-accent))] shrink-0" />
+                      {item}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Additional context */}
           {contextEntries.length > 0 && (

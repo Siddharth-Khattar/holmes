@@ -1,4 +1,4 @@
-import type { GeospatialData, Landmark } from "@/types/geospatial.types";
+import type { GeospatialData } from "@/types/geospatial.types";
 
 // Mock geospatial data for demonstration
 export const mockGeospatialData: GeospatialData = {

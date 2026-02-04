@@ -243,6 +243,7 @@ function FilePreview({
     case "image":
       return (
         <div className="relative w-full h-full">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={file.url}
             alt={file.name}

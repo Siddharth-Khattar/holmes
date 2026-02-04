@@ -6,7 +6,6 @@ import {
   Video,
   Music,
   Image as ImageIcon,
-  Eye,
   Download,
   Trash2,
   AlertTriangle,
@@ -275,10 +274,20 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
     [upload, refreshFiles, clearError],
   );
 
-  // File actions
-  const handleViewFile = useCallback((file: LibraryFile) => {
-    console.log("View file:", file);
-    // TODO: Open in source panel
+  // Helper function to get mock file URLs for demonstration
+  const getMockFileUrl = useCallback((fileType: SupportedFileType): string => {
+    switch (fileType) {
+      case "image":
+        return "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=800&h=600&fit=crop";
+      case "video":
+        return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
+      case "pdf":
+        return "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+      case "audio":
+        return "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+      default:
+        return "";
+    }
   }, []);
 
   const handleRedactFile = useCallback(
@@ -300,24 +309,8 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
       //   setRedactModalFile({ ...file, url: mockUrl });
       // }
     },
-    [caseId],
+    [getMockFileUrl],
   );
-
-  // Helper function to get mock file URLs for demonstration
-  const getMockFileUrl = (fileType: SupportedFileType): string => {
-    switch (fileType) {
-      case "image":
-        return "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=800&h=600&fit=crop";
-      case "video":
-        return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
-      case "pdf":
-        return "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
-      case "audio":
-        return "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-      default:
-        return "";
-    }
-  };
 
   const handleDownloadFile = useCallback(
     async (file: LibraryFile) => {

@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
-import { ArrowLeft, Terminal, Network, Clock, FolderOpen, Globe } from "lucide-react";
+import {
+  ArrowLeft,
+  Terminal,
+  Network,
+  Clock,
+  FolderOpen,
+  Globe,
+} from "lucide-react";
 import Link from "next/link";
 import { clsx } from "clsx";
 

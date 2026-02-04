@@ -18,7 +18,12 @@ export interface Landmark {
     lng: number;
   };
   events: LandmarkEvent[];
-  type: "crime_scene" | "witness_location" | "evidence_location" | "suspect_location" | "other";
+  type:
+    | "crime_scene"
+    | "witness_location"
+    | "evidence_location"
+    | "suspect_location"
+    | "other";
 }
 
 export interface GeospatialPath {

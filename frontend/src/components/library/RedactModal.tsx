@@ -156,7 +156,9 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                         <div className="w-full max-w-md space-y-3">
                           <div className="text-center text-muted-foreground mb-4">
                             <Sparkles className="w-10 h-10 mx-auto mb-2 text-purple-500" />
-                            <p className="text-sm">Redacted preview will appear above</p>
+                            <p className="text-sm">
+                              Redacted preview will appear above
+                            </p>
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-foreground mb-2">
@@ -174,7 +176,9 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                           </div>
                           <button
                             onClick={handleRedactionSubmit}
-                            disabled={!redactionDescription.trim() || isProcessing}
+                            disabled={
+                              !redactionDescription.trim() || isProcessing
+                            }
                             className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 disabled:cursor-not-allowed text-white font-medium transition-colors text-sm"
                           >
                             {isProcessing ? (

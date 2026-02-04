@@ -378,6 +378,14 @@ Plans:
 
 **Requirements:** REQ-VIS-001, REQ-VIS-001a, REQ-VIS-002, REQ-INF-004 (complete)
 
+**Plans:** 4 plans in 3 waves
+
+Plans:
+- [ ] 05-01-PLAN.md — Backend SSE enrichment (thinking traces, tokens, timing, state snapshots)
+- [ ] 05-02-PLAN.md — Backend HITL confirmation system (asyncio.Event pause/resume)
+- [ ] 05-03-PLAN.md — Frontend SSE wiring (URL fix, new event types, thinking trace accumulation)
+- [ ] 05-04-PLAN.md — Frontend HITL modal, token display, duration badges, execution timeline
+
 **Status:** 🟡 FRONTEND_DONE — Backend SSE integration required
 
 ### Frontend Completed

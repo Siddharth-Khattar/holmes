@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-04
-**Current Phase:** 4.1 of 12 (Agent Decision Tree Revamp) — COMPLETE
-**Current Plan:** 04.1-04 complete (4 of 4 plans done, 18 commits)
+**Current Phase:** 5 of 12 (Agent Flow) — FRONTEND_DONE, backend pending
+**Current Plan:** None (Phase 5 frontend complete from 4.1 revamp; backend planning needed)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -31,16 +31,17 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 4.1 Complete** (2026-02-04): Full agent decision tree revamp across 4 plans, 18 commits
+- **Phase 4.1 Complete** (2026-02-04): Full agent decision tree revamp across 4 plans, 19 commits
   - Plan 01: Installed @xyflow/react + @dagrejs/dagre, scoped CSS variables, DecisionNode component
   - Plan 02: NodeDetailsSidebar with spring animation, collapsible color-coded sections, agent-type dispatch
   - Plan 03: ReactFlow canvas + dagre layout, FileGroupNode, CommandCenter rewrite, useAgentStates/useAgentFlowGraph hooks, layout engine, mock data
   - Plan 04 (unplanned refinement): Muted color palette (~50% saturation), gray edges, FileRoutingEdge with click-to-expand file popups, sidebar lifted to page level as 30% screen-width panel
   - New utility modules: command-center-graph.ts (node/edge builder), command-center-layout.ts (dagre engine)
-  - 18 files changed, ~1860 insertions, ~976 deletions across the phase
+- **Post-4.1 cleanup** (2026-02-04): Extracted shared `CanvasZoomControls` component (`ui/canvas-zoom-controls.tsx`) used by both Command Center and Knowledge Graph
 
 **What's next:**
-- Phase 5 (Agent Flow backend SSE), Domain Agents (Phase 6), Synthesis & KG (Phase 7)
+- Phase 5 backend work: SSE streaming real agent data, thinking traces, token usage, HITL dialogs
+- Phase 6 (Domain Agents), Phase 7 (Synthesis & KG)
 
 ---
 
@@ -62,6 +63,7 @@
 | Node/edge construction | `frontend/src/lib/command-center-graph.ts` |
 | Dagre layout engine | `frontend/src/lib/command-center-layout.ts` |
 | Config (muted palette) | `frontend/src/lib/command-center-config.ts` |
+| Shared zoom controls | `frontend/src/components/ui/canvas-zoom-controls.tsx` |
 | Mock data (demo mode) | `frontend/src/lib/mock-command-center-data.ts` |
 | Types | `frontend/src/types/command-center.ts` |
 | Command center page | `frontend/src/app/(app)/cases/[id]/command-center/page.tsx` |
@@ -276,7 +278,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Completed Phase 4.1 (all 4 plans, 18 commits) — muted palette, FileRoutingEdge, page-level sidebar refinements applied
+Stopped at: Phase 4.1 complete (19 commits) + post-4.1 cleanup (shared CanvasZoomControls). Phase 5 description updated in ROADMAP.md.
 Resume file: None
 
 ---

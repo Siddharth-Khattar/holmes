@@ -380,44 +380,72 @@ Plans:
 
 **Status:** 🟡 FRONTEND_DONE — Backend SSE integration required
 
-### Frontend Completed (Yatharth, 2026-02-02)
-- ✅ D3-based canvas for agent visualization (`AgentFlowCanvas.tsx`)
-- ✅ Agent nodes with type-based styling (6 agent types)
-- ✅ Animated edges during data flow (dashed line animations)
-- ✅ Click-to-expand agent detail panel (`AgentDetailsPanel.tsx`)
-- ✅ Detail view: input context, tools called, output findings
-- ✅ SSE hook ready (`useCommandCenterSSE.ts`)
-- ✅ Connection status indicator (Connected/Reconnecting/Demo Mode)
+### Frontend Completed
+The Command Center frontend was built in three stages:
+
+**Stage 1 — Yatharth's initial implementation (2026-02-02):**
+- Original D3-based canvas and agent nodes (fully superseded by Phase 4.1)
+- SSE hook (`useCommandCenterSSE.ts`) and connection status indicator (still in use)
+
+**Stage 2 — Phase 4.1: Decision Tree Revamp (2026-02-04, 19 commits):**
+- ✅ @xyflow/react + dagre hierarchical decision tree (replaced D3 canvas)
+- ✅ Custom `DecisionNode` with motion entrance/hover animations, muted glow
+- ✅ Custom `FileGroupNode` intermediate layer between orchestrator and domain agents
+- ✅ Custom `FileRoutingEdge` with click-to-expand file list popup
+- ✅ Muted per-agent color palette (~50% saturation, hues preserved for identity)
+- ✅ Gray neutral edge tiers (processing/chosen/inactive)
+- ✅ `NodeDetailsSidebar` as page-level 30% screen-width panel with spring animation
+- ✅ Color-coded sidebar sections with compact badge styling
+- ✅ Portal-rendered tooltip ("Click for more details") via `getBoundingClientRect()`
+- ✅ Dagre top-to-bottom auto-layout with auto-fit viewport (1.5s smooth animation)
+- ✅ State management hooks: `useAgentStates`, `useAgentFlowGraph`
+- ✅ Utility modules: `command-center-graph.ts` (node/edge builder), `command-center-layout.ts` (dagre engine)
+- ✅ Mock data for demo mode fallback (`mock-command-center-data.ts`)
+- ✅ Dark canvas background with dot grid via ReactFlow `<Background>`
+
+**Stage 3 — Post-4.1 cleanup (2026-02-04, 1 commit):**
+- ✅ Shared `CanvasZoomControls` component extracted to `ui/canvas-zoom-controls.tsx` (used by both Command Center and Knowledge Graph)
 
 ### Backend Work Remaining
-- ⏳ Real-time updates via SSE with ADK callback mapping
-- ⏳ Thinking traces integration (needs `include_thoughts=True` data)
+- ⏳ Real-time updates via SSE with ADK callback mapping (hook ready, needs backend event data)
+- ⏳ Thinking traces integration (needs `include_thoughts=True` data from backend)
 - ⏳ Token usage display
 - ⏳ Execution timeline
 - ⏳ Human-in-the-loop confirmation dialogs (REQ-VIS-001a)
 
 **Deliverables:**
-- ~~React Flow canvas for agent visualization~~ ✅ (D3-based, not React Flow)
-- ~~Agent nodes with type-based styling~~ ✅
-- ~~Animated edges during data flow~~ ✅
-- Real-time updates via SSE with callback mapping (hook ready, needs backend)
-- ~~Click-to-expand agent detail panel~~ ✅
+- ~~ReactFlow canvas for agent visualization~~ ✅ (@xyflow/react + dagre, Phase 4.1)
+- ~~Agent nodes with type-based styling~~ ✅ (DecisionNode, 6 agent types)
+- ~~Animated edges during data flow~~ ✅ (FileRoutingEdge, gray tier system)
+- ~~Click-to-expand agent detail sidebar~~ ✅ (NodeDetailsSidebar, page-level 30% panel)
 - ~~Detail view: model, input, tools, output, duration, thinking traces~~ ✅ (partial, needs real data)
+- ~~SSE hook with reconnection~~ ✅ (useCommandCenterSSE.ts)
+- ~~Connection status indicator~~ ✅ (Connected/Reconnecting/Demo Mode)
+- ~~Zoom controls~~ ✅ (shared CanvasZoomControls component)
+- Real-time updates via SSE with callback mapping (frontend ready, needs backend events)
 - Token usage display
 - Execution timeline
 - Human-in-the-loop confirmation dialogs (frontend implementation)
 
 **Technical Notes:**
-- ~~React Flow 12 (@xyflow/react)~~ → D3.js chosen for implementation
-- Memoization critical for performance
-- Async queue for callback → SSE event translation
-- Thinking traces from `include_thoughts=True` configuration
-- Frontend confirmation dialogs (ADK limitation: require_confirmation only works with InMemorySessionService)
-- **Frontend files:** `frontend/src/components/CommandCenter/`, `frontend/src/hooks/useCommandCenterSSE.ts`
+- @xyflow/react 12 + @dagrejs/dagre for hierarchical layout
+- motion (v12+) for node entrance/hover animations
+- Memoization via useMemo in useAgentFlowGraph hook
+- Async queue for callback → SSE event translation (backend)
+- Thinking traces from `include_thoughts=True` configuration (backend)
+- Frontend confirmation dialogs needed (ADK limitation: require_confirmation only works with InMemorySessionService)
+- **Frontend files:**
+  - Components: `frontend/src/components/CommandCenter/` (DecisionNode, FileGroupNode, FileRoutingEdge, NodeDetailsSidebar, AgentFlowCanvas, CommandCenter)
+  - Shared UI: `frontend/src/components/ui/canvas-zoom-controls.tsx`
+  - Hooks: `frontend/src/hooks/useCommandCenterSSE.ts`, `frontend/src/hooks/useAgentStates.ts`, `frontend/src/hooks/useAgentFlowGraph.ts`
+  - Utilities: `frontend/src/lib/command-center-graph.ts`, `frontend/src/lib/command-center-layout.ts`, `frontend/src/lib/command-center-config.ts`
+  - Types: `frontend/src/types/command-center.ts`
+  - Pages: `frontend/src/app/(app)/cases/[id]/command-center/page.tsx`, `frontend/src/app/(app)/cases/[id]/command-center-demo/page.tsx`
+  - Dead code (superseded): `AgentNode.tsx`, `AgentDetailsPanel.tsx`
 
 **Exit Criteria:**
 - Real-time agent flow visible during processing
-- Click any node for full details
+- Click any node for full details in sidebar
 - Thinking traces displayed correctly
 - SSE connection stable with reconnection
 - Confirmation dialogs work for sensitive operations
@@ -718,9 +746,9 @@ Plans:
 - Narrative generation (executive summary, detailed)
 - Export as PDF/DOCX
 - **Agent Flow refinements:**
-  - ~~React Flow agent pipeline visualization~~ ✅ (D3-based, done in Phase 5)
-  - ~~Custom node components per agent type~~ ✅
-  - ~~Agent color coding~~ ✅
+  - ~~ReactFlow agent pipeline visualization~~ ✅ (@xyflow/react + dagre, done in Phase 4.1)
+  - ~~Custom node components per agent type~~ ✅ (DecisionNode, FileGroupNode, Phase 4.1)
+  - ~~Agent color coding~~ ✅ (muted palette, Phase 4.1)
   - **Task count badges on agent nodes** (pending)
   - Thinking overlay with streaming thoughts
   - Interactive time-scrubbing
@@ -936,8 +964,8 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 2.0*
-*Updated: 2026-02-04 (Phase 4.1 planned)*
+*Roadmap Version: 2.1*
+*Updated: 2026-02-04 (Phase 5 description updated post-4.1 completion)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*

@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-04
-**Current Phase:** 5 of 12 (Agent Flow) — FRONTEND_DONE, backend pending
-**Current Plan:** None (Phase 5 frontend complete from 4.1 revamp; backend planning needed)
+**Current Phase:** 5 of 12 (Agent Flow) — In progress
+**Current Plan:** 1 of 4 complete (05-01 SSE Event Enrichment)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -15,7 +15,7 @@
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
-| 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
+| 5 | Agent Flow | IN_PROGRESS | 2026-02-04 | - | Plan 01 complete (SSE enrichment); Plans 02-04 pending |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
@@ -31,16 +31,14 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 4.1 Complete** (2026-02-04): Full agent decision tree revamp across 4 plans, 19 commits
-  - Plan 01: Installed @xyflow/react + @dagrejs/dagre, scoped CSS variables, DecisionNode component
-  - Plan 02: NodeDetailsSidebar with spring animation, collapsible color-coded sections, agent-type dispatch
-  - Plan 03: ReactFlow canvas + dagre layout, FileGroupNode, CommandCenter rewrite, useAgentStates/useAgentFlowGraph hooks, layout engine, mock data
-  - Plan 04 (unplanned refinement): Muted color palette (~50% saturation), gray edges, FileRoutingEdge with click-to-expand file popups, sidebar lifted to page level as 30% screen-width panel
-  - New utility modules: command-center-graph.ts (node/edge builder), command-center-layout.ts (dagre engine)
-- **Post-4.1 cleanup** (2026-02-04): Extracted shared `CanvasZoomControls` component (`ui/canvas-zoom-controls.tsx`) used by both Command Center and Knowledge Graph
+- **Phase 5 Plan 01 Complete** (2026-02-04): SSE event enrichment (2 tasks, 2 commits)
+  - Task 1: after_model_callback extracts thinking parts and fires THINKING_UPDATE with full text; new event types (STATE_SNAPSHOT, CONFIRMATION_REQUIRED, CONFIRMATION_RESOLVED); create_sse_publish_fn() factory
+  - Task 2: Enriched agent-complete events with metadata (tokens, duration, model, traces); pipeline-complete with totals; build_state_snapshot() for reconnection; state-snapshot sent on SSE connect
+  - Unified PublishFn TypeAlias across base/triage/orchestrator
 
 **What's next:**
-- Phase 5 backend work: SSE streaming real agent data, thinking traces, token usage, HITL dialogs
+- Phase 5 Plan 02: HITL confirmation dialogs
+- Phase 5 Plan 03-04: Remaining agent flow backend work
 - Phase 6 (Domain Agents), Phase 7 (Synthesis & KG)
 
 ---
@@ -266,6 +264,10 @@ All frontend features need these backend endpoints:
 | Layout computation | Inline in CommandCenter vs Extracted module | Extracted command-center-layout.ts | Dagre engine isolated; progressive visibility logic separated |
 | Agent state management | Inline in CommandCenter vs Custom hook | Extracted useAgentStates hook | State logic reusable across command-center and command-center-demo pages |
 | Sidebar ownership | CommandCenter (absolute overlay) vs Page level (30% panel) | Page level 30% panel | Sidebar as peer to canvas, not overlay; cleaner layout, no z-index issues |
+| PublishFn type alias | type keyword vs TypeAlias annotation | TypeAlias annotation | Pyright compatibility when importing across modules with from __future__ import annotations |
+| SSE thinking traces | Truncated vs Full text | Full untruncated text | CONTEXT.md: "Show full unfiltered thinking output"; DB storage still capped at 2000 chars |
+| SSE reconnection | Event replay vs State snapshot | State snapshot | Simpler; queries most recent workflow executions, no sequence tracking needed |
+| Publish type unification | Separate PublishEventFn per module vs Shared PublishFn | Shared PublishFn from base.py | Single canonical type alias; removes duplicate definitions in triage/orchestrator |
 
 ---
 
@@ -278,7 +280,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Phase 4.1 complete (19 commits) + post-4.1 cleanup (shared CanvasZoomControls). Phase 5 description updated in ROADMAP.md.
+Stopped at: Completed 05-01-PLAN.md (SSE Event Enrichment, 2 tasks, 2 commits)
 Resume file: None
 
 ---

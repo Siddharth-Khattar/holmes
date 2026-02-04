@@ -82,7 +82,7 @@ export default function KnowledgeGraphPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-280px)]">
+    <div className="h-[calc(100vh-200px)]">
       <KnowledgeGraph
         nodes={data.nodes}
         connections={data.connections}

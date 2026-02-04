@@ -26,7 +26,7 @@
 | 2 | Authentication & Case Shell | Auth system, Case CRUD, basic UI shell | REQ-AUTH-*, REQ-CASE-001/002/003 | ✅ COMPLETE |
 | 3 | File Ingestion | Upload, storage, file management | REQ-CASE-004/005, REQ-SOURCE-* (basic) | ✅ COMPLETE |
 | 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e | ✅ COMPLETE |
-| 4.1 | Agent Decision Tree Revamp (INSERTED) | Replace D3 Command Center with @xyflow/react + dagre decision tree | REQ-VIS-001 (visual quality) | ⏳ NOT_STARTED |
+| 4.1 | Agent Decision Tree Revamp (INSERTED) | Replace D3 Command Center with @xyflow/react + dagre decision tree | REQ-VIS-001 (visual quality) | ✅ COMPLETE |
 | 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 | 🟡 FRONTEND_DONE |
 | 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ⏳ NOT_STARTED |
 | 7 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, Hypothesis system, Task generation, 5-layer KG | REQ-AGENT-008/009, REQ-VIS-003, REQ-HYPO-001/004/005/006, REQ-TASK-001/002 | 🟡 FRONTEND_DONE |
@@ -289,31 +289,35 @@ Plans:
 
 **Requirements:** REQ-VIS-001 (visual quality improvement)
 
-**Plans:** 3 plans in 2 waves
+**Plans:** 4 plans in 3 waves
 
 Plans:
-- [ ] 04.1-01-PLAN.md — Dependencies, scoped CSS variables, config update, DecisionNode component
-- [ ] 04.1-02-PLAN.md — NodeDetailsSidebar with spring animation and color-coded sections
-- [ ] 04.1-03-PLAN.md — ReactFlow canvas with dagre layout, CommandCenter integration, visual verification
+- [x] 04.1-01-PLAN.md — Dependencies, scoped CSS variables, config update, DecisionNode component
+- [x] 04.1-02-PLAN.md — NodeDetailsSidebar with spring animation and color-coded sections
+- [x] 04.1-03-PLAN.md — ReactFlow canvas with dagre layout, CommandCenter integration, state hooks, layout engine
+- [x] 04.1-04 (unplanned refinement) — Muted color palette, FileRoutingEdge, page-level sidebar lift
 
-**Deliverables:**
-- Replace D3 SVG canvas (`AgentFlowCanvas.tsx`) with `@xyflow/react` + dagre auto-layout
-- Custom `DecisionNode` component with motion animations (entrance, floating, hover, pulse border, text glow)
-- Chosen-path highlighting: accent-colored edges with animated dashes, glowing drop-shadow
-- Unchosen nodes: muted dark gray with subtle hover brightening
-- Dagre top-to-bottom hierarchical layout (`rankdir: TB`, `ranksep: 120`, `nodesep: 150`)
-- Smoothstep edge connectors with animated chosen paths
-- Portal-rendered tooltip ("Click for more details") positioned via `getBoundingClientRect()`
-- Spring-animated `NodeDetailsSidebar` sliding from right (`AnimatePresence` + `motion.div`)
-- Color-coded sidebar sections (Reasoning, Description, Instructions, Metadata)
-- Dark canvas background (`hsl(0 0% 9%)`) with dot grid via ReactFlow `<Background>`
+**Deliverables:** ✓ COMPLETE
+- Replace D3 SVG canvas with `@xyflow/react` + dagre auto-layout
+- Custom `DecisionNode` with motion entrance/hover animations, muted glow (no text shadow)
+- Muted per-agent color palette (~50% saturation reduction, hues preserved for identity)
+- Gray neutral edge tiers (processing/chosen/inactive) replacing cyan glow
+- Custom `FileRoutingEdge` with click-to-expand file list popup on edges
+- `FileGroupNode` intermediate layer between orchestrator and domain agents
+- Dagre top-to-bottom hierarchical layout (`rankdir: TB`)
+- Portal-rendered tooltip ("Click for more details") via `getBoundingClientRect()`
+- `NodeDetailsSidebar` as page-level 30% screen-width panel (not overlay)
+- Color-coded sidebar sections with compact badge styling
+- Dark canvas background with dot grid via ReactFlow `<Background>`
 - Auto-fit viewport with 1.5s smooth animation
-- Nodes not draggable (`nodesDraggable={false}`), pan and zoom enabled
-- Preserve all existing SSE integration and agent state management
-- Preserve all existing types (`command-center.ts`) and hooks (`useCommandCenterSSE.ts`)
+- State lifted to page level: `useAgentStates` + `selectedAgent` owned by page
+- Extracted `command-center-graph.ts` (node/edge builder) and `command-center-layout.ts` (dagre layout engine)
+- `useAgentFlowGraph` hook composing graph building + layout in a single useMemo
+- `mock-command-center-data.ts` for demo mode fallback
+- All existing SSE integration, types, and hooks preserved
 
 **Technical Notes:**
-- Install `@xyflow/react` and `dagre` + `@types/dagre` as dependencies
+- Install `@xyflow/react` and `@dagrejs/dagre` as dependencies (no separate @types needed)
 - `motion` (v12+) already installed — use for node animations
 - Map existing `AgentType` (triage, orchestrator, financial, legal, strategy, knowledge-graph) to decision tree nodes
 - Map existing `DEFAULT_CONNECTIONS` to ReactFlow edges
@@ -326,18 +330,33 @@ Plans:
 - Import `@xyflow/react/dist/style.css`
 - **Reference: `DOCS/UI/agent-decision-tree-guide.md`** — READ THIS FIRST for pixel-level visual spec, data model, component breakdown, color system, animation specs, and layout geometry
 
-**Key files to modify:**
-- `frontend/src/components/CommandCenter/AgentFlowCanvas.tsx` → Complete rewrite with ReactFlow
-- `frontend/src/components/CommandCenter/AgentNode.tsx` → Complete rewrite as `DecisionNode`
-- `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx` → Rewrite as `NodeDetailsSidebar`
-- `frontend/src/components/CommandCenter/CommandCenter.tsx` → Update to use ReactFlowProvider + new components
-- `frontend/src/lib/command-center-config.ts` → Update colors, remove manual positions (dagre handles layout)
+**Key files created:**
+- `frontend/src/components/CommandCenter/DecisionNode.tsx` — Custom ReactFlow node with motion animations
+- `frontend/src/components/CommandCenter/NodeDetailsSidebar.tsx` — Spring-animated sidebar with agent-type sections
+- `frontend/src/components/CommandCenter/FileGroupNode.tsx` — Intermediate file group layer node
+- `frontend/src/components/CommandCenter/FileRoutingEdge.tsx` — Custom edge with click-to-expand file list popup
+- `frontend/src/hooks/useAgentStates.ts` — Agent state management extracted from CommandCenter
+- `frontend/src/hooks/useAgentFlowGraph.ts` — Composing graph building + dagre layout
+- `frontend/src/lib/command-center-graph.ts` — Node/edge construction from agent states
+- `frontend/src/lib/command-center-layout.ts` — Dagre layout engine with progressive visibility
+- `frontend/src/lib/mock-command-center-data.ts` — Mock data for demo mode fallback
 
-**Files to preserve (no changes):**
+**Key files modified:**
+- `frontend/src/components/CommandCenter/AgentFlowCanvas.tsx` — Rewritten with ReactFlow (simplified thin wrapper)
+- `frontend/src/components/CommandCenter/CommandCenter.tsx` — Rewritten with ReactFlowProvider, uses extracted hooks
+- `frontend/src/lib/command-center-config.ts` — Muted palette, AGENT_TYPE_TINTS, removed manual positions
+- `frontend/src/app/globals.css` — Scoped .command-center-scope CSS variables
+- `frontend/src/app/(app)/cases/[id]/command-center/page.tsx` — Sidebar lifted to page level
+- `frontend/src/app/(app)/cases/[id]/command-center-demo/page.tsx` — Same sidebar lift
+
+**Files preserved (no changes):**
 - `frontend/src/types/command-center.ts` — All types remain
 - `frontend/src/hooks/useCommandCenterSSE.ts` — SSE hook remains
 - `frontend/src/lib/command-center-validation.ts` — Validation remains
-- `frontend/src/lib/mock-command-center-data.ts` — Mock data remains
+
+**Dead code (not deleted, superseded):**
+- `frontend/src/components/CommandCenter/AgentNode.tsx` — Replaced by DecisionNode
+- `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx` — Replaced by NodeDetailsSidebar
 
 **Exit Criteria:**
 - Agent decision tree renders with hierarchical dagre layout (top-to-bottom)
@@ -929,4 +948,5 @@ For 2 developers working simultaneously:
 *Phase 3 verified: 2026-02-02 (6/6 observable truths)*
 *Phase 4 planned: 2026-02-02 (5 plans in 3 waves)*
 *Phase 4 verified: 2026-02-03 (6/6 must-haves)*
-*Phase 4.1 planned: 2026-02-04 (3 plans in 2 waves)*
+*Phase 4.1 planned: 2026-02-04 (4 plans in 3 waves)*
+*Phase 4.1 complete: 2026-02-04 (all 4 plans done, 18 commits)*

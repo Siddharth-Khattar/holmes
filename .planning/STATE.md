@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-04
-**Current Phase:** 4.1 of 12 (Agent Decision Tree Revamp) — COMPLETE (pending visual verification)
-**Current Plan:** 04.1-03 complete (3 of 3 plans done)
+**Current Phase:** 4.1 of 12 (Agent Decision Tree Revamp) — COMPLETE
+**Current Plan:** 04.1-04 complete (4 of 4 plans done, 18 commits)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -14,7 +14,7 @@
 | 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 | |
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
-| 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | All 3 plans done: deps/config, DecisionNode/Sidebar, ReactFlow canvas integration |
+| 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
@@ -31,13 +31,13 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 4.1 Plan 03 Complete** (2026-02-04): ReactFlow canvas integration, dagre layout, full wiring
-  - Rewrote AgentFlowCanvas from D3 SVG to ReactFlow + dagre (142 lines)
-  - Created FileGroupNode for intermediate file group layer (143 lines)
-  - Rewrote CommandCenter with ReactFlowProvider, progressive tree build, file group extraction, edge styling (289 lines)
-  - Updated barrel exports (DecisionNode, FileGroupNode, NodeDetailsSidebar added; AgentNode, AgentDetailsPanel removed)
-  - Zero TypeScript errors, build passes, lint clean on modified files
-  - Summary: `.planning/phases/04.1-agent-decision-tree-revamp/04.1-03-SUMMARY.md`
+- **Phase 4.1 Complete** (2026-02-04): Full agent decision tree revamp across 4 plans, 18 commits
+  - Plan 01: Installed @xyflow/react + @dagrejs/dagre, scoped CSS variables, DecisionNode component
+  - Plan 02: NodeDetailsSidebar with spring animation, collapsible color-coded sections, agent-type dispatch
+  - Plan 03: ReactFlow canvas + dagre layout, FileGroupNode, CommandCenter rewrite, useAgentStates/useAgentFlowGraph hooks, layout engine, mock data
+  - Plan 04 (unplanned refinement): Muted color palette (~50% saturation), gray edges, FileRoutingEdge with click-to-expand file popups, sidebar lifted to page level as 30% screen-width panel
+  - New utility modules: command-center-graph.ts (node/edge builder), command-center-layout.ts (dagre engine)
+  - 18 files changed, ~1860 insertions, ~976 deletions across the phase
 
 **What's next:**
 - Phase 5 (Agent Flow backend SSE), Domain Agents (Phase 6), Synthesis & KG (Phase 7)
@@ -51,15 +51,23 @@
 | Component | File Path |
 |-----------|-----------|
 | Main container | `frontend/src/components/CommandCenter/CommandCenter.tsx` |
-| Agent canvas | `frontend/src/components/CommandCenter/AgentFlowCanvas.tsx` |
-| Agent nodes (legacy, dead code) | `frontend/src/components/CommandCenter/AgentNode.tsx` |
+| Agent canvas (ReactFlow) | `frontend/src/components/CommandCenter/AgentFlowCanvas.tsx` |
 | Decision nodes (ReactFlow) | `frontend/src/components/CommandCenter/DecisionNode.tsx` |
 | File group nodes (ReactFlow) | `frontend/src/components/CommandCenter/FileGroupNode.tsx` |
-| Details panel (legacy, dead code) | `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx` |
-| Details sidebar | `frontend/src/components/CommandCenter/NodeDetailsSidebar.tsx` |
+| File routing edges (ReactFlow) | `frontend/src/components/CommandCenter/FileRoutingEdge.tsx` |
+| Details sidebar (page-level) | `frontend/src/components/CommandCenter/NodeDetailsSidebar.tsx` |
+| Agent state management hook | `frontend/src/hooks/useAgentStates.ts` |
+| Graph building + layout hook | `frontend/src/hooks/useAgentFlowGraph.ts` |
 | SSE hook | `frontend/src/hooks/useCommandCenterSSE.ts` |
-| Config | `frontend/src/lib/command-center-config.ts` |
+| Node/edge construction | `frontend/src/lib/command-center-graph.ts` |
+| Dagre layout engine | `frontend/src/lib/command-center-layout.ts` |
+| Config (muted palette) | `frontend/src/lib/command-center-config.ts` |
+| Mock data (demo mode) | `frontend/src/lib/mock-command-center-data.ts` |
 | Types | `frontend/src/types/command-center.ts` |
+| Command center page | `frontend/src/app/(app)/cases/[id]/command-center/page.tsx` |
+| Command center demo page | `frontend/src/app/(app)/cases/[id]/command-center-demo/page.tsx` |
+| Agent nodes (legacy, dead code) | `frontend/src/components/CommandCenter/AgentNode.tsx` |
+| Details panel (legacy, dead code) | `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx` |
 
 **Backend API Needed:** `SSE GET /api/cases/:caseId/command-center/stream`
 
@@ -249,6 +257,13 @@ All frontend features need these backend endpoints:
 | Canvas layout with sidebar | Flex split vs Absolute overlay | Absolute overlay | Full-width canvas; sidebar overlays instead of shrinking canvas |
 | File group click behavior | Open sidebar vs No action | No sidebar (setSelectedAgent null) | File group nodes are intermediate grouping; no detailed agent data to show |
 | ReactFlow nodeTypes placement | Inside component vs Outside | Outside component body | Prevents infinite re-renders per ReactFlow best practice |
+| Agent color saturation | Full saturation vs Muted | Muted (~50% reduction) | Hues preserved for identity; avoids visual noise on dark canvas |
+| Edge color scheme | Teal glow vs Gray neutral | Gray neutral tiers | Processing/chosen/inactive tiers; less visual noise than cyan glow |
+| Edge type | Standard smoothstep vs Custom FileRoutingEdge | Custom FileRoutingEdge | Click-to-expand file list popup; shows routing context on demand |
+| Graph construction | Inline in CommandCenter vs Extracted module | Extracted command-center-graph.ts | Separation of concerns; graph building logic reusable and testable |
+| Layout computation | Inline in CommandCenter vs Extracted module | Extracted command-center-layout.ts | Dagre engine isolated; progressive visibility logic separated |
+| Agent state management | Inline in CommandCenter vs Custom hook | Extracted useAgentStates hook | State logic reusable across command-center and command-center-demo pages |
+| Sidebar ownership | CommandCenter (absolute overlay) vs Page level (30% panel) | Page level 30% panel | Sidebar as peer to canvas, not overlay; cleaner layout, no z-index issues |
 
 ---
 
@@ -260,8 +275,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-03T23:52:03Z
-Stopped at: Completed 04.1-03-PLAN.md (Phase 4.1 Plan 03) - awaiting visual verification checkpoint
+Last session: 2026-02-04
+Stopped at: Completed Phase 4.1 (all 4 plans, 18 commits) — muted palette, FileRoutingEdge, page-level sidebar refinements applied
 Resume file: None
 
 ---

@@ -126,17 +126,17 @@ function DecisionNodeInner({ data }: NodeProps) {
   }, [onNodeClick, agentType]);
 
   // ------- Computed styles -------
-  const chosenBackground = `linear-gradient(135deg, hsl(${tint} / 0.6) 0%, hsl(${tint} / 0.25) 100%)`;
+  const chosenBackground = `linear-gradient(135deg, hsl(${tint} / 0.75) 0%, hsl(${tint} / 0.35) 100%)`;
   const unchosenBackground = "hsl(0 0% 14% / 0.7)";
 
   const baseShadow = isError
-    ? "0 0 10px rgba(239,68,68,0.2)"
+    ? "0 0 14px rgba(239,68,68,0.3)"
     : isActive
-      ? `0 0 10px hsl(${accent} / 0.12)`
+      ? `0 0 18px hsl(${accent} / 0.25), 0 0 6px hsl(${accent} / 0.15)`
       : "none";
 
   const selectedShadow = isSelected
-    ? `0 0 0 2px hsl(${accent} / 0.3)`
+    ? `0 0 0 2px hsl(${accent} / 0.5)`
     : undefined;
 
   // Combine base + selected shadows
@@ -183,8 +183,8 @@ function DecisionNodeInner({ data }: NodeProps) {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, ease: EASE_OUT }}
           whileHover={{
-            scale: 1.02,
-            boxShadow: `0 0 25px hsl(${accent} / 0.4)${selectedShadow ? `, ${selectedShadow}` : ""}`,
+            scale: 1.04,
+            boxShadow: `0 0 30px hsl(${accent} / 0.5), 0 0 12px hsl(${accent} / 0.3)${selectedShadow ? `, ${selectedShadow}` : ""}`,
           }}
           whileTap={{ scale: 0.98 }}
           onClick={handleClick}
@@ -195,9 +195,9 @@ function DecisionNodeInner({ data }: NodeProps) {
               className="absolute inset-0 rounded-lg pointer-events-none"
               animate={{
                 boxShadow: [
-                  `0 0 6px hsl(${accent} / 0.08), inset 0 0 6px hsl(${accent} / 0.03)`,
-                  `0 0 10px hsl(${accent} / 0.15), inset 0 0 8px hsl(${accent} / 0.05)`,
-                  `0 0 6px hsl(${accent} / 0.08), inset 0 0 6px hsl(${accent} / 0.03)`,
+                  `0 0 10px hsl(${accent} / 0.15), inset 0 0 8px hsl(${accent} / 0.06)`,
+                  `0 0 20px hsl(${accent} / 0.3), inset 0 0 12px hsl(${accent} / 0.1)`,
+                  `0 0 10px hsl(${accent} / 0.15), inset 0 0 8px hsl(${accent} / 0.06)`,
                 ],
               }}
               transition={{

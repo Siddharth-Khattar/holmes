@@ -122,30 +122,37 @@
   --radius: 0.5rem;
 }
 
+/* Override ReactFlow default node border within Command Center */
+.command-center-scope .react-flow__node {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
 /* Command Center scoped accent -- does not affect global Holmes palette */
 .command-center-scope {
   /* Shared accent for non-agent UI (header, footer, file group nodes) */
-  --cc-accent: 180 60% 45%;
-  --cc-accent-glow: 180 60% 50%;
+  --cc-accent: 180 65% 50%;
+  --cc-accent-glow: 180 65% 55%;
 
   /* Per-agent color pairs: tint (subtle bg) + accent (bright text/glow) */
-  --cc-triage-tint: 42 30% 16%;
-  --cc-triage-accent: 42 50% 52%;
+  --cc-triage-tint: 42 40% 20%;
+  --cc-triage-accent: 42 70% 62%;
 
-  --cc-orchestrator-tint: 230 28% 18%;
-  --cc-orchestrator-accent: 225 45% 56%;
+  --cc-orchestrator-tint: 225 35% 22%;
+  --cc-orchestrator-accent: 225 65% 66%;
 
-  --cc-financial-tint: 155 28% 15%;
-  --cc-financial-accent: 155 42% 46%;
+  --cc-financial-tint: 155 35% 18%;
+  --cc-financial-accent: 155 60% 55%;
 
-  --cc-legal-tint: 215 25% 20%;
-  --cc-legal-accent: 215 40% 54%;
+  --cc-legal-tint: 215 32% 22%;
+  --cc-legal-accent: 215 60% 64%;
 
-  --cc-strategy-tint: 25 32% 17%;
-  --cc-strategy-accent: 25 50% 52%;
+  --cc-strategy-tint: 25 42% 20%;
+  --cc-strategy-accent: 25 70% 62%;
 
-  --cc-kg-tint: 270 28% 18%;
-  --cc-kg-accent: 270 40% 58%;
+  --cc-kg-tint: 270 35% 22%;
+  --cc-kg-accent: 270 60% 68%;
 }
 
 /* Light mode variant - Following LIGHT-MODE-REFERENCE.MD */

@@ -12,7 +12,7 @@ from fastapi import UploadFile
 from google.auth import default, impersonated_credentials
 from google.auth.credentials import Credentials
 from google.auth.transport import requests as google_auth_requests
-from google.cloud import storage
+from google.cloud import storage  # type: ignore[attr-defined]
 
 from app.config import settings
 from app.models.file import FileCategory

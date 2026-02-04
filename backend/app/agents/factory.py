@@ -66,7 +66,7 @@ class AgentFactory:
             planner=create_thinking_planner("high"),
             output_schema=TriageOutput,
             output_key="triage_result",
-            **callbacks,
+            **callbacks,  # type: ignore[arg-type]
         )
 
     @staticmethod
@@ -97,5 +97,5 @@ class AgentFactory:
             planner=create_thinking_planner("high"),
             output_schema=OrchestratorOutput,
             output_key="orchestrator_result",
-            **callbacks,
+            **callbacks,  # type: ignore[arg-type]
         )

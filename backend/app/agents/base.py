@@ -18,7 +18,7 @@ from google.adk.models.llm_response import LlmResponse
 from google.adk.planners import BuiltInPlanner
 from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.tool_context import ToolContext
-from google.genai.types import Content, ThinkingConfig
+from google.genai.types import Content, ThinkingConfig, ThinkingLevel
 
 from app.config import get_settings
 
@@ -50,9 +50,18 @@ def create_thinking_planner(level: str = "high") -> BuiltInPlanner:
     Note: Gemini 3 uses ``thinking_level``, NOT ``thinking_budget``
     (which is for Gemini 2.5 only).
     """
+    # Map string level to ThinkingLevel enum
+    level_map: dict[str, ThinkingLevel] = {
+        "minimal": ThinkingLevel.MINIMAL,
+        "low": ThinkingLevel.LOW,
+        "medium": ThinkingLevel.MEDIUM,
+        "high": ThinkingLevel.HIGH,
+    }
+    thinking_level = level_map.get(level.lower(), ThinkingLevel.HIGH)
+
     return BuiltInPlanner(
         thinking_config=ThinkingConfig(
-            thinking_level=level,
+            thinking_level=thinking_level,
             include_thoughts=True,
         )
     )

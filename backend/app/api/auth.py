@@ -207,7 +207,7 @@ if _dev_api_key_scheme:
 
 else:
 
-    async def get_current_user(
+    async def get_current_user(  # type: ignore[misc]
         db: Annotated[AsyncSession, Depends(get_db)],
         bearer_token: Annotated[
             HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)

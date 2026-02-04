@@ -6,13 +6,17 @@ import hashlib
 import logging
 import os
 import tempfile
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from google.adk.artifacts import GcsArtifactService
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService, Session
-from google.cloud import storage
+from google.cloud import storage  # type: ignore[attr-defined]
 from google.genai import types
+
+if TYPE_CHECKING:
+    from google.adk.agents.base_agent import BaseAgent
 
 from app.config import get_settings
 from app.models.file import CaseFile
@@ -64,7 +68,7 @@ def get_artifact_service() -> GcsArtifactService:
 
 
 def create_stage_runner(
-    agent: "BaseAgent",  # noqa: F821 — forward ref to avoid circular import
+    agent: "BaseAgent",
 ) -> Runner:
     """Create a Runner for a single pipeline stage.
 
@@ -228,6 +232,7 @@ async def prepare_file_via_api(
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval
             poll_interval = min(poll_interval * 1.5, 15.0)
+            assert uploaded.name is not None  # Guaranteed after upload
             uploaded = genai_client.files.get(name=uploaded.name)
 
         if uploaded.state and uploaded.state.name == "FAILED":

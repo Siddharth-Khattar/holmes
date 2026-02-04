@@ -6,6 +6,7 @@ export type AgentType =
   | "financial"
   | "legal"
   | "strategy"
+  | "evidence"
   | "knowledge-graph";
 
 export type AgentStatus = "idle" | "processing" | "complete" | "error";
@@ -30,7 +31,7 @@ export interface RoutingDecision {
   fileId: string;
   targetAgent: AgentType;
   reason: string;
-  domainScore: number;
+  domainScore: number; // Confidence score 0-100 (percentage)
 }
 
 export interface AgentResult {
@@ -91,13 +92,77 @@ export interface ProcessingCompleteEvent {
   filesProcessed: number;
   entitiesCreated: number;
   relationshipsCreated: number;
+  totalDurationMs?: number;
+  totalInputTokens?: number;
+  totalOutputTokens?: number;
+}
+
+export interface ThinkingUpdateEvent {
+  type: "thinking-update";
+  agentType: AgentType;
+  thought: string;
+  timestamp?: string; // Optional: present in ADK callback events, may be absent in direct emissions
+  tokenDelta?: {
+    inputTokens: number;
+    outputTokens: number;
+    thoughtsTokens: number;
+  };
+}
+
+export interface StateSnapshotEvent {
+  type: "state-snapshot";
+  agents: Record<
+    string,
+    {
+      status: string;
+      metadata?: {
+        inputTokens?: number;
+        outputTokens?: number;
+        durationMs?: number;
+        startedAt?: string;
+        completedAt?: string;
+        model?: string;
+        thinkingTraces?: string;
+      };
+      lastResult?: AgentResult;
+    }
+  >;
+}
+
+export interface ConfirmationRequiredEvent {
+  type: "confirmation-required";
+  taskId: string;
+  agentType: AgentType;
+  actionDescription: string;
+  affectedItems?: string[]; // Optional: may not be sent by backend
+  context?: Record<string, unknown>; // Optional: backend sends when available
+}
+
+export interface ConfirmationResolvedEvent {
+  type: "confirmation-resolved";
+  taskId: string;
+  agentType: AgentType;
+  approved: boolean;
+  reason?: string;
+}
+
+export interface ToolCalledEvent {
+  type: "tool-called";
+  agentType: AgentType;
+  toolName: string;
+  timestamp: string;
 }
 
 export type CommandCenterSSEEvent =
   | AgentStartedEvent
   | AgentCompleteEvent
   | AgentErrorEvent
-  | ProcessingCompleteEvent;
+  | ProcessingCompleteEvent
+  | ThinkingUpdateEvent
+  | StateSnapshotEvent
+  | ConfirmationRequiredEvent
+  | ConfirmationResolvedEvent
+  | ToolCalledEvent;
 
 // Agent Configuration
 export interface AgentConfig {
@@ -114,4 +179,7 @@ export interface ProcessingSummary {
   entitiesCreated: number;
   relationshipsCreated: number;
   completedAt: Date;
+  totalDurationMs?: number;
+  totalInputTokens?: number;
+  totalOutputTokens?: number;
 }

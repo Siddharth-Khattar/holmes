@@ -58,6 +58,12 @@ class Settings(BaseSettings):
     # File size (bytes) above which to use Gemini File API instead of inline data
     file_api_threshold: int = 100_000_000
 
+    # --- SSE / Real-time configuration ---
+    # Heartbeat interval for SSE connections to keep alive on Cloud Run (per REQ-INF-004)
+    sse_heartbeat_interval_seconds: float = 15.0
+    # Maximum time to wait for HITL confirmation before timing out (0 = no timeout)
+    confirmation_timeout_seconds: float = 3600.0  # 1 hour
+
     model_config = SettingsConfigDict(
         # Look for .env in backend/ first, then project root (absolute paths)
         env_file=(_BACKEND_ENV, _ROOT_ENV),

@@ -3,9 +3,7 @@
 
 import json
 import logging
-from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime
-from typing import Any
 from uuid import UUID
 
 from google.adk.events import Event
@@ -33,9 +31,6 @@ logger = logging.getLogger(__name__)
 
 # Maximum retries when LLM output fails to parse (1 retry = 2 total attempts)
 MAX_PARSE_RETRIES = 1
-
-# Type alias for the optional SSE publish callback
-PublishEventFn = Callable[[str, dict[str, object]], Coroutine[Any, Any, None] | None]
 
 
 class TriageAgent:
@@ -140,7 +135,7 @@ async def run_triage(
     user_id: str,
     files: list[CaseFile],
     db_session: AsyncSession,
-    publish_event: PublishEventFn | None = None,
+    publish_event: PublishFn | None = None,
 ) -> TriageOutput | None:
     """Run triage analysis on a batch of files.
 

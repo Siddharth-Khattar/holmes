@@ -7,6 +7,11 @@ import type {
   AgentCompleteEvent,
   AgentErrorEvent,
   ProcessingCompleteEvent,
+  ThinkingUpdateEvent,
+  StateSnapshotEvent,
+  ConfirmationRequiredEvent,
+  ConfirmationResolvedEvent,
+  ToolCalledEvent,
   AgentType,
 } from "@/types/command-center";
 
@@ -16,6 +21,7 @@ const VALID_AGENT_TYPES: AgentType[] = [
   "financial",
   "legal",
   "strategy",
+  "evidence",
   "knowledge-graph",
 ];
 
@@ -107,7 +113,7 @@ function validateAgentCompleteEvent(data: unknown): data is AgentCompleteEvent {
         typeof decision.reason !== "string" ||
         typeof decision.domainScore !== "number" ||
         decision.domainScore < 0 ||
-        decision.domainScore > 1
+        decision.domainScore > 100
       ) {
         return false;
       }
@@ -151,12 +157,210 @@ function validateProcessingCompleteEvent(
 
   const event = data as Record<string, unknown>;
 
+  if (
+    event.type !== "processing-complete" ||
+    typeof event.caseId !== "string" ||
+    typeof event.filesProcessed !== "number" ||
+    typeof event.entitiesCreated !== "number" ||
+    typeof event.relationshipsCreated !== "number"
+  ) {
+    return false;
+  }
+
+  // Optional aggregate fields must be numbers if present
+  if (
+    event.totalDurationMs !== undefined &&
+    typeof event.totalDurationMs !== "number"
+  )
+    return false;
+  if (
+    event.totalInputTokens !== undefined &&
+    typeof event.totalInputTokens !== "number"
+  )
+    return false;
+  if (
+    event.totalOutputTokens !== undefined &&
+    typeof event.totalOutputTokens !== "number"
+  )
+    return false;
+
+  return true;
+}
+
+/**
+ * Validates thinking-update event
+ */
+function validateThinkingUpdateEvent(
+  data: unknown,
+): data is ThinkingUpdateEvent {
+  if (typeof data !== "object" || data === null) return false;
+
+  const event = data as Record<string, unknown>;
+
+  // timestamp is optional (present in ADK callbacks, may be absent in direct emissions)
+  if (
+    event.type !== "thinking-update" ||
+    !isValidAgentType(event.agentType) ||
+    typeof event.thought !== "string"
+  ) {
+    return false;
+  }
+
+  // Validate optional timestamp if present
+  if (event.timestamp !== undefined && typeof event.timestamp !== "string") {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Validates the structure of agent data within a state snapshot.
+ */
+function validateAgentSnapshotData(
+  agentData: unknown,
+): agentData is { status: string; metadata?: Record<string, unknown> } {
+  if (typeof agentData !== "object" || agentData === null) return false;
+
+  const data = agentData as Record<string, unknown>;
+
+  // status is required and must be a string
+  if (typeof data.status !== "string") return false;
+
+  // metadata is optional but must be an object if present
+  if (data.metadata !== undefined) {
+    if (typeof data.metadata !== "object" || data.metadata === null) {
+      return false;
+    }
+    const meta = data.metadata as Record<string, unknown>;
+    // Validate optional metadata fields have correct types
+    if (meta.inputTokens !== undefined && typeof meta.inputTokens !== "number")
+      return false;
+    if (
+      meta.outputTokens !== undefined &&
+      typeof meta.outputTokens !== "number"
+    )
+      return false;
+    if (meta.durationMs !== undefined && typeof meta.durationMs !== "number")
+      return false;
+    if (meta.startedAt !== undefined && typeof meta.startedAt !== "string")
+      return false;
+    if (meta.completedAt !== undefined && typeof meta.completedAt !== "string")
+      return false;
+    if (meta.model !== undefined && typeof meta.model !== "string")
+      return false;
+    if (
+      meta.thinkingTraces !== undefined &&
+      typeof meta.thinkingTraces !== "string"
+    )
+      return false;
+  }
+
+  return true;
+}
+
+/**
+ * Validates state-snapshot event
+ */
+function validateStateSnapshotEvent(data: unknown): data is StateSnapshotEvent {
+  if (typeof data !== "object" || data === null) return false;
+
+  const event = data as Record<string, unknown>;
+
+  if (event.type !== "state-snapshot") return false;
+  if (typeof event.agents !== "object" || event.agents === null) return false;
+
+  // Validate each agent's data structure
+  const agents = event.agents as Record<string, unknown>;
+  for (const agentData of Object.values(agents)) {
+    if (!validateAgentSnapshotData(agentData)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Validates confirmation-required event
+ */
+function validateConfirmationRequiredEvent(
+  data: unknown,
+): data is ConfirmationRequiredEvent {
+  if (typeof data !== "object" || data === null) return false;
+
+  const event = data as Record<string, unknown>;
+
+  // Required fields
+  if (
+    event.type !== "confirmation-required" ||
+    typeof event.taskId !== "string" ||
+    !isValidAgentType(event.agentType) ||
+    typeof event.actionDescription !== "string"
+  ) {
+    return false;
+  }
+
+  // Optional affectedItems must be an array if present
+  if (
+    event.affectedItems !== undefined &&
+    !Array.isArray(event.affectedItems)
+  ) {
+    return false;
+  }
+
+  // Optional context must be an object if present
+  if (
+    event.context !== undefined &&
+    (typeof event.context !== "object" || event.context === null)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Validates confirmation-resolved event
+ */
+function validateConfirmationResolvedEvent(
+  data: unknown,
+): data is ConfirmationResolvedEvent {
+  if (typeof data !== "object" || data === null) return false;
+
+  const event = data as Record<string, unknown>;
+
+  // Required fields: type, taskId, agentType, approved
+  if (
+    event.type !== "confirmation-resolved" ||
+    typeof event.taskId !== "string" ||
+    !isValidAgentType(event.agentType) ||
+    typeof event.approved !== "boolean"
+  ) {
+    return false;
+  }
+
+  // Optional reason must be string if present
+  if (event.reason !== undefined && typeof event.reason !== "string") {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Validates tool-called event
+ */
+function validateToolCalledEvent(data: unknown): data is ToolCalledEvent {
+  if (typeof data !== "object" || data === null) return false;
+
+  const event = data as Record<string, unknown>;
+
   return (
-    event.type === "processing-complete" &&
-    typeof event.caseId === "string" &&
-    typeof event.filesProcessed === "number" &&
-    typeof event.entitiesCreated === "number" &&
-    typeof event.relationshipsCreated === "number"
+    event.type === "tool-called" &&
+    isValidAgentType(event.agentType) &&
+    typeof event.toolName === "string" &&
+    typeof event.timestamp === "string"
   );
 }
 
@@ -201,6 +405,41 @@ export function validateCommandCenterEvent(
         return data as ProcessingCompleteEvent;
       }
       console.warn("Invalid processing-complete event", data);
+      return null;
+
+    case "thinking-update":
+      if (validateThinkingUpdateEvent(data)) {
+        return data as ThinkingUpdateEvent;
+      }
+      console.warn("Invalid thinking-update event", data);
+      return null;
+
+    case "state-snapshot":
+      if (validateStateSnapshotEvent(data)) {
+        return data as StateSnapshotEvent;
+      }
+      console.warn("Invalid state-snapshot event", data);
+      return null;
+
+    case "confirmation-required":
+      if (validateConfirmationRequiredEvent(data)) {
+        return data as ConfirmationRequiredEvent;
+      }
+      console.warn("Invalid confirmation-required event", data);
+      return null;
+
+    case "confirmation-resolved":
+      if (validateConfirmationResolvedEvent(data)) {
+        return data as ConfirmationResolvedEvent;
+      }
+      console.warn("Invalid confirmation-resolved event", data);
+      return null;
+
+    case "tool-called":
+      if (validateToolCalledEvent(data)) {
+        return data as ToolCalledEvent;
+      }
+      console.warn("Invalid tool-called event", data);
       return null;
 
     default:

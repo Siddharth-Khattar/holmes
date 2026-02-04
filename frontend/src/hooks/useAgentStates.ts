@@ -8,6 +8,7 @@ import { AGENT_CONFIGS } from "@/lib/command-center-config";
 import { createDemoAgentStates } from "@/lib/mock-command-center-data";
 import type {
   AgentState,
+  AgentStatus,
   AgentType,
   CommandCenterSSEEvent,
   ProcessingSummary,
@@ -15,10 +16,33 @@ import type {
   AgentCompleteEvent,
   AgentErrorEvent,
   ProcessingCompleteEvent,
+  ThinkingUpdateEvent,
+  StateSnapshotEvent,
+  ConfirmationRequiredEvent,
+  ConfirmationResolvedEvent,
+  ToolCalledEvent,
 } from "@/types/command-center";
 
 /** Delay before activating demo mode when no SSE connection is established */
 const DEMO_MODE_DELAY_MS = 3000;
+
+/**
+ * Maps backend execution status strings to frontend AgentStatus values.
+ * Backend sends lowercased enum values: pending, running, completed, failed.
+ */
+function mapSnapshotStatus(backendStatus: string): AgentStatus {
+  switch (backendStatus) {
+    case "running":
+      return "processing";
+    case "completed":
+      return "complete";
+    case "failed":
+      return "error";
+    case "pending":
+    default:
+      return "idle";
+  }
+}
 
 function createInitialStates(): Map<AgentType, AgentState> {
   const states = new Map<AgentType, AgentState>();
@@ -37,6 +61,7 @@ function createInitialStates(): Map<AgentType, AgentState> {
 export interface UseAgentStatesReturn {
   agentStates: Map<AgentType, AgentState>;
   lastProcessingSummary: ProcessingSummary | null;
+  pendingConfirmations: ConfirmationRequiredEvent[];
   isConnected: boolean;
   isReconnecting: boolean;
 }
@@ -45,6 +70,9 @@ export interface UseAgentStatesReturn {
  * Manages the full agent state lifecycle:
  * - Initializes idle state for all configured agent types
  * - Processes SSE events (started, complete, error, processing-complete)
+ * - Handles thinking-update events by appending traces to agent state
+ * - Handles state-snapshot events for reconnection state restoration
+ * - Tracks pending HITL confirmation requests
  * - Falls back to demo mode with mock data when backend is unavailable
  *
  * TODO: Remove demo mode fallback when backend SSE is fully integrated
@@ -54,6 +82,9 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     useState<Map<AgentType, AgentState>>(createInitialStates);
   const [lastProcessingSummary, setLastProcessingSummary] =
     useState<ProcessingSummary | null>(null);
+  const [pendingConfirmations, setPendingConfirmations] = useState<
+    ConfirmationRequiredEvent[]
+  >([]);
 
   // ------- SSE event handlers -------
 
@@ -139,10 +170,168 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
         entitiesCreated: e.entitiesCreated,
         relationshipsCreated: e.relationshipsCreated,
         completedAt: new Date(),
+        totalDurationMs: e.totalDurationMs,
+        totalInputTokens: e.totalInputTokens,
+        totalOutputTokens: e.totalOutputTokens,
       });
     },
     [],
   );
+
+  const handleThinkingUpdate = useCallback((event: CommandCenterSSEEvent) => {
+    const e = event as ThinkingUpdateEvent;
+    const agentType = e.agentType;
+    setAgentStates((prev) => {
+      const next = new Map(prev);
+      const state = next.get(agentType);
+      if (state) {
+        // Validate existing traces is actually a string before concatenation
+        const rawTraces = state.lastResult?.metadata?.thinkingTraces;
+        const existingTraces = typeof rawTraces === "string" ? rawTraces : "";
+        let updatedTraces = existingTraces
+          ? existingTraces + "\n" + e.thought
+          : e.thought;
+        // Limit trace length to prevent unbounded memory growth (100KB max)
+        const MAX_TRACES_LENGTH = 100_000;
+        if (updatedTraces.length > MAX_TRACES_LENGTH) {
+          updatedTraces = updatedTraces.slice(-MAX_TRACES_LENGTH);
+        }
+        next.set(agentType, {
+          ...state,
+          lastResult: {
+            ...(state.lastResult || {
+              taskId: "",
+              agentType,
+              outputs: [],
+            }),
+            metadata: {
+              ...(state.lastResult?.metadata || {}),
+              thinkingTraces: updatedTraces,
+            },
+          },
+        });
+      }
+      return next;
+    });
+  }, []);
+
+  const handleStateSnapshot = useCallback((event: CommandCenterSSEEvent) => {
+    const e = event as StateSnapshotEvent;
+    setAgentStates((prev) => {
+      const next = new Map(prev);
+      for (const [agentName, agentData] of Object.entries(e.agents)) {
+        // Validate agentData structure before using it
+        if (
+          typeof agentData !== "object" ||
+          agentData === null ||
+          typeof agentData.status !== "string"
+        ) {
+          console.warn(`Invalid agentData for ${agentName}, skipping`);
+          continue;
+        }
+
+        const agentType = agentName as AgentType;
+        const existingState = next.get(agentType);
+        if (existingState) {
+          const frontendStatus = mapSnapshotStatus(agentData.status);
+          // Safely extract metadata with type checks
+          const meta = agentData.metadata;
+          const validatedMetadata =
+            meta && typeof meta === "object"
+              ? {
+                  inputTokens:
+                    typeof meta.inputTokens === "number"
+                      ? meta.inputTokens
+                      : undefined,
+                  outputTokens:
+                    typeof meta.outputTokens === "number"
+                      ? meta.outputTokens
+                      : undefined,
+                  durationMs:
+                    typeof meta.durationMs === "number"
+                      ? meta.durationMs
+                      : undefined,
+                  startedAt:
+                    typeof meta.startedAt === "string"
+                      ? meta.startedAt
+                      : undefined,
+                  completedAt:
+                    typeof meta.completedAt === "string"
+                      ? meta.completedAt
+                      : undefined,
+                  model:
+                    typeof meta.model === "string" ? meta.model : undefined,
+                  thinkingTraces:
+                    typeof meta.thinkingTraces === "string"
+                      ? meta.thinkingTraces
+                      : undefined,
+                }
+              : undefined;
+
+          next.set(agentType, {
+            ...existingState,
+            status: frontendStatus,
+            lastResult: agentData.lastResult || {
+              taskId: "",
+              agentType,
+              outputs: [],
+              metadata: validatedMetadata,
+            },
+          });
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  const handleConfirmationRequired = useCallback(
+    (event: CommandCenterSSEEvent) => {
+      const e = event as ConfirmationRequiredEvent;
+      setPendingConfirmations((prev) => [...prev, e]);
+    },
+    [],
+  );
+
+  const handleConfirmationResolved = useCallback(
+    (event: CommandCenterSSEEvent) => {
+      const e = event as ConfirmationResolvedEvent;
+      setPendingConfirmations((prev) =>
+        prev.filter((c) => c.taskId !== e.taskId),
+      );
+    },
+    [],
+  );
+
+  const handleToolCalled = useCallback((event: CommandCenterSSEEvent) => {
+    const e = event as ToolCalledEvent;
+    const agentType = e.agentType;
+    setAgentStates((prev) => {
+      const next = new Map(prev);
+      const state = next.get(agentType);
+      if (state) {
+        // Add tool to the list of tools called for this agent
+        const existingTools = state.lastResult?.toolsCalled || [];
+        // Avoid duplicates and limit to 20 most recent tools
+        const MAX_TOOLS_TRACKED = 20;
+        const updatedTools = existingTools.includes(e.toolName)
+          ? existingTools
+          : [...existingTools, e.toolName].slice(-MAX_TOOLS_TRACKED);
+
+        next.set(agentType, {
+          ...state,
+          lastResult: {
+            ...(state.lastResult || {
+              taskId: "",
+              agentType,
+              outputs: [],
+            }),
+            toolsCalled: updatedTools,
+          },
+        });
+      }
+      return next;
+    });
+  }, []);
 
   // ------- SSE connection -------
 
@@ -152,6 +341,11 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     onAgentComplete: handleAgentComplete,
     onAgentError: handleAgentError,
     onProcessingComplete: handleProcessingComplete,
+    onThinkingUpdate: handleThinkingUpdate,
+    onStateSnapshot: handleStateSnapshot,
+    onConfirmationRequired: handleConfirmationRequired,
+    onConfirmationResolved: handleConfirmationResolved,
+    onToolCalled: handleToolCalled,
   });
 
   // ------- Demo mode fallback -------
@@ -176,5 +370,11 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     }
   }, [isConnected]);
 
-  return { agentStates, lastProcessingSummary, isConnected, isReconnecting };
+  return {
+    agentStates,
+    lastProcessingSummary,
+    pendingConfirmations,
+    isConnected,
+    isReconnecting,
+  };
 }

@@ -7,9 +7,10 @@ import { memo, useRef, useState, useCallback } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { createPortal } from "react-dom";
 import { motion, type Easing } from "motion/react";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, Clock } from "lucide-react";
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
+import { formatDuration } from "@/lib/formatting";
 import type { AgentType, AgentState } from "@/types/command-center";
 
 // -----------------------------------------------------------------------
@@ -105,6 +106,9 @@ function DecisionNodeInner({ data }: NodeProps) {
   const warningCount = warnings?.length ?? 0;
 
   const badgeText = getBadgeText(agentState);
+  const durationMs = agentState.lastResult?.metadata?.durationMs as
+    | number
+    | undefined;
 
   // ------- Tooltip handlers -------
   const handleMouseEnter = useCallback(() => {
@@ -236,6 +240,8 @@ function DecisionNodeInner({ data }: NodeProps) {
                 <Loader2
                   className="w-4 h-4 animate-spin shrink-0"
                   style={{ color: `hsl(${accent})` }}
+                  aria-label="Processing"
+                  role="status"
                 />
               )}
             </div>
@@ -264,9 +270,28 @@ function DecisionNodeInner({ data }: NodeProps) {
                     background: "hsl(45 100% 50% / 0.15)",
                     color: "hsl(45 100% 60%)",
                   }}
+                  role="status"
+                  aria-label={`${warningCount} warning${warningCount > 1 ? "s" : ""}`}
                 >
-                  <AlertTriangle className="w-3 h-3" />
+                  <AlertTriangle className="w-3 h-3" aria-hidden="true" />
                   {warningCount}
+                </span>
+              )}
+
+              {/* Duration badge for completed agents */}
+              {durationMs !== undefined && durationMs > 0 && (
+                <span
+                  className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full"
+                  style={{
+                    background: isActive
+                      ? `hsl(${accent} / 0.15)`
+                      : "hsl(0 0% 50% / 0.1)",
+                    color: isActive ? `hsl(${accent})` : "hsl(0 0% 50% / 0.5)",
+                  }}
+                  aria-label={`Duration: ${formatDuration(durationMs)}`}
+                >
+                  <Clock className="w-3 h-3" aria-hidden="true" />
+                  {formatDuration(durationMs)}
                 </span>
               )}
             </div>

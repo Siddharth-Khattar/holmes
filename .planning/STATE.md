@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-04
-**Current Phase:** 5 of 12 (Agent Flow) — In progress
-**Current Plan:** 3 of 4 complete (05-03 Frontend SSE Integration)
+**Current Phase:** 5 of 12 (Agent Flow) — Awaiting checkpoint verification
+**Current Plan:** 4 of 4 complete (05-04 HITL Confirmation UI) -- pending human-verify checkpoint
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -15,7 +15,7 @@
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
-| 5 | Agent Flow | IN_PROGRESS | 2026-02-04 | - | Plans 01-03 complete (SSE enrichment, HITL confirmations, frontend SSE integration); Plan 04 pending |
+| 5 | Agent Flow | IN_PROGRESS | 2026-02-04 | - | Plans 01-04 complete (SSE enrichment, HITL backend, frontend SSE, HITL UI); awaiting checkpoint verification |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
@@ -31,12 +31,13 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 5 Plan 03 Complete** (2026-02-04): Frontend SSE integration (2 tasks, 2 commits)
-  - Task 1: Added ThinkingUpdateEvent, StateSnapshotEvent, ConfirmationRequiredEvent, ConfirmationResolvedEvent types and validators
-  - Task 2: Fixed SSE URL to NEXT_PUBLIC_API_URL, added thinking/snapshot/confirmation event handlers in hooks, pending confirmations state
+- **Phase 5 Plan 04 Complete** (2026-02-04): HITL confirmation UI (2 tasks, 2 commits)
+  - Task 1: ConfirmationModal with approve/reject flow, confirmations API client, tab badge support
+  - Task 2: Token usage and timing CollapsibleSections in sidebar, duration badge on DecisionNode, ExecutionTimeline Gantt chart
+  - Awaiting checkpoint:human-verify for full Phase 5 visual verification
 
 **What's next:**
-- Phase 5 Plan 04: HITL confirmation UI (modal dialog consuming pendingConfirmations state)
+- Phase 5 checkpoint verification (visual check of full agent flow pipeline)
 - Phase 6 (Domain Agents), Phase 7 (Synthesis & KG)
 
 ---
@@ -64,6 +65,9 @@
 | Types | `frontend/src/types/command-center.ts` |
 | Command center page | `frontend/src/app/(app)/cases/[id]/command-center/page.tsx` |
 | Command center demo page | `frontend/src/app/(app)/cases/[id]/command-center-demo/page.tsx` |
+| HITL confirmation modal | `frontend/src/components/CommandCenter/ConfirmationModal.tsx` |
+| Execution timeline (Gantt) | `frontend/src/components/CommandCenter/ExecutionTimeline.tsx` |
+| Confirmations API client | `frontend/src/lib/api/confirmations.ts` |
 | Agent nodes (legacy, dead code) | `frontend/src/components/CommandCenter/AgentNode.tsx` |
 | Details panel (legacy, dead code) | `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx` |
 
@@ -275,6 +279,10 @@ All frontend features need these backend endpoints:
 | Frontend SSE URL | Relative /api/ path vs NEXT_PUBLIC_API_URL | NEXT_PUBLIC_API_URL + /sse/ prefix | Matches backend route pattern; env var consistent with REST API client |
 | Backend status mapping | Direct string passthrough vs Mapped enum | mapSnapshotStatus() translation | Backend sends pending/running/completed/failed; frontend uses idle/processing/complete/error |
 | Confirmation state shape | Separate store vs In useAgentStates | In useAgentStates as pendingConfirmations array | Colocated with agent state; Plan 04 consumes directly |
+| Sidebar token/timing sections | Inline variables vs IIFE scoping | IIFE pattern for CollapsibleSections | Scopes metadata extraction locally without polluting component scope |
+| Sidebar cross-agent data | React context vs Optional prop | allAgentStates optional prop | Self-contained; avoids provider overhead for single consumer |
+| Confirmation modal dismiss | Click-outside-to-dismiss vs Blocked | Blocked (no outside dismiss) | Important agent decisions should not be accidentally dismissed |
+| Tab notification badge | New cross-page context vs Tab badge property | Tab badge property | Lightweight; rendering support in ExpandableTabs, wiring per-page |
 
 ---
 
@@ -287,7 +295,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Completed 05-03-PLAN.md (Frontend SSE Integration, 2 tasks, 2 commits)
+Stopped at: Completed 05-04-PLAN.md Tasks 1-2 (HITL Confirmation UI, 2 tasks, 2 commits); awaiting checkpoint:human-verify
 Resume file: None
 
 ---

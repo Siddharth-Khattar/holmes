@@ -489,7 +489,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
               Evidence Library
             </h1>
             {caseName && (
-              <p className="text-sm mt-1 text-muted-foreground">{caseName}</p>
+              <p className="text-xs mt-0.5 text-stone">{caseName}</p>
             )}
           </div>
           <div className="text-sm text-muted-foreground">
@@ -545,7 +545,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                     className="flex items-center justify-between text-sm"
                   >
                     <span
-                      className="truncate max-w-[200px]"
+                      className="truncate max-w-50"
                       style={{ color: "var(--foreground)" }}
                     >
                       {fileProgress.file.name}
@@ -655,7 +655,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
         {/* Category Filters */}
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Filter:</span>
+          <span className="text-xs text-muted-foreground">Filter:</span>
           {(
             [
               "all",
@@ -668,9 +668,9 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+              className={`px-2.5 py-0.5 text-xs rounded-lg transition-colors ${
                 selectedCategory === category
-                  ? "bg-[#2a2825] dark:bg-[#f5f4ef] text-[#faf9f7] dark:text-[#050505]"
+                  ? "bg-accent-light dark:bg-[#f5f4ef] text-cream dark:text-charcoal"
                   : "bg-warm-gray/8 dark:bg-stone/10 text-muted-foreground hover:bg-warm-gray/12 dark:hover:bg-stone/15"
               }`}
             >
@@ -687,7 +687,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
             placeholder="Search files..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-warm-gray/15 dark:border-stone/15 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#2a2825]/30 dark:focus:ring-[#f5f4ef]/30 transition-colors"
+            className="w-full pl-10 pr-4 py-1.5 text-sm rounded-lg border border-warm-gray/15 dark:border-stone/15 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent-light/30 dark:focus:ring-[#f5f4ef]/30 transition-colors"
           />
         </div>
       </div>
@@ -794,7 +794,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
           </div>
         ) : filteredFiles.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {files.length === 0
                 ? "No files uploaded yet. Drag & drop files above to get started."
                 : "No files match your search criteria."}

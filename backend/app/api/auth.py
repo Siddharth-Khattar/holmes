@@ -193,6 +193,12 @@ async def _authenticate_user(
 # Conditionally define get_current_user with the appropriate FastAPI signature.
 # When dev auth is enabled, the dev_api_key header parameter is included;
 # when disabled, it is excluded entirely so it never leaks into the OpenAPI schema.
+#
+# NOTE: The type: ignore[misc] below is intentional. Mypy does not support
+# conditional function redefinition. This pattern is required to:
+# 1. Keep dev auth parameters out of production OpenAPI schema
+# 2. Ensure FastAPI dependency injection works correctly in each mode
+# Both branches define the same logical function with the same return type.
 if _dev_api_key_scheme:
 
     async def get_current_user(
@@ -207,7 +213,7 @@ if _dev_api_key_scheme:
 
 else:
 
-    async def get_current_user(  # type: ignore[misc]
+    async def get_current_user(  # type: ignore[misc]  # Intentional: conditional redefinition
         db: Annotated[AsyncSession, Depends(get_db)],
         bearer_token: Annotated[
             HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)

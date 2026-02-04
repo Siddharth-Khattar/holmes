@@ -7,12 +7,19 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias, TypedDict
 
 if TYPE_CHECKING:
     from app.services.agent_events import AgentEventType
 
+from google.adk.agents.base_agent import AfterAgentCallback, BeforeAgentCallback
 from google.adk.agents.callback_context import CallbackContext
+from google.adk.agents.llm_agent import (
+    AfterModelCallback,
+    AfterToolCallback,
+    BeforeModelCallback,
+    BeforeToolCallback,
+)
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.adk.planners import BuiltInPlanner
@@ -85,6 +92,21 @@ THINKING_CONFIG_HIGH: dict[str, object] = {
 PublishFn: TypeAlias = Callable[[str, dict[str, object]], Awaitable[None] | None]  # noqa: UP040
 
 
+class AgentCallbacks(TypedDict):
+    """Type-safe dict for ADK LlmAgent callback parameters.
+
+    Each key corresponds to a callback parameter accepted by LlmAgent.__init__.
+    Using TypedDict ensures type safety when unpacking with **callbacks.
+    """
+
+    before_agent_callback: BeforeAgentCallback
+    after_agent_callback: AfterAgentCallback
+    before_model_callback: BeforeModelCallback
+    after_model_callback: AfterModelCallback
+    before_tool_callback: BeforeToolCallback
+    after_tool_callback: AfterToolCallback
+
+
 # ---------------------------------------------------------------------------
 # Callback factory
 # ---------------------------------------------------------------------------
@@ -93,7 +115,7 @@ PublishFn: TypeAlias = Callable[[str, dict[str, object]], Awaitable[None] | None
 def create_agent_callbacks(
     case_id: str,
     publish_fn: PublishFn,
-) -> dict[str, Callable[..., object]]:
+) -> AgentCallbacks:
     """Build all six ADK agent callback hooks wired to an SSE publish function.
 
     Each callback publishes a structured event via ``publish_fn`` so the
@@ -226,9 +248,9 @@ def create_agent_callbacks(
 
     def before_tool(
         tool: BaseTool,
-        args: dict[str, object],
+        args: dict[str, Any],
         tool_context: ToolContext,
-    ) -> dict[str, object] | None:
+    ) -> dict[str, Any] | None:
         _fire(
             "TOOL_CALLED",
             {
@@ -244,10 +266,10 @@ def create_agent_callbacks(
 
     def after_tool(
         tool: BaseTool,
-        args: dict[str, object],
+        args: dict[str, Any],
         tool_context: ToolContext,
-        tool_result: dict[str, object],
-    ) -> dict[str, object] | None:
+        tool_result: dict[str, Any],
+    ) -> dict[str, Any] | None:
         _fire(
             "TOOL_COMPLETED",
             {

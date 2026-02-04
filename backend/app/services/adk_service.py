@@ -12,7 +12,10 @@ from uuid import UUID
 from google.adk.artifacts import GcsArtifactService
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService, Session
-from google.cloud import storage  # type: ignore[attr-defined]
+
+# google-cloud-storage doesn't ship type stubs (no py.typed marker)
+# See: https://github.com/googleapis/python-storage/issues/393
+from google.cloud import storage  # type: ignore[import-untyped,attr-defined]
 from google.genai import types
 
 if TYPE_CHECKING:
@@ -232,8 +235,13 @@ async def prepare_file_via_api(
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval
             poll_interval = min(poll_interval * 1.5, 15.0)
-            assert uploaded.name is not None  # Guaranteed after upload
-            uploaded = genai_client.files.get(name=uploaded.name)
+            # Type narrowing: uploaded.name is guaranteed non-None after successful upload
+            file_name = uploaded.name
+            if file_name is None:
+                raise RuntimeError(
+                    "File API returned file without name - upload may have failed"
+                )
+            uploaded = genai_client.files.get(name=file_name)
 
         if uploaded.state and uploaded.state.name == "FAILED":
             raise RuntimeError(f"File API processing failed: {uploaded.name}")

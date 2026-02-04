@@ -12,7 +12,10 @@ from fastapi import UploadFile
 from google.auth import default, impersonated_credentials
 from google.auth.credentials import Credentials
 from google.auth.transport import requests as google_auth_requests
-from google.cloud import storage  # type: ignore[attr-defined]
+
+# google-cloud-storage doesn't ship type stubs (no py.typed marker)
+# See: https://github.com/googleapis/python-storage/issues/393
+from google.cloud import storage  # type: ignore[import-untyped,attr-defined]
 
 from app.config import settings
 from app.models.file import FileCategory

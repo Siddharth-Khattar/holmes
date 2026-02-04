@@ -6,6 +6,7 @@ export type AgentType =
   | "financial"
   | "legal"
   | "strategy"
+  | "evidence"
   | "knowledge-graph";
 
 export type AgentStatus = "idle" | "processing" | "complete" | "error";

@@ -151,6 +151,9 @@
   --cc-strategy-tint: 25 42% 20%;
   --cc-strategy-accent: 25 70% 62%;
 
+  --cc-evidence-tint: 350 35% 20%;
+  --cc-evidence-accent: 350 60% 60%;
+
   --cc-kg-tint: 270 35% 22%;
   --cc-kg-accent: 270 60% 68%;
 }

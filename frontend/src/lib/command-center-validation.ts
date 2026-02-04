@@ -20,6 +20,7 @@ const VALID_AGENT_TYPES: AgentType[] = [
   "financial",
   "legal",
   "strategy",
+  "evidence",
   "knowledge-graph",
 ];
 

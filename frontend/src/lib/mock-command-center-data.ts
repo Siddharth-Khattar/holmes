@@ -155,6 +155,11 @@ export class MockCommandCenterEventGenerator {
         "cross_reference_finder()",
         "insight_generator()",
       ],
+      evidence: [
+        "authenticity_verifier()",
+        "chain_of_custody_tracker()",
+        "corroboration_scorer()",
+      ],
       "knowledge-graph": [
         "graph_builder()",
         "relationship_mapper()",

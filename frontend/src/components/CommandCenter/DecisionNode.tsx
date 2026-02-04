@@ -7,7 +7,7 @@ import { memo, useRef, useState, useCallback } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { createPortal } from "react-dom";
 import { motion, type Easing } from "motion/react";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, Clock } from "lucide-react";
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
 import type { AgentType, AgentState } from "@/types/command-center";
@@ -78,6 +78,17 @@ function getBadgeText(agentState: AgentState): string | null {
 }
 
 // -----------------------------------------------------------------------
+// Duration formatting helper
+// -----------------------------------------------------------------------
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.round((ms % 60000) / 1000);
+  return `${minutes}m ${seconds}s`;
+}
+
+// -----------------------------------------------------------------------
 // DecisionNode Component
 // -----------------------------------------------------------------------
 function DecisionNodeInner({ data }: NodeProps) {
@@ -105,6 +116,9 @@ function DecisionNodeInner({ data }: NodeProps) {
   const warningCount = warnings?.length ?? 0;
 
   const badgeText = getBadgeText(agentState);
+  const durationMs = agentState.lastResult?.metadata?.durationMs as
+    | number
+    | undefined;
 
   // ------- Tooltip handlers -------
   const handleMouseEnter = useCallback(() => {
@@ -267,6 +281,22 @@ function DecisionNodeInner({ data }: NodeProps) {
                 >
                   <AlertTriangle className="w-3 h-3" />
                   {warningCount}
+                </span>
+              )}
+
+              {/* Duration badge for completed agents */}
+              {durationMs !== undefined && durationMs > 0 && (
+                <span
+                  className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full"
+                  style={{
+                    background: isActive
+                      ? `hsl(${accent} / 0.15)`
+                      : "hsl(0 0% 50% / 0.1)",
+                    color: isActive ? `hsl(${accent})` : "hsl(0 0% 50% / 0.5)",
+                  }}
+                >
+                  <Clock className="w-3 h-3" />
+                  {formatDuration(durationMs)}
                 </span>
               )}
             </div>

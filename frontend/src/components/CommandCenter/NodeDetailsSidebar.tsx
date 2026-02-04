@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
+import { ExecutionTimeline } from "@/components/CommandCenter/ExecutionTimeline";
 import type {
   AgentType,
   AgentState,
@@ -35,6 +36,7 @@ import type {
 interface NodeDetailsSidebarProps {
   agentType: AgentType | null;
   agentState: AgentState | null;
+  allAgentStates?: Map<AgentType, AgentState>;
   onClose: () => void;
 }
 
@@ -694,6 +696,31 @@ function extractFromOutputs<T>(
 }
 
 // -----------------------------------------------------------------------
+// Formatting helpers for timing and token display
+// -----------------------------------------------------------------------
+
+/** Format milliseconds into a human-readable duration string */
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.round((ms % 60000) / 1000);
+  return `${minutes}m ${seconds}s`;
+}
+
+/** Format an ISO timestamp string to a localized time string */
+function formatTime(isoString: string): string {
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return isoString;
+  return date.toLocaleTimeString();
+}
+
+/** Format a number with locale-appropriate thousand separators */
+function formatNumber(n: number): string {
+  return n.toLocaleString();
+}
+
+// -----------------------------------------------------------------------
 // Source label for the input context section
 // -----------------------------------------------------------------------
 function getSourceLabel(agentType: AgentType): string {
@@ -713,6 +740,7 @@ function getSourceLabel(agentType: AgentType): string {
 export function NodeDetailsSidebar({
   agentType,
   agentState,
+  allAgentStates,
   onClose,
 }: NodeDetailsSidebarProps) {
   if (!agentType || !agentState) return null;
@@ -831,6 +859,97 @@ export function NodeDetailsSidebar({
             </p>
           )}
         </CollapsibleSection>
+
+        {/* Token Usage */}
+        {(() => {
+          const inputTokens = result?.metadata?.inputTokens as
+            | number
+            | undefined;
+          const outputTokens = result?.metadata?.outputTokens as
+            | number
+            | undefined;
+          const model = result?.metadata?.model as string | undefined;
+          if (inputTokens === undefined && outputTokens === undefined)
+            return null;
+          return (
+            <CollapsibleSection
+              title="Token Usage"
+              color="hsl(var(--cc-accent))"
+              icon={<BarChart3 className="w-3.5 h-3.5" />}
+            >
+              <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
+                {inputTokens !== undefined && (
+                  <>
+                    <span className="text-stone text-xs">Input Tokens</span>
+                    <span className="text-smoke text-xs font-medium text-right">
+                      {formatNumber(inputTokens)}
+                    </span>
+                  </>
+                )}
+                {outputTokens !== undefined && (
+                  <>
+                    <span className="text-stone text-xs">Output Tokens</span>
+                    <span className="text-smoke text-xs font-medium text-right">
+                      {formatNumber(outputTokens)}
+                    </span>
+                  </>
+                )}
+                {model && (
+                  <>
+                    <span className="text-stone text-xs">Model</span>
+                    <span className="text-smoke text-xs font-medium text-right truncate">
+                      {model}
+                    </span>
+                  </>
+                )}
+              </div>
+            </CollapsibleSection>
+          );
+        })()}
+
+        {/* Timing */}
+        {(() => {
+          const durationMs = result?.metadata?.durationMs as number | undefined;
+          const startedAt = result?.metadata?.startedAt as string | undefined;
+          const completedAt = result?.metadata?.completedAt as
+            | string
+            | undefined;
+          if (!durationMs && !startedAt) return null;
+          return (
+            <CollapsibleSection
+              title="Timing"
+              color="hsl(var(--cc-accent))"
+              icon={<Clock className="w-3.5 h-3.5" />}
+            >
+              <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
+                {durationMs !== undefined && durationMs > 0 && (
+                  <>
+                    <span className="text-stone text-xs">Duration</span>
+                    <span className="text-smoke text-xs font-medium text-right">
+                      {formatDuration(durationMs)}
+                    </span>
+                  </>
+                )}
+                {startedAt && (
+                  <>
+                    <span className="text-stone text-xs">Started</span>
+                    <span className="text-smoke text-xs font-medium text-right">
+                      {formatTime(startedAt)}
+                    </span>
+                  </>
+                )}
+                {completedAt && (
+                  <>
+                    <span className="text-stone text-xs">Completed</span>
+                    <span className="text-smoke text-xs font-medium text-right">
+                      {formatTime(completedAt)}
+                    </span>
+                  </>
+                )}
+              </div>
+            </CollapsibleSection>
+          );
+        })()}
 
         {/* Agent-type-specific sections */}
         {agentType === "triage" && <TriageSections agentState={agentState} />}
@@ -991,6 +1110,26 @@ export function NodeDetailsSidebar({
             </div>
           </CollapsibleSection>
         )}
+
+        {/* Execution Timeline (requires multiple agents with timing data) */}
+        {allAgentStates &&
+          (() => {
+            let agentsWithTiming = 0;
+            for (const [, s] of allAgentStates) {
+              if (s.lastResult?.metadata?.durationMs) agentsWithTiming++;
+            }
+            if (agentsWithTiming < 2) return null;
+            return (
+              <CollapsibleSection
+                title="Execution Timeline"
+                color="hsl(var(--cc-accent))"
+                icon={<BarChart3 className="w-3.5 h-3.5" />}
+                badge={`${agentsWithTiming} agents`}
+              >
+                <ExecutionTimeline agentStates={allAgentStates} />
+              </CollapsibleSection>
+            );
+          })()}
 
         {/* Idle/empty state */}
         {!agentState.currentTask &&

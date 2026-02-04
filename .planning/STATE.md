@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-04
 **Current Phase:** 5 of 12 (Agent Flow) — In progress
-**Current Plan:** 2 of 4 complete (05-02 HITL Confirmation Dialogs)
+**Current Plan:** 3 of 4 complete (05-03 Frontend SSE Integration)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -15,7 +15,7 @@
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
-| 5 | Agent Flow | IN_PROGRESS | 2026-02-04 | - | Plans 01-02 complete (SSE enrichment, HITL confirmations); Plans 03-04 pending |
+| 5 | Agent Flow | IN_PROGRESS | 2026-02-04 | - | Plans 01-03 complete (SSE enrichment, HITL confirmations, frontend SSE integration); Plan 04 pending |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
@@ -31,12 +31,12 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 5 Plan 02 Complete** (2026-02-04): HITL confirmation dialogs (2 tasks, 2 commits)
-  - Task 1: confirmation.py service with asyncio.Event pause/resume pattern, ConfirmationRequest/Result models, request_confirmation/resolve_confirmation/get_pending functions
-  - Task 2: REST API endpoints (POST approve/reject, GET pending list), confirmations router registered in main.py
+- **Phase 5 Plan 03 Complete** (2026-02-04): Frontend SSE integration (2 tasks, 2 commits)
+  - Task 1: Added ThinkingUpdateEvent, StateSnapshotEvent, ConfirmationRequiredEvent, ConfirmationResolvedEvent types and validators
+  - Task 2: Fixed SSE URL to NEXT_PUBLIC_API_URL, added thinking/snapshot/confirmation event handlers in hooks, pending confirmations state
 
 **What's next:**
-- Phase 5 Plan 03-04: Remaining agent flow backend work
+- Phase 5 Plan 04: HITL confirmation UI (modal dialog consuming pendingConfirmations state)
 - Phase 6 (Domain Agents), Phase 7 (Synthesis & KG)
 
 ---
@@ -272,6 +272,9 @@ All frontend features need these backend endpoints:
 | Confirmation storage | Database vs In-memory | In-memory dicts | Single-instance hackathon deployment; three dicts for events/results/requests |
 | Confirmation auth | Full auth vs No auth | No auth | Hackathon simplicity; SSE events already scoped to case |
 | Confirmation SSE emission from sync | Inline await vs loop.create_task | loop.create_task | resolve_confirmation is sync (called from FastAPI endpoint); uses create_task for non-blocking async SSE emission |
+| Frontend SSE URL | Relative /api/ path vs NEXT_PUBLIC_API_URL | NEXT_PUBLIC_API_URL + /sse/ prefix | Matches backend route pattern; env var consistent with REST API client |
+| Backend status mapping | Direct string passthrough vs Mapped enum | mapSnapshotStatus() translation | Backend sends pending/running/completed/failed; frontend uses idle/processing/complete/error |
+| Confirmation state shape | Separate store vs In useAgentStates | In useAgentStates as pendingConfirmations array | Colocated with agent state; Plan 04 consumes directly |
 
 ---
 
@@ -284,7 +287,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Completed 05-02-PLAN.md (HITL Confirmation Dialogs, 2 tasks, 2 commits)
+Stopped at: Completed 05-03-PLAN.md (Frontend SSE Integration, 2 tasks, 2 commits)
 Resume file: None
 
 ---

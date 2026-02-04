@@ -13,7 +13,8 @@ type SSEEventType =
   | "thinking-update"
   | "state-snapshot"
   | "confirmation-required"
-  | "confirmation-resolved";
+  | "confirmation-resolved"
+  | "tool-called";
 
 interface UseCommandCenterSSEOptions {
   enabled?: boolean;
@@ -25,6 +26,7 @@ interface UseCommandCenterSSEOptions {
   onStateSnapshot?: (event: CommandCenterSSEEvent) => void;
   onConfirmationRequired?: (event: CommandCenterSSEEvent) => void;
   onConfirmationResolved?: (event: CommandCenterSSEEvent) => void;
+  onToolCalled?: (event: CommandCenterSSEEvent) => void;
 }
 
 export function useCommandCenterSSE(
@@ -41,6 +43,7 @@ export function useCommandCenterSSE(
     onStateSnapshot,
     onConfirmationRequired,
     onConfirmationResolved,
+    onToolCalled,
   } = options;
 
   const [isConnected, setIsConnected] = useState(false);
@@ -65,6 +68,7 @@ export function useCommandCenterSSE(
         "state-snapshot": onStateSnapshot,
         "confirmation-required": onConfirmationRequired,
         "confirmation-resolved": onConfirmationResolved,
+        "tool-called": onToolCalled,
       }) as Record<
         SSEEventType,
         ((event: CommandCenterSSEEvent) => void) | undefined
@@ -78,6 +82,7 @@ export function useCommandCenterSSE(
       onStateSnapshot,
       onConfirmationRequired,
       onConfirmationResolved,
+      onToolCalled,
     ],
   );
 

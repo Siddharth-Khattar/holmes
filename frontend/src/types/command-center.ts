@@ -145,6 +145,13 @@ export interface ConfirmationResolvedEvent {
   reason?: string;
 }
 
+export interface ToolCalledEvent {
+  type: "tool-called";
+  agentType: AgentType;
+  toolName: string;
+  timestamp: string;
+}
+
 export type CommandCenterSSEEvent =
   | AgentStartedEvent
   | AgentCompleteEvent
@@ -153,7 +160,8 @@ export type CommandCenterSSEEvent =
   | ThinkingUpdateEvent
   | StateSnapshotEvent
   | ConfirmationRequiredEvent
-  | ConfirmationResolvedEvent;
+  | ConfirmationResolvedEvent
+  | ToolCalledEvent;
 
 // Agent Configuration
 export interface AgentConfig {

@@ -20,6 +20,7 @@ import type {
   StateSnapshotEvent,
   ConfirmationRequiredEvent,
   ConfirmationResolvedEvent,
+  ToolCalledEvent,
 } from "@/types/command-center";
 
 /** Delay before activating demo mode when no SSE connection is established */
@@ -301,6 +302,37 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     [],
   );
 
+  const handleToolCalled = useCallback((event: CommandCenterSSEEvent) => {
+    const e = event as ToolCalledEvent;
+    const agentType = e.agentType;
+    setAgentStates((prev) => {
+      const next = new Map(prev);
+      const state = next.get(agentType);
+      if (state) {
+        // Add tool to the list of tools called for this agent
+        const existingTools = state.lastResult?.toolsCalled || [];
+        // Avoid duplicates and limit to 20 most recent tools
+        const MAX_TOOLS_TRACKED = 20;
+        const updatedTools = existingTools.includes(e.toolName)
+          ? existingTools
+          : [...existingTools, e.toolName].slice(-MAX_TOOLS_TRACKED);
+
+        next.set(agentType, {
+          ...state,
+          lastResult: {
+            ...(state.lastResult || {
+              taskId: "",
+              agentType,
+              outputs: [],
+            }),
+            toolsCalled: updatedTools,
+          },
+        });
+      }
+      return next;
+    });
+  }, []);
+
   // ------- SSE connection -------
 
   const { isConnected, isReconnecting } = useCommandCenterSSE(caseId, {
@@ -313,6 +345,7 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     onStateSnapshot: handleStateSnapshot,
     onConfirmationRequired: handleConfirmationRequired,
     onConfirmationResolved: handleConfirmationResolved,
+    onToolCalled: handleToolCalled,
   });
 
   // ------- Demo mode fallback -------

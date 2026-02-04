@@ -11,6 +11,7 @@ import type {
   StateSnapshotEvent,
   ConfirmationRequiredEvent,
   ConfirmationResolvedEvent,
+  ToolCalledEvent,
   AgentType,
 } from "@/types/command-center";
 
@@ -308,6 +309,22 @@ function validateConfirmationResolvedEvent(
 }
 
 /**
+ * Validates tool-called event
+ */
+function validateToolCalledEvent(data: unknown): data is ToolCalledEvent {
+  if (typeof data !== "object" || data === null) return false;
+
+  const event = data as Record<string, unknown>;
+
+  return (
+    event.type === "tool-called" &&
+    isValidAgentType(event.agentType) &&
+    typeof event.toolName === "string" &&
+    typeof event.timestamp === "string"
+  );
+}
+
+/**
  * Validates any Command Center SSE event
  * Returns the validated event or null if invalid
  */
@@ -376,6 +393,13 @@ export function validateCommandCenterEvent(
         return data as ConfirmationResolvedEvent;
       }
       console.warn("Invalid confirmation-resolved event", data);
+      return null;
+
+    case "tool-called":
+      if (validateToolCalledEvent(data)) {
+        return data as ToolCalledEvent;
+      }
+      console.warn("Invalid tool-called event", data);
       return null;
 
     default:

@@ -32,13 +32,13 @@ export function TimelineHeader({
         className,
       )}
     >
-      <div className="max-w-7xl mx-auto py-12 px-4 md:px-8 lg:px-10">
+      <div className="max-w-7xl mx-auto py-6 px-4 md:px-8 lg:px-10">
         {/* Title and description */}
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-5xl font-sans font-bold mb-3 tracking-tight text-foreground">
+        <div className="mb-5">
+          <h1 className="text-xl md:text-2xl font-sans font-bold mb-2 tracking-tight text-foreground">
             Case Timeline
           </h1>
-          <p className="text-base md:text-lg max-w-2xl tracking-body text-muted-foreground">
+          <p className="text-sm md:text-base max-w-2xl tracking-body text-muted-foreground">
             Chronological visualization of case events extracted from documents,
             organized by evidence, legal proceedings, and strategic actions.
           </p>

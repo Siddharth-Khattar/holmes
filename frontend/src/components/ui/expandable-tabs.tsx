@@ -64,14 +64,14 @@ export function ExpandableTabs({
             key={tab.title}
             onClick={() => handleSelect(tab.href)}
             className={cn(
-              "relative flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium cursor-pointer",
+              "relative flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-medium cursor-pointer",
               "transition-colors duration-150",
               isActive
                 ? "bg-white/15 text-foreground"
                 : "text-muted-foreground hover:text-foreground hover:bg-white/8",
             )}
           >
-            <Icon size={18} />
+            <Icon size={16} />
             <span>{tab.title}</span>
           </button>
         );

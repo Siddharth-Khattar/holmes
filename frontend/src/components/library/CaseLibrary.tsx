@@ -482,10 +482,10 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
   return (
     <div className="flex flex-col h-full w-full">
       {/* Header */}
-      <div className="flex-none px-6 py-4 border-b border-warm-gray/15 dark:border-stone/15">
+      <div className="flex-none px-6 py-3 border-b border-warm-gray/15 dark:border-stone/15">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-medium text-foreground">
+            <h1 className="text-base font-medium text-foreground">
               Evidence Library
             </h1>
             {caseName && (

@@ -70,17 +70,19 @@ export default function CaseLayout({
 
   if (loading) {
     return (
-      <div className="p-6 lg:p-8">
+      <div className="px-6 pt-4 pb-6 lg:px-8">
+        <div className="flex items-center gap-3 mb-3">
+          <div
+            className="h-4 w-4 rounded animate-pulse"
+            style={{ backgroundColor: "var(--muted)" }}
+          />
+          <div
+            className="h-5 w-48 rounded animate-pulse"
+            style={{ backgroundColor: "var(--muted)" }}
+          />
+        </div>
         <div
-          className="h-5 w-24 rounded animate-pulse mb-6"
-          style={{ backgroundColor: "var(--muted)" }}
-        />
-        <div
-          className="h-8 w-64 rounded animate-pulse mb-2"
-          style={{ backgroundColor: "var(--muted)" }}
-        />
-        <div
-          className="h-5 w-48 rounded animate-pulse mb-8"
+          className="h-4 w-72 rounded animate-pulse mb-4 ml-7"
           style={{ backgroundColor: "var(--muted)" }}
         />
         <div
@@ -115,53 +117,39 @@ export default function CaseLayout({
       className="min-h-screen"
       style={{ backgroundColor: "var(--background)" }}
     >
-      <div className="p-6 lg:p-8">
-        {/* Back link */}
-        <Link
-          href="/cases"
-          className="inline-flex items-center gap-1.5 mb-6 text-sm transition-colors"
-          style={{
-            color: "var(--muted-foreground)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "var(--foreground)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "var(--muted-foreground)";
-          }}
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Cases</span>
-        </Link>
-
-        {/* Header with Navigation */}
-        <div className="flex items-start justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1
-                className="text-2xl font-medium"
-                style={{ color: "var(--foreground)" }}
-              >
-                {caseData.name}
-              </h1>
-              <span
-                className={clsx(
-                  "px-2.5 py-1 rounded-full text-xs font-medium",
-                  status.className,
-                )}
-                style={status.style}
-              >
-                {status.label}
-              </span>
-            </div>
-            {caseData.description && (
-              <p
-                className="max-w-2xl"
-                style={{ color: "var(--muted-foreground)" }}
-              >
-                {caseData.description}
-              </p>
-            )}
+      <div className="px-6 pt-4 pb-6 lg:px-8">
+        {/* Case header row: back arrow, title, status, and navigation tabs */}
+        <div className="flex items-center justify-between mb-0.5">
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/cases"
+              className="inline-flex items-center justify-center rounded-md p-1.5 transition-colors"
+              style={{ color: "var(--muted-foreground)" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--foreground)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--muted-foreground)";
+              }}
+              aria-label="Back to cases"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <h1
+              className="text-base font-medium"
+              style={{ color: "var(--foreground)" }}
+            >
+              {caseData.name}
+            </h1>
+            <span
+              className={clsx(
+                "px-2 py-0.5 rounded-full text-xs font-medium",
+                status.className,
+              )}
+              style={status.style}
+            >
+              {status.label}
+            </span>
           </div>
 
           {/* Floating Navigation Tabs - Top Right */}
@@ -174,6 +162,16 @@ export default function CaseLayout({
             />
           </div>
         </div>
+
+        {/* Case description */}
+        {caseData.description && (
+          <p
+            className="max-w-2xl text-xs mb-4 ml-9"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            {caseData.description}
+          </p>
+        )}
 
         {/* Page Content */}
         {children}

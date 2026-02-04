@@ -1,10 +1,10 @@
 // ABOUTME: Command Center configuration - agent metadata, connection topology,
-// ABOUTME: teal accent tint mappings, and dagre layout constants.
+// ABOUTME: teal accent tint mappings, and layout dimension constants.
 
 import type { AgentConfig, AgentType } from "@/types/command-center";
 
-// Agent configurations with placeholder color/position (dagre computes positions,
-// CSS variables provide colors). Placeholders satisfy the AgentConfig type contract.
+// Agent configurations. Positions are placeholders (layout engine computes actual
+// positions). CSS variables provide colors. Placeholders satisfy the AgentConfig type.
 export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
   triage: {
     type: "triage",
@@ -70,23 +70,63 @@ export const DEFAULT_CONNECTIONS: Array<{
   { source: "strategy", target: "knowledge-graph" },
 ];
 
-// Maps each agent type to its scoped CSS variable for background hue tinting
-// on chosen/active nodes. Consumed by DecisionNode for per-agent visual identity.
-export const AGENT_TYPE_TINTS: Record<AgentType, string> = {
-  triage: "var(--cc-triage-tint)",
-  orchestrator: "var(--cc-orchestrator-tint)",
-  financial: "var(--cc-financial-tint)",
-  legal: "var(--cc-legal-tint)",
-  strategy: "var(--cc-strategy-tint)",
-  "knowledge-graph": "var(--cc-kg-tint)",
+// Per-agent color variable pair: tint (subtle background) and accent (bright text/glow)
+export interface AgentColorVars {
+  tint: string;
+  accent: string;
+}
+
+// Maps each agent type to its CSS variable pair for per-agent color identity.
+// Consumed by DecisionNode for background tint and accent text/glow.
+export const AGENT_TYPE_COLORS: Record<AgentType, AgentColorVars> = {
+  triage: { tint: "var(--cc-triage-tint)", accent: "var(--cc-triage-accent)" },
+  orchestrator: {
+    tint: "var(--cc-orchestrator-tint)",
+    accent: "var(--cc-orchestrator-accent)",
+  },
+  financial: {
+    tint: "var(--cc-financial-tint)",
+    accent: "var(--cc-financial-accent)",
+  },
+  legal: { tint: "var(--cc-legal-tint)", accent: "var(--cc-legal-accent)" },
+  strategy: {
+    tint: "var(--cc-strategy-tint)",
+    accent: "var(--cc-strategy-accent)",
+  },
+  "knowledge-graph": {
+    tint: "var(--cc-kg-tint)",
+    accent: "var(--cc-kg-accent)",
+  },
 };
 
-// Node dimensions for dagre layout computation. DecisionNode enforces the same
+/**
+ * Resolve color variables for an agent type. Returns CSS variable references for
+ * known types; for unknown/dynamic types, derives a deterministic hue from a djb2
+ * hash and returns raw HSL components that work identically in hsl() expressions.
+ */
+export function getAgentColors(agentType: string): AgentColorVars {
+  if (agentType in AGENT_TYPE_COLORS) {
+    return AGENT_TYPE_COLORS[agentType as AgentType];
+  }
+
+  // djb2 hash -> deterministic hue for unknown agent types
+  let hash = 5381;
+  for (let i = 0; i < agentType.length; i++) {
+    hash = (hash * 33) ^ agentType.charCodeAt(i);
+  }
+  const hue = (hash >>> 0) % 360;
+  return {
+    tint: `${hue} 28% 18%`,
+    accent: `${hue} 42% 55%`,
+  };
+}
+
+// Node dimensions for layout computation. DecisionNode enforces the same
 // fixed dimensions via Tailwind classes (w-[300px] h-[100px]).
 export const NODE_WIDTH = 300;
 export const NODE_HEIGHT = 100;
 
-// File group node dimensions for dagre layout. FileGroupNode enforces the same
+// File group node dimensions for layout. FileGroupNode enforces the same
 // fixed dimensions via inline styles (w-[240px] h-[80px]).
 export const FILE_GROUP_NODE_WIDTH = 240;
 export const FILE_GROUP_NODE_HEIGHT = 80;

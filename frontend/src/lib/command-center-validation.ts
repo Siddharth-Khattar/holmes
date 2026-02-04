@@ -7,6 +7,10 @@ import type {
   AgentCompleteEvent,
   AgentErrorEvent,
   ProcessingCompleteEvent,
+  ThinkingUpdateEvent,
+  StateSnapshotEvent,
+  ConfirmationRequiredEvent,
+  ConfirmationResolvedEvent,
   AgentType,
 } from "@/types/command-center";
 
@@ -151,12 +155,102 @@ function validateProcessingCompleteEvent(
 
   const event = data as Record<string, unknown>;
 
+  if (
+    event.type !== "processing-complete" ||
+    typeof event.caseId !== "string" ||
+    typeof event.filesProcessed !== "number" ||
+    typeof event.entitiesCreated !== "number" ||
+    typeof event.relationshipsCreated !== "number"
+  ) {
+    return false;
+  }
+
+  // Optional aggregate fields must be numbers if present
+  if (
+    event.totalDurationMs !== undefined &&
+    typeof event.totalDurationMs !== "number"
+  )
+    return false;
+  if (
+    event.totalInputTokens !== undefined &&
+    typeof event.totalInputTokens !== "number"
+  )
+    return false;
+  if (
+    event.totalOutputTokens !== undefined &&
+    typeof event.totalOutputTokens !== "number"
+  )
+    return false;
+
+  return true;
+}
+
+/**
+ * Validates thinking-update event
+ */
+function validateThinkingUpdateEvent(
+  data: unknown,
+): data is ThinkingUpdateEvent {
+  if (typeof data !== "object" || data === null) return false;
+
+  const event = data as Record<string, unknown>;
+
   return (
-    event.type === "processing-complete" &&
-    typeof event.caseId === "string" &&
-    typeof event.filesProcessed === "number" &&
-    typeof event.entitiesCreated === "number" &&
-    typeof event.relationshipsCreated === "number"
+    event.type === "thinking-update" &&
+    isValidAgentType(event.agentType) &&
+    typeof event.thought === "string" &&
+    typeof event.timestamp === "string"
+  );
+}
+
+/**
+ * Validates state-snapshot event
+ */
+function validateStateSnapshotEvent(data: unknown): data is StateSnapshotEvent {
+  if (typeof data !== "object" || data === null) return false;
+
+  const event = data as Record<string, unknown>;
+
+  return (
+    event.type === "state-snapshot" &&
+    typeof event.agents === "object" &&
+    event.agents !== null
+  );
+}
+
+/**
+ * Validates confirmation-required event
+ */
+function validateConfirmationRequiredEvent(
+  data: unknown,
+): data is ConfirmationRequiredEvent {
+  if (typeof data !== "object" || data === null) return false;
+
+  const event = data as Record<string, unknown>;
+
+  return (
+    event.type === "confirmation-required" &&
+    typeof event.requestId === "string" &&
+    isValidAgentType(event.agentType) &&
+    typeof event.actionDescription === "string" &&
+    Array.isArray(event.affectedItems)
+  );
+}
+
+/**
+ * Validates confirmation-resolved event
+ */
+function validateConfirmationResolvedEvent(
+  data: unknown,
+): data is ConfirmationResolvedEvent {
+  if (typeof data !== "object" || data === null) return false;
+
+  const event = data as Record<string, unknown>;
+
+  return (
+    event.type === "confirmation-resolved" &&
+    typeof event.requestId === "string" &&
+    typeof event.approved === "boolean"
   );
 }
 
@@ -201,6 +295,34 @@ export function validateCommandCenterEvent(
         return data as ProcessingCompleteEvent;
       }
       console.warn("Invalid processing-complete event", data);
+      return null;
+
+    case "thinking-update":
+      if (validateThinkingUpdateEvent(data)) {
+        return data as ThinkingUpdateEvent;
+      }
+      console.warn("Invalid thinking-update event", data);
+      return null;
+
+    case "state-snapshot":
+      if (validateStateSnapshotEvent(data)) {
+        return data as StateSnapshotEvent;
+      }
+      console.warn("Invalid state-snapshot event", data);
+      return null;
+
+    case "confirmation-required":
+      if (validateConfirmationRequiredEvent(data)) {
+        return data as ConfirmationRequiredEvent;
+      }
+      console.warn("Invalid confirmation-required event", data);
+      return null;
+
+    case "confirmation-resolved":
+      if (validateConfirmationResolvedEvent(data)) {
+        return data as ConfirmationResolvedEvent;
+      }
+      console.warn("Invalid confirmation-resolved event", data);
       return null;
 
     default:

@@ -91,13 +91,68 @@ export interface ProcessingCompleteEvent {
   filesProcessed: number;
   entitiesCreated: number;
   relationshipsCreated: number;
+  totalDurationMs?: number;
+  totalInputTokens?: number;
+  totalOutputTokens?: number;
+}
+
+export interface ThinkingUpdateEvent {
+  type: "thinking-update";
+  agentType: AgentType;
+  thought: string;
+  timestamp: string;
+  tokenDelta?: {
+    inputTokens: number;
+    outputTokens: number;
+    thoughtsTokens: number;
+  };
+}
+
+export interface StateSnapshotEvent {
+  type: "state-snapshot";
+  agents: Record<
+    string,
+    {
+      status: string;
+      metadata?: {
+        inputTokens?: number;
+        outputTokens?: number;
+        durationMs?: number;
+        startedAt?: string;
+        completedAt?: string;
+        model?: string;
+        thinkingTraces?: string;
+      };
+      lastResult?: AgentResult;
+    }
+  >;
+}
+
+export interface ConfirmationRequiredEvent {
+  type: "confirmation-required";
+  requestId: string;
+  agentType: AgentType;
+  actionDescription: string;
+  affectedItems: string[];
+  context: Record<string, unknown>;
+}
+
+export interface ConfirmationResolvedEvent {
+  type: "confirmation-resolved";
+  requestId: string;
+  approved: boolean;
+  reason?: string;
 }
 
 export type CommandCenterSSEEvent =
   | AgentStartedEvent
   | AgentCompleteEvent
   | AgentErrorEvent
-  | ProcessingCompleteEvent;
+  | ProcessingCompleteEvent
+  | ThinkingUpdateEvent
+  | StateSnapshotEvent
+  | ConfirmationRequiredEvent
+  | ConfirmationResolvedEvent;
 
 // Agent Configuration
 export interface AgentConfig {
@@ -114,4 +169,7 @@ export interface ProcessingSummary {
   entitiesCreated: number;
   relationshipsCreated: number;
   completedAt: Date;
+  totalDurationMs?: number;
+  totalInputTokens?: number;
+  totalOutputTokens?: number;
 }

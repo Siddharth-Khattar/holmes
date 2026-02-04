@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-04
 **Current Phase:** 5 of 12 (Agent Flow) — In progress
-**Current Plan:** 1 of 4 complete (05-01 SSE Event Enrichment)
+**Current Plan:** 2 of 4 complete (05-02 HITL Confirmation Dialogs)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -15,7 +15,7 @@
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
-| 5 | Agent Flow | IN_PROGRESS | 2026-02-04 | - | Plan 01 complete (SSE enrichment); Plans 02-04 pending |
+| 5 | Agent Flow | IN_PROGRESS | 2026-02-04 | - | Plans 01-02 complete (SSE enrichment, HITL confirmations); Plans 03-04 pending |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
@@ -31,13 +31,11 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 5 Plan 01 Complete** (2026-02-04): SSE event enrichment (2 tasks, 2 commits)
-  - Task 1: after_model_callback extracts thinking parts and fires THINKING_UPDATE with full text; new event types (STATE_SNAPSHOT, CONFIRMATION_REQUIRED, CONFIRMATION_RESOLVED); create_sse_publish_fn() factory
-  - Task 2: Enriched agent-complete events with metadata (tokens, duration, model, traces); pipeline-complete with totals; build_state_snapshot() for reconnection; state-snapshot sent on SSE connect
-  - Unified PublishFn TypeAlias across base/triage/orchestrator
+- **Phase 5 Plan 02 Complete** (2026-02-04): HITL confirmation dialogs (2 tasks, 2 commits)
+  - Task 1: confirmation.py service with asyncio.Event pause/resume pattern, ConfirmationRequest/Result models, request_confirmation/resolve_confirmation/get_pending functions
+  - Task 2: REST API endpoints (POST approve/reject, GET pending list), confirmations router registered in main.py
 
 **What's next:**
-- Phase 5 Plan 02: HITL confirmation dialogs
 - Phase 5 Plan 03-04: Remaining agent flow backend work
 - Phase 6 (Domain Agents), Phase 7 (Synthesis & KG)
 
@@ -173,6 +171,8 @@ All frontend features need these backend endpoints:
 | Command Center SSE | `/sse/cases/:caseId/command-center/stream` | SSE | HIGH | DONE |
 | Start Analysis | `/api/cases/:caseId/analyze` | POST | HIGH | DONE |
 | Analysis Status | `/api/cases/:caseId/analysis/:workflowId` | GET | HIGH | DONE |
+| Confirmations | `/api/cases/:caseId/confirmations/:requestId` | POST | HIGH | DONE |
+| Pending Confirmations | `/api/cases/:caseId/confirmations/pending` | GET | HIGH | DONE |
 
 ---
 
@@ -268,6 +268,10 @@ All frontend features need these backend endpoints:
 | SSE thinking traces | Truncated vs Full text | Full untruncated text | CONTEXT.md: "Show full unfiltered thinking output"; DB storage still capped at 2000 chars |
 | SSE reconnection | Event replay vs State snapshot | State snapshot | Simpler; queries most recent workflow executions, no sequence tracking needed |
 | Publish type unification | Separate PublishEventFn per module vs Shared PublishFn | Shared PublishFn from base.py | Single canonical type alias; removes duplicate definitions in triage/orchestrator |
+| Confirmation timeout | Timeout vs Indefinite wait | Indefinite wait | Per CONTEXT.md: "Agent waits indefinitely for user response" |
+| Confirmation storage | Database vs In-memory | In-memory dicts | Single-instance hackathon deployment; three dicts for events/results/requests |
+| Confirmation auth | Full auth vs No auth | No auth | Hackathon simplicity; SSE events already scoped to case |
+| Confirmation SSE emission from sync | Inline await vs loop.create_task | loop.create_task | resolve_confirmation is sync (called from FastAPI endpoint); uses create_task for non-blocking async SSE emission |
 
 ---
 
@@ -280,7 +284,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Completed 05-01-PLAN.md (SSE Event Enrichment, 2 tasks, 2 commits)
+Stopped at: Completed 05-02-PLAN.md (HITL Confirmation Dialogs, 2 tasks, 2 commits)
 Resume file: None
 
 ---

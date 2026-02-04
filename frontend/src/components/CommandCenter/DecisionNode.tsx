@@ -9,7 +9,7 @@ import { createPortal } from "react-dom";
 import { motion, type Easing } from "motion/react";
 import { Loader2, AlertTriangle } from "lucide-react";
 
-import { AGENT_CONFIGS, AGENT_TYPE_TINTS } from "@/lib/command-center-config";
+import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
 import type { AgentType, AgentState } from "@/types/command-center";
 
 // -----------------------------------------------------------------------
@@ -28,26 +28,33 @@ export interface DecisionNodeData {
 // Typed easing constants to satisfy motion's Easing type
 // -----------------------------------------------------------------------
 const EASE_OUT: Easing = [0.0, 0.0, 0.2, 1.0];
-const EASE_IN_OUT: Easing = [0.42, 0.0, 0.58, 1.0];
 
 // -----------------------------------------------------------------------
-// Status dot color helper
+// Status dot style helper — parameterized by per-agent accent color
 // -----------------------------------------------------------------------
-function statusDotClass(
+function statusDotStyle(
   status: AgentState["status"],
   isActive: boolean,
-): string {
+  accent: string,
+): React.CSSProperties {
+  const base: React.CSSProperties = {
+    width: 10,
+    height: 10,
+    borderRadius: "50%",
+    flexShrink: 0,
+  };
+
   switch (status) {
     case "idle":
-      return "bg-gray-500";
+      return { ...base, background: "#6b7280" }; // gray-500
     case "processing":
-      return isActive ? "bg-[hsl(180_60%_45%)]" : "bg-gray-400";
+      return { ...base, background: isActive ? `hsl(${accent})` : "#9ca3af" };
     case "complete":
-      return "bg-[hsl(180_60%_45%)]";
+      return { ...base, background: `hsl(${accent})` };
     case "error":
-      return "bg-red-500";
+      return { ...base, background: "#ef4444" }; // red-500
     default:
-      return "bg-gray-500";
+      return { ...base, background: "#6b7280" };
   }
 }
 
@@ -84,7 +91,7 @@ function DecisionNodeInner({ data }: NodeProps) {
   } | null>(null);
 
   const config = AGENT_CONFIGS[agentType];
-  const tint = AGENT_TYPE_TINTS[agentType];
+  const { tint, accent } = getAgentColors(agentType);
   const isProcessing = agentState.status === "processing";
   const isComplete = agentState.status === "complete";
   const isError = agentState.status === "error";
@@ -119,19 +126,27 @@ function DecisionNodeInner({ data }: NodeProps) {
   }, [onNodeClick, agentType]);
 
   // ------- Computed styles -------
-  const chosenBackground = `linear-gradient(135deg, hsl(${tint} / 0.5) 0%, hsl(var(--cc-accent) / 0.15) 100%)`;
+  const chosenBackground = `linear-gradient(135deg, hsl(${tint} / 0.6) 0%, hsl(${tint} / 0.25) 100%)`;
   const unchosenBackground = "hsl(0 0% 14% / 0.7)";
 
-  const chosenBorder = "2px solid hsl(var(--cc-accent))";
-  const unchosenBorder = "1px solid hsl(0 0% 50% / 0.3)";
-  const errorBorder = "2px solid #ef4444";
+  const baseShadow = isError
+    ? "0 0 10px rgba(239,68,68,0.2)"
+    : isActive
+      ? `0 0 10px hsl(${accent} / 0.12)`
+      : "none";
 
-  const chosenShadow = "0 0 20px hsl(var(--cc-accent) / 0.3)";
+  const selectedShadow = isSelected
+    ? `0 0 0 2px hsl(${accent} / 0.3)`
+    : undefined;
+
+  // Combine base + selected shadows
+  const boxShadow =
+    [baseShadow, selectedShadow].filter(Boolean).join(", ") || "none";
 
   // ------- Handle styles -------
   const handleStyle = isActive
     ? {
-        background: "hsl(var(--cc-accent))",
+        background: `hsl(${accent})`,
         width: 8,
         height: 8,
         border: "none",
@@ -143,161 +158,119 @@ function DecisionNodeInner({ data }: NodeProps) {
         border: "none",
       };
 
-  // Determine whether the floating wrapper should animate
-  const shouldFloat = isActive && !isProcessing;
-
   return (
     <>
       {/* ReactFlow handles for edge connections */}
       <Handle type="target" position={Position.Top} style={handleStyle} />
       <Handle type="source" position={Position.Bottom} style={handleStyle} />
 
-      {/* Outer container: fixed dimensions for dagre, no width/height animation */}
+      {/* Outer container: fixed dimensions for layout engine */}
       <div
         ref={nodeRef}
-        className="w-[300px] h-[100px]"
+        className="w-75 h-25"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        {/* Floating wrapper: separate motion.div for the y-bounce so it does
-            not conflict with the entrance animation on the inner div. */}
+        {/* Inner motion.div: entrance, hover, tap animations */}
         <motion.div
-          className="w-full h-full"
-          animate={shouldFloat ? { y: [0, -2, 0] } : { y: 0 }}
-          transition={
-            shouldFloat
-              ? { duration: 2, ease: EASE_IN_OUT, repeat: Infinity }
-              : { duration: 0 }
-          }
+          className="relative w-full h-full rounded-lg overflow-hidden cursor-pointer"
+          style={{
+            background: isActive ? chosenBackground : unchosenBackground,
+            border: "none",
+            boxShadow,
+          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, ease: EASE_OUT }}
+          whileHover={{
+            scale: 1.02,
+            boxShadow: `0 0 25px hsl(${accent} / 0.4)${selectedShadow ? `, ${selectedShadow}` : ""}`,
+          }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleClick}
         >
-          {/* Inner motion.div: entrance, hover, tap animations */}
-          <motion.div
-            className="relative w-full h-full rounded-lg overflow-hidden cursor-pointer"
-            style={{
-              background: isActive ? chosenBackground : unchosenBackground,
-              border: isError
-                ? errorBorder
-                : isActive
-                  ? chosenBorder
-                  : unchosenBorder,
-              boxShadow: isActive && !isError ? chosenShadow : "none",
-            }}
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, ease: EASE_OUT }}
-            whileHover={{ scale: 1.05, y: -8 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleClick}
-          >
-            {/* Pulsing border overlay (processing state) */}
-            {isProcessing && (
-              <motion.div
-                className="absolute inset-0 rounded-lg pointer-events-none"
-                style={{
-                  border: "2px solid hsl(var(--cc-accent))",
-                }}
-                animate={{
-                  scale: [1, 1.05, 1],
-                  opacity: [0.5, 0.8, 0.5],
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-            )}
+          {/* Processing pulse glow overlay */}
+          {isProcessing && (
+            <motion.div
+              className="absolute inset-0 rounded-lg pointer-events-none"
+              animate={{
+                boxShadow: [
+                  `0 0 6px hsl(${accent} / 0.08), inset 0 0 6px hsl(${accent} / 0.03)`,
+                  `0 0 10px hsl(${accent} / 0.15), inset 0 0 8px hsl(${accent} / 0.05)`,
+                  `0 0 6px hsl(${accent} / 0.08), inset 0 0 6px hsl(${accent} / 0.03)`,
+                ],
+              }}
+              transition={{
+                duration: 2.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            />
+          )}
 
-            {/* Selected ring */}
-            {isSelected && (
-              <div
-                className="absolute inset-[-4px] rounded-lg pointer-events-none"
+          {/* Node content */}
+          <div className="flex flex-col items-center justify-center h-full px-4 py-2 gap-1">
+            {/* Agent name with optional text glow */}
+            <div className="flex items-center gap-2">
+              {/* Status dot */}
+              <span
                 style={{
-                  boxShadow: "0 0 0 4px hsl(220 50% 35%)",
+                  ...statusDotStyle(agentState.status, isActive, accent),
+                  ...(isProcessing
+                    ? { animation: "pulse 1.5s ease-in-out infinite" }
+                    : {}),
                 }}
               />
-            )}
 
-            {/* Node content */}
-            <div className="flex flex-col items-center justify-center h-full px-4 py-2 gap-1">
-              {/* Agent name with optional text glow */}
-              <div className="flex items-center gap-2">
-                {/* Status dot */}
-                <span
-                  className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusDotClass(agentState.status, isActive)}`}
-                  style={
-                    isProcessing
-                      ? { animation: "pulse 1.5s ease-in-out infinite" }
-                      : undefined
-                  }
+              <span
+                className="text-lg font-bold truncate max-w-55"
+                style={{
+                  color: isActive ? `hsl(${accent})` : "hsl(0 0% 50% / 0.6)",
+                }}
+              >
+                {config.name}
+              </span>
+
+              {/* Spinner when processing */}
+              {isProcessing && (
+                <Loader2
+                  className="w-4 h-4 animate-spin shrink-0"
+                  style={{ color: `hsl(${accent})` }}
                 />
-
-                <motion.span
-                  className="text-lg font-bold truncate max-w-[220px]"
-                  style={{
-                    color: isActive
-                      ? "hsl(var(--cc-accent))"
-                      : "hsl(0 0% 50% / 0.6)",
-                  }}
-                  animate={
-                    isActive
-                      ? {
-                          textShadow: [
-                            "0 0 5px hsl(180 60% 45% / 0.6)",
-                            "0 0 10px hsl(180 60% 45% / 0.8)",
-                            "0 0 5px hsl(180 60% 45% / 0.6)",
-                          ],
-                        }
-                      : { textShadow: "none" }
-                  }
-                  transition={
-                    isActive
-                      ? { duration: 2, repeat: Infinity, ease: EASE_IN_OUT }
-                      : { duration: 0 }
-                  }
-                >
-                  {config.name}
-                </motion.span>
-
-                {/* Spinner when processing */}
-                {isProcessing && (
-                  <Loader2
-                    className="w-4 h-4 animate-spin shrink-0"
-                    style={{ color: "hsl(var(--cc-accent))" }}
-                  />
-                )}
-              </div>
-
-              {/* Badge row: file count / output count / warning badge */}
-              <div className="flex items-center gap-2">
-                {badgeText && (
-                  <span
-                    className="text-xs px-2 py-0.5 rounded-full truncate max-w-[180px]"
-                    style={{
-                      background: isActive
-                        ? "hsl(var(--cc-accent) / 0.15)"
-                        : "hsl(0 0% 50% / 0.1)",
-                      color: isActive
-                        ? "hsl(var(--cc-accent-glow))"
-                        : "hsl(0 0% 50% / 0.5)",
-                    }}
-                  >
-                    {badgeText}
-                  </span>
-                )}
-
-                {/* Warning badge for orchestrator */}
-                {warningCount > 0 && (
-                  <span
-                    className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full"
-                    style={{
-                      background: "hsl(45 100% 50% / 0.15)",
-                      color: "hsl(45 100% 60%)",
-                    }}
-                  >
-                    <AlertTriangle className="w-3 h-3" />
-                    {warningCount}
-                  </span>
-                )}
-              </div>
+              )}
             </div>
-          </motion.div>
+
+            {/* Badge row: file count / output count / warning badge */}
+            <div className="flex items-center gap-2">
+              {badgeText && (
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full truncate max-w-45"
+                  style={{
+                    background: isActive
+                      ? `hsl(${accent} / 0.15)`
+                      : "hsl(0 0% 50% / 0.1)",
+                    color: isActive ? `hsl(${accent})` : "hsl(0 0% 50% / 0.5)",
+                  }}
+                >
+                  {badgeText}
+                </span>
+              )}
+
+              {/* Warning badge for orchestrator */}
+              {warningCount > 0 && (
+                <span
+                  className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full"
+                  style={{
+                    background: "hsl(45 100% 50% / 0.15)",
+                    color: "hsl(45 100% 60%)",
+                  }}
+                >
+                  <AlertTriangle className="w-3 h-3" />
+                  {warningCount}
+                </span>
+              )}
+            </div>
+          </div>
         </motion.div>
       </div>
 

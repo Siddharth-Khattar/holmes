@@ -42,14 +42,22 @@
   /* Semantic Colors */
   --color-error: #f87171;
 
-  /* Light Mode Palette - Warm sepia/parchment, easy on the eyes */
-  --color-light-bg: #e0d6c8;
-  --color-light-bg-subtle: #d6cabb;
-  --color-light-text: #2a2520;
-  --color-light-text-muted: #6b635a;
-  --color-light-border: #c4b8a8;
-  --color-light-accent: #3d3833;
-  --color-light-accent-hover: #524d46;
+  /* Light Mode Palette - Following LIGHT-MODE-REFERENCE.MD */
+  --color-cream: #faf9f7;
+  --color-warm-white: #f5f4ef;
+  --color-charcoal-light: #1a1816;
+  --color-warm-gray: #6b6560;
+  --color-accent-light: #2a2825;
+  --color-accent-muted-light: #4a4744;
+
+  /* Light Mode Glass Colors */
+  --color-glass-light-mode: rgba(26, 24, 22, 0.04);
+  --color-glass-medium-light: rgba(26, 24, 22, 0.08);
+
+  /* Light Mode Shadows */
+  --shadow-glass-light: 0 8px 32px rgba(26, 24, 22, 0.08);
+  --shadow-glass-hover-light: 0 12px 40px rgba(26, 24, 22, 0.12);
+  --shadow-subtle-light: 0 1px 3px rgba(26, 24, 22, 0.06);
 
   /* Typography - Font Families */
   --font-family-serif: var(--font-playfair);
@@ -114,38 +122,80 @@
   --radius: 0.5rem;
 }
 
-/* Light mode variant for application UI */
+/* Override ReactFlow default node border within Command Center */
+.command-center-scope .react-flow__node {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Command Center scoped accent -- does not affect global Holmes palette */
+.command-center-scope {
+  /* Shared accent for non-agent UI (header, footer, file group nodes) */
+  --cc-accent: 180 65% 50%;
+  --cc-accent-glow: 180 65% 55%;
+
+  /* Per-agent color pairs: tint (subtle bg) + accent (bright text/glow) */
+  --cc-triage-tint: 42 40% 20%;
+  --cc-triage-accent: 42 70% 62%;
+
+  --cc-orchestrator-tint: 225 35% 22%;
+  --cc-orchestrator-accent: 225 65% 66%;
+
+  --cc-financial-tint: 155 35% 18%;
+  --cc-financial-accent: 155 60% 55%;
+
+  --cc-legal-tint: 215 32% 22%;
+  --cc-legal-accent: 215 60% 64%;
+
+  --cc-strategy-tint: 25 42% 20%;
+  --cc-strategy-accent: 25 70% 62%;
+
+  --cc-kg-tint: 270 35% 22%;
+  --cc-kg-accent: 270 60% 68%;
+}
+
+/* Light mode variant - Following LIGHT-MODE-REFERENCE.MD */
 .light {
-  --background: var(--color-light-bg);
-  --foreground: var(--color-light-text);
+  /* Background & Foreground */
+  --background: var(--color-cream);
+  --foreground: var(--color-charcoal-light);
 
-  --card: var(--color-light-bg-subtle);
-  --card-foreground: var(--color-light-text);
+  /* Card */
+  --card: #ffffff;
+  --card-foreground: var(--color-charcoal-light);
 
-  --popover: var(--color-light-bg);
-  --popover-foreground: var(--color-light-text);
+  /* Popover */
+  --popover: #ffffff;
+  --popover-foreground: var(--color-charcoal-light);
 
-  --primary: var(--color-light-accent);
-  --primary-foreground: var(--color-light-bg);
+  /* Primary */
+  --primary: var(--color-accent-light);
+  --primary-foreground: var(--color-cream);
 
-  --secondary: var(--color-light-bg-subtle);
-  --secondary-foreground: var(--color-light-text);
+  /* Secondary */
+  --secondary: var(--color-warm-gray);
+  --secondary-foreground: var(--color-charcoal-light);
 
-  --muted: var(--color-light-bg-subtle);
-  --muted-foreground: var(--color-light-text-muted);
+  /* Muted */
+  --muted: var(--color-warm-white);
+  --muted-foreground: var(--color-warm-gray);
 
-  --accent: var(--color-light-bg-subtle);
-  --accent-foreground: var(--color-light-text);
+  /* Accent */
+  --accent: var(--color-accent-muted-light);
+  --accent-foreground: var(--color-cream);
 
+  /* Destructive */
   --destructive: #dc2626;
-  --destructive-foreground: var(--color-light-bg);
+  --destructive-foreground: #ffffff;
 
-  --border: var(--color-light-border);
-  --input: var(--color-light-border);
-  --ring: var(--color-light-accent);
+  /* Border & Input */
+  --border: rgba(26, 24, 22, 0.1);
+  --input: rgba(26, 24, 22, 0.1);
+  --ring: var(--color-accent-light);
 
   /* Focus Ring - for accessibility */
-  --ring-offset: var(--color-light-bg);
+  --ring-offset: var(--color-cream);
 }
 
 /* ============================================================
@@ -174,13 +224,67 @@
     background-size: 26px 26px;
   }
 
-  /* Light mode canvas pattern - visible warm brown dots (scoped to app UI) */
+  /* Light mode canvas pattern - visible dots on cream background */
   .light .theme-scope .bg-canvas {
     background-image: radial-gradient(
       circle,
-      rgba(90, 80, 65, 0.25) 1px,
+      rgba(26, 24, 22, 0.06) 1px,
       transparent 1px
     );
+    background-size: 26px 26px;
+  }
+
+  /* Theme-aware color utilities */
+  .bg-warm-gray\/8 {
+    background-color: rgba(107, 101, 96, 0.08);
+  }
+
+  .bg-warm-gray\/12 {
+    background-color: rgba(107, 101, 96, 0.12);
+  }
+
+  .bg-warm-gray\/15 {
+    background-color: rgba(107, 101, 96, 0.15);
+  }
+
+  .bg-warm-gray\/25 {
+    background-color: rgba(107, 101, 96, 0.25);
+  }
+
+  .bg-white\/95 {
+    background-color: rgba(255, 255, 255, 0.95);
+  }
+
+  .border-warm-gray\/12 {
+    border-color: rgba(107, 101, 96, 0.12);
+  }
+
+  .border-warm-gray\/15 {
+    border-color: rgba(107, 101, 96, 0.15);
+  }
+
+  .border-warm-gray\/20 {
+    border-color: rgba(107, 101, 96, 0.2);
+  }
+
+  .border-warm-gray\/25 {
+    border-color: rgba(107, 101, 96, 0.25);
+  }
+
+  .dark .bg-stone\/10 {
+    background-color: rgba(138, 138, 130, 0.1);
+  }
+
+  .dark .border-stone\/15 {
+    border-color: rgba(138, 138, 130, 0.15);
+  }
+
+  .dark .border-stone\/30 {
+    border-color: rgba(138, 138, 130, 0.3);
+  }
+
+  .dark .bg-charcoal {
+    background-color: var(--color-charcoal);
   }
 }
 
@@ -390,101 +494,116 @@
   /* --------------------------------------------------------
      Light Mode Glass Variants (Scoped to .theme-scope)
      --------------------------------------------------------
-     Adapted glass effects for light mode with inverted
-     colors and reduced intensity for better visibility.
-     Scoped to .theme-scope to prevent affecting landing/auth pages.
+     Following LIGHT-MODE-REFERENCE.MD specifications
      -------------------------------------------------------- */
 
   /* Light mode - glass panel */
   .light .theme-scope .glass-panel {
-    background: rgba(214, 202, 187, 0.85);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 24px rgba(26, 24, 22, 0.06);
   }
 
   .light .theme-scope .glass-panel:hover {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 8px 32px rgba(26, 24, 22, 0.12);
   }
 
   /* Light mode - glass nav */
   .light .theme-scope .glass-nav {
-    background: rgba(214, 202, 187, 0.92);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 4px 24px rgba(26, 24, 22, 0.06);
   }
 
   /* Light mode - liquid glass card */
   .light .theme-scope .liquid-glass-card {
     box-shadow:
-      0 4px 24px rgba(0, 0, 0, 0.08),
-      0 1px 4px rgba(0, 0, 0, 0.04);
+      0 8px 32px rgba(26, 24, 22, 0.06),
+      0 2px 8px rgba(26, 24, 22, 0.04);
   }
 
   .light .theme-scope .liquid-glass-card:hover {
     box-shadow:
-      0 8px 32px rgba(0, 0, 0, 0.12),
-      0 2px 8px rgba(0, 0, 0, 0.06);
+      0 12px 48px rgba(26, 24, 22, 0.1),
+      0 4px 12px rgba(26, 24, 22, 0.06);
   }
 
   .light .theme-scope .liquid-glass-card > .liquid-glass-filter {
-    backdrop-filter: blur(40px) saturate(120%) brightness(1.05);
-    -webkit-backdrop-filter: blur(40px) saturate(120%) brightness(1.05);
+    backdrop-filter: blur(40px) saturate(180%) brightness(1.02) contrast(1.02);
+    -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.02)
+      contrast(1.02);
   }
 
   .light .theme-scope .liquid-glass-card > .liquid-glass-overlay {
-    background: linear-gradient(
-      175deg,
-      rgba(214, 202, 187, 0.94) 0%,
-      rgba(224, 214, 200, 0.97) 100%
-    );
+    background:
+      radial-gradient(
+        ellipse 80% 50% at 50% -20%,
+        rgba(255, 255, 255, 0.8) 0%,
+        transparent 50%
+      ),
+      linear-gradient(
+        175deg,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(250, 249, 247, 0.9) 20%,
+        rgba(245, 244, 239, 0.85) 100%
+      );
   }
 
   .light .theme-scope .liquid-glass-card > .liquid-glass-specular {
-    background: none;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    background: radial-gradient(
+      ellipse 100% 40% at 50% 0%,
+      rgba(255, 255, 255, 0.6) 0%,
+      transparent 60%
+    );
+    box-shadow: none;
   }
 
   /* Light mode - liquid glass modal */
   .light .theme-scope .liquid-glass-modal {
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 24px 64px rgba(26, 24, 22, 0.12);
   }
 
   .light .theme-scope .liquid-glass-modal > .liquid-glass-filter {
-    backdrop-filter: blur(32px) saturate(120%) brightness(1.02);
-    -webkit-backdrop-filter: blur(32px) saturate(120%) brightness(1.02);
+    backdrop-filter: blur(32px) saturate(180%) brightness(1.02);
+    -webkit-backdrop-filter: blur(32px) saturate(180%) brightness(1.02);
   }
 
   .light .theme-scope .liquid-glass-modal > .liquid-glass-overlay {
     background: linear-gradient(
       180deg,
-      rgba(214, 202, 187, 0.96) 0%,
-      rgba(224, 214, 200, 0.98) 100%
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(250, 249, 247, 0.9) 100%
     );
   }
 
   .light .theme-scope .liquid-glass-modal > .liquid-glass-specular {
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.6),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.03);
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.05);
   }
 
   /* Light mode - liquid glass nav */
   .light .theme-scope .liquid-glass-nav > .liquid-glass-filter {
-    backdrop-filter: blur(24px) saturate(120%) brightness(1.02);
-    -webkit-backdrop-filter: blur(24px) saturate(120%) brightness(1.02);
+    backdrop-filter: blur(24px) saturate(180%) brightness(1.02);
+    -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.02);
   }
 
   .light .theme-scope .liquid-glass-nav > .liquid-glass-overlay {
     background: linear-gradient(
       180deg,
-      rgba(214, 202, 187, 0.94) 0%,
-      rgba(224, 214, 200, 0.97) 100%
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(250, 249, 247, 0.85) 100%
     );
   }
 
   /* Light mode - subtle glass */
   .light .theme-scope .liquid-glass-subtle {
-    background: rgba(214, 202, 187, 0.75);
+    background: rgba(255, 255, 255, 0.6);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(26, 24, 22, 0.04);
   }
 }
 
@@ -537,20 +656,30 @@
 
 /* Light mode variant - uses dark accent for visibility (scoped to app UI) */
 .light .theme-scope .liquid-glass-button {
-  background: var(--color-light-accent);
-  color: var(--color-light-bg);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(250, 249, 247, 0.8) 100%
+  );
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  color: var(--color-charcoal-light);
   box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    0 4px 16px rgba(26, 24, 22, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
 }
 
 .light .theme-scope .liquid-glass-button:hover {
-  background: var(--color-light-accent-hover);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(250, 249, 247, 0.9) 100%
+  );
   box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    0 8px 24px rgba(26, 24, 22, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
 }
 
 /* ============================================================

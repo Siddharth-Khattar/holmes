@@ -34,29 +34,34 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
         }
       }}
       className={cn(
-        "group relative p-4 rounded-lg border-2 transition-all duration-200 bg-(--card)",
+        "group relative p-4 rounded-lg border-2 transition-all duration-200",
         "hover:shadow-lg hover:-translate-y-0.5 cursor-pointer",
-        "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-(--ring)",
+        "focus:outline-none focus:ring-2 focus:ring-offset-2",
+        "bg-white/90 dark:bg-[rgba(17,17,17,0.6)]",
+        "shadow-[0_2px_8px_rgba(26,24,22,0.06)] dark:shadow-none",
         layerConfig.borderColor,
       )}
+      style={{
+        borderColor: layerConfig.hexColor + "66",
+      }}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-2">
           <div
-            className={cn(
-              "p-1.5 rounded-md",
-              layerConfig.bgColor,
-              "bg-opacity-80 dark:bg-opacity-60",
-            )}
+            className="p-1.5 rounded-md"
+            style={{
+              backgroundColor: layerConfig.hexColor + "20",
+            }}
           >
-            <IconComponent className={cn("w-4 h-4", layerConfig.color)} />
+            <IconComponent
+              className="w-4 h-4"
+              style={{ color: layerConfig.hexColor }}
+            />
           </div>
           <span
-            className={cn(
-              "text-xs font-medium uppercase tracking-wide",
-              layerConfig.color,
-            )}
+            className="text-xs font-medium uppercase tracking-wide"
+            style={{ color: layerConfig.hexColor }}
           >
             {layerConfig.label}
           </span>
@@ -66,7 +71,7 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
         <div className="flex items-center gap-1">
           {event.isUserCorrected ? (
             <div
-              className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400"
+              className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-green-500/12 text-green-700 dark:text-green-400"
               title="User verified"
             >
               <Check className="w-3 h-3" />
@@ -74,7 +79,7 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
             </div>
           ) : event.confidence < 0.7 ? (
             <div
-              className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400"
+              className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-amber-500/12 text-amber-700 dark:text-amber-400"
               title={`Confidence: ${Math.round(event.confidence * 100)}%`}
             >
               <AlertCircle className="w-3 h-3" />
@@ -87,19 +92,19 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
       </div>
 
       {/* Title */}
-      <h4 className="text-base font-semibold text-(--foreground) mb-1 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
+      <h4 className="text-base font-semibold mb-1 transition-colors text-foreground">
         {event.title}
       </h4>
 
       {/* Description */}
       {event.description && (
-        <p className="text-sm text-(--muted-foreground) line-clamp-2 mb-3">
+        <p className="text-sm line-clamp-2 mb-3 text-muted-foreground">
           {event.description}
         </p>
       )}
 
       {/* Footer metadata */}
-      <div className="flex flex-wrap items-center gap-3 text-xs text-(--muted-foreground)">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         <time dateTime={event.date}>
           {format(new Date(event.date), "h:mm a")}
         </time>
@@ -122,11 +127,10 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
 
       {/* Hover indicator */}
       <div
-        className={cn(
-          "absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none",
-          "ring-2 ring-inset",
-          layerConfig.borderColor,
-        )}
+        className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none ring-2 ring-inset"
+        style={{
+          borderColor: layerConfig.hexColor,
+        }}
       />
     </div>
   );

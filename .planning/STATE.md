@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-03
-**Current Phase:** 4 of 12 (Core Agent System) — COMPLETE
-**Current Plan:** 04-05 complete (all 5 plans done)
+**Last Updated:** 2026-02-04
+**Current Phase:** 5 of 12 (Agent Flow) — FRONTEND_DONE, backend pending
+**Current Plan:** None (Phase 5 frontend complete from 4.1 revamp; backend planning needed)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -14,6 +14,7 @@
 | 2 | Authentication & Case Shell | COMPLETE | 2026-01-24 | 2026-01-25 | |
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
+| 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
@@ -30,18 +31,17 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 4 Complete** (2026-02-03): Core Agent System — verified 6/6 must-haves
-  - ADK infrastructure: Runner, DatabaseSessionService, GcsArtifactService, AgentFactory
-  - Agent execution logging: AgentExecution model with 17 columns, JSONB I/O
-  - Triage Agent: Flash model, 6176-char prompt, domain scores/entities/summaries/complexity
-  - Orchestrator Agent: Pro model, 6484-char prompt, routing decisions/research triggers
-  - API: POST /analyze, GET /analysis/{workflow_id}, SSE command-center/stream
-  - 6 ADK callbacks mapped to SSE events, thinking traces capped at 2000 chars
-  - Verification: `.planning/phases/04-core-agent-system/04-VERIFICATION.md`
+- **Phase 4.1 Complete** (2026-02-04): Full agent decision tree revamp across 4 plans, 19 commits
+  - Plan 01: Installed @xyflow/react + @dagrejs/dagre, scoped CSS variables, DecisionNode component
+  - Plan 02: NodeDetailsSidebar with spring animation, collapsible color-coded sections, agent-type dispatch
+  - Plan 03: ReactFlow canvas + dagre layout, FileGroupNode, CommandCenter rewrite, useAgentStates/useAgentFlowGraph hooks, layout engine, mock data
+  - Plan 04 (unplanned refinement): Muted color palette (~50% saturation), gray edges, FileRoutingEdge with click-to-expand file popups, sidebar lifted to page level as 30% screen-width panel
+  - New utility modules: command-center-graph.ts (node/edge builder), command-center-layout.ts (dagre engine)
+- **Post-4.1 cleanup** (2026-02-04): Extracted shared `CanvasZoomControls` component (`ui/canvas-zoom-controls.tsx`) used by both Command Center and Knowledge Graph
 
 **What's next:**
-- **Phase 5:** Agent Flow — Backend SSE integration for real-time agent visualization
-- Then: Domain Agents (Phase 6), Synthesis & KG (Phase 7)
+- Phase 5 backend work: SSE streaming real agent data, thinking traces, token usage, HITL dialogs
+- Phase 6 (Domain Agents), Phase 7 (Synthesis & KG)
 
 ---
 
@@ -52,12 +52,24 @@
 | Component | File Path |
 |-----------|-----------|
 | Main container | `frontend/src/components/CommandCenter/CommandCenter.tsx` |
-| Agent canvas | `frontend/src/components/CommandCenter/AgentFlowCanvas.tsx` |
-| Agent nodes | `frontend/src/components/CommandCenter/AgentNode.tsx` |
-| Details panel | `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx` |
+| Agent canvas (ReactFlow) | `frontend/src/components/CommandCenter/AgentFlowCanvas.tsx` |
+| Decision nodes (ReactFlow) | `frontend/src/components/CommandCenter/DecisionNode.tsx` |
+| File group nodes (ReactFlow) | `frontend/src/components/CommandCenter/FileGroupNode.tsx` |
+| File routing edges (ReactFlow) | `frontend/src/components/CommandCenter/FileRoutingEdge.tsx` |
+| Details sidebar (page-level) | `frontend/src/components/CommandCenter/NodeDetailsSidebar.tsx` |
+| Agent state management hook | `frontend/src/hooks/useAgentStates.ts` |
+| Graph building + layout hook | `frontend/src/hooks/useAgentFlowGraph.ts` |
 | SSE hook | `frontend/src/hooks/useCommandCenterSSE.ts` |
-| Config | `frontend/src/lib/command-center-config.ts` |
+| Node/edge construction | `frontend/src/lib/command-center-graph.ts` |
+| Dagre layout engine | `frontend/src/lib/command-center-layout.ts` |
+| Config (muted palette) | `frontend/src/lib/command-center-config.ts` |
+| Shared zoom controls | `frontend/src/components/ui/canvas-zoom-controls.tsx` |
+| Mock data (demo mode) | `frontend/src/lib/mock-command-center-data.ts` |
 | Types | `frontend/src/types/command-center.ts` |
+| Command center page | `frontend/src/app/(app)/cases/[id]/command-center/page.tsx` |
+| Command center demo page | `frontend/src/app/(app)/cases/[id]/command-center-demo/page.tsx` |
+| Agent nodes (legacy, dead code) | `frontend/src/components/CommandCenter/AgentNode.tsx` |
+| Details panel (legacy, dead code) | `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx` |
 
 **Backend API Needed:** `SSE GET /api/cases/:caseId/command-center/stream`
 
@@ -172,6 +184,9 @@ All frontend features need these backend endpoints:
   - Reason: Establish robust frontend design foundation before subsequent phases build upon it
   - Reference: DOCS/UI/LANDING-INIT.md for landing page requirements
 
+- **Phase 4.1 inserted after Phase 4:** Agent Decision Tree Revamp (URGENT)
+  - Reason: Current D3-based Command Center visualization is visually poor (static layout, bad colors, no animations). Revamp with @xyflow/react + dagre to match reference design from agent-decision-tree-guide.md before proceeding to Phase 5 backend work.
+
 - **Yatharth's frontend work (2026-02-02):** Phases 3, 5, 7, 9, 10 have frontend UI complete
   - All use mock data with graceful fallbacks
   - Backend integration is the remaining work for these phases
@@ -236,6 +251,21 @@ All frontend features need these backend endpoints:
 | Pipeline status tracking | Separate workflow table vs Derived from execution records | Derived from execution records | Avoids extra table; status computed from triage/orchestrator execution states |
 | Background task DB session | FastAPI dependency vs Own session factory | Own session factory | Background tasks run outside request lifecycle; need independent DB access |
 | Command center SSE path | /api/ prefix vs /sse/ prefix | /sse/ prefix | Consistent with file SSE pattern; frontend proxy or update can align |
+| Motion easing types | String literals vs Cubic-bezier arrays | Cubic-bezier arrays | Satisfies motion/react strict Easing type without casts |
+| Node animation layering | Single motion.div vs Nested wrappers | Nested wrappers | Separates floating (infinite loop) from entrance (one-shot) to avoid prop conflicts |
+| Command Center accent scope | Global CSS vars vs Scoped selector | Scoped .command-center-scope | Teal accent isolated from Holmes warm neutral palette |
+| Sidebar positioning | Fixed vs Absolute within CC container | Absolute within CC container | Avoids overlapping case layout chrome; sidebar scoped to Command Center |
+| Sidebar output extraction | Unsafe casts vs Generic helper | Generic extractFromOutputs<T> | Type-safe extraction from AgentOutput[] without any casts |
+| Canvas layout with sidebar | Flex split vs Absolute overlay | Absolute overlay | Full-width canvas; sidebar overlays instead of shrinking canvas |
+| File group click behavior | Open sidebar vs No action | No sidebar (setSelectedAgent null) | File group nodes are intermediate grouping; no detailed agent data to show |
+| ReactFlow nodeTypes placement | Inside component vs Outside | Outside component body | Prevents infinite re-renders per ReactFlow best practice |
+| Agent color saturation | Full saturation vs Muted | Muted (~50% reduction) | Hues preserved for identity; avoids visual noise on dark canvas |
+| Edge color scheme | Teal glow vs Gray neutral | Gray neutral tiers | Processing/chosen/inactive tiers; less visual noise than cyan glow |
+| Edge type | Standard smoothstep vs Custom FileRoutingEdge | Custom FileRoutingEdge | Click-to-expand file list popup; shows routing context on demand |
+| Graph construction | Inline in CommandCenter vs Extracted module | Extracted command-center-graph.ts | Separation of concerns; graph building logic reusable and testable |
+| Layout computation | Inline in CommandCenter vs Extracted module | Extracted command-center-layout.ts | Dagre engine isolated; progressive visibility logic separated |
+| Agent state management | Inline in CommandCenter vs Custom hook | Extracted useAgentStates hook | State logic reusable across command-center and command-center-demo pages |
+| Sidebar ownership | CommandCenter (absolute overlay) vs Page level (30% panel) | Page level 30% panel | Sidebar as peer to canvas, not overlay; cleaner layout, no z-index issues |
 
 ---
 
@@ -247,8 +277,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-03T06:04:00Z
-Stopped at: Completed 04-05-PLAN.md (Phase 4 complete)
+Last session: 2026-02-04
+Stopped at: Phase 4.1 complete (19 commits) + post-4.1 cleanup (shared CanvasZoomControls). Phase 5 description updated in ROADMAP.md.
 Resume file: None
 
 ---

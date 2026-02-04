@@ -27,15 +27,18 @@ export function TimelineHeader({
 
   return (
     <div
-      className={cn("bg-(--background) border-b border-(--border)", className)}
+      className={cn(
+        "border-b bg-background dark:bg-charcoal border-border",
+        className,
+      )}
     >
       <div className="max-w-7xl mx-auto py-12 px-4 md:px-8 lg:px-10">
         {/* Title and description */}
         <div className="mb-8">
-          <h1 className="text-3xl md:text-5xl font-sans font-bold text-(--foreground) mb-3 tracking-tight">
+          <h1 className="text-3xl md:text-5xl font-sans font-bold mb-3 tracking-tight text-foreground">
             Case Timeline
           </h1>
-          <p className="text-(--muted-foreground) text-base md:text-lg max-w-2xl tracking-body">
+          <p className="text-base md:text-lg max-w-2xl tracking-body text-muted-foreground">
             Chronological visualization of case events extracted from documents,
             organized by evidence, legal proceedings, and strategic actions.
           </p>
@@ -44,31 +47,31 @@ export function TimelineHeader({
         {/* Statistics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total events card */}
-          <div className="bg-(--card) rounded-lg p-4 border border-(--border) shadow-sm transition-shadow hover:shadow-md">
+          <div className="rounded-lg p-4 border shadow-sm transition-shadow hover:shadow-md bg-white/95 dark:bg-[rgba(17,17,17,0.6)] border-blue-200 dark:border-blue-800/50">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-(--muted-foreground)">
+              <span className="text-sm font-medium text-muted-foreground">
                 Total Events
               </span>
-              <TrendingUp className="w-4 h-4 text-blue-600" />
+              <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
-            <div className="text-3xl font-bold text-(--foreground)">
+            <div className="text-3xl font-bold text-foreground">
               {totalEvents}
             </div>
           </div>
 
           {/* Date range card */}
           {dateRange && (
-            <div className="bg-(--card) rounded-lg p-4 border border-(--border) shadow-sm transition-shadow hover:shadow-md">
+            <div className="rounded-lg p-4 border shadow-sm transition-shadow hover:shadow-md bg-white/95 dark:bg-[rgba(17,17,17,0.6)] border-purple-200 dark:border-purple-800/50">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-(--muted-foreground)">
+                <span className="text-sm font-medium text-muted-foreground">
                   Date Range
                 </span>
-                <Calendar className="w-4 h-4 text-purple-600" />
+                <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               </div>
-              <div className="text-sm font-semibold text-(--foreground)">
+              <div className="text-sm font-semibold text-foreground">
                 {format(new Date(dateRange.earliest), "MMM d, yyyy")}
               </div>
-              <div className="text-xs text-(--muted-foreground)">
+              <div className="text-xs text-muted-foreground">
                 to {format(new Date(dateRange.latest), "MMM d, yyyy")}
               </div>
             </div>
@@ -85,19 +88,24 @@ export function TimelineHeader({
                 return (
                   <div
                     key={layer}
-                    className={cn(
-                      "rounded-lg p-4 border-2 shadow-sm transition-shadow hover:shadow-md",
-                      config.bgColor,
-                      config.borderColor,
-                      "bg-opacity-30 dark:bg-opacity-20",
-                    )}
+                    className="rounded-lg p-4 border-2 shadow-sm transition-shadow hover:shadow-md"
+                    style={{
+                      backgroundColor: config.hexColor + "08",
+                      borderColor: config.hexColor + "30",
+                    }}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className={cn("text-sm font-medium", config.color)}>
+                      <span
+                        className="text-sm font-medium"
+                        style={{ color: config.hexColor }}
+                      >
                         {config.label}
                       </span>
                     </div>
-                    <div className={cn("text-3xl font-bold", config.color)}>
+                    <div
+                      className="text-3xl font-bold"
+                      style={{ color: config.hexColor }}
+                    >
                       {count}
                     </div>
                   </div>

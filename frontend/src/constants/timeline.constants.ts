@@ -1,34 +1,38 @@
 import { TimelineLayer, TimelineZoomLevel } from "@/types/timeline.types";
 
-// Layer styling configuration
+// Layer styling configuration - Professional vibrant palette matching Evidence Library
 export const LAYER_CONFIG: Record<
   TimelineLayer,
   {
     color: string;
     bgColor: string;
     borderColor: string;
+    hexColor: string;
     icon: string;
     label: string;
   }
 > = {
   evidence: {
-    color: "text-blue-700 dark:text-blue-400",
-    bgColor: "bg-blue-50 dark:bg-blue-950",
-    borderColor: "border-blue-200 dark:border-blue-800",
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor: "bg-blue-100 dark:bg-blue-900/30",
+    borderColor: "border-blue-500 dark:border-blue-600",
+    hexColor: "#3b82f6", // Professional blue
     icon: "FileText",
     label: "Evidence",
   },
   legal: {
-    color: "text-purple-700 dark:text-purple-400",
-    bgColor: "bg-purple-50 dark:bg-purple-950",
-    borderColor: "border-purple-200 dark:border-purple-800",
+    color: "text-purple-600 dark:text-purple-400",
+    bgColor: "bg-purple-100 dark:bg-purple-900/30",
+    borderColor: "border-purple-500 dark:border-purple-600",
+    hexColor: "#9333ea", // Royal purple
     icon: "Scale",
     label: "Legal",
   },
   strategy: {
-    color: "text-amber-700 dark:text-amber-400",
-    bgColor: "bg-amber-50 dark:bg-amber-950",
-    borderColor: "border-amber-200 dark:border-amber-800",
+    color: "text-emerald-600 dark:text-emerald-400",
+    bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
+    borderColor: "border-emerald-500 dark:border-emerald-600",
+    hexColor: "#10b981", // Professional green
     icon: "Target",
     label: "Strategy",
   },
@@ -82,7 +86,8 @@ export const PERFORMANCE_CONFIG = {
 
 // API configuration
 export const API_CONFIG = {
-  TIMELINE_BASE_PATH: "/api/cases",
+  TIMELINE_BASE_PATH:
+    (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080") + "/api/cases",
   DEFAULT_PAGE_SIZE: 50,
   MAX_PAGE_SIZE: 200,
   REQUEST_TIMEOUT: 30000, // 30 seconds

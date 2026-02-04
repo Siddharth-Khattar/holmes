@@ -482,28 +482,17 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
   return (
     <div className="flex flex-col h-full w-full">
       {/* Header */}
-      <div
-        className="flex-none px-6 py-4 border-b"
-        style={{ borderColor: "var(--border)" }}
-      >
+      <div className="flex-none px-6 py-4 border-b border-warm-gray/15 dark:border-stone/15">
         <div className="flex items-center justify-between">
           <div>
-            <h1
-              className="text-2xl font-medium"
-              style={{ color: "var(--foreground)" }}
-            >
+            <h1 className="text-2xl font-medium text-foreground">
               Evidence Library
             </h1>
             {caseName && (
-              <p
-                className="text-sm mt-1"
-                style={{ color: "var(--muted-foreground)" }}
-              >
-                {caseName}
-              </p>
+              <p className="text-sm mt-1 text-muted-foreground">{caseName}</p>
             )}
           </div>
-          <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+          <div className="text-sm text-muted-foreground">
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
@@ -651,7 +640,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
 
       {/* File Upload Zone */}
       <div className="flex-none mx-6 mt-6">
-        <div className="border border-dashed border-neutral-700 rounded-lg overflow-hidden">
+        <div className="border border-dashed border-warm-gray/25 dark:border-stone/30 rounded-lg overflow-hidden">
           <FileUpload
             onChange={handleFileUpload}
             hideSelectedFiles={true}
@@ -665,16 +654,8 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
       <div className="flex-none px-6 py-4 space-y-4">
         {/* Category Filters */}
         <div className="flex items-center gap-2">
-          <Filter
-            className="w-4 h-4"
-            style={{ color: "var(--muted-foreground)" }}
-          />
-          <span
-            className="text-sm"
-            style={{ color: "var(--muted-foreground)" }}
-          >
-            Filter:
-          </span>
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Filter:</span>
           {(
             [
               "all",
@@ -689,19 +670,9 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
               onClick={() => setSelectedCategory(category)}
               className={`px-3 py-1 text-sm rounded-lg transition-colors ${
                 selectedCategory === category
-                  ? "bg-accent text-accent-foreground"
-                  : "hover:bg-muted"
+                  ? "bg-[#2a2825] dark:bg-[#f5f4ef] text-[#faf9f7] dark:text-[#050505]"
+                  : "bg-warm-gray/8 dark:bg-stone/10 text-muted-foreground hover:bg-warm-gray/12 dark:hover:bg-stone/15"
               }`}
-              style={{
-                backgroundColor:
-                  selectedCategory === category
-                    ? "var(--accent)"
-                    : "transparent",
-                color:
-                  selectedCategory === category
-                    ? "var(--accent-foreground)"
-                    : "var(--muted-foreground)",
-              }}
             >
               {category.charAt(0).toUpperCase() + category.slice(1)}
             </button>
@@ -710,21 +681,13 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
 
         {/* Search */}
         <div className="relative">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-            style={{ color: "var(--muted-foreground)" }}
-          />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
             placeholder="Search files..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg border transition-colors"
-            style={{
-              backgroundColor: "var(--background)",
-              borderColor: "var(--border)",
-              color: "var(--foreground)",
-            }}
+            className="w-full pl-10 pr-4 py-2 rounded-lg border border-warm-gray/15 dark:border-stone/15 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#2a2825]/30 dark:focus:ring-[#f5f4ef]/30 transition-colors"
           />
         </div>
       </div>
@@ -740,7 +703,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
           >
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-4">
               <div className="flex items-start space-x-3">
-                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <h3 className="text-sm font-medium text-amber-900 dark:text-amber-300 mb-2">
                     Attention Required (
@@ -793,15 +756,15 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
             exit={{ opacity: 0, height: 0 }}
             className="flex-none mx-6 mb-4"
           >
-            <div className="flex items-center justify-between rounded-lg px-4 py-3 bg-blue-500/15 border border-blue-500/30">
+            <div className="flex items-center justify-between rounded-lg px-4 py-3 bg-blue-500/15 dark:bg-blue-500/15 border border-blue-500/30 dark:border-blue-500/30">
               <div className="flex items-center space-x-3">
-                <span className="text-sm font-medium text-blue-400">
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-400">
                   {selectedFileIds.size} file
                   {selectedFileIds.size > 1 ? "s" : ""} selected
                 </span>
                 <button
                   onClick={clearSelection}
-                  className="text-sm text-stone-400 hover:text-stone-300 underline hover:no-underline"
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline hover:no-underline"
                 >
                   Clear selection
                 </button>
@@ -831,33 +794,23 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
           </div>
         ) : filteredFiles.length === 0 ? (
           <div className="text-center py-12">
-            <p style={{ color: "var(--muted-foreground)" }}>
+            <p className="text-muted-foreground">
               {files.length === 0
                 ? "No files uploaded yet. Drag & drop files above to get started."
                 : "No files match your search criteria."}
             </p>
           </div>
         ) : (
-          <div
-            className="rounded-lg border overflow-hidden"
-            style={{ borderColor: "var(--border)" }}
-          >
+          <div className="rounded-lg border border-warm-gray/15 dark:border-stone/15 overflow-hidden">
             <table className="w-full">
               <thead>
-                <tr
-                  className="border-b text-xs uppercase tracking-wide"
-                  style={{
-                    backgroundColor: "var(--muted)",
-                    borderColor: "var(--border)",
-                    color: "var(--muted-foreground)",
-                  }}
-                >
+                <tr className="border-b border-warm-gray/15 dark:border-stone/15 text-xs uppercase tracking-wide bg-warm-white dark:bg-jet text-muted-foreground">
                   <th className="w-12 px-4 py-3">
                     <button
                       onClick={toggleSelectAll}
                       className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${
                         selectionState === "none"
-                          ? "border-stone-500 hover:border-stone-400"
+                          ? "border-warm-gray/40 dark:border-stone/50 hover:border-warm-gray/60 dark:hover:border-stone/70"
                           : "border-blue-500 bg-blue-500"
                       }`}
                       title={
@@ -865,10 +818,10 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                       }
                     >
                       {selectionState === "all" && (
-                        <Check className="w-3 h-3 text-stone-900" />
+                        <Check className="w-3 h-3 text-white" />
                       )}
                       {selectionState === "partial" && (
-                        <Minus className="w-3 h-3 text-stone-900" />
+                        <Minus className="w-3 h-3 text-white" />
                       )}
                     </button>
                   </th>
@@ -886,10 +839,9 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className={`border-b hover:bg-muted/50 transition-colors ${
+                    className={`border-b border-warm-gray/15 dark:border-stone/15 hover:bg-warm-gray/8 dark:hover:bg-stone/10 transition-colors ${
                       selectedFileIds.has(file.id) ? "bg-blue-500/10" : ""
                     }`}
-                    style={{ borderColor: "var(--border)" }}
                   >
                     <td className="w-12 px-4 py-4">
                       <button
@@ -897,33 +849,24 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                         className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${
                           selectedFileIds.has(file.id)
                             ? "border-blue-500 bg-blue-500"
-                            : "border-stone-600 hover:border-stone-500"
+                            : "border-warm-gray/40 dark:border-stone/60 hover:border-warm-gray/60 dark:hover:border-stone/80"
                         }`}
                       >
                         {selectedFileIds.has(file.id) && (
-                          <Check className="w-3 h-3 text-stone-900" />
+                          <Check className="w-3 h-3 text-white" />
                         )}
                       </button>
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center space-x-3">
-                        <div
-                          className="shrink-0"
-                          style={{ color: "var(--muted-foreground)" }}
-                        >
+                        <div className="shrink-0 text-muted-foreground">
                           {getFileIcon(file.type)}
                         </div>
                         <div>
-                          <div
-                            className="text-sm font-medium"
-                            style={{ color: "var(--foreground)" }}
-                          >
+                          <div className="text-sm font-medium text-foreground">
                             {file.name}
                           </div>
-                          <div
-                            className="text-xs"
-                            style={{ color: "var(--muted-foreground)" }}
-                          >
+                          <div className="text-xs text-muted-foreground">
                             {formatFileSize(file.size)}
                           </div>
                         </div>
@@ -942,33 +885,24 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                       <div className="flex items-center justify-center space-x-2">
                         <button
                           onClick={() => handleViewFile(file)}
-                          className="p-1.5 rounded hover:bg-muted transition-colors"
+                          className="p-1.5 rounded hover:bg-warm-gray/12 dark:hover:bg-stone/15 transition-colors"
                           title="View file"
                         >
-                          <Eye
-                            className="w-4 h-4"
-                            style={{ color: "var(--muted-foreground)" }}
-                          />
+                          <Eye className="w-4 h-4 text-muted-foreground" />
                         </button>
                         <button
                           onClick={() => handleDownloadFile(file)}
-                          className="p-1.5 rounded hover:bg-muted transition-colors"
+                          className="p-1.5 rounded hover:bg-warm-gray/12 dark:hover:bg-stone/15 transition-colors"
                           title="Download file"
                         >
-                          <Download
-                            className="w-4 h-4"
-                            style={{ color: "var(--muted-foreground)" }}
-                          />
+                          <Download className="w-4 h-4 text-muted-foreground" />
                         </button>
                         <button
                           onClick={() => handleDeleteFile(file)}
-                          className="p-1.5 rounded hover:bg-muted transition-colors"
+                          className="p-1.5 rounded hover:bg-warm-gray/12 dark:hover:bg-stone/15 transition-colors"
                           title="Delete file"
                         >
-                          <Trash2
-                            className="w-4 h-4"
-                            style={{ color: "var(--muted-foreground)" }}
-                          />
+                          <Trash2 className="w-4 h-4 text-muted-foreground" />
                         </button>
                       </div>
                     </td>
@@ -981,13 +915,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
       </div>
 
       {/* Footer */}
-      <div
-        className="flex-none px-6 py-3 border-t text-xs"
-        style={{
-          borderColor: "var(--border)",
-          color: "var(--muted-foreground)",
-        }}
-      >
+      <div className="flex-none px-6 py-3 border-t border-warm-gray/15 dark:border-stone/15 text-xs text-muted-foreground">
         <p>
           Quick Analysis Modal: Click <Eye className="inline w-3 h-3" /> on any
           file to open detailed analysis

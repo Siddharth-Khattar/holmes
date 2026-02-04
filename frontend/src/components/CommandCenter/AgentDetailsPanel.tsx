@@ -37,7 +37,7 @@ export function AgentDetailsPanel({
   const isExpanded = (section: string) => expandedSections.has(section);
 
   return (
-    <div className="h-full flex flex-col bg-charcoal border-l border-stone/15 overflow-hidden">
+    <div className="h-full flex flex-col bg-background dark:bg-charcoal border-l border-warm-gray/15 dark:border-stone/15 overflow-hidden">
       {/* Header */}
       <div
         className="flex-none px-6 py-5 border-b border-stone/15"
@@ -69,7 +69,7 @@ export function AgentDetailsPanel({
 
         {/* Status Badge */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-jet/50 border border-stone/10">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/50 dark:bg-jet/50 border border-warm-gray/10 dark:border-stone/10">
             <div
               className={`w-2 h-2 rounded-full ${
                 agentState.status === "processing"
@@ -86,7 +86,7 @@ export function AgentDetailsPanel({
             </span>
           </div>
           {config.model && (
-            <div className="px-3 py-1.5 rounded-lg bg-jet/50 border border-stone/10">
+            <div className="px-3 py-1.5 rounded-lg bg-white/50 dark:bg-jet/50 border border-warm-gray/10 dark:border-stone/10">
               <span className="text-xs text-stone">{config.model}</span>
             </div>
           )}
@@ -148,7 +148,7 @@ export function AgentDetailsPanel({
                 {agentState.lastResult.metadata && (
                   <div>
                     <div className="text-xs text-stone mb-2">Metadata</div>
-                    <div className="p-3 rounded-lg bg-jet/50 border border-stone/10">
+                    <div className="p-3 rounded-lg bg-white/50 dark:bg-jet/50 border border-warm-gray/10 dark:border-stone/10">
                       <pre className="text-xs text-stone font-mono overflow-x-auto">
                         {JSON.stringify(
                           agentState.lastResult.metadata,
@@ -192,7 +192,7 @@ export function AgentDetailsPanel({
                     {agentState.lastResult.toolsCalled.map((tool, idx) => (
                       <div
                         key={idx}
-                        className="flex items-start gap-2 p-3 rounded-lg bg-jet/50 border border-stone/10"
+                        className="flex items-start gap-2 p-3 rounded-lg bg-white/50 dark:bg-jet/50 border border-warm-gray/10 dark:border-stone/10"
                       >
                         <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 shrink-0" />
                         <span className="text-sm text-smoke font-mono">
@@ -232,7 +232,7 @@ export function AgentDetailsPanel({
                 {agentState.lastResult.outputs.map((output, idx) => (
                   <div
                     key={idx}
-                    className="p-4 rounded-lg bg-jet/50 border border-stone/10"
+                    className="p-4 rounded-lg bg-white/50 dark:bg-jet/50 border border-warm-gray/10 dark:border-stone/10"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-medium text-accent">
@@ -261,7 +261,7 @@ export function AgentDetailsPanel({
                           (decision, idx) => (
                             <div
                               key={idx}
-                              className="p-3 rounded-lg bg-jet/50 border border-stone/10"
+                              className="p-3 rounded-lg bg-white/50 dark:bg-jet/50 border border-warm-gray/10 dark:border-stone/10"
                             >
                               <div className="flex items-center justify-between mb-1">
                                 <span className="text-sm text-smoke font-medium">
@@ -312,7 +312,7 @@ export function AgentDetailsPanel({
                   {agentState.processingHistory.map((task) => (
                     <div
                       key={task.taskId}
-                      className="p-3 rounded-lg bg-jet/50 border border-stone/10"
+                      className="p-3 rounded-lg bg-white/50 dark:bg-jet/50 border border-warm-gray/10 dark:border-stone/10"
                     >
                       <div className="flex items-start justify-between mb-1">
                         <div className="text-sm text-smoke flex-1">

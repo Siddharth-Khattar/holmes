@@ -2,9 +2,6 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
   Filter,
   FileText,
   Image,
@@ -13,6 +10,7 @@ import {
   File,
   ExternalLink,
 } from "lucide-react";
+import { CanvasZoomControls } from "@/components/ui/canvas-zoom-controls";
 import { EvidenceSourcePanel } from "./evidence-source-panel";
 import {
   forceSimulation,
@@ -20,6 +18,7 @@ import {
   forceManyBody,
   forceCenter,
   forceCollide,
+  forceRadial,
   type Simulation,
   type SimulationLinkDatum,
 } from "d3-force";
@@ -67,20 +66,20 @@ interface KnowledgeGraphProps {
 }
 
 const ENTITY_COLORS: Record<EntityType, string> = {
-  person: "#8B7355", // Warm brown - matches stone/muted palette
-  organization: "#6B5A47", // Deep warm brown
-  location: "#9D8B73", // Light warm brown
-  event: "#B89968", // Golden brown
-  document: "#7A6B5D", // Medium warm brown
-  evidence: "#A68A6A", // Tan brown
+  person: "#4A90E2", // Professional blue - trustworthy, human-centric
+  organization: "#7B68EE", // Royal purple - authority, corporate
+  location: "#50C878", // Emerald green - places, geography
+  event: "#FF6B6B", // Coral red - action, temporal events
+  document: "#F5A623", // Amber - information, records
+  evidence: "#95A5A6", // Slate gray - neutral evidence
 };
 
 const EVIDENCE_COLORS: Record<EvidenceType, string> = {
-  text: "#B89968", // Golden brown
-  image: "#A68A6A", // Tan brown
-  video: "#8B7355", // Warm brown
-  audio: "#9D8B73", // Light warm brown
-  document: "#7A6B5D", // Medium warm brown
+  text: "#F5A623", // Amber - written content
+  image: "#E74C3C", // Vibrant red - visual media
+  video: "#9B59B6", // Purple - rich media
+  audio: "#1ABC9C", // Teal - sound, audio
+  document: "#3498DB", // Blue - formal documents
 };
 
 const EVIDENCE_ICONS: Record<
@@ -102,6 +101,11 @@ export function KnowledgeGraph({
   relationshipCount,
   onAddRelationship,
 }: KnowledgeGraphProps) {
+  // Helper function to get node ID from source/target
+  const getNodeId = (nodeOrId: string | GraphNode): string => {
+    return typeof nodeOrId === "string" ? nodeOrId : nodeOrId.id;
+  };
+
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const simulationRef = useRef<Simulation<ForceNode, ForceLink> | null>(null);
@@ -166,22 +170,30 @@ export function KnowledgeGraph({
           "link",
           forceLink<ForceNode, ForceLink>([])
             .id((d) => d.id)
-            .distance(120)
+            .distance(180) // Increased base distance
             .strength(0.5),
         )
         .force(
           "charge",
-          forceManyBody<ForceNode>().strength(-300).distanceMax(400),
+          forceManyBody<ForceNode>().strength(-500).distanceMax(600),
         )
         .force(
           "center",
           forceCenter(dimensions.width / 2, dimensions.height / 2).strength(
-            0.1,
+            0.05,
           ),
         )
         .force(
           "collide",
-          forceCollide<ForceNode>().radius(50).strength(0.9).iterations(3),
+          forceCollide<ForceNode>().radius(60).strength(0.9).iterations(3),
+        )
+        .force(
+          "radial",
+          forceRadial<ForceNode>(
+            Math.min(dimensions.width, dimensions.height) * 0.35,
+            dimensions.width / 2,
+            dimensions.height / 2,
+          ).strength(0.05),
         )
         .alphaMin(0.001)
         .alphaDecay(0.0228)
@@ -223,6 +235,21 @@ export function KnowledgeGraph({
     [connections, localConnections],
   );
   const totalRelationshipCount = relationshipCount + localConnections.length;
+
+  // Build connection count map for dynamic force calculations
+  const connectionCountMap = useMemo(() => {
+    const map = new Map<string, number>();
+    nodes.forEach((node) => map.set(node.id, 0));
+
+    allConnections.forEach((conn) => {
+      const sourceId = getNodeId(conn.source);
+      const targetId = getNodeId(conn.target);
+      map.set(sourceId, (map.get(sourceId) || 0) + 1);
+      map.set(targetId, (map.get(targetId) || 0) + 1);
+    });
+
+    return map;
+  }, [nodes, allConnections]);
 
   // Update simulation when data changes
   useEffect(() => {
@@ -268,11 +295,91 @@ export function KnowledgeGraph({
     const sim = simulationRef.current;
     sim.nodes(forceNodes);
 
+    // Update link force with dynamic distance and strength
     const linkForce = sim.force("link") as
       | ReturnType<typeof forceLink<ForceNode, ForceLink>>
       | undefined;
     if (linkForce) {
-      linkForce.links(forceLinks);
+      linkForce
+        .links(forceLinks)
+        .distance((d) => {
+          // Dynamic link distance based on node connectivity
+          const sourceNode = d.source as ForceNode;
+          const targetNode = d.target as ForceNode;
+
+          const sourceConnections = connectionCountMap.get(sourceNode.id) || 0;
+          const targetConnections = connectionCountMap.get(targetNode.id) || 0;
+
+          // Higher connectivity = shorter links (pulls toward center)
+          const avgConnections = (sourceConnections + targetConnections) / 2;
+          const baseDistance = 180;
+          const scaleFactor = Math.max(0.6, 1 - avgConnections * 0.08);
+
+          return baseDistance * scaleFactor;
+        })
+        .strength((d) => {
+          // Stronger links for high-connectivity nodes
+          const sourceNode = d.source as ForceNode;
+          const targetNode = d.target as ForceNode;
+
+          const sourceConnections = connectionCountMap.get(sourceNode.id) || 0;
+          const targetConnections = connectionCountMap.get(targetNode.id) || 0;
+
+          const avgConnections = (sourceConnections + targetConnections) / 2;
+          return 0.3 + avgConnections * 0.05;
+        });
+    }
+
+    // Update charge force with dynamic strength
+    const chargeForce = sim.force("charge") as
+      | ReturnType<typeof forceManyBody<ForceNode>>
+      | undefined;
+    if (chargeForce) {
+      chargeForce.strength((d) => {
+        const connections = connectionCountMap.get(d.id) || 0;
+
+        // High-connectivity nodes have less repulsion (stay central)
+        const baseStrength = -500;
+        const scaleFactor = Math.max(0.5, 1 - connections * 0.1);
+
+        return baseStrength * scaleFactor;
+      });
+    }
+
+    // Update collision force with dynamic radius
+    const collideForce = sim.force("collide") as
+      | ReturnType<typeof forceCollide<ForceNode>>
+      | undefined;
+    if (collideForce) {
+      collideForce.radius((d) => {
+        const connections = connectionCountMap.get(d.id) || 0;
+        const baseRadius = 60;
+        return baseRadius + connections * 5;
+      });
+    }
+
+    // Update radial force with dynamic radius
+    const radialForce = sim.force("radial") as
+      | ReturnType<typeof forceRadial<ForceNode>>
+      | undefined;
+    if (radialForce) {
+      radialForce
+        .radius((d) => {
+          const connections = connectionCountMap.get(d.id) || 0;
+
+          // Low connectivity = pushed further from center
+          const minRadius = 50;
+          const maxRadius = Math.min(dimensions.width, dimensions.height) * 0.4;
+          return connections > 0
+            ? minRadius + (maxRadius - minRadius) / connections
+            : maxRadius;
+        })
+        .strength((d) => {
+          const connections = connectionCountMap.get(d.id) || 0;
+          return connections === 0 ? 0.15 : 0.05;
+        })
+        .x(dimensions.width / 2)
+        .y(dimensions.height / 2);
     }
 
     // Update center force to current dimensions
@@ -291,7 +398,13 @@ export function KnowledgeGraph({
         setIsSimulationRunning(true);
       });
     }
-  }, [nodes, allConnections, dimensions.width, dimensions.height]);
+  }, [
+    nodes,
+    allConnections,
+    dimensions.width,
+    dimensions.height,
+    connectionCountMap,
+  ]);
 
   // Setup zoom and pan behavior
   useEffect(() => {
@@ -575,21 +688,28 @@ export function KnowledgeGraph({
           }}
           style={{ cursor: connectingFrom ? "crosshair" : "grab" }}
         >
-          {/* Node circle */}
+          {/* Node circle with gradient */}
+          <defs>
+            <radialGradient id={`gradient-${node.id}`}>
+              <stop offset="0%" stopColor={color} stopOpacity="1" />
+              <stop offset="100%" stopColor={color} stopOpacity="0.85" />
+            </radialGradient>
+          </defs>
           <circle
             r={isSelected ? 35 : isHovered ? 32 : 30}
-            fill={color}
+            fill={`url(#gradient-${node.id})`}
             stroke={
               isConnecting
-                ? "var(--color-accent)"
+                ? "#F5F4EF"
                 : isSelected
-                  ? "var(--color-smoke)"
+                  ? "#F8F7F4"
                   : isHovered
-                    ? "var(--color-accent-muted)"
+                    ? "#D4D3CE"
                     : color
             }
             strokeWidth={isConnecting ? 4 : isSelected ? 4 : isHovered ? 3 : 2}
-            opacity={0.9}
+            opacity={1}
+            filter={isSelected || isHovered ? "url(#node-glow)" : undefined}
           />
 
           {/* Node label */}
@@ -634,12 +754,8 @@ export function KnowledgeGraph({
                 cx={35}
                 cy={0}
                 r={12}
-                fill={
-                  isConnecting
-                    ? "var(--color-accent)"
-                    : "var(--color-accent-muted)"
-                }
-                stroke="var(--color-smoke)"
+                fill={isConnecting ? "#4A90E2" : "#F5F4EF"}
+                stroke={isConnecting ? "#F8F7F4" : "#4A90E2"}
                 strokeWidth={2}
               />
               <text
@@ -647,7 +763,7 @@ export function KnowledgeGraph({
                 y={0}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill="var(--color-charcoal)"
+                fill={isConnecting ? "#F8F7F4" : "#4A90E2"}
                 fontSize="14"
                 fontWeight="600"
                 style={{ pointerEvents: "none" }}
@@ -682,25 +798,38 @@ export function KnowledgeGraph({
           }}
           style={{ cursor: connectingFrom ? "crosshair" : "grab" }}
         >
-          {/* Evidence node - square shape */}
+          {/* Evidence node - square shape with gradient */}
+          <defs>
+            <linearGradient
+              id={`gradient-${node.id}`}
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
+            >
+              <stop offset="0%" stopColor={color} stopOpacity="1" />
+              <stop offset="100%" stopColor={color} stopOpacity="0.85" />
+            </linearGradient>
+          </defs>
           <rect
             x={isSelected ? -35 : isHovered ? -32 : -30}
             y={isSelected ? -35 : isHovered ? -32 : -30}
             width={isSelected ? 70 : isHovered ? 64 : 60}
             height={isSelected ? 70 : isHovered ? 64 : 60}
             rx={8}
-            fill={color}
+            fill={`url(#gradient-${node.id})`}
             stroke={
               isConnecting
-                ? "var(--color-accent)"
+                ? "#F5F4EF"
                 : isSelected
-                  ? "var(--color-smoke)"
+                  ? "#F8F7F4"
                   : isHovered
-                    ? "var(--color-accent-muted)"
+                    ? "#D4D3CE"
                     : color
             }
             strokeWidth={isConnecting ? 4 : isSelected ? 4 : isHovered ? 3 : 2}
-            opacity={0.9}
+            opacity={1}
+            filter={isSelected || isHovered ? "url(#node-glow)" : undefined}
           />
 
           {/* Evidence icon */}
@@ -756,12 +885,8 @@ export function KnowledgeGraph({
                 cx={35}
                 cy={0}
                 r={12}
-                fill={
-                  isConnecting
-                    ? "var(--color-accent)"
-                    : "var(--color-accent-muted)"
-                }
-                stroke="var(--color-smoke)"
+                fill={isConnecting ? "#4A90E2" : "#F5F4EF"}
+                stroke={isConnecting ? "#F8F7F4" : "#4A90E2"}
                 strokeWidth={2}
               />
               <text
@@ -769,7 +894,7 @@ export function KnowledgeGraph({
                 y={0}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill="var(--color-charcoal)"
+                fill={isConnecting ? "#F8F7F4" : "#4A90E2"}
                 fontSize="14"
                 fontWeight="600"
                 style={{ pointerEvents: "none" }}
@@ -785,11 +910,6 @@ export function KnowledgeGraph({
     return null;
   };
 
-  // Helper function to get node ID from source/target
-  const getNodeId = (nodeOrId: string | GraphNode): string => {
-    return typeof nodeOrId === "string" ? nodeOrId : nodeOrId.id;
-  };
-
   // Render connection
   const renderConnection = (conn: GraphConnection) => {
     const sourceId = getNodeId(conn.source);
@@ -803,6 +923,28 @@ export function KnowledgeGraph({
     const midX = (sourcePos.x + targetPos.x) / 2;
     const midY = (sourcePos.y + targetPos.y) / 2;
 
+    // Color code connections based on relationship type
+    const getConnectionColor = (type: string) => {
+      switch (type) {
+        case "employment":
+          return "#4A90E2"; // Blue
+        case "ownership":
+          return "#7B68EE"; // Purple
+        case "location":
+          return "#50C878"; // Green
+        case "transaction":
+          return "#FF6B6B"; // Red
+        case "evidence":
+          return "#F5A623"; // Amber
+        case "governance":
+          return "#9B59B6"; // Purple
+        default:
+          return "#8A8A82"; // Stone gray
+      }
+    };
+
+    const connectionColor = getConnectionColor(conn.relationship.type);
+
     return (
       <g key={conn.id}>
         {/* Connection line */}
@@ -811,9 +953,9 @@ export function KnowledgeGraph({
           y1={sourcePos.y}
           x2={targetPos.x}
           y2={targetPos.y}
-          stroke="var(--color-stone)"
+          stroke={connectionColor}
           strokeWidth={2}
-          opacity={0.4}
+          opacity={0.6}
           strokeDasharray="5,5"
         />
 
@@ -834,15 +976,29 @@ export function KnowledgeGraph({
 
   return (
     <div
-      className="relative w-full h-full rounded-lg shadow-2xl flex gap-2 overflow-hidden border border-stone/10"
+      className="relative w-full h-full rounded-lg shadow-2xl flex gap-2 overflow-hidden border-2 border-warm-gray/30 dark:border-stone/30 bg-background dark:bg-jet"
       style={{
-        backgroundColor: "var(--color-jet)",
         minHeight: "600px",
-        backgroundImage:
-          "radial-gradient(circle at 1px 1px, rgba(138, 138, 130, 0.08) 1px, transparent 0)",
-        backgroundSize: "24px 24px",
       }}
     >
+      {/* Background pattern - Light mode */}
+      <div
+        className="absolute inset-0 pointer-events-none dark:hidden"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(107, 101, 96, 0.25) 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
+      />
+      {/* Background pattern - Dark mode */}
+      <div
+        className="absolute inset-0 pointer-events-none hidden dark:block"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(138, 138, 130, 0.25) 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}
+      />
       {/* Source Panel - Left Side */}
       <div
         className="flex-none overflow-hidden transition-all duration-300 ease-in-out"
@@ -880,16 +1036,13 @@ export function KnowledgeGraph({
       {/* Main Graph Container */}
       <div className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
         {/* Header */}
-        <div
-          className="flex-none px-6 py-4 border-b"
-          style={{ borderColor: "rgba(138, 138, 130, 0.15)" }}
-        >
+        <div className="flex-none px-6 py-4 border-b border-warm-gray/15 dark:border-stone/15 relative z-10">
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-xl font-medium text-smoke mb-2">
+              <h2 className="text-xl font-medium text-foreground mb-2">
                 Knowledge Graph
               </h2>
-              <div className="flex items-center gap-6 text-xs text-stone">
+              <div className="flex items-center gap-6 text-xs text-muted-foreground">
                 <span>{entityCount} entities</span>
                 <span>•</span>
                 <span>{evidenceCount} evidence items</span>
@@ -900,15 +1053,15 @@ export function KnowledgeGraph({
 
             <div className="flex items-center gap-2">
               {connectingFrom && (
-                <div className="px-3 py-1 rounded-lg bg-accent/10 text-accent text-xs">
+                <div className="px-3 py-1 rounded-lg text-xs font-medium bg-blue-500/15 text-blue-600 dark:text-blue-400">
                   Click another node to connect
                 </div>
               )}
               <button
-                className="p-2 rounded-lg hover:bg-stone/10 transition-colors"
+                className="p-2 rounded-lg hover:bg-muted transition-colors"
                 title="Filters"
               >
-                <Filter className="w-5 h-5 text-stone" />
+                <Filter className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
           </div>
@@ -928,9 +1081,8 @@ export function KnowledgeGraph({
         >
           <svg
             ref={svgRef}
-            className="w-full h-full"
+            className="w-full h-full bg-background dark:bg-charcoal"
             style={{
-              backgroundColor: "var(--color-charcoal)",
               cursor: connectingFrom ? "crosshair" : "grab",
             }}
           >
@@ -952,6 +1104,21 @@ export function KnowledgeGraph({
                   opacity="0.2"
                 />
               </pattern>
+
+              {/* Glow filter for selected/hovered nodes */}
+              <filter
+                id="node-glow"
+                x="-50%"
+                y="-50%"
+                width="200%"
+                height="200%"
+              >
+                <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                <feMerge>
+                  <feMergeNode in="coloredBlur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
             </defs>
             <rect width="100%" height="100%" fill="url(#dotted-background)" />
 
@@ -970,10 +1137,10 @@ export function KnowledgeGraph({
                     y1={tempConnection.from.y}
                     x2={tempConnection.to.x}
                     y2={tempConnection.to.y}
-                    stroke="var(--color-accent)"
-                    strokeWidth={2}
-                    opacity={0.6}
-                    strokeDasharray="5,5"
+                    stroke="#4A90E2"
+                    strokeWidth={3}
+                    opacity={0.8}
+                    strokeDasharray="8,4"
                   />
                 )}
               </g>
@@ -985,81 +1152,60 @@ export function KnowledgeGraph({
             </g>
           </svg>
 
-          {/* Zoom controls */}
-          <div className="absolute bottom-4 right-4 flex flex-col gap-2">
-            <button
-              onClick={handleZoomIn}
-              className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
-              title="Zoom In"
-            >
-              <ZoomIn className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleZoomOut}
-              className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
-              title="Zoom Out"
-            >
-              <ZoomOut className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleResetZoom}
-              className="w-10 h-10 rounded-lg bg-jet/90 hover:bg-jet text-smoke flex items-center justify-center transition-colors border border-stone/20"
-              title="Reset Zoom"
-            >
-              <RotateCcw className="w-5 h-5" />
-            </button>
-
-            {/* Divider */}
-            <div className="h-px bg-stone/20 my-1" />
-
-            {/* Stop/Start Simulation */}
-            <button
-              onClick={handleToggleSimulation}
-              className={clsx(
-                "w-10 h-10 rounded-lg text-smoke flex items-center justify-center transition-colors border border-stone/20",
-                isSimulationRunning
-                  ? "bg-jet/90 hover:bg-jet"
-                  : "bg-accent/20 hover:bg-accent/30",
-              )}
-              title={isSimulationRunning ? "Freeze Graph" : "Unfreeze Graph"}
-            >
-              {isSimulationRunning ? (
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <rect x="6" y="4" width="4" height="16" />
-                  <rect x="14" y="4" width="4" height="16" />
-                </svg>
-              ) : (
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-              )}
-            </button>
-          </div>
+          <CanvasZoomControls
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onResetZoom={handleResetZoom}
+            extraControls={
+              <button
+                onClick={handleToggleSimulation}
+                className={clsx(
+                  "w-10 h-10 rounded-lg text-foreground flex items-center justify-center transition-colors border border-warm-gray/20 dark:border-stone/20",
+                  isSimulationRunning
+                    ? "bg-white/90 dark:bg-jet/90 hover:bg-white dark:hover:bg-jet"
+                    : "bg-accent/20 hover:bg-accent/30",
+                )}
+                title={isSimulationRunning ? "Freeze Graph" : "Unfreeze Graph"}
+              >
+                {isSimulationRunning ? (
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <rect x="6" y="4" width="4" height="16" />
+                    <rect x="14" y="4" width="4" height="16" />
+                  </svg>
+                ) : (
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                )}
+              </button>
+            }
+          />
 
           {/* Legend - Top Left */}
-          <div
-            className="absolute top-4 left-4 p-4 rounded-lg shadow-lg border border-stone/20"
-            style={{ backgroundColor: "rgba(17, 17, 17, 0.95)" }}
-          >
-            <h3 className="text-smoke font-medium text-sm mb-3">Node Legend</h3>
+          <div className="absolute top-4 left-4 p-4 rounded-lg shadow-lg border border-warm-gray/20 dark:border-stone/20 bg-white/95 dark:bg-[rgba(17,17,17,0.95)]">
+            <h3 className="text-foreground font-medium text-sm mb-3">
+              Node Legend
+            </h3>
 
             {/* Entity Types */}
             <div className="mb-3">
-              <p className="text-stone text-xs mb-2">Entities (Circles)</p>
+              <p className="text-muted-foreground text-xs mb-2">
+                Entities (Circles)
+              </p>
               <div className="space-y-1.5">
                 {Object.entries(ENTITY_COLORS).map(([type, color]) => (
                   <div key={type} className="flex items-center gap-2">
@@ -1072,7 +1218,7 @@ export function KnowledgeGraph({
                         opacity="0.9"
                       />
                     </svg>
-                    <span className="text-smoke text-xs capitalize">
+                    <span className="text-foreground text-xs capitalize">
                       {type}
                     </span>
                   </div>
@@ -1082,7 +1228,9 @@ export function KnowledgeGraph({
 
             {/* Evidence Types */}
             <div>
-              <p className="text-stone text-xs mb-2">Evidence (Squares)</p>
+              <p className="text-muted-foreground text-xs mb-2">
+                Evidence (Squares)
+              </p>
               <div className="space-y-1.5">
                 {Object.entries(EVIDENCE_COLORS).map(([type]) => {
                   return (
@@ -1098,7 +1246,7 @@ export function KnowledgeGraph({
                           opacity="0.9"
                         />
                       </svg>
-                      <span className="text-smoke text-xs capitalize">
+                      <span className="text-foreground text-xs capitalize">
                         {type}
                       </span>
                     </div>
@@ -1110,11 +1258,8 @@ export function KnowledgeGraph({
 
           {/* Node info panel - only show when node is selected */}
           {selectedNode && (
-            <div
-              className="absolute top-4 right-4 p-4 rounded-lg shadow-lg max-w-xs border border-stone/20"
-              style={{ backgroundColor: "rgba(17, 17, 17, 0.95)" }}
-            >
-              <div className="text-smoke">
+            <div className="absolute top-4 right-4 p-4 rounded-lg shadow-lg max-w-xs border border-warm-gray/20 dark:border-stone/20 bg-white/95 dark:bg-[rgba(17,17,17,0.95)]">
+              <div className="text-foreground">
                 {(() => {
                   const node = nodes.find((n) => n.id === selectedNode);
                   if (!node) return null;
@@ -1133,7 +1278,7 @@ export function KnowledgeGraph({
                               opacity="0.9"
                             />
                           </svg>
-                          <span className="text-xs text-stone capitalize">
+                          <span className="text-xs text-muted-foreground capitalize">
                             {entity.type}
                           </span>
                         </div>
@@ -1141,13 +1286,13 @@ export function KnowledgeGraph({
                           {entity.name}
                         </h3>
                         {entity.description && (
-                          <p className="text-sm text-stone mb-3">
+                          <p className="text-sm text-muted-foreground mb-3">
                             {entity.description}
                           </p>
                         )}
                         <button
                           onClick={() => setSelectedNode(null)}
-                          className="text-xs text-accent hover:text-accent-muted"
+                          className="text-xs text-primary hover:text-primary/80"
                         >
                           Close
                         </button>
@@ -1171,7 +1316,7 @@ export function KnowledgeGraph({
                               opacity="0.9"
                             />
                           </svg>
-                          <span className="text-xs text-stone capitalize">
+                          <span className="text-xs text-muted-foreground capitalize">
                             {evidence.type}
                           </span>
                         </div>
@@ -1179,19 +1324,19 @@ export function KnowledgeGraph({
                           {evidence.title}
                         </h3>
                         {evidence.content && (
-                          <p className="text-sm text-stone mb-2">
+                          <p className="text-sm text-muted-foreground mb-2">
                             {evidence.content.length > 100
                               ? evidence.content.substring(0, 100) + "..."
                               : evidence.content}
                           </p>
                         )}
                         {evidence.url && (
-                          <p className="text-xs text-stone/60 mb-2">
+                          <p className="text-xs text-muted-foreground/60 mb-2">
                             {evidence.url}
                           </p>
                         )}
                         {evidence.metadata && (
-                          <div className="text-xs text-stone mb-3">
+                          <div className="text-xs text-muted-foreground mb-3">
                             {Object.entries(evidence.metadata)
                               .slice(0, 2)
                               .map(([key, value]) => (
@@ -1208,14 +1353,14 @@ export function KnowledgeGraph({
                               setSourcePanelEvidence(evidence);
                               setIsSourcePanelMinimized(false);
                             }}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent/20 hover:bg-accent/30 text-xs text-accent transition-colors"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors bg-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/30"
                           >
                             <ExternalLink className="w-3 h-3" />
                             View Details
                           </button>
                           <button
                             onClick={() => setSelectedNode(null)}
-                            className="text-xs text-stone hover:text-smoke"
+                            className="text-xs text-muted-foreground hover:text-foreground"
                           >
                             Close
                           </button>

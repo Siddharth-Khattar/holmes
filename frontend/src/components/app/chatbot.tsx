@@ -185,7 +185,7 @@ export function Chatbot({ caseId, caseContext }: ChatbotProps) {
             )}
             aria-label="Open chat"
           >
-            <MessageCircle className="w-6 h-6 text-[#faf9f7] dark:text-[#050505]" />
+            <MessageCircle className="w-6 h-6 text-[#faf9f7] dark:text-[#1a1816]" />
           </motion.button>
         )}
       </AnimatePresence>

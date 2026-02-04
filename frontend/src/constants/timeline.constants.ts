@@ -1,6 +1,6 @@
 import { TimelineLayer, TimelineZoomLevel } from "@/types/timeline.types";
 
-// Layer styling configuration - Professional vibrant palette matching Evidence Library
+// Layer styling configuration — colors aligned with Command Center agent accents
 export const LAYER_CONFIG: Record<
   TimelineLayer,
   {
@@ -13,26 +13,26 @@ export const LAYER_CONFIG: Record<
   }
 > = {
   evidence: {
-    color: "text-blue-600 dark:text-blue-400",
-    bgColor: "bg-blue-100 dark:bg-blue-900/30",
-    borderColor: "border-blue-500 dark:border-blue-600",
-    hexColor: "#3b82f6", // Professional blue
+    color: "text-[#47d198] dark:text-[#47d198]",
+    bgColor: "bg-[#47d198]/10 dark:bg-[#47d198]/10",
+    borderColor: "border-[#47d198]/50 dark:border-[#47d198]/40",
+    hexColor: "#47d198", // Financial agent accent — hsl(155, 60%, 55%)
     icon: "FileText",
     label: "Evidence",
   },
   legal: {
-    color: "text-purple-600 dark:text-purple-400",
-    bgColor: "bg-purple-100 dark:bg-purple-900/30",
-    borderColor: "border-purple-500 dark:border-purple-600",
-    hexColor: "#9333ea", // Royal purple
+    color: "text-[#6c9ada] dark:text-[#6c9ada]",
+    bgColor: "bg-[#6c9ada]/10 dark:bg-[#6c9ada]/10",
+    borderColor: "border-[#6c9ada]/50 dark:border-[#6c9ada]/40",
+    hexColor: "#6c9ada", // Legal agent accent — hsl(215, 60%, 64%)
     icon: "Scale",
     label: "Legal",
   },
   strategy: {
-    color: "text-emerald-600 dark:text-emerald-400",
-    bgColor: "bg-emerald-100 dark:bg-emerald-900/30",
-    borderColor: "border-emerald-500 dark:border-emerald-600",
-    hexColor: "#10b981", // Professional green
+    color: "text-[#e2935a] dark:text-[#e2935a]",
+    bgColor: "bg-[#e2935a]/10 dark:bg-[#e2935a]/10",
+    borderColor: "border-[#e2935a]/50 dark:border-[#e2935a]/40",
+    hexColor: "#e2935a", // Strategy agent accent — hsl(25, 70%, 62%)
     icon: "Target",
     label: "Strategy",
   },

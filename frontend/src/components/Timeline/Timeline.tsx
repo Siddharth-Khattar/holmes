@@ -79,7 +79,7 @@ export function Timeline({
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-4">
-        <div className="text-lg font-medium text-blue-600 dark:text-blue-400">
+        <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
           Failed to load timeline
         </div>
         <p className="text-sm mt-2 text-muted-foreground">

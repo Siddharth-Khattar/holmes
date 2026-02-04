@@ -34,15 +34,16 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
         }
       }}
       className={cn(
-        "group relative p-4 rounded-lg border-2 transition-all duration-200",
-        "hover:shadow-lg hover:-translate-y-0.5 cursor-pointer",
+        "group relative p-4 rounded-lg border transition-all duration-200",
+        "hover:shadow-md hover:-translate-y-0.5 cursor-pointer",
         "focus:outline-none focus:ring-2 focus:ring-offset-2",
         "bg-white/90 dark:bg-[rgba(17,17,17,0.6)]",
-        "shadow-[0_2px_8px_rgba(26,24,22,0.06)] dark:shadow-none",
-        layerConfig.borderColor,
+        "dark:shadow-none",
+        "border-warm-gray/15 dark:border-stone/20",
       )}
       style={{
-        borderColor: layerConfig.hexColor + "66",
+        borderLeftColor: layerConfig.hexColor + "40",
+        borderLeftWidth: "3px",
       }}
     >
       {/* Header */}
@@ -50,17 +51,15 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
         <div className="flex items-center gap-2">
           <div
             className="p-1.5 rounded-md"
-            style={{
-              backgroundColor: layerConfig.hexColor + "20",
-            }}
+            style={{ backgroundColor: layerConfig.hexColor + "12" }}
           >
             <IconComponent
-              className="w-4 h-4"
+              className="w-4 h-4 opacity-60"
               style={{ color: layerConfig.hexColor }}
             />
           </div>
           <span
-            className="text-xs font-medium uppercase tracking-wide"
+            className="text-xs font-medium uppercase tracking-wide opacity-60"
             style={{ color: layerConfig.hexColor }}
           >
             {layerConfig.label}
@@ -92,7 +91,7 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
       </div>
 
       {/* Title */}
-      <h4 className="text-base font-semibold mb-1 transition-colors text-foreground">
+      <h4 className="text-sm font-semibold mb-1 transition-colors text-foreground">
         {event.title}
       </h4>
 
@@ -126,12 +125,7 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
       </div>
 
       {/* Hover indicator */}
-      <div
-        className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none ring-2 ring-inset"
-        style={{
-          borderColor: layerConfig.hexColor,
-        }}
-      />
+      <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none ring-1 ring-inset ring-stone/30" />
     </div>
   );
 }

@@ -1,10 +1,16 @@
 # ABOUTME: Base agent configurations, model constants, and callback factories.
 # ABOUTME: Provides thinking planner setup and SSE callback wiring for all agents.
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.services.agent_events import AgentEventType
 
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models.llm_request import LlmRequest
@@ -161,14 +167,50 @@ def create_agent_callbacks(
         callback_context: CallbackContext,
         llm_response: LlmResponse,
     ) -> LlmResponse | None:
-        _fire(
-            "MODEL_RESPONSE",
-            {
-                "case_id": case_id,
-                "agent_name": callback_context.agent_name,
-                "timestamp": _now(),
-            },
-        )
+        # Extract thinking parts from model response for real-time streaming
+        thinking_parts: list[str] = []
+        if llm_response.content and llm_response.content.parts:
+            for part in llm_response.content.parts:
+                if getattr(part, "thought", False) and part.text:
+                    thinking_parts.append(part.text)
+
+        # Extract token usage delta from this model turn
+        token_delta: dict[str, int] | None = None
+        usage = getattr(llm_response, "usage_metadata", None)
+        if usage is not None:
+            delta: dict[str, int] = {}
+            if getattr(usage, "prompt_token_count", None):
+                delta["inputTokens"] = usage.prompt_token_count
+            if getattr(usage, "candidates_token_count", None):
+                delta["outputTokens"] = usage.candidates_token_count
+            if getattr(usage, "thoughts_token_count", None):
+                delta["thoughtsTokens"] = usage.thoughts_token_count
+            if delta:
+                token_delta = delta
+
+        # Fire THINKING_UPDATE with full untruncated text if thinking parts exist
+        if thinking_parts:
+            _fire(
+                "THINKING_UPDATE",
+                {
+                    "case_id": case_id,
+                    "agent_name": callback_context.agent_name,
+                    "timestamp": _now(),
+                    "thought": "\n".join(thinking_parts),
+                    **({"tokenDelta": token_delta} if token_delta else {}),
+                },
+            )
+        else:
+            # Still fire MODEL_RESPONSE for non-thinking turns
+            _fire(
+                "MODEL_RESPONSE",
+                {
+                    "case_id": case_id,
+                    "agent_name": callback_context.agent_name,
+                    "timestamp": _now(),
+                    **({"tokenDelta": token_delta} if token_delta else {}),
+                },
+            )
         return None
 
     # -- before_tool ----------------------------------------------------------
@@ -216,3 +258,63 @@ def create_agent_callbacks(
         "before_tool_callback": before_tool,
         "after_tool_callback": after_tool,
     }
+
+
+# ---------------------------------------------------------------------------
+# SSE publish function factory
+# ---------------------------------------------------------------------------
+
+# Mapping from internal callback event names to AgentEventType enum values
+_CALLBACK_TO_EVENT_TYPE: dict[str, AgentEventType] = {}
+
+
+def _get_event_type_map() -> dict[str, AgentEventType]:
+    """Lazily build the callback-name-to-AgentEventType mapping.
+
+    Deferred import avoids circular dependency at module load time
+    (base -> agent_events -> base).
+    """
+    global _CALLBACK_TO_EVENT_TYPE
+    if not _CALLBACK_TO_EVENT_TYPE:
+        from app.services.agent_events import AgentEventType
+
+        _CALLBACK_TO_EVENT_TYPE = {
+            "AGENT_SPAWNED": AgentEventType.AGENT_STARTED,
+            "AGENT_COMPLETED": AgentEventType.AGENT_COMPLETE,
+            "THINKING_UPDATE": AgentEventType.THINKING_UPDATE,
+            "MODEL_RESPONSE": AgentEventType.THINKING_UPDATE,
+            "TOOL_CALLED": AgentEventType.TOOL_CALLED,
+            "TOOL_COMPLETED": AgentEventType.TOOL_CALLED,
+        }
+    return _CALLBACK_TO_EVENT_TYPE
+
+
+def create_sse_publish_fn(case_id: str) -> PublishFn:
+    """Create a bound publish function that maps callback event types to
+    AgentEventType values and dispatches via ``publish_agent_event()``.
+
+    The returned function is suitable as the ``publish_fn`` parameter for
+    ``create_agent_callbacks()``.
+
+    Args:
+        case_id: The investigation case ID for all published events.
+
+    Returns:
+        An async callable ``(event_type, data) -> None``.
+    """
+
+    async def _publish(event_type: str, data: dict[str, object]) -> None:
+        from app.services.agent_events import publish_agent_event
+
+        event_map = _get_event_type_map()
+        mapped = event_map.get(event_type)
+        if mapped is None:
+            logger.debug(
+                "Unmapped callback event type %s for case=%s, skipping SSE publish",
+                event_type,
+                case_id,
+            )
+            return
+        await publish_agent_event(case_id, mapped, data)
+
+    return _publish

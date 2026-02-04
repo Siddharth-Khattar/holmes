@@ -2,12 +2,18 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import type { CommandCenterSSEEvent } from "@/types/command-center";
 import { parseSSEEventData } from "@/lib/command-center-validation";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
 interface UseCommandCenterSSEOptions {
   enabled?: boolean;
   onAgentStarted?: (event: CommandCenterSSEEvent) => void;
   onAgentComplete?: (event: CommandCenterSSEEvent) => void;
   onAgentError?: (event: CommandCenterSSEEvent) => void;
   onProcessingComplete?: (event: CommandCenterSSEEvent) => void;
+  onThinkingUpdate?: (event: CommandCenterSSEEvent) => void;
+  onStateSnapshot?: (event: CommandCenterSSEEvent) => void;
+  onConfirmationRequired?: (event: CommandCenterSSEEvent) => void;
+  onConfirmationResolved?: (event: CommandCenterSSEEvent) => void;
 }
 
 export function useCommandCenterSSE(
@@ -20,6 +26,10 @@ export function useCommandCenterSSE(
     onAgentComplete,
     onAgentError,
     onProcessingComplete,
+    onThinkingUpdate,
+    onStateSnapshot,
+    onConfirmationRequired,
+    onConfirmationResolved,
   } = options;
 
   const [isConnected, setIsConnected] = useState(false);
@@ -36,9 +46,8 @@ export function useCommandCenterSSE(
     if (!enabled || eventSourceRef.current) return;
 
     try {
-      const eventSource = new EventSource(
-        `/api/cases/${caseId}/command-center/stream`,
-      );
+      const sseUrl = `${API_URL}/sse/cases/${caseId}/command-center/stream`;
+      const eventSource = new EventSource(sseUrl);
 
       eventSource.addEventListener("agent-started", (e) => {
         const event = parseSSEEventData(e.data);
@@ -65,6 +74,34 @@ export function useCommandCenterSSE(
         const event = parseSSEEventData(e.data);
         if (event && event.type === "processing-complete") {
           onProcessingComplete?.(event);
+        }
+      });
+
+      eventSource.addEventListener("thinking-update", (e) => {
+        const event = parseSSEEventData(e.data);
+        if (event && event.type === "thinking-update") {
+          onThinkingUpdate?.(event);
+        }
+      });
+
+      eventSource.addEventListener("state-snapshot", (e) => {
+        const event = parseSSEEventData(e.data);
+        if (event && event.type === "state-snapshot") {
+          onStateSnapshot?.(event);
+        }
+      });
+
+      eventSource.addEventListener("confirmation-required", (e) => {
+        const event = parseSSEEventData(e.data);
+        if (event && event.type === "confirmation-required") {
+          onConfirmationRequired?.(event);
+        }
+      });
+
+      eventSource.addEventListener("confirmation-resolved", (e) => {
+        const event = parseSSEEventData(e.data);
+        if (event && event.type === "confirmation-resolved") {
+          onConfirmationResolved?.(event);
         }
       });
 
@@ -112,6 +149,10 @@ export function useCommandCenterSSE(
     onAgentComplete,
     onAgentError,
     onProcessingComplete,
+    onThinkingUpdate,
+    onStateSnapshot,
+    onConfirmationRequired,
+    onConfirmationResolved,
   ]);
 
   useEffect(() => {

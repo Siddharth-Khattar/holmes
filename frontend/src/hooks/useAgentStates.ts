@@ -8,6 +8,7 @@ import { AGENT_CONFIGS } from "@/lib/command-center-config";
 import { createDemoAgentStates } from "@/lib/mock-command-center-data";
 import type {
   AgentState,
+  AgentStatus,
   AgentType,
   CommandCenterSSEEvent,
   ProcessingSummary,
@@ -15,10 +16,32 @@ import type {
   AgentCompleteEvent,
   AgentErrorEvent,
   ProcessingCompleteEvent,
+  ThinkingUpdateEvent,
+  StateSnapshotEvent,
+  ConfirmationRequiredEvent,
+  ConfirmationResolvedEvent,
 } from "@/types/command-center";
 
 /** Delay before activating demo mode when no SSE connection is established */
 const DEMO_MODE_DELAY_MS = 3000;
+
+/**
+ * Maps backend execution status strings to frontend AgentStatus values.
+ * Backend sends lowercased enum values: pending, running, completed, failed.
+ */
+function mapSnapshotStatus(backendStatus: string): AgentStatus {
+  switch (backendStatus) {
+    case "running":
+      return "processing";
+    case "completed":
+      return "complete";
+    case "failed":
+      return "error";
+    case "pending":
+    default:
+      return "idle";
+  }
+}
 
 function createInitialStates(): Map<AgentType, AgentState> {
   const states = new Map<AgentType, AgentState>();
@@ -37,6 +60,7 @@ function createInitialStates(): Map<AgentType, AgentState> {
 export interface UseAgentStatesReturn {
   agentStates: Map<AgentType, AgentState>;
   lastProcessingSummary: ProcessingSummary | null;
+  pendingConfirmations: ConfirmationRequiredEvent[];
   isConnected: boolean;
   isReconnecting: boolean;
 }
@@ -45,6 +69,9 @@ export interface UseAgentStatesReturn {
  * Manages the full agent state lifecycle:
  * - Initializes idle state for all configured agent types
  * - Processes SSE events (started, complete, error, processing-complete)
+ * - Handles thinking-update events by appending traces to agent state
+ * - Handles state-snapshot events for reconnection state restoration
+ * - Tracks pending HITL confirmation requests
  * - Falls back to demo mode with mock data when backend is unavailable
  *
  * TODO: Remove demo mode fallback when backend SSE is fully integrated
@@ -54,6 +81,9 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     useState<Map<AgentType, AgentState>>(createInitialStates);
   const [lastProcessingSummary, setLastProcessingSummary] =
     useState<ProcessingSummary | null>(null);
+  const [pendingConfirmations, setPendingConfirmations] = useState<
+    ConfirmationRequiredEvent[]
+  >([]);
 
   // ------- SSE event handlers -------
 
@@ -139,7 +169,94 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
         entitiesCreated: e.entitiesCreated,
         relationshipsCreated: e.relationshipsCreated,
         completedAt: new Date(),
+        totalDurationMs: e.totalDurationMs,
+        totalInputTokens: e.totalInputTokens,
+        totalOutputTokens: e.totalOutputTokens,
       });
+    },
+    [],
+  );
+
+  const handleThinkingUpdate = useCallback((event: CommandCenterSSEEvent) => {
+    const e = event as ThinkingUpdateEvent;
+    const agentType = e.agentType;
+    setAgentStates((prev) => {
+      const next = new Map(prev);
+      const state = next.get(agentType);
+      if (state) {
+        const existingTraces =
+          (state.lastResult?.metadata?.thinkingTraces as string) || "";
+        const updatedTraces = existingTraces
+          ? existingTraces + "\n" + e.thought
+          : e.thought;
+        next.set(agentType, {
+          ...state,
+          lastResult: {
+            ...(state.lastResult || {
+              taskId: "",
+              agentType,
+              outputs: [],
+            }),
+            metadata: {
+              ...(state.lastResult?.metadata || {}),
+              thinkingTraces: updatedTraces,
+            },
+          },
+        });
+      }
+      return next;
+    });
+  }, []);
+
+  const handleStateSnapshot = useCallback((event: CommandCenterSSEEvent) => {
+    const e = event as StateSnapshotEvent;
+    setAgentStates((prev) => {
+      const next = new Map(prev);
+      for (const [agentName, agentData] of Object.entries(e.agents)) {
+        const agentType = agentName as AgentType;
+        const existingState = next.get(agentType);
+        if (existingState) {
+          const frontendStatus = mapSnapshotStatus(agentData.status);
+          next.set(agentType, {
+            ...existingState,
+            status: frontendStatus,
+            lastResult: agentData.lastResult || {
+              taskId: "",
+              agentType,
+              outputs: [],
+              metadata: agentData.metadata
+                ? {
+                    inputTokens: agentData.metadata.inputTokens,
+                    outputTokens: agentData.metadata.outputTokens,
+                    durationMs: agentData.metadata.durationMs,
+                    startedAt: agentData.metadata.startedAt,
+                    completedAt: agentData.metadata.completedAt,
+                    model: agentData.metadata.model,
+                    thinkingTraces: agentData.metadata.thinkingTraces,
+                  }
+                : undefined,
+            },
+          });
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  const handleConfirmationRequired = useCallback(
+    (event: CommandCenterSSEEvent) => {
+      const e = event as ConfirmationRequiredEvent;
+      setPendingConfirmations((prev) => [...prev, e]);
+    },
+    [],
+  );
+
+  const handleConfirmationResolved = useCallback(
+    (event: CommandCenterSSEEvent) => {
+      const e = event as ConfirmationResolvedEvent;
+      setPendingConfirmations((prev) =>
+        prev.filter((c) => c.requestId !== e.requestId),
+      );
     },
     [],
   );
@@ -152,6 +269,10 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     onAgentComplete: handleAgentComplete,
     onAgentError: handleAgentError,
     onProcessingComplete: handleProcessingComplete,
+    onThinkingUpdate: handleThinkingUpdate,
+    onStateSnapshot: handleStateSnapshot,
+    onConfirmationRequired: handleConfirmationRequired,
+    onConfirmationResolved: handleConfirmationResolved,
   });
 
   // ------- Demo mode fallback -------
@@ -176,5 +297,11 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     }
   }, [isConnected]);
 
-  return { agentStates, lastProcessingSummary, isConnected, isReconnecting };
+  return {
+    agentStates,
+    lastProcessingSummary,
+    pendingConfirmations,
+    isConnected,
+    isReconnecting,
+  };
 }

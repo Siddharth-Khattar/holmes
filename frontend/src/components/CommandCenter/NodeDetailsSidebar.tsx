@@ -3,8 +3,7 @@
 
 "use client";
 
-import { useState, useCallback, type ReactNode } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { useState, type ReactNode } from "react";
 import {
   X,
   ChevronDown,
@@ -22,7 +21,7 @@ import {
   Lightbulb,
 } from "lucide-react";
 
-import { AGENT_CONFIGS, AGENT_TYPE_TINTS } from "@/lib/command-center-config";
+import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
 import type {
   AgentType,
   AgentState,
@@ -34,7 +33,6 @@ import type {
 // Props
 // -----------------------------------------------------------------------
 interface NodeDetailsSidebarProps {
-  isOpen: boolean;
   agentType: AgentType | null;
   agentState: AgentState | null;
   onClose: () => void;
@@ -713,19 +711,14 @@ function getSourceLabel(agentType: AgentType): string {
 // Main component
 // -----------------------------------------------------------------------
 export function NodeDetailsSidebar({
-  isOpen,
   agentType,
   agentState,
   onClose,
 }: NodeDetailsSidebarProps) {
-  const handleBackdropClick = useCallback(() => {
-    onClose();
-  }, [onClose]);
-
   if (!agentType || !agentState) return null;
 
   const config = AGENT_CONFIGS[agentType];
-  const tint = AGENT_TYPE_TINTS[agentType];
+  const { tint } = getAgentColors(agentType);
   const result = agentState.lastResult;
   const isActiveState =
     agentState.status === "processing" || agentState.status === "complete";
@@ -737,316 +730,280 @@ export function NodeDetailsSidebar({
     agentType === "strategy";
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Semi-transparent backdrop */}
-          <motion.div
-            className="absolute inset-0 z-40"
-            style={{ background: "hsl(0 0% 0% / 0.3)" }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={handleBackdropClick}
-          />
-
-          {/* Sidebar panel */}
-          <motion.div
-            className="absolute right-0 top-0 h-full w-96 z-50 flex flex-col overflow-hidden"
-            style={{
-              background: "var(--color-jet)",
-              borderLeft: "1px solid hsl(0 0% 50% / 0.15)",
-            }}
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 20, stiffness: 300 }}
+    <div className="w-full h-full flex flex-col overflow-hidden">
+      {/* ---- Header ---- */}
+      <div
+        className="flex-none px-5 py-5 border-b border-stone/15"
+        style={{
+          background: `linear-gradient(135deg, hsl(${tint} / 0.15) 0%, transparent 100%)`,
+        }}
+      >
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-semibold text-smoke truncate">
+              {config.name}
+            </h3>
+            <p className="text-xs text-stone mt-0.5 leading-relaxed">
+              {config.description}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-stone/10 transition-colors shrink-0 ml-2"
           >
-            {/* ---- Header ---- */}
+            <X className="w-5 h-5 text-stone" />
+          </button>
+        </div>
+
+        {/* Status + Model badges */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-stone/8">
             <div
-              className="flex-none px-5 py-5 border-b border-stone/15"
+              className={`w-1.5 h-1.5 rounded-full ${statusDotClass(agentState.status)}`}
+            />
+            <span className="text-[11px] text-smoke">
+              {statusLabel(agentState.status)}
+            </span>
+          </div>
+          {config.model && (
+            <span className="text-[11px] text-stone/70">{config.model}</span>
+          )}
+          {isActiveState && (
+            <div
+              className="px-2.5 py-1 rounded-full text-xs font-medium"
               style={{
-                background: `linear-gradient(135deg, hsl(${tint} / 0.15) 0%, transparent 100%)`,
+                background: "hsl(var(--cc-accent) / 0.15)",
+                color: "hsl(var(--cc-accent))",
+                border: "1px solid hsl(var(--cc-accent) / 0.3)",
               }}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-semibold text-smoke truncate">
-                    {config.name}
-                  </h3>
-                  <p className="text-xs text-stone mt-0.5 leading-relaxed">
-                    {config.description}
-                  </p>
-                </div>
-                <button
-                  onClick={onClose}
-                  className="p-1.5 rounded-lg hover:bg-stone/10 transition-colors shrink-0 ml-2"
-                >
-                  <X className="w-5 h-5 text-stone" />
-                </button>
-              </div>
+              Selected Path
+            </div>
+          )}
+        </div>
+      </div>
 
-              {/* Status + Model badges */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-jet/50 border border-stone/10">
-                  <div
-                    className={`w-2 h-2 rounded-full ${statusDotClass(agentState.status)}`}
-                  />
-                  <span className="text-xs text-smoke">
-                    {statusLabel(agentState.status)}
-                  </span>
-                </div>
-                {config.model && (
-                  <div className="px-3 py-1.5 rounded-lg bg-jet/50 border border-stone/10">
-                    <span className="text-xs text-stone">{config.model}</span>
-                  </div>
-                )}
-                {isActiveState && (
-                  <div
-                    className="px-2.5 py-1 rounded-full text-xs font-medium"
-                    style={{
-                      background: "hsl(var(--cc-accent) / 0.15)",
-                      color: "hsl(var(--cc-accent))",
-                      border: "1px solid hsl(var(--cc-accent) / 0.3)",
-                    }}
-                  >
-                    Selected Path
-                  </div>
-                )}
+      {/* ---- Scrollable content ---- */}
+      <div
+        className="flex-1 overflow-y-auto"
+        style={{ scrollbarWidth: "none" }}
+      >
+        {/* Current Task (always visible at top when processing) */}
+        {agentState.currentTask && (
+          <div className="border-b border-stone/10">
+            <div className="px-5 py-4 bg-blue-500/5">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                <span className="text-xs font-medium text-blue-400 uppercase tracking-wide">
+                  Current Task
+                </span>
+              </div>
+              <div className="text-sm text-smoke font-medium mb-1">
+                {agentState.currentTask.fileName}
+              </div>
+              <div className="text-xs text-stone">
+                Started: {agentState.currentTask.startedAt.toLocaleTimeString()}
               </div>
             </div>
+          </div>
+        )}
 
-            {/* ---- Scrollable content ---- */}
+        {/* Thinking Traces (always shown if data exists) */}
+        <CollapsibleSection
+          title="Thinking Traces"
+          color="hsl(var(--cc-accent))"
+          icon={<Brain className="w-3.5 h-3.5" />}
+        >
+          {thinkingTraces ? (
             <div
-              className="flex-1 overflow-y-auto"
-              style={{ scrollbarWidth: "none" }}
+              className="p-3 rounded-lg font-mono text-sm leading-relaxed whitespace-pre-wrap break-words"
+              style={{
+                background: "hsl(var(--cc-accent) / 0.05)",
+                borderLeft: "3px solid hsl(var(--cc-accent) / 0.3)",
+                color: "hsl(0 0% 78%)",
+              }}
             >
-              {/* Current Task (always visible at top when processing) */}
-              {agentState.currentTask && (
-                <div className="border-b border-stone/10">
-                  <div className="px-5 py-4 bg-blue-500/5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                      <span className="text-xs font-medium text-blue-400 uppercase tracking-wide">
-                        Current Task
-                      </span>
-                    </div>
-                    <div className="text-sm text-smoke font-medium mb-1">
-                      {agentState.currentTask.fileName}
-                    </div>
-                    <div className="text-xs text-stone">
-                      Started:{" "}
-                      {agentState.currentTask.startedAt.toLocaleTimeString()}
-                    </div>
-                  </div>
+              {thinkingTraces}
+            </div>
+          ) : (
+            <p className="text-xs text-stone/50 italic">
+              No thinking traces available
+            </p>
+          )}
+        </CollapsibleSection>
+
+        {/* Agent-type-specific sections */}
+        {agentType === "triage" && <TriageSections agentState={agentState} />}
+        {agentType === "orchestrator" && (
+          <OrchestratorSections agentState={agentState} />
+        )}
+        {isDomainAgent && <DomainAgentSections agentState={agentState} />}
+        {agentType === "knowledge-graph" && (
+          <KnowledgeGraphSections agentState={agentState} />
+        )}
+
+        {/* Input Context (shared, from AgentDetailsPanel pattern) */}
+        {result && (
+          <CollapsibleSection
+            title="Input Context"
+            color="hsl(220 50% 35%)"
+            icon={<FileText className="w-3.5 h-3.5" />}
+          >
+            <div>
+              <div className="text-xs text-stone mb-1">From Agent</div>
+              <div className="text-sm text-smoke">
+                {getSourceLabel(agentType)}
+              </div>
+            </div>
+            {result.metadata && (
+              <div>
+                <div className="text-xs text-stone mb-2">Metadata</div>
+                <div className="p-3 rounded-lg bg-jet/50 border border-stone/10">
+                  <pre className="text-xs text-stone font-mono overflow-x-auto whitespace-pre-wrap">
+                    {JSON.stringify(result.metadata, null, 2)}
+                  </pre>
                 </div>
-              )}
+              </div>
+            )}
+          </CollapsibleSection>
+        )}
 
-              {/* Thinking Traces (always shown if data exists) */}
-              <CollapsibleSection
-                title="Thinking Traces"
-                color="hsl(var(--cc-accent))"
-                icon={<Brain className="w-3.5 h-3.5" />}
+        {/* Output Findings (shared, from AgentDetailsPanel pattern) */}
+        {result && result.outputs.length > 0 && (
+          <CollapsibleSection
+            title="Output Findings"
+            color="hsl(var(--cc-accent))"
+            icon={<FileText className="w-3.5 h-3.5" />}
+            badge={`${result.outputs.length} items`}
+          >
+            {result.outputs.map((output: AgentOutput, idx: number) => (
+              <div
+                key={idx}
+                className="p-3 rounded-lg bg-jet/50 border border-stone/10"
               >
-                {thinkingTraces ? (
-                  <div
-                    className="p-3 rounded-lg font-mono text-sm leading-relaxed whitespace-pre-wrap break-words"
-                    style={{
-                      background: "hsl(var(--cc-accent) / 0.05)",
-                      borderLeft: "3px solid hsl(var(--cc-accent) / 0.3)",
-                      color: "hsl(0 0% 78%)",
-                    }}
-                  >
-                    {thinkingTraces}
-                  </div>
-                ) : (
-                  <p className="text-xs text-stone/50 italic">
-                    No thinking traces available
-                  </p>
-                )}
-              </CollapsibleSection>
-
-              {/* Agent-type-specific sections */}
-              {agentType === "triage" && (
-                <TriageSections agentState={agentState} />
-              )}
-              {agentType === "orchestrator" && (
-                <OrchestratorSections agentState={agentState} />
-              )}
-              {isDomainAgent && <DomainAgentSections agentState={agentState} />}
-              {agentType === "knowledge-graph" && (
-                <KnowledgeGraphSections agentState={agentState} />
-              )}
-
-              {/* Input Context (shared, from AgentDetailsPanel pattern) */}
-              {result && (
-                <CollapsibleSection
-                  title="Input Context"
-                  color="hsl(220 50% 35%)"
-                  icon={<FileText className="w-3.5 h-3.5" />}
-                >
-                  <div>
-                    <div className="text-xs text-stone mb-1">From Agent</div>
-                    <div className="text-sm text-smoke">
-                      {getSourceLabel(agentType)}
-                    </div>
-                  </div>
-                  {result.metadata && (
-                    <div>
-                      <div className="text-xs text-stone mb-2">Metadata</div>
-                      <div className="p-3 rounded-lg bg-jet/50 border border-stone/10">
-                        <pre className="text-xs text-stone font-mono overflow-x-auto whitespace-pre-wrap">
-                          {JSON.stringify(result.metadata, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-[hsl(var(--cc-accent))]">
+                    {output.type}
+                  </span>
+                  {output.confidence !== undefined && (
+                    <span className="text-xs text-stone">
+                      {(output.confidence * 100).toFixed(0)}% confidence
+                    </span>
                   )}
-                </CollapsibleSection>
-              )}
+                </div>
+                <pre className="text-xs text-smoke font-mono overflow-x-auto whitespace-pre-wrap">
+                  {JSON.stringify(output.data, null, 2)}
+                </pre>
+              </div>
+            ))}
 
-              {/* Output Findings (shared, from AgentDetailsPanel pattern) */}
-              {result && result.outputs.length > 0 && (
-                <CollapsibleSection
-                  title="Output Findings"
-                  color="hsl(var(--cc-accent))"
-                  icon={<FileText className="w-3.5 h-3.5" />}
-                  badge={`${result.outputs.length} items`}
-                >
-                  {result.outputs.map((output: AgentOutput, idx: number) => (
-                    <div
-                      key={idx}
-                      className="p-3 rounded-lg bg-jet/50 border border-stone/10"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium text-[hsl(var(--cc-accent))]">
-                          {output.type}
-                        </span>
-                        {output.confidence !== undefined && (
-                          <span className="text-xs text-stone">
-                            {(output.confidence * 100).toFixed(0)}% confidence
-                          </span>
-                        )}
-                      </div>
-                      <pre className="text-xs text-smoke font-mono overflow-x-auto whitespace-pre-wrap">
-                        {JSON.stringify(output.data, null, 2)}
-                      </pre>
-                    </div>
-                  ))}
-
-                  {/* Routing decisions inline (from AgentDetailsPanel pattern) */}
-                  {result.routingDecisions &&
-                    result.routingDecisions.length > 0 && (
-                      <div>
-                        <div className="text-xs text-stone mb-2 mt-2">
-                          Routing Decisions
-                        </div>
-                        <div className="space-y-2">
-                          {result.routingDecisions.map(
-                            (decision: RoutingDecision, idx: number) => (
-                              <div
-                                key={idx}
-                                className="p-3 rounded-lg bg-jet/50 border border-stone/10"
-                              >
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-sm text-smoke font-medium">
-                                    &rarr; {decision.targetAgent}
-                                  </span>
-                                  <span className="text-xs text-[hsl(var(--cc-accent))]">
-                                    {(decision.domainScore * 100).toFixed(0)}%
-                                  </span>
-                                </div>
-                                <div className="text-xs text-stone">
-                                  {decision.reason}
-                                </div>
-                              </div>
-                            ),
-                          )}
-                        </div>
-                      </div>
-                    )}
-                </CollapsibleSection>
-              )}
-
-              {/* Tools Called (shared) */}
-              {result?.toolsCalled && result.toolsCalled.length > 0 && (
-                <CollapsibleSection
-                  title="Tools Called"
-                  color="hsl(0 0% 50%)"
-                  icon={<Wrench className="w-3.5 h-3.5" />}
-                  badge={result.toolsCalled.length}
-                >
-                  <div className="space-y-1.5">
-                    {result.toolsCalled.map((tool, idx) => (
+            {/* Routing decisions inline (from AgentDetailsPanel pattern) */}
+            {result.routingDecisions && result.routingDecisions.length > 0 && (
+              <div>
+                <div className="text-xs text-stone mb-2 mt-2">
+                  Routing Decisions
+                </div>
+                <div className="space-y-2">
+                  {result.routingDecisions.map(
+                    (decision: RoutingDecision, idx: number) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-2 p-2.5 rounded-lg bg-jet/50 border border-stone/10"
-                      >
-                        <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--cc-accent))] shrink-0" />
-                        <span className="text-sm text-smoke font-mono">
-                          {tool}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CollapsibleSection>
-              )}
-
-              {/* Processing History (shared) */}
-              {agentState.processingHistory.length > 0 && (
-                <CollapsibleSection
-                  title="Processing History"
-                  color="hsl(0 0% 40%)"
-                  icon={<Clock className="w-3.5 h-3.5" />}
-                  badge={agentState.processingHistory.length}
-                >
-                  <div className="space-y-2">
-                    {agentState.processingHistory.map((task) => (
-                      <div
-                        key={task.taskId}
                         className="p-3 rounded-lg bg-jet/50 border border-stone/10"
                       >
-                        <div className="flex items-start justify-between mb-1">
-                          <div className="text-sm text-smoke flex-1 truncate">
-                            {task.fileName}
-                          </div>
-                          <div
-                            className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                              task.status === "complete"
-                                ? "bg-[hsl(180_60%_45%)]"
-                                : "bg-red-500"
-                            }`}
-                          />
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-smoke font-medium">
+                            &rarr; {decision.targetAgent}
+                          </span>
+                          <span className="text-xs text-[hsl(var(--cc-accent))]">
+                            {(decision.domainScore * 100).toFixed(0)}%
+                          </span>
                         </div>
                         <div className="text-xs text-stone">
-                          {task.completedAt?.toLocaleTimeString()}
+                          {decision.reason}
                         </div>
-                        {task.error && (
-                          <div className="mt-1.5 text-xs text-red-400">
-                            {task.error}
-                          </div>
-                        )}
                       </div>
-                    ))}
-                  </div>
-                </CollapsibleSection>
-              )}
+                    ),
+                  )}
+                </div>
+              </div>
+            )}
+          </CollapsibleSection>
+        )}
 
-              {/* Idle/empty state */}
-              {!agentState.currentTask &&
-                !result &&
-                agentState.processingHistory.length === 0 && (
-                  <div className="px-6 py-12 text-center">
-                    <div className="w-16 h-16 rounded-full bg-stone/10 flex items-center justify-center mx-auto mb-4">
-                      <div className="w-8 h-8 rounded-full border-2 border-stone/30 border-t-stone animate-spin" />
-                    </div>
-                    <p className="text-sm text-stone">Waiting for tasks...</p>
-                  </div>
-                )}
+        {/* Tools Called (shared) */}
+        {result?.toolsCalled && result.toolsCalled.length > 0 && (
+          <CollapsibleSection
+            title="Tools Called"
+            color="hsl(0 0% 50%)"
+            icon={<Wrench className="w-3.5 h-3.5" />}
+            badge={result.toolsCalled.length}
+          >
+            <div className="space-y-1.5">
+              {result.toolsCalled.map((tool, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-2 p-2.5 rounded-lg bg-jet/50 border border-stone/10"
+                >
+                  <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--cc-accent))] shrink-0" />
+                  <span className="text-sm text-smoke font-mono">{tool}</span>
+                </div>
+              ))}
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+          </CollapsibleSection>
+        )}
+
+        {/* Processing History (shared) */}
+        {agentState.processingHistory.length > 0 && (
+          <CollapsibleSection
+            title="Processing History"
+            color="hsl(0 0% 40%)"
+            icon={<Clock className="w-3.5 h-3.5" />}
+            badge={agentState.processingHistory.length}
+          >
+            <div className="space-y-2">
+              {agentState.processingHistory.map((task) => (
+                <div
+                  key={task.taskId}
+                  className="p-3 rounded-lg bg-jet/50 border border-stone/10"
+                >
+                  <div className="flex items-start justify-between mb-1">
+                    <div className="text-sm text-smoke flex-1 truncate">
+                      {task.fileName}
+                    </div>
+                    <div
+                      className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                        task.status === "complete"
+                          ? "bg-[hsl(180_60%_45%)]"
+                          : "bg-red-500"
+                      }`}
+                    />
+                  </div>
+                  <div className="text-xs text-stone">
+                    {task.completedAt?.toLocaleTimeString()}
+                  </div>
+                  {task.error && (
+                    <div className="mt-1.5 text-xs text-red-400">
+                      {task.error}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {/* Idle/empty state */}
+        {!agentState.currentTask &&
+          !result &&
+          agentState.processingHistory.length === 0 && (
+            <div className="px-6 py-12 text-center">
+              <div className="w-16 h-16 rounded-full bg-stone/10 flex items-center justify-center mx-auto mb-4">
+                <div className="w-8 h-8 rounded-full border-2 border-stone/30 border-t-stone animate-spin" />
+              </div>
+              <p className="text-sm text-stone">Waiting for tasks...</p>
+            </div>
+          )}
+      </div>
+    </div>
   );
 }

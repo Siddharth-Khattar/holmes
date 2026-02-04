@@ -1,14 +1,39 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { APIProvider, Map, AdvancedMarker, useMap } from "@vis.gl/react-google-maps";
-import { Globe, MapIcon, X, Clock, FileText, MapPin, Navigation, Building2 } from "lucide-react";
+import {
+  APIProvider,
+  Map,
+  AdvancedMarker,
+  useMap,
+} from "@vis.gl/react-google-maps";
+import {
+  Globe,
+  MapIcon,
+  X,
+  Clock,
+  FileText,
+  MapPin,
+  Navigation,
+  Building2,
+} from "lucide-react";
 import { clsx } from "clsx";
 import type {
   Landmark,
   GeospatialPath,
   MapView,
 } from "@/types/geospatial.types";
+
+interface PlaceInfo {
+  name?: string;
+  address?: string;
+  phone?: string;
+  rating?: number;
+  types?: string[];
+  website?: string;
+  photos?: unknown[];
+}
 
 interface GeospatialMapProps {
   landmarks: Landmark[];
@@ -36,11 +61,15 @@ type GoogleMapTypeId = "roadmap" | "satellite" | "hybrid" | "terrain";
 
 export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
   const [mapView, setMapView] = useState<MapView>("2d");
-  const [selectedLandmark, setSelectedLandmark] = useState<Landmark | null>(null);
+  const [selectedLandmark, setSelectedLandmark] = useState<Landmark | null>(
+    null,
+  );
   const [hoveredLandmark, setHoveredLandmark] = useState<string | null>(null);
   const [showStreetView, setShowStreetView] = useState(false);
-  const [streetViewLandmark, setStreetViewLandmark] = useState<Landmark | null>(null);
-  const [placeInfo, setPlaceInfo] = useState<Record<string, unknown> | null>(null);
+  const [streetViewLandmark, setStreetViewLandmark] = useState<Landmark | null>(
+    null,
+  );
+  const [placeInfo, setPlaceInfo] = useState<PlaceInfo | null>(null);
   const [loadingPlaceInfo, setLoadingPlaceInfo] = useState(false);
 
   // Get API key from environment
@@ -51,8 +80,10 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
     if (landmarks.length === 0) {
       return { lat: 37.7749, lng: -122.4194 }; // Default to San Francisco
     }
-    const centerLat = landmarks.reduce((sum, l) => sum + l.location.lat, 0) / landmarks.length;
-    const centerLng = landmarks.reduce((sum, l) => sum + l.location.lng, 0) / landmarks.length;
+    const centerLat =
+      landmarks.reduce((sum, l) => sum + l.location.lat, 0) / landmarks.length;
+    const centerLng =
+      landmarks.reduce((sum, l) => sum + l.location.lng, 0) / landmarks.length;
     return { lat: centerLat, lng: centerLng };
   }, [landmarks]);
 
@@ -60,68 +91,88 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
   const mapTypeId: GoogleMapTypeId = mapView === "3d" ? "satellite" : "roadmap";
 
   // Fetch place information using Places API
-  const fetchPlaceInfo = useCallback(async (landmark: Landmark) => {
-    if (!apiKey) return;
-    
-    // Check if Google Maps API is loaded
-    if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
-      console.warn('Google Maps Places API not loaded yet');
-      setLoadingPlaceInfo(false);
-      return;
-    }
-    
-    setLoadingPlaceInfo(true);
-    try {
-      // Use Places API to get nearby place information
-      const service = new google.maps.places.PlacesService(
-        document.createElement('div')
-      );
+  const fetchPlaceInfo = useCallback(
+    async (landmark: Landmark) => {
+      if (!apiKey) return;
 
-      const request = {
-        location: new google.maps.LatLng(landmark.location.lat, landmark.location.lng),
-        radius: 50, // 50 meters radius
-      };
+      // Check if Google Maps API is loaded
+      if (
+        typeof window === "undefined" ||
+        !(window as any).google?.maps?.places
+      ) {
+        console.warn("Google Maps Places API not loaded yet");
+        setLoadingPlaceInfo(false);
+        return;
+      }
 
-      service.nearbySearch(request, (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && results && results[0]) {
-          const place = results[0];
-          
-          // Get detailed place information
-          service.getDetails(
-            { placeId: place.place_id! },
-            (placeDetails, detailsStatus) => {
-              if (detailsStatus === google.maps.places.PlacesServiceStatus.OK) {
-                setPlaceInfo({
-                  name: placeDetails?.name,
-                  address: placeDetails?.formatted_address,
-                  phone: placeDetails?.formatted_phone_number,
-                  rating: placeDetails?.rating,
-                  types: placeDetails?.types,
-                  website: placeDetails?.website,
-                  photos: placeDetails?.photos?.slice(0, 3),
-                });
-              }
-              setLoadingPlaceInfo(false);
-            }
-          );
-        } else {
-          setPlaceInfo(null);
-          setLoadingPlaceInfo(false);
-        }
-      });
-    } catch (error) {
-      console.error("Error fetching place info:", error);
-      setPlaceInfo(null);
-      setLoadingPlaceInfo(false);
-    }
-  }, [apiKey]);
+      setLoadingPlaceInfo(true);
+      try {
+        const googleMaps = (window as any).google.maps;
+
+        // Use Places API to get nearby place information
+        const service = new googleMaps.places.PlacesService(
+          document.createElement("div"),
+        );
+
+        const request = {
+          location: new googleMaps.LatLng(
+            landmark.location.lat,
+            landmark.location.lng,
+          ),
+          radius: 50, // 50 meters radius
+        };
+
+        service.nearbySearch(request, (results: any, status: any) => {
+          if (
+            status === googleMaps.places.PlacesServiceStatus.OK &&
+            results &&
+            results[0]
+          ) {
+            const place = results[0];
+
+            // Get detailed place information
+            service.getDetails(
+              { placeId: place.place_id! },
+              (placeDetails: any, detailsStatus: any) => {
+                if (
+                  detailsStatus === googleMaps.places.PlacesServiceStatus.OK
+                ) {
+                  setPlaceInfo({
+                    name: placeDetails?.name,
+                    address: placeDetails?.formatted_address,
+                    phone: placeDetails?.formatted_phone_number,
+                    rating: placeDetails?.rating,
+                    types: placeDetails?.types,
+                    website: placeDetails?.website,
+                    photos: placeDetails?.photos?.slice(0, 3),
+                  });
+                }
+                setLoadingPlaceInfo(false);
+              },
+            );
+          } else {
+            setPlaceInfo(null);
+            setLoadingPlaceInfo(false);
+          }
+        });
+      } catch (error) {
+        console.error("Error fetching place info:", error);
+        setPlaceInfo(null);
+        setLoadingPlaceInfo(false);
+      }
+    },
+    [apiKey],
+  );
 
   // Handle landmark click
-  const handleLandmarkClick = useCallback((landmark: Landmark) => {
-    setSelectedLandmark(landmark);
-    setPlaceInfo(null);
-    fetchPlaceInfo(landmark);
-  }, [fetchPlaceInfo]);
+  const handleLandmarkClick = useCallback(
+    (landmark: Landmark) => {
+      setSelectedLandmark(landmark);
+      setPlaceInfo(null);
+      fetchPlaceInfo(landmark);
+    },
+    [fetchPlaceInfo],
+  );
 
   // Close dialog
   const handleBackdropClick = useCallback(() => {
@@ -158,12 +209,20 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
         }}
       >
         <div className="text-center p-8">
-          <Globe size={64} className="mx-auto mb-4" style={{ color: "var(--muted-foreground)" }} />
-          <h3 className="text-lg font-semibold mb-2" style={{ color: "var(--foreground)" }}>
+          <Globe
+            size={64}
+            className="mx-auto mb-4"
+            style={{ color: "var(--muted-foreground)" }}
+          />
+          <h3
+            className="text-lg font-semibold mb-2"
+            style={{ color: "var(--foreground)" }}
+          >
             Google Maps API Key Required
           </h3>
           <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
-            Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your frontend/.env file
+            Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your frontend/.env
+            file
           </p>
         </div>
       </div>
@@ -181,7 +240,7 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
         willChange: mapView === "3d" ? "transform" : "auto",
       }}
     >
-      <APIProvider apiKey={apiKey} libraries={['places']}>
+      <APIProvider apiKey={apiKey} libraries={["places"]}>
         {/* Main Map */}
         {!showStreetView && (
           <Map
@@ -207,7 +266,8 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
           >
             {/* Render landmarks as markers */}
             {landmarks.map((landmark) => {
-              const color = LANDMARK_COLORS[landmark.type] || LANDMARK_COLORS.other;
+              const color =
+                LANDMARK_COLORS[landmark.type] || LANDMARK_COLORS.other;
               const isHovered = hoveredLandmark === landmark.id;
               const isSelected = selectedLandmark?.id === landmark.id;
 
@@ -226,9 +286,10 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
                       width: isSelected ? "52px" : isHovered ? "48px" : "44px",
                       height: isSelected ? "52px" : isHovered ? "48px" : "44px",
                       backgroundColor: color,
-                      boxShadow: isSelected || isHovered
-                        ? `0 0 24px ${color}90, 0 4px 16px rgba(0, 0, 0, 0.3)`
-                        : `0 4px 12px rgba(0, 0, 0, 0.2)`,
+                      boxShadow:
+                        isSelected || isHovered
+                          ? `0 0 24px ${color}90, 0 4px 16px rgba(0, 0, 0, 0.3)`
+                          : `0 4px 12px rgba(0, 0, 0, 0.2)`,
                       border: `3px solid ${isSelected ? "#ffffff" : "rgba(255, 255, 255, 0.9)"}`,
                       transition: "all 0.2s ease-out",
                       // Hardware acceleration
@@ -279,7 +340,8 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
                 : "text-[var(--muted-foreground)]",
             )}
             style={{
-              backgroundColor: mapView === "2d" ? "var(--muted)" : "transparent",
+              backgroundColor:
+                mapView === "2d" ? "var(--muted)" : "transparent",
             }}
           >
             <MapIcon size={16} />
@@ -294,7 +356,8 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
                 : "text-[var(--muted-foreground)]",
             )}
             style={{
-              backgroundColor: mapView === "3d" ? "var(--muted)" : "transparent",
+              backgroundColor:
+                mapView === "3d" ? "var(--muted)" : "transparent",
             }}
           >
             <Globe size={16} />
@@ -383,7 +446,7 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
                   >
                     {selectedLandmark.type.replace("_", " ")}
                   </p>
-                  
+
                   {/* Action Buttons */}
                   <div className="flex gap-2">
                     <button
@@ -422,10 +485,19 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
 
               {/* Place Information from Places API */}
               {loadingPlaceInfo && (
-                <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border)" }}>
+                <div
+                  className="px-6 py-4"
+                  style={{ borderBottom: "1px solid var(--border)" }}
+                >
                   <div className="flex items-center gap-2">
-                    <Building2 size={16} style={{ color: "var(--muted-foreground)" }} />
-                    <span className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                    <Building2
+                      size={16}
+                      style={{ color: "var(--muted-foreground)" }}
+                    />
+                    <span
+                      className="text-sm"
+                      style={{ color: "var(--muted-foreground)" }}
+                    >
                       Loading location information...
                     </span>
                   </div>
@@ -441,33 +513,54 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
                   }}
                 >
                   <div className="flex items-start gap-3">
-                    <Building2 size={20} style={{ color: "var(--foreground)" }} />
+                    <Building2
+                      size={20}
+                      style={{ color: "var(--foreground)" }}
+                    />
                     <div className="flex-1">
-                      <h3 className="font-semibold text-sm mb-2" style={{ color: "var(--foreground)" }}>
+                      <h3
+                        className="font-semibold text-sm mb-2"
+                        style={{ color: "var(--foreground)" }}
+                      >
                         Location Information
                       </h3>
                       {placeInfo.name && (
-                        <p className="text-sm mb-1" style={{ color: "var(--foreground)" }}>
+                        <p
+                          className="text-sm mb-1"
+                          style={{ color: "var(--foreground)" }}
+                        >
                           <strong>Name:</strong> {placeInfo.name}
                         </p>
                       )}
                       {placeInfo.address && (
-                        <p className="text-sm mb-1" style={{ color: "var(--muted-foreground)" }}>
+                        <p
+                          className="text-sm mb-1"
+                          style={{ color: "var(--muted-foreground)" }}
+                        >
                           <strong>Address:</strong> {placeInfo.address}
                         </p>
                       )}
                       {placeInfo.phone && (
-                        <p className="text-sm mb-1" style={{ color: "var(--muted-foreground)" }}>
+                        <p
+                          className="text-sm mb-1"
+                          style={{ color: "var(--muted-foreground)" }}
+                        >
                           <strong>Phone:</strong> {placeInfo.phone}
                         </p>
                       )}
                       {placeInfo.rating && (
-                        <p className="text-sm mb-1" style={{ color: "var(--muted-foreground)" }}>
+                        <p
+                          className="text-sm mb-1"
+                          style={{ color: "var(--muted-foreground)" }}
+                        >
                           <strong>Rating:</strong> {placeInfo.rating} ⭐
                         </p>
                       )}
                       {placeInfo.website && (
-                        <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                        <p
+                          className="text-sm"
+                          style={{ color: "var(--muted-foreground)" }}
+                        >
                           <strong>Website:</strong>{" "}
                           <a
                             href={placeInfo.website}
@@ -531,7 +624,10 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
                       </p>
 
                       {/* Event metadata */}
-                      <div className="flex items-center gap-4 text-xs" style={{ color: "var(--muted-foreground)" }}>
+                      <div
+                        className="flex items-center gap-4 text-xs"
+                        style={{ color: "var(--muted-foreground)" }}
+                      >
                         <div className="flex items-center gap-1">
                           <Clock size={12} />
                           <span>{formatTimestamp(event.timestamp)}</span>
@@ -541,12 +637,15 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
                             Confidence: {(event.confidence * 100).toFixed(0)}%
                           </div>
                         )}
-                        {event.sourceDocuments && event.sourceDocuments.length > 0 && (
-                          <div className="flex items-center gap-1">
-                            <FileText size={12} />
-                            <span>{event.sourceDocuments.length} source(s)</span>
-                          </div>
-                        )}
+                        {event.sourceDocuments &&
+                          event.sourceDocuments.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <FileText size={12} />
+                              <span>
+                                {event.sourceDocuments.length} source(s)
+                              </span>
+                            </div>
+                          )}
                       </div>
                     </div>
                   ))}
@@ -561,14 +660,23 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
 }
 
 // Component to render paths as polylines
-function PathsOverlay({ paths, landmarks }: { paths: GeospatialPath[]; landmarks: Landmark[] }) {
+function PathsOverlay({
+  paths,
+  landmarks,
+}: {
+  paths: GeospatialPath[];
+  landmarks: Landmark[];
+}) {
   const map = useMap();
 
   useMemo(() => {
-    if (!map) return;
+    if (!map || typeof window === "undefined" || !(window as any).google?.maps)
+      return;
+
+    const googleMaps = (window as any).google.maps;
 
     // Clear existing polylines
-    const polylines: google.maps.Polyline[] = [];
+    const polylines: any[] = [];
 
     paths.forEach((path) => {
       const fromLandmark = landmarks.find((l) => l.id === path.from);
@@ -576,7 +684,7 @@ function PathsOverlay({ paths, landmarks }: { paths: GeospatialPath[]; landmarks
 
       if (!fromLandmark || !toLandmark) return;
 
-      const polyline = new google.maps.Polyline({
+      const polyline = new googleMaps.Polyline({
         path: [fromLandmark.location, toLandmark.location],
         geodesic: true,
         strokeColor: path.color || "#8A8A82",
@@ -585,7 +693,7 @@ function PathsOverlay({ paths, landmarks }: { paths: GeospatialPath[]; landmarks
         icons: [
           {
             icon: {
-              path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+              path: googleMaps.SymbolPath.FORWARD_CLOSED_ARROW,
               scale: 3,
               strokeColor: path.color || "#8A8A82",
             },
@@ -610,7 +718,13 @@ function PathsOverlay({ paths, landmarks }: { paths: GeospatialPath[]; landmarks
 }
 
 // Street View Component
-function StreetViewComponent({ landmark, onClose }: { landmark: Landmark; onClose: () => void }) {
+function StreetViewComponent({
+  landmark,
+  onClose,
+}: {
+  landmark: Landmark;
+  onClose: () => void;
+}) {
   const [error, setError] = useState(false);
 
   return (
@@ -619,21 +733,26 @@ function StreetViewComponent({ landmark, onClose }: { landmark: Landmark; onClos
         id="street-view"
         className="w-full h-full"
         ref={(node) => {
-          if (node && typeof google !== 'undefined' && google?.maps?.StreetViewPanorama) {
+          if (
+            node &&
+            typeof window !== "undefined" &&
+            (window as any).google?.maps?.StreetViewPanorama
+          ) {
             try {
-              new google.maps.StreetViewPanorama(node, {
+              const googleMaps = (window as any).google.maps;
+              new googleMaps.StreetViewPanorama(node, {
                 position: landmark.location,
                 pov: { heading: 0, pitch: 0 },
                 zoom: 1,
               });
             } catch (err) {
-              console.error('Street View error:', err);
+              console.error("Street View error:", err);
               setError(true);
             }
           }
         }}
       />
-      
+
       {error && (
         <div
           className="absolute inset-0 flex items-center justify-center"
@@ -646,7 +765,7 @@ function StreetViewComponent({ landmark, onClose }: { landmark: Landmark; onClos
           </div>
         </div>
       )}
-      
+
       {/* Close button */}
       <button
         onClick={onClose}
@@ -677,11 +796,17 @@ function StreetViewComponent({ landmark, onClose }: { landmark: Landmark; onClos
         >
           <div className="flex items-center gap-2">
             <Navigation size={16} style={{ color: "var(--foreground)" }} />
-            <span className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
+            <span
+              className="text-sm font-medium"
+              style={{ color: "var(--foreground)" }}
+            >
               {landmark.name}
             </span>
           </div>
-          <p className="text-xs mt-1" style={{ color: "var(--muted-foreground)" }}>
+          <p
+            className="text-xs mt-1"
+            style={{ color: "var(--muted-foreground)" }}
+          >
             Street View • Use mouse to look around
           </p>
         </div>

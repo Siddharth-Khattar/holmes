@@ -294,11 +294,11 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
     async (file: LibraryFile) => {
       // For demonstration, use mock URLs
       // In production, this would fetch the actual file URL from the backend
-      
+
       // Use mock URL directly for now to avoid API errors during demo
       const mockUrl = getMockFileUrl(file.type);
       setRedactModalFile({ ...file, url: mockUrl });
-      
+
       // TODO: Uncomment when backend is ready
       // try {
       //   const url = await getDownloadUrl(caseId, file.id);

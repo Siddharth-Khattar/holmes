@@ -12,7 +12,8 @@ export const mockGeospatialData: GeospatialData = {
         {
           id: "event-1",
           title: "Initial Incident Reported",
-          description: "First responders arrived at the scene following a 911 call.",
+          description:
+            "First responders arrived at the scene following a 911 call.",
           timestamp: new Date("2024-01-15T14:30:00"),
           layer: "evidence",
           confidence: 0.95,
@@ -21,7 +22,8 @@ export const mockGeospatialData: GeospatialData = {
         {
           id: "event-2",
           title: "Evidence Collection",
-          description: "Forensic team collected physical evidence from the location.",
+          description:
+            "Forensic team collected physical evidence from the location.",
           timestamp: new Date("2024-01-15T16:45:00"),
           layer: "evidence",
           confidence: 0.98,

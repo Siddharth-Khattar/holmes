@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import {
   ReactFlow,
   Background,
@@ -13,6 +13,7 @@ import {
   type Edge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { CanvasZoomControls } from "@/components/ui/canvas-zoom-controls";
 import { DecisionNode } from "./DecisionNode";
 import { FileGroupNode } from "./FileGroupNode";
 import { FileRoutingEdge } from "./FileRoutingEdge";
@@ -56,8 +57,32 @@ export function AgentFlowCanvas({
     }
   }, [nodes.length, reactFlowInstance]);
 
+  const handleZoomIn = useCallback(() => {
+    reactFlowInstance.zoomIn({ duration: 300 });
+  }, [reactFlowInstance]);
+
+  const handleZoomOut = useCallback(() => {
+    reactFlowInstance.zoomOut({ duration: 300 });
+  }, [reactFlowInstance]);
+
+  const handleResetZoom = useCallback(() => {
+    reactFlowInstance.zoomTo(1, { duration: 500 });
+  }, [reactFlowInstance]);
+
+  const handleFitView = useCallback(() => {
+    reactFlowInstance.fitView({
+      duration: 500,
+      padding: 0.2,
+      minZoom: 0.1,
+      maxZoom: 1,
+    });
+  }, [reactFlowInstance]);
+
   return (
-    <div className="w-full h-full" style={{ background: "var(--color-jet)" }}>
+    <div
+      className="relative w-full h-full"
+      style={{ background: "var(--color-jet)" }}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -77,6 +102,13 @@ export function AgentFlowCanvas({
       >
         <Background gap={20} size={2} color="rgba(138, 138, 130, 0.15)" />
       </ReactFlow>
+
+      <CanvasZoomControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onResetZoom={handleResetZoom}
+        onFitView={handleFitView}
+      />
     </div>
   );
 }

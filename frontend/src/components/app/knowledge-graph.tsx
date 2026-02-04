@@ -2,9 +2,6 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
   Filter,
   FileText,
   Image,
@@ -13,6 +10,7 @@ import {
   File,
   ExternalLink,
 } from "lucide-react";
+import { CanvasZoomControls } from "@/components/ui/canvas-zoom-controls";
 import { EvidenceSourcePanel } from "./evidence-source-panel";
 import {
   forceSimulation,
@@ -1154,70 +1152,48 @@ export function KnowledgeGraph({
             </g>
           </svg>
 
-          {/* Zoom controls */}
-          <div className="absolute bottom-4 right-4 flex flex-col gap-2">
-            <button
-              onClick={handleZoomIn}
-              className="w-10 h-10 rounded-lg bg-white/90 dark:bg-jet/90 hover:bg-white dark:hover:bg-jet text-foreground flex items-center justify-center transition-colors border border-warm-gray/20 dark:border-stone/20"
-              title="Zoom In"
-            >
-              <ZoomIn className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleZoomOut}
-              className="w-10 h-10 rounded-lg bg-white/90 dark:bg-jet/90 hover:bg-white dark:hover:bg-jet text-foreground flex items-center justify-center transition-colors border border-warm-gray/20 dark:border-stone/20"
-              title="Zoom Out"
-            >
-              <ZoomOut className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleResetZoom}
-              className="w-10 h-10 rounded-lg bg-white/90 dark:bg-jet/90 hover:bg-white dark:hover:bg-jet text-foreground flex items-center justify-center transition-colors border border-warm-gray/20 dark:border-stone/20"
-              title="Reset Zoom"
-            >
-              <RotateCcw className="w-5 h-5" />
-            </button>
-
-            {/* Divider */}
-            <div className="h-px bg-warm-gray/20 dark:bg-stone/20 my-1" />
-
-            {/* Stop/Start Simulation */}
-            <button
-              onClick={handleToggleSimulation}
-              className={clsx(
-                "w-10 h-10 rounded-lg text-foreground flex items-center justify-center transition-colors border border-warm-gray/20 dark:border-stone/20",
-                isSimulationRunning
-                  ? "bg-white/90 dark:bg-jet/90 hover:bg-white dark:hover:bg-jet"
-                  : "bg-accent/20 hover:bg-accent/30",
-              )}
-              title={isSimulationRunning ? "Freeze Graph" : "Unfreeze Graph"}
-            >
-              {isSimulationRunning ? (
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <rect x="6" y="4" width="4" height="16" />
-                  <rect x="14" y="4" width="4" height="16" />
-                </svg>
-              ) : (
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-              )}
-            </button>
-          </div>
+          <CanvasZoomControls
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onResetZoom={handleResetZoom}
+            extraControls={
+              <button
+                onClick={handleToggleSimulation}
+                className={clsx(
+                  "w-10 h-10 rounded-lg text-foreground flex items-center justify-center transition-colors border border-warm-gray/20 dark:border-stone/20",
+                  isSimulationRunning
+                    ? "bg-white/90 dark:bg-jet/90 hover:bg-white dark:hover:bg-jet"
+                    : "bg-accent/20 hover:bg-accent/30",
+                )}
+                title={isSimulationRunning ? "Freeze Graph" : "Unfreeze Graph"}
+              >
+                {isSimulationRunning ? (
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <rect x="6" y="4" width="4" height="16" />
+                    <rect x="14" y="4" width="4" height="16" />
+                  </svg>
+                ) : (
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                )}
+              </button>
+            }
+          />
 
           {/* Legend - Top Left */}
           <div className="absolute top-4 left-4 p-4 rounded-lg shadow-lg border border-warm-gray/20 dark:border-stone/20 bg-white/95 dark:bg-[rgba(17,17,17,0.95)]">

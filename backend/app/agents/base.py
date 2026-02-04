@@ -304,14 +304,22 @@ def _get_event_type_map() -> dict[str, AgentEventType]:
 
     Deferred import avoids circular dependency at module load time
     (base -> agent_events -> base).
+
+    NOTE: AGENT_SPAWNED and AGENT_COMPLETED are intentionally NOT mapped here.
+    These events from ADK callbacks lack required fields (taskId, fileId, fileName)
+    that the frontend validation expects. Agent lifecycle events should come from
+    the direct emitters (emit_agent_started, emit_agent_complete) in the pipeline
+    code which has access to all required context.
+
+    ADK callbacks only provide real-time thinking updates during model execution.
     """
     global _CALLBACK_TO_EVENT_TYPE
     if not _CALLBACK_TO_EVENT_TYPE:
         from app.services.agent_events import AgentEventType
 
         _CALLBACK_TO_EVENT_TYPE = {
-            "AGENT_SPAWNED": AgentEventType.AGENT_STARTED,
-            "AGENT_COMPLETED": AgentEventType.AGENT_COMPLETE,
+            # AGENT_SPAWNED and AGENT_COMPLETED are NOT mapped - they lack
+            # required fields and conflict with emit_agent_started/complete
             "THINKING_UPDATE": AgentEventType.THINKING_UPDATE,
             "MODEL_RESPONSE": AgentEventType.THINKING_UPDATE,
             "TOOL_CALLED": AgentEventType.TOOL_CALLED,
@@ -320,12 +328,29 @@ def _get_event_type_map() -> dict[str, AgentEventType]:
     return _CALLBACK_TO_EVENT_TYPE
 
 
+def _extract_agent_type(agent_name: str) -> str:
+    """Extract the logical agent type from an ADK agent name.
+
+    ADK agent names are formatted as "{type}_{case_id_prefix}" by _safe_name().
+    For example: "triage_e6f15c88" -> "triage", "orchestrator_e6f15c88" -> "orchestrator"
+
+    Args:
+        agent_name: The ADK agent name (e.g., "triage_e6f15c88").
+
+    Returns:
+        The logical agent type (e.g., "triage").
+    """
+    # Split on underscore and take the first part as the agent type
+    parts = agent_name.split("_", 1)
+    return parts[0] if parts else agent_name
+
+
 def create_sse_publish_fn(case_id: str) -> PublishFn:
     """Create a bound publish function that maps callback event types to
     AgentEventType values and dispatches via ``publish_agent_event()``.
 
-    The returned function is suitable as the ``publish_fn`` parameter for
-    ``create_agent_callbacks()``.
+    The returned function transforms raw ADK callback data into the format
+    expected by the frontend Command Center validation.
 
     Args:
         case_id: The investigation case ID for all published events.
@@ -346,6 +371,62 @@ def create_sse_publish_fn(case_id: str) -> PublishFn:
                 case_id,
             )
             return
-        await publish_agent_event(case_id, mapped, data)
+
+        # Transform ADK callback data to frontend-expected format
+        transformed = _transform_callback_data(event_type, data)
+        await publish_agent_event(case_id, mapped, transformed)
 
     return _publish
+
+
+def _transform_callback_data(
+    event_type: str,
+    data: dict[str, object],
+) -> dict[str, object]:
+    """Transform raw ADK callback data to frontend-expected SSE event format.
+
+    ADK callbacks provide agent_name like "triage_e6f15c88", but the frontend
+    expects agentType like "triage". This function performs the necessary
+    field mapping.
+
+    Only THINKING_UPDATE, MODEL_RESPONSE, TOOL_CALLED, and TOOL_COMPLETED
+    events are processed here. Agent lifecycle events (started/complete)
+    are handled by direct emitters in the pipeline code.
+
+    Args:
+        event_type: The internal callback event type (e.g., "THINKING_UPDATE").
+        data: Raw callback data with agent_name, timestamp, etc.
+
+    Returns:
+        Transformed data matching frontend CommandCenterSSEEvent validation.
+    """
+    # Start with a copy to avoid mutating the original
+    result: dict[str, object] = {}
+
+    # Extract agentType from agent_name (e.g., "triage_e6f15c88" -> "triage")
+    agent_name = data.get("agent_name")
+    if isinstance(agent_name, str):
+        result["agentType"] = _extract_agent_type(agent_name)
+
+    # Copy timestamp if present
+    if "timestamp" in data:
+        result["timestamp"] = data["timestamp"]
+
+    # Event-specific transformations
+    if event_type in ("THINKING_UPDATE", "MODEL_RESPONSE"):
+        # thinking-update requires: agentType, thought, timestamp
+        if "thought" in data:
+            result["thought"] = data["thought"]
+        else:
+            # For "reasoning started" status events, use empty thought
+            # Frontend validation requires thought to be a string
+            result["thought"] = ""
+        if "tokenDelta" in data:
+            result["tokenDelta"] = data["tokenDelta"]
+
+    elif event_type in ("TOOL_CALLED", "TOOL_COMPLETED"):
+        # tool-called events include tool_name
+        if "tool_name" in data:
+            result["toolName"] = data["tool_name"]
+
+    return result

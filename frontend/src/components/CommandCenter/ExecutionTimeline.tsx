@@ -4,6 +4,7 @@
 "use client";
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
+import { formatDuration } from "@/lib/formatting";
 import type { AgentType, AgentState } from "@/types/command-center";
 
 // -----------------------------------------------------------------------
@@ -22,18 +23,6 @@ interface AgentTimingEntry {
   startMs: number;
   durationMs: number;
   tintColor: string;
-}
-
-/**
- * Format milliseconds into a human-readable duration string.
- * Under 1 second: "Xms", under 60 seconds: "X.Xs", above: "Xm Ys"
- */
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  const minutes = Math.floor(ms / 60000);
-  const seconds = Math.round((ms % 60000) / 1000);
-  return `${minutes}m ${seconds}s`;
 }
 
 // -----------------------------------------------------------------------

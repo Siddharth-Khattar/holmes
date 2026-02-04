@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
+import { formatDuration, formatNumber, formatTime } from "@/lib/formatting";
 import { ExecutionTimeline } from "@/components/CommandCenter/ExecutionTimeline";
 import type {
   AgentType,
@@ -693,31 +694,6 @@ function extractFromOutputs<T>(
 ): T | undefined {
   const found = outputs.find((o) => o.type === type);
   return found?.data as T | undefined;
-}
-
-// -----------------------------------------------------------------------
-// Formatting helpers for timing and token display
-// -----------------------------------------------------------------------
-
-/** Format milliseconds into a human-readable duration string */
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  const minutes = Math.floor(ms / 60000);
-  const seconds = Math.round((ms % 60000) / 1000);
-  return `${minutes}m ${seconds}s`;
-}
-
-/** Format an ISO timestamp string to a localized time string */
-function formatTime(isoString: string): string {
-  const date = new Date(isoString);
-  if (isNaN(date.getTime())) return isoString;
-  return date.toLocaleTimeString();
-}
-
-/** Format a number with locale-appropriate thousand separators */
-function formatNumber(n: number): string {
-  return n.toLocaleString();
 }
 
 // -----------------------------------------------------------------------

@@ -1,8 +1,19 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import type { CommandCenterSSEEvent } from "@/types/command-center";
 import { parseSSEEventData } from "@/lib/command-center-validation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+/** SSE event types that the Command Center handles */
+type SSEEventType =
+  | "agent-started"
+  | "agent-complete"
+  | "agent-error"
+  | "processing-complete"
+  | "thinking-update"
+  | "state-snapshot"
+  | "confirmation-required"
+  | "confirmation-resolved";
 
 interface UseCommandCenterSSEOptions {
   enabled?: boolean;
@@ -42,6 +53,34 @@ export function useCommandCenterSSE(
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY = 2000;
 
+  // Map event types to their handlers for DRY event listener registration
+  const eventHandlers = useMemo(
+    () =>
+      ({
+        "agent-started": onAgentStarted,
+        "agent-complete": onAgentComplete,
+        "agent-error": onAgentError,
+        "processing-complete": onProcessingComplete,
+        "thinking-update": onThinkingUpdate,
+        "state-snapshot": onStateSnapshot,
+        "confirmation-required": onConfirmationRequired,
+        "confirmation-resolved": onConfirmationResolved,
+      }) as Record<
+        SSEEventType,
+        ((event: CommandCenterSSEEvent) => void) | undefined
+      >,
+    [
+      onAgentStarted,
+      onAgentComplete,
+      onAgentError,
+      onProcessingComplete,
+      onThinkingUpdate,
+      onStateSnapshot,
+      onConfirmationRequired,
+      onConfirmationResolved,
+    ],
+  );
+
   const setupConnection = useCallback(() => {
     if (!enabled || eventSourceRef.current) return;
 
@@ -49,61 +88,17 @@ export function useCommandCenterSSE(
       const sseUrl = `${API_URL}/sse/cases/${caseId}/command-center/stream`;
       const eventSource = new EventSource(sseUrl);
 
-      eventSource.addEventListener("agent-started", (e) => {
-        const event = parseSSEEventData(e.data);
-        if (event && event.type === "agent-started") {
-          onAgentStarted?.(event);
+      // Register all event handlers using map iteration (DRY)
+      for (const [eventType, handler] of Object.entries(eventHandlers)) {
+        if (handler) {
+          eventSource.addEventListener(eventType, (e: MessageEvent) => {
+            const event = parseSSEEventData(e.data);
+            if (event && event.type === eventType) {
+              handler(event);
+            }
+          });
         }
-      });
-
-      eventSource.addEventListener("agent-complete", (e) => {
-        const event = parseSSEEventData(e.data);
-        if (event && event.type === "agent-complete") {
-          onAgentComplete?.(event);
-        }
-      });
-
-      eventSource.addEventListener("agent-error", (e) => {
-        const event = parseSSEEventData(e.data);
-        if (event && event.type === "agent-error") {
-          onAgentError?.(event);
-        }
-      });
-
-      eventSource.addEventListener("processing-complete", (e) => {
-        const event = parseSSEEventData(e.data);
-        if (event && event.type === "processing-complete") {
-          onProcessingComplete?.(event);
-        }
-      });
-
-      eventSource.addEventListener("thinking-update", (e) => {
-        const event = parseSSEEventData(e.data);
-        if (event && event.type === "thinking-update") {
-          onThinkingUpdate?.(event);
-        }
-      });
-
-      eventSource.addEventListener("state-snapshot", (e) => {
-        const event = parseSSEEventData(e.data);
-        if (event && event.type === "state-snapshot") {
-          onStateSnapshot?.(event);
-        }
-      });
-
-      eventSource.addEventListener("confirmation-required", (e) => {
-        const event = parseSSEEventData(e.data);
-        if (event && event.type === "confirmation-required") {
-          onConfirmationRequired?.(event);
-        }
-      });
-
-      eventSource.addEventListener("confirmation-resolved", (e) => {
-        const event = parseSSEEventData(e.data);
-        if (event && event.type === "confirmation-resolved") {
-          onConfirmationResolved?.(event);
-        }
-      });
+      }
 
       eventSource.onerror = () => {
         // Silently handle connection errors when endpoint doesn't exist yet
@@ -142,18 +137,7 @@ export function useCommandCenterSSE(
       // Silently handle connection errors in demo mode
       console.debug("Command Center SSE not available (expected in demo mode)");
     }
-  }, [
-    enabled,
-    caseId,
-    onAgentStarted,
-    onAgentComplete,
-    onAgentError,
-    onProcessingComplete,
-    onThinkingUpdate,
-    onStateSnapshot,
-    onConfirmationRequired,
-    onConfirmationResolved,
-  ]);
+  }, [enabled, caseId, eventHandlers]);
 
   useEffect(() => {
     connectRef.current = setupConnection;

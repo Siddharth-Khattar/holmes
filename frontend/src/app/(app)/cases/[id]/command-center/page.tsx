@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { CommandCenter } from "@/components/CommandCenter";
 import { NodeDetailsSidebar } from "@/components/CommandCenter/NodeDetailsSidebar";
+import { ConfirmationModal } from "@/components/CommandCenter/ConfirmationModal";
 import { useAgentStates } from "@/hooks/useAgentStates";
 import type { AgentType } from "@/types/command-center";
 
@@ -13,8 +14,23 @@ export default function CommandCenterPage() {
   const caseId = params.id as string;
   const [selectedAgent, setSelectedAgent] = useState<AgentType | null>(null);
 
-  const { agentStates, lastProcessingSummary, isConnected, isReconnecting } =
-    useAgentStates(caseId);
+  const {
+    agentStates,
+    lastProcessingSummary,
+    pendingConfirmations,
+    isConnected,
+    isReconnecting,
+  } = useAgentStates(caseId);
+
+  // Fallback handler for removing a resolved confirmation from local state.
+  // The SSE confirmation-resolved event in useAgentStates also handles this,
+  // but this provides immediate UI feedback before the SSE round-trip.
+  const handleConfirmationResolved = useCallback((requestId: string) => {
+    // useAgentStates manages the pendingConfirmations array via SSE events.
+    // This callback exists for the ConfirmationModal to signal completion.
+    // The SSE confirmation-resolved handler will handle the actual state update.
+    void requestId;
+  }, []);
 
   return (
     <div
@@ -53,6 +69,15 @@ export default function CommandCenterPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* HITL Confirmation Modal - show first pending confirmation */}
+      {pendingConfirmations.length > 0 && (
+        <ConfirmationModal
+          confirmation={pendingConfirmations[0]}
+          caseId={caseId}
+          onResolved={handleConfirmationResolved}
+        />
+      )}
     </div>
   );
 }

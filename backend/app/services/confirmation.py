@@ -8,12 +8,14 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
+from app.config import get_settings
 from app.services.agent_events import (
     emit_confirmation_required,
     emit_confirmation_resolved,
 )
 
 logger = logging.getLogger(__name__)
+_settings = get_settings()
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +94,8 @@ async def request_confirmation(
     responds through the REST API. The event loop remains free to handle other
     requests while the pipeline coroutine is suspended.
 
-    No timeout -- the pipeline waits indefinitely per CONTEXT.md.
+    Timeout is controlled by ``confirmation_timeout_seconds`` config setting.
+    If 0, waits indefinitely. If timeout expires, returns rejection.
 
     Args:
         case_id: UUID string of the case.
@@ -136,7 +139,28 @@ async def request_confirmation(
     )
 
     # Block this coroutine until user responds (does NOT block the event loop)
-    await event.wait()
+    # Apply configurable timeout to prevent indefinite pipeline hangs
+    timeout_seconds = _settings.confirmation_timeout_seconds
+
+    try:
+        if timeout_seconds > 0:
+            await asyncio.wait_for(event.wait(), timeout=timeout_seconds)
+        else:
+            await event.wait()
+    except TimeoutError:
+        logger.warning(
+            "Confirmation timed out after %ss: request_id=%s",
+            timeout_seconds,
+            request_id,
+        )
+        # Clean up the pending confirmation
+        _pending_confirmations.pop(request_id, None)
+        _confirmation_requests.pop(request_id, None)
+        # Return rejection on timeout
+        return ConfirmationResult(
+            approved=False,
+            reason=f"Timed out after {timeout_seconds} seconds",
+        )
 
     # Retrieve and clean up (event already removed by resolve_confirmation)
     result = _confirmation_results.pop(request_id)

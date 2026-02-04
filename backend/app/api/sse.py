@@ -11,6 +11,7 @@ from fastapi import APIRouter
 from sqlalchemy import select
 from sse_starlette import EventSourceResponse
 
+from app.config import get_settings
 from app.services.agent_events import (
     AgentEventType,
     subscribe_to_agent_events,
@@ -18,6 +19,7 @@ from app.services.agent_events import (
 )
 
 logger = logging.getLogger(__name__)
+_settings = get_settings()
 
 router = APIRouter()
 
@@ -51,7 +53,7 @@ async def heartbeat_generator():
     """Generate heartbeat events to keep connection alive."""
     while True:
         yield {"event": "heartbeat", "data": "ping"}
-        await asyncio.sleep(15)  # 15 second heartbeat per REQ-INF-004
+        await asyncio.sleep(_settings.sse_heartbeat_interval_seconds)
 
 
 async def file_status_generator(case_id: str):
@@ -68,7 +70,9 @@ async def file_status_generator(case_id: str):
         while True:
             try:
                 # Wait for event with timeout for heartbeat
-                event = await asyncio.wait_for(queue.get(), timeout=15.0)
+                event = await asyncio.wait_for(
+                    queue.get(), timeout=_settings.sse_heartbeat_interval_seconds
+                )
                 yield event
             except TimeoutError:
                 # Send heartbeat on timeout
@@ -237,7 +241,9 @@ async def command_center_generator(case_id: str):
     try:
         while True:
             try:
-                event = await asyncio.wait_for(queue.get(), timeout=15.0)
+                event = await asyncio.wait_for(
+                    queue.get(), timeout=_settings.sse_heartbeat_interval_seconds
+                )
                 yield event
             except TimeoutError:
                 yield {"event": "heartbeat", "data": "ping"}

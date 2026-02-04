@@ -7,7 +7,7 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeAlias
 
 if TYPE_CHECKING:
     from app.services.agent_events import AgentEventType
@@ -73,7 +73,7 @@ THINKING_CONFIG_HIGH: dict[str, object] = {
 # Callback types (aliases for readability)
 # ---------------------------------------------------------------------------
 
-PublishFn = Callable[[str, dict[str, object]], Awaitable[None] | None]
+PublishFn: TypeAlias = Callable[[str, dict[str, object]], Awaitable[None] | None]  # noqa: UP040
 
 
 # ---------------------------------------------------------------------------

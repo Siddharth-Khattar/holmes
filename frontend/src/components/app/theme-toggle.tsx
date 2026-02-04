@@ -3,18 +3,24 @@
 
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
+
+// Detect client-side mount without useEffect+setState cascade.
+// useSyncExternalStore returns false on the server and true on the client,
+// avoiding hydration mismatch with next-themes' deferred theme resolution.
+const emptySubscribe = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Avoid hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
 
   if (!mounted) {
     return <div className="w-9 h-9 rounded-lg bg-muted/50 animate-pulse" />;

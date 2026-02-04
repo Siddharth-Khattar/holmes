@@ -71,17 +71,18 @@ function FileGroupNodeInner({ data }: NodeProps) {
             background: isActive
               ? "hsl(260 30% 22% / 0.5)"
               : "hsl(0 0% 14% / 0.7)",
-            border: isActive
-              ? "1.5px solid hsl(var(--cc-accent) / 0.6)"
-              : "1px solid hsl(0 0% 50% / 0.3)",
+            border: "none",
             boxShadow: isActive
               ? "0 0 12px hsl(var(--cc-accent) / 0.15)"
               : "none",
           }}
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.4, ease: EASE_OUT }}
-          whileHover={{ scale: 1.03, y: -4 }}
+          whileHover={{
+            scale: 1.02,
+            boxShadow: "0 0 20px hsl(260 50% 55% / 0.3)",
+          }}
           whileTap={{ scale: 0.98 }}
           onClick={handleClick}
         >

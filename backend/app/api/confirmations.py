@@ -28,7 +28,9 @@ class ConfirmationResponseBody(BaseModel):
 
     approved: bool = Field(..., description="Whether to approve the pending action")
     reason: str | None = Field(
-        default=None, description="Optional reason for the decision"
+        default=None,
+        description="Optional reason for the decision",
+        max_length=1000,
     )
 
 

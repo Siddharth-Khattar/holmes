@@ -6,9 +6,16 @@ import json
 import logging
 from collections import defaultdict
 from enum import Enum
-from typing import Any
+from typing import Any, TypedDict
 
 logger = logging.getLogger(__name__)
+
+
+class SSEEvent(TypedDict):
+    """Type-safe SSE event structure sent to subscribers."""
+
+    event: str  # Event type (e.g., "agent-started")
+    data: str  # JSON-serialized payload
 
 
 class AgentEventType(str, Enum):
@@ -30,10 +37,10 @@ class AgentEventType(str, Enum):
 # ---------------------------------------------------------------------------
 
 # Maps case_id -> list of subscriber queues
-_agent_subscribers: dict[str, list[asyncio.Queue[dict[str, str]]]] = defaultdict(list)
+_agent_subscribers: dict[str, list[asyncio.Queue[SSEEvent]]] = defaultdict(list)
 
 
-def subscribe_to_agent_events(case_id: str) -> asyncio.Queue[dict[str, str]]:
+def subscribe_to_agent_events(case_id: str) -> asyncio.Queue[SSEEvent]:
     """Subscribe to agent events for a case.
 
     Returns an asyncio.Queue that will receive events as they are published.
@@ -43,9 +50,9 @@ def subscribe_to_agent_events(case_id: str) -> asyncio.Queue[dict[str, str]]:
         case_id: UUID string of the case to subscribe to.
 
     Returns:
-        Queue that receives event dicts with 'event' and 'data' keys.
+        Queue that receives SSEEvent dicts with 'event' and 'data' keys.
     """
-    queue: asyncio.Queue[dict[str, str]] = asyncio.Queue(maxsize=100)
+    queue: asyncio.Queue[SSEEvent] = asyncio.Queue(maxsize=100)
     _agent_subscribers[case_id].append(queue)
     logger.debug(
         "Agent event subscriber added for case=%s (total=%d)",
@@ -55,9 +62,7 @@ def subscribe_to_agent_events(case_id: str) -> asyncio.Queue[dict[str, str]]:
     return queue
 
 
-def unsubscribe_from_agent_events(
-    case_id: str, queue: asyncio.Queue[dict[str, str]]
-) -> None:
+def unsubscribe_from_agent_events(case_id: str, queue: asyncio.Queue[SSEEvent]) -> None:
     """Unsubscribe from agent events for a case.
 
     Removes the queue from the subscriber list and cleans up empty lists.
@@ -106,7 +111,7 @@ async def publish_agent_event(
     if "type" not in data_to_send:
         data_to_send["type"] = event_type.value
 
-    event = {"event": event_type.value, "data": json.dumps(data_to_send)}
+    event: SSEEvent = {"event": event_type.value, "data": json.dumps(data_to_send)}
     subscribers = _agent_subscribers.get(case_id, [])
     for queue in subscribers:
         try:

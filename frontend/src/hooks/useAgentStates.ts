@@ -184,11 +184,17 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
       const next = new Map(prev);
       const state = next.get(agentType);
       if (state) {
-        const existingTraces =
-          (state.lastResult?.metadata?.thinkingTraces as string) || "";
-        const updatedTraces = existingTraces
+        // Validate existing traces is actually a string before concatenation
+        const rawTraces = state.lastResult?.metadata?.thinkingTraces;
+        const existingTraces = typeof rawTraces === "string" ? rawTraces : "";
+        let updatedTraces = existingTraces
           ? existingTraces + "\n" + e.thought
           : e.thought;
+        // Limit trace length to prevent unbounded memory growth (100KB max)
+        const MAX_TRACES_LENGTH = 100_000;
+        if (updatedTraces.length > MAX_TRACES_LENGTH) {
+          updatedTraces = updatedTraces.slice(-MAX_TRACES_LENGTH);
+        }
         next.set(agentType, {
           ...state,
           lastResult: {
@@ -213,10 +219,54 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     setAgentStates((prev) => {
       const next = new Map(prev);
       for (const [agentName, agentData] of Object.entries(e.agents)) {
+        // Validate agentData structure before using it
+        if (
+          typeof agentData !== "object" ||
+          agentData === null ||
+          typeof agentData.status !== "string"
+        ) {
+          console.warn(`Invalid agentData for ${agentName}, skipping`);
+          continue;
+        }
+
         const agentType = agentName as AgentType;
         const existingState = next.get(agentType);
         if (existingState) {
           const frontendStatus = mapSnapshotStatus(agentData.status);
+          // Safely extract metadata with type checks
+          const meta = agentData.metadata;
+          const validatedMetadata =
+            meta && typeof meta === "object"
+              ? {
+                  inputTokens:
+                    typeof meta.inputTokens === "number"
+                      ? meta.inputTokens
+                      : undefined,
+                  outputTokens:
+                    typeof meta.outputTokens === "number"
+                      ? meta.outputTokens
+                      : undefined,
+                  durationMs:
+                    typeof meta.durationMs === "number"
+                      ? meta.durationMs
+                      : undefined,
+                  startedAt:
+                    typeof meta.startedAt === "string"
+                      ? meta.startedAt
+                      : undefined,
+                  completedAt:
+                    typeof meta.completedAt === "string"
+                      ? meta.completedAt
+                      : undefined,
+                  model:
+                    typeof meta.model === "string" ? meta.model : undefined,
+                  thinkingTraces:
+                    typeof meta.thinkingTraces === "string"
+                      ? meta.thinkingTraces
+                      : undefined,
+                }
+              : undefined;
+
           next.set(agentType, {
             ...existingState,
             status: frontendStatus,
@@ -224,17 +274,7 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
               taskId: "",
               agentType,
               outputs: [],
-              metadata: agentData.metadata
-                ? {
-                    inputTokens: agentData.metadata.inputTokens,
-                    outputTokens: agentData.metadata.outputTokens,
-                    durationMs: agentData.metadata.durationMs,
-                    startedAt: agentData.metadata.startedAt,
-                    completedAt: agentData.metadata.completedAt,
-                    model: agentData.metadata.model,
-                    thinkingTraces: agentData.metadata.thinkingTraces,
-                  }
-                : undefined,
+              metadata: validatedMetadata,
             },
           });
         }

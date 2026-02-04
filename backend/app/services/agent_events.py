@@ -96,6 +96,13 @@ async def publish_agent_event(
         event_type: Type of agent lifecycle event.
         data: Event payload to serialize as JSON.
     """
+    # Ensure `type` is always present in the payload so the frontend
+    # validation switch (which dispatches on `data.type`) never sees
+    # `undefined`.  Direct emitters already include it, but callback-
+    # sourced events from create_sse_publish_fn() may not.
+    if "type" not in data:
+        data["type"] = event_type.value
+
     event = {"event": event_type.value, "data": json.dumps(data)}
     subscribers = _agent_subscribers.get(case_id, [])
     for queue in subscribers:

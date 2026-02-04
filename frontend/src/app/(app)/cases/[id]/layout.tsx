@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
-import { ArrowLeft, Terminal, Network, Clock, FolderOpen } from "lucide-react";
+import { ArrowLeft, Terminal, Network, Clock, FolderOpen, Globe } from "lucide-react";
 import Link from "next/link";
 import { clsx } from "clsx";
 
@@ -39,6 +39,7 @@ const navItems = [
   { title: "Knowledge Graph", icon: Network, href: "/knowledge-graph" },
   { title: "Evidence Library", icon: FolderOpen, href: "/library" },
   { title: "Timeline", icon: Clock, href: "/timeline" },
+  { title: "Geospatial", icon: Globe, href: "/geospatial" },
 ];
 
 export default function CaseLayout({

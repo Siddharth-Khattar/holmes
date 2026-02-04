@@ -271,3 +271,41 @@ def get_pending_confirmation_count(case_id: str) -> int:
         Count of pending confirmations.
     """
     return sum(1 for req in _confirmation_requests.values() if req.case_id == case_id)
+
+
+def cleanup_stale_confirmations(max_age_seconds: float | None = None) -> int:
+    """Clean up stale confirmation requests that exceeded their expected lifetime.
+
+    This handles edge cases where the awaiting coroutine crashed or was
+    cancelled without proper cleanup. Should be called periodically or
+    during application startup.
+
+    Args:
+        max_age_seconds: Maximum age in seconds before a confirmation is
+            considered stale. Defaults to 2x the configured timeout.
+
+    Returns:
+        Number of stale confirmations that were cleaned up.
+    """
+    if max_age_seconds is None:
+        max_age_seconds = _settings.confirmation_timeout_seconds * 2
+
+    now = datetime.now(UTC)
+    stale_ids: list[str] = []
+
+    for req in _confirmation_requests.values():
+        age = (now - req.created_at).total_seconds()
+        if age > max_age_seconds:
+            stale_ids.append(req.request_id)
+
+    for request_id in stale_ids:
+        _pending_confirmations.pop(request_id, None)
+        _confirmation_requests.pop(request_id, None)
+        _confirmation_results.pop(request_id, None)
+        logger.warning(
+            "Cleaned up stale confirmation: request_id=%s age=%ss",
+            request_id,
+            max_age_seconds,
+        )
+
+    return len(stale_ids)

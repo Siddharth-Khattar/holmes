@@ -155,6 +155,7 @@ export function useCommandCenterSSE(
       }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
       setIsConnected(false);
       setIsReconnecting(false);

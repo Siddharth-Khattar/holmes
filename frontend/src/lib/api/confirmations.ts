@@ -27,7 +27,23 @@ export async function respondToConfirmation(
     },
   );
   if (!res.ok) {
-    throw new Error(`Confirmation failed: ${res.status}`);
+    // Try to extract error detail from response body
+    let errorDetail = `HTTP ${res.status}`;
+    try {
+      const errorBody = await res.json();
+      if (errorBody.detail) {
+        errorDetail = errorBody.detail;
+      }
+    } catch {
+      // Ignore JSON parse errors on error response
+    }
+    throw new Error(`Confirmation failed: ${errorDetail}`);
   }
-  return res.json();
+
+  // Safely parse JSON response
+  try {
+    return await res.json();
+  } catch {
+    throw new Error("Invalid response from server");
+  }
 }

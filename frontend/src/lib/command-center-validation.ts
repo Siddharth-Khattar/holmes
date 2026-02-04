@@ -205,6 +205,51 @@ function validateThinkingUpdateEvent(
 }
 
 /**
+ * Validates the structure of agent data within a state snapshot.
+ */
+function validateAgentSnapshotData(
+  agentData: unknown,
+): agentData is { status: string; metadata?: Record<string, unknown> } {
+  if (typeof agentData !== "object" || agentData === null) return false;
+
+  const data = agentData as Record<string, unknown>;
+
+  // status is required and must be a string
+  if (typeof data.status !== "string") return false;
+
+  // metadata is optional but must be an object if present
+  if (data.metadata !== undefined) {
+    if (typeof data.metadata !== "object" || data.metadata === null) {
+      return false;
+    }
+    const meta = data.metadata as Record<string, unknown>;
+    // Validate optional metadata fields have correct types
+    if (meta.inputTokens !== undefined && typeof meta.inputTokens !== "number")
+      return false;
+    if (
+      meta.outputTokens !== undefined &&
+      typeof meta.outputTokens !== "number"
+    )
+      return false;
+    if (meta.durationMs !== undefined && typeof meta.durationMs !== "number")
+      return false;
+    if (meta.startedAt !== undefined && typeof meta.startedAt !== "string")
+      return false;
+    if (meta.completedAt !== undefined && typeof meta.completedAt !== "string")
+      return false;
+    if (meta.model !== undefined && typeof meta.model !== "string")
+      return false;
+    if (
+      meta.thinkingTraces !== undefined &&
+      typeof meta.thinkingTraces !== "string"
+    )
+      return false;
+  }
+
+  return true;
+}
+
+/**
  * Validates state-snapshot event
  */
 function validateStateSnapshotEvent(data: unknown): data is StateSnapshotEvent {
@@ -212,11 +257,18 @@ function validateStateSnapshotEvent(data: unknown): data is StateSnapshotEvent {
 
   const event = data as Record<string, unknown>;
 
-  return (
-    event.type === "state-snapshot" &&
-    typeof event.agents === "object" &&
-    event.agents !== null
-  );
+  if (event.type !== "state-snapshot") return false;
+  if (typeof event.agents !== "object" || event.agents === null) return false;
+
+  // Validate each agent's data structure
+  const agents = event.agents as Record<string, unknown>;
+  for (const agentData of Object.values(agents)) {
+    if (!validateAgentSnapshotData(agentData)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**

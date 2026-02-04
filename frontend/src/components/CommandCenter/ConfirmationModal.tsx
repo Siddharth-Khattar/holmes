@@ -3,9 +3,9 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { motion } from "motion/react";
-import { ShieldAlert, Check, X, Loader2 } from "lucide-react";
+import { ShieldAlert, Check, X, Loader2, AlertCircle } from "lucide-react";
 
 import { AGENT_CONFIGS } from "@/lib/command-center-config";
 import { respondToConfirmation } from "@/lib/api/confirmations";
@@ -30,12 +30,20 @@ export function ConfirmationModal({
 }: ConfirmationModalProps) {
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const approveButtonRef = useRef<HTMLButtonElement>(null);
 
   const agentConfig = AGENT_CONFIGS[confirmation.agentType];
+
+  // Focus trap: focus approve button on mount for accessibility
+  useEffect(() => {
+    approveButtonRef.current?.focus();
+  }, []);
 
   const handleResponse = useCallback(
     async (approved: boolean) => {
       setIsSubmitting(true);
+      setError(null);
       try {
         await respondToConfirmation(
           caseId,
@@ -45,7 +53,10 @@ export function ConfirmationModal({
         );
         onResolved(confirmation.requestId);
       } catch (err) {
-        // Allow retry on failure
+        // Display error to user for retry
+        const message =
+          err instanceof Error ? err.message : "Failed to submit response";
+        setError(message);
         console.error("Confirmation response failed:", err);
       } finally {
         setIsSubmitting(false);
@@ -60,7 +71,13 @@ export function ConfirmationModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirmation-modal-title"
+      aria-describedby="confirmation-modal-description"
+    >
       {/* Backdrop - no click-to-dismiss for important agent decisions */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
@@ -100,10 +117,16 @@ export function ConfirmationModal({
               />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-smoke">
+              <h3
+                id="confirmation-modal-title"
+                className="text-base font-semibold text-smoke"
+              >
                 Confirmation Required
               </h3>
-              <p className="text-xs text-stone mt-0.5">
+              <p
+                id="confirmation-modal-description"
+                className="text-xs text-stone mt-0.5"
+              >
                 {agentConfig.name} is requesting approval
               </p>
             </div>
@@ -193,6 +216,22 @@ export function ConfirmationModal({
               disabled={isSubmitting}
             />
           </div>
+
+          {/* Error message */}
+          {error && (
+            <div
+              className="flex items-center gap-2 p-3 rounded-lg text-sm"
+              role="alert"
+              style={{
+                background: "hsl(0 60% 30% / 0.15)",
+                border: "1px solid hsl(0 60% 40% / 0.3)",
+                color: "hsl(0 70% 70%)",
+              }}
+            >
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -221,6 +260,7 @@ export function ConfirmationModal({
 
           {/* Approve */}
           <button
+            ref={approveButtonRef}
             onClick={() => handleResponse(true)}
             disabled={isSubmitting}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

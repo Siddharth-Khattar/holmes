@@ -138,9 +138,8 @@ async def request_confirmation(
     # Block this coroutine until user responds (does NOT block the event loop)
     await event.wait()
 
-    # Retrieve and clean up
+    # Retrieve and clean up (event already removed by resolve_confirmation)
     result = _confirmation_results.pop(request_id)
-    _pending_confirmations.pop(request_id, None)
     _confirmation_requests.pop(request_id, None)
 
     logger.info(
@@ -162,6 +161,9 @@ def resolve_confirmation(
 
     Called by the REST API when a user approves or rejects a confirmation.
 
+    Uses atomic pop() to prevent race conditions from double-clicks that
+    could otherwise overwrite the first decision.
+
     Args:
         request_id: The confirmation request ID to resolve.
         approved: Whether the action was approved.
@@ -170,7 +172,8 @@ def resolve_confirmation(
     Returns:
         True if the confirmation was found and resolved, False if not found.
     """
-    event = _pending_confirmations.get(request_id)
+    # Atomic pop prevents race condition from double-click
+    event = _pending_confirmations.pop(request_id, None)
     if event is None:
         logger.warning(
             "Confirmation not found: request_id=%s (already resolved or invalid)",

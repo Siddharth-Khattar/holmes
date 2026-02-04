@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { APIProvider, Map, AdvancedMarker, InfoWindow, useMap } from "@vis.gl/react-google-maps";
-import { Globe, MapIcon, X, Clock, FileText, MapPin, Navigation, Building2, Info } from "lucide-react";
+import { APIProvider, Map, AdvancedMarker, useMap } from "@vis.gl/react-google-maps";
+import { Globe, MapIcon, X, Clock, FileText, MapPin, Navigation, Building2 } from "lucide-react";
 import { clsx } from "clsx";
 import type {
   Landmark,
-  LandmarkEvent,
   GeospatialPath,
   MapView,
 } from "@/types/geospatial.types";
@@ -41,7 +40,7 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
   const [hoveredLandmark, setHoveredLandmark] = useState<string | null>(null);
   const [showStreetView, setShowStreetView] = useState(false);
   const [streetViewLandmark, setStreetViewLandmark] = useState<Landmark | null>(null);
-  const [placeInfo, setPlaceInfo] = useState<any>(null);
+  const [placeInfo, setPlaceInfo] = useState<Record<string, unknown> | null>(null);
   const [loadingPlaceInfo, setLoadingPlaceInfo] = useState(false);
 
   // Get API key from environment

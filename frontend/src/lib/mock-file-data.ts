@@ -26,7 +26,6 @@ export const MOCK_FILES = {
  */
 export async function simulateRedaction(
   fileType: string,
-  description: string
 ): Promise<string> {
   // Simulate processing time based on file type
   const processingTime = {

@@ -286,16 +286,28 @@ function OrchestratorSections({ agentState }: AgentSectionsProps) {
           badge={result.routingDecisions.length}
         >
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table
+              className="w-full text-xs"
+              aria-label="File routing decisions"
+            >
               <thead>
                 <tr className="border-b border-stone/15">
-                  <th className="text-left py-2 pr-2 text-stone font-medium">
+                  <th
+                    scope="col"
+                    className="text-left py-2 pr-2 text-stone font-medium"
+                  >
                     File
                   </th>
-                  <th className="text-left py-2 px-2 text-stone font-medium">
+                  <th
+                    scope="col"
+                    className="text-left py-2 px-2 text-stone font-medium"
+                  >
                     Agent
                   </th>
-                  <th className="text-right py-2 pl-2 text-stone font-medium">
+                  <th
+                    scope="col"
+                    className="text-right py-2 pl-2 text-stone font-medium"
+                  >
                     Score
                   </th>
                 </tr>

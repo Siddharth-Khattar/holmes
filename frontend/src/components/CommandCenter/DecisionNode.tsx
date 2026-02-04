@@ -240,6 +240,8 @@ function DecisionNodeInner({ data }: NodeProps) {
                 <Loader2
                   className="w-4 h-4 animate-spin shrink-0"
                   style={{ color: `hsl(${accent})` }}
+                  aria-label="Processing"
+                  role="status"
                 />
               )}
             </div>
@@ -268,8 +270,10 @@ function DecisionNodeInner({ data }: NodeProps) {
                     background: "hsl(45 100% 50% / 0.15)",
                     color: "hsl(45 100% 60%)",
                   }}
+                  role="status"
+                  aria-label={`${warningCount} warning${warningCount > 1 ? "s" : ""}`}
                 >
-                  <AlertTriangle className="w-3 h-3" />
+                  <AlertTriangle className="w-3 h-3" aria-hidden="true" />
                   {warningCount}
                 </span>
               )}
@@ -284,8 +288,9 @@ function DecisionNodeInner({ data }: NodeProps) {
                       : "hsl(0 0% 50% / 0.1)",
                     color: isActive ? `hsl(${accent})` : "hsl(0 0% 50% / 0.5)",
                   }}
+                  aria-label={`Duration: ${formatDuration(durationMs)}`}
                 >
-                  <Clock className="w-3 h-3" />
+                  <Clock className="w-3 h-3" aria-hidden="true" />
                   {formatDuration(durationMs)}
                 </span>
               )}

@@ -68,16 +68,27 @@ export function ExecutionTimeline({ agentStates }: ExecutionTimelineProps) {
   const safeSpan = totalSpan > 0 ? totalSpan : 1;
 
   return (
-    <div className="space-y-2">
+    <div
+      className="space-y-2"
+      role="figure"
+      aria-label={`Execution timeline showing ${entries.length} agents over ${formatDuration(safeSpan)}`}
+    >
       {/* Time axis labels */}
-      <div className="flex justify-between text-[10px] text-stone/60 px-0.5">
+      <div
+        className="flex justify-between text-[10px] text-stone/60 px-0.5"
+        aria-hidden="true"
+      >
         <span>0s</span>
         <span>{formatDuration(safeSpan / 2)}</span>
         <span>{formatDuration(safeSpan)}</span>
       </div>
 
       {/* Timeline bars */}
-      <div className="space-y-1.5">
+      <div
+        className="space-y-1.5"
+        role="list"
+        aria-label="Agent execution times"
+      >
         {entries.map((entry) => {
           const leftPercent =
             ((entry.startMs - earliestStart) / safeSpan) * 100;
@@ -86,7 +97,12 @@ export function ExecutionTimeline({ agentStates }: ExecutionTimelineProps) {
           const displayWidth = Math.max(widthPercent, 2);
 
           return (
-            <div key={entry.agentType} className="flex items-center gap-2">
+            <div
+              key={entry.agentType}
+              className="flex items-center gap-2"
+              role="listitem"
+              aria-label={`${entry.name}: ${formatDuration(entry.durationMs)}`}
+            >
               {/* Agent label */}
               <div className="w-20 shrink-0 text-right">
                 <span className="text-[10px] text-stone truncate block">
@@ -98,6 +114,7 @@ export function ExecutionTimeline({ agentStates }: ExecutionTimelineProps) {
               <div
                 className="flex-1 h-5 rounded relative"
                 style={{ background: "hsl(0 0% 12% / 0.5)" }}
+                aria-hidden="true"
               >
                 <div
                   className="absolute top-0 h-full rounded flex items-center justify-end pr-1.5"

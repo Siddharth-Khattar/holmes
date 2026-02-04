@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-04
-**Current Phase:** 5 of 12 (Agent Flow) — Awaiting checkpoint verification
-**Current Plan:** 4 of 4 complete (05-04 HITL Confirmation UI) -- pending human-verify checkpoint
+**Last Updated:** 2026-02-05
+**Current Phase:** 5 of 12 (Agent Flow) — COMPLETE
+**Next Phase:** 6 (Domain Agents)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -15,7 +15,7 @@
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
-| 5 | Agent Flow | IN_PROGRESS | 2026-02-04 | - | Plans 01-04 complete (SSE enrichment, HITL backend, frontend SSE, HITL UI); awaiting checkpoint verification |
+| 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
@@ -31,20 +31,24 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 5 Plan 04 Complete** (2026-02-04): HITL confirmation UI (2 tasks, 2 commits)
-  - Task 1: ConfirmationModal with approve/reject flow, confirmations API client, tab badge support
-  - Task 2: Token usage and timing CollapsibleSections in sidebar, duration badge on DecisionNode, ExecutionTimeline Gantt chart
-  - Awaiting checkpoint:human-verify for full Phase 5 visual verification
+- **Phase 5 Complete** (2026-02-05): Agent Flow with full SSE pipeline (4 plans, 26 commits total)
+  - Plan 01: SSE event enrichment (thinking traces, token usage, state snapshots)
+  - Plan 02: Backend HITL confirmation service (asyncio.Event pause/resume, REST API) — **infra only, verification deferred**
+  - Plan 03: Frontend SSE integration (event handlers, validators, thinking accumulation)
+  - Plan 04: HITL confirmation UI, token display, execution timeline Gantt chart — **infra only, verification deferred**
+  - Post-plan: 15+ commits for critical fixes (race conditions, type safety, validation alignment, accessibility)
+  - Key fixes: domainScore 0-100 validation, taskId/requestId alignment, tool-called events, P0 race conditions
+  - **Note:** HITL infrastructure is built but no agent currently triggers confirmations; end-to-end verification deferred to Phase 6+ when domain agents can invoke HITL
 
 **What's next:**
-- Phase 5 checkpoint verification (visual check of full agent flow pipeline)
-- Phase 6 (Domain Agents), Phase 7 (Synthesis & KG)
+- Phase 6 (Domain Agents): Financial, Legal, Strategy, Evidence agents — will verify HITL end-to-end
+- Phase 7 (Synthesis & KG): Backend agents for knowledge graph population
 
 ---
 
 ## Implementation Mapping: Requirements -> Files
 
-### REQ-VIS-001: Agent Flow — FRONTEND_DONE
+### REQ-VIS-001: Agent Flow — COMPLETE
 
 | Component | File Path |
 |-----------|-----------|
@@ -68,10 +72,20 @@
 | HITL confirmation modal | `frontend/src/components/CommandCenter/ConfirmationModal.tsx` |
 | Execution timeline (Gantt) | `frontend/src/components/CommandCenter/ExecutionTimeline.tsx` |
 | Confirmations API client | `frontend/src/lib/api/confirmations.ts` |
+| SSE event validation | `frontend/src/lib/command-center-validation.ts` |
 | Agent nodes (legacy, dead code) | `frontend/src/components/CommandCenter/AgentNode.tsx` |
 | Details panel (legacy, dead code) | `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx` |
+| **Backend: SSE endpoint** | `backend/app/api/sse.py` |
+| **Backend: Agent events pub/sub** | `backend/app/services/agent_events.py` |
+| **Backend: Confirmation service** | `backend/app/services/confirmation_service.py` |
+| **Backend: Confirmation API** | `backend/app/api/confirmations.py` |
+| **Backend: Agent callbacks + SSE publish** | `backend/app/agents/base.py` |
+| **Backend: Pipeline orchestration** | `backend/app/api/agents.py` |
 
-**Backend API Needed:** `SSE GET /api/cases/:caseId/command-center/stream`
+**Backend API:** ✅ Complete
+- `SSE GET /sse/cases/:caseId/command-center/stream` (state-snapshot, thinking-update, tool-called, agent lifecycle, confirmation events)
+- `POST /api/cases/:caseId/confirmations/:requestId` (approve/reject HITL confirmation)
+- `GET /api/cases/:caseId/confirmations/pending` (list pending confirmations)
 
 ---
 
@@ -283,6 +297,11 @@ All frontend features need these backend endpoints:
 | Sidebar cross-agent data | React context vs Optional prop | allAgentStates optional prop | Self-contained; avoids provider overhead for single consumer |
 | Confirmation modal dismiss | Click-outside-to-dismiss vs Blocked | Blocked (no outside dismiss) | Important agent decisions should not be accidentally dismissed |
 | Tab notification badge | New cross-page context vs Tab badge property | Tab badge property | Lightweight; rendering support in ExpandableTabs, wiring per-page |
+| SSE domainScore range | Normalize to 0-1 in backend vs Accept 0-100 in frontend | Accept 0-100 in frontend | Backend schema uses 0-100 (percentage); frontend validation and display adjusted |
+| Confirmation event field naming | requestId vs taskId | taskId | Backend sends taskId consistently; frontend types/validation aligned |
+| SSE event type field | Implicit from event name vs Explicit in payload | Explicit type field in every payload | Frontend validation dispatches on data.type; ensures consistent event handling |
+| Tool-called event mapping | Map TOOL_COMPLETED separately vs Same as TOOL_CALLED | Same event type | Both TOOL_CALLED and TOOL_COMPLETED mapped to tool-called SSE event |
+| Thinking update timestamp | Required vs Optional | Optional in frontend, always sent by backend | Backend callbacks include timestamp; emit_thinking_update adds default; frontend validates optionally |
 
 ---
 
@@ -294,8 +313,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-04
-Stopped at: Completed 05-04-PLAN.md Tasks 1-2 (HITL Confirmation UI, 2 tasks, 2 commits); awaiting checkpoint:human-verify
+Last session: 2026-02-05
+Stopped at: Phase 5 complete; ready to begin Phase 6 (Domain Agents)
 Resume file: None
 
 ---

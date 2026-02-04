@@ -27,7 +27,7 @@
 | 3 | File Ingestion | Upload, storage, file management | REQ-CASE-004/005, REQ-SOURCE-* (basic) | ✅ COMPLETE |
 | 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e | ✅ COMPLETE |
 | 4.1 | Agent Decision Tree Revamp (INSERTED) | Replace D3 Command Center with @xyflow/react + dagre decision tree | REQ-VIS-001 (visual quality) | ✅ COMPLETE |
-| 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 | 🟡 FRONTEND_DONE |
+| 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 | ✅ COMPLETE |
 | 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ⏳ NOT_STARTED |
 | 7 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, Hypothesis system, Task generation, 5-layer KG | REQ-AGENT-008/009, REQ-VIS-003, REQ-HYPO-001/004/005/006, REQ-TASK-001/002 | 🟡 FRONTEND_DONE |
 | 8 | Intelligence Layer & Geospatial | Contradictions, Gaps, Geospatial Agent, Map View, Earth Engine | REQ-WOW-*, REQ-VIS-005/006, REQ-GEO-* | ⏳ NOT_STARTED |
@@ -37,7 +37,7 @@
 | 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i | ⏳ NOT_STARTED |
 
 > **Status Legend:** ✅ COMPLETE | 🟡 FRONTEND_DONE (backend pending) | ⏳ NOT_STARTED | ⏳ PLANNED
-> **Note:** Phase 4 verified complete (2026-02-03, 6/6 must-haves). Phases 5, 7, 9, 10 have frontend UI implemented by Yatharth (2026-02-02). Backend integration remains.
+> **Note:** Phase 5 complete (2026-02-05, full SSE pipeline + HITL). Phases 7, 9, 10 have frontend UI implemented by Yatharth (2026-02-02). Backend integration remains for those phases.
 
 **Post-MVP:**
 | Phase | Name | Focus | Requirements |
@@ -381,12 +381,12 @@ Plans:
 **Plans:** 4 plans in 3 waves
 
 Plans:
-- [ ] 05-01-PLAN.md — Backend SSE enrichment (thinking traces, tokens, timing, state snapshots)
-- [ ] 05-02-PLAN.md — Backend HITL confirmation system (asyncio.Event pause/resume)
-- [ ] 05-03-PLAN.md — Frontend SSE wiring (URL fix, new event types, thinking trace accumulation)
-- [ ] 05-04-PLAN.md — Frontend HITL modal, token display, duration badges, execution timeline
+- [x] 05-01-PLAN.md — Backend SSE enrichment (thinking traces, tokens, timing, state snapshots)
+- [x] 05-02-PLAN.md — Backend HITL confirmation system (asyncio.Event pause/resume)
+- [x] 05-03-PLAN.md — Frontend SSE wiring (URL fix, new event types, thinking trace accumulation)
+- [x] 05-04-PLAN.md — Frontend HITL modal, token display, duration badges, execution timeline
 
-**Status:** 🟡 FRONTEND_DONE — Backend SSE integration required
+**Status:** ✅ COMPLETE (2026-02-05) — 4 plans + 15 post-plan commits
 
 ### Frontend Completed
 The Command Center frontend was built in three stages:
@@ -414,26 +414,26 @@ The Command Center frontend was built in three stages:
 **Stage 3 — Post-4.1 cleanup (2026-02-04, 1 commit):**
 - ✅ Shared `CanvasZoomControls` component extracted to `ui/canvas-zoom-controls.tsx` (used by both Command Center and Knowledge Graph)
 
-### Backend Work Remaining
-- ⏳ Real-time updates via SSE with ADK callback mapping (hook ready, needs backend event data)
-- ⏳ Thinking traces integration (needs `include_thoughts=True` data from backend)
-- ⏳ Token usage display
-- ⏳ Execution timeline
-- ⏳ Human-in-the-loop confirmation dialogs (REQ-VIS-001a)
+### Backend Work Completed (2026-02-05)
+- ✅ Real-time updates via SSE with ADK callback mapping (THINKING_UPDATE, TOOL_CALLED events)
+- ✅ Thinking traces integration (full untruncated text via after_model_callback)
+- ✅ Token usage display (inputTokens, outputTokens, durationMs in metadata)
+- ✅ Execution timeline (Gantt chart with agent timing overlap)
+- ⏳ Human-in-the-loop confirmation dialogs — **infra built** (asyncio.Event, REST API, frontend modal); **E2E verification deferred to Phase 6+** when domain agents can trigger confirmations
 
-**Deliverables:**
+**Deliverables:** ✓ COMPLETE (HITL infra only)
 - ~~ReactFlow canvas for agent visualization~~ ✅ (@xyflow/react + dagre, Phase 4.1)
-- ~~Agent nodes with type-based styling~~ ✅ (DecisionNode, 6 agent types)
+- ~~Agent nodes with type-based styling~~ ✅ (DecisionNode, 7 agent types including evidence)
 - ~~Animated edges during data flow~~ ✅ (FileRoutingEdge, gray tier system)
 - ~~Click-to-expand agent detail sidebar~~ ✅ (NodeDetailsSidebar, page-level 30% panel)
-- ~~Detail view: model, input, tools, output, duration, thinking traces~~ ✅ (partial, needs real data)
-- ~~SSE hook with reconnection~~ ✅ (useCommandCenterSSE.ts)
+- ~~Detail view: model, input, tools, output, duration, thinking traces~~ ✅ (complete with real data)
+- ~~SSE hook with reconnection~~ ✅ (useCommandCenterSSE.ts with state-snapshot on reconnect)
 - ~~Connection status indicator~~ ✅ (Connected/Reconnecting/Demo Mode)
 - ~~Zoom controls~~ ✅ (shared CanvasZoomControls component)
-- Real-time updates via SSE with callback mapping (frontend ready, needs backend events)
-- Token usage display
-- Execution timeline
-- Human-in-the-loop confirmation dialogs (frontend implementation)
+- ~~Real-time updates via SSE with callback mapping~~ ✅ (THINKING_UPDATE, TOOL_CALLED, state-snapshot)
+- ~~Token usage display~~ ✅ (CollapsibleSection in sidebar with input/output tokens, model)
+- ~~Execution timeline~~ ✅ (Gantt chart showing agent timing overlap)
+- Human-in-the-loop confirmation dialogs ⏳ **infra built** (ConfirmationModal, REST API, asyncio.Event) — **E2E verification deferred to Phase 6+**
 
 **Technical Notes:**
 - @xyflow/react 12 + @dagrejs/dagre for hierarchical layout
@@ -451,12 +451,12 @@ The Command Center frontend was built in three stages:
   - Pages: `frontend/src/app/(app)/cases/[id]/command-center/page.tsx`, `frontend/src/app/(app)/cases/[id]/command-center-demo/page.tsx`
   - Dead code (superseded): `AgentNode.tsx`, `AgentDetailsPanel.tsx`
 
-**Exit Criteria:**
-- Real-time agent flow visible during processing
-- Click any node for full details in sidebar
-- Thinking traces displayed correctly
-- SSE connection stable with reconnection
-- Confirmation dialogs work for sensitive operations
+**Exit Criteria:** ✓ MET (HITL deferred)
+- ✅ Real-time agent flow visible during processing (SSE events fire for all lifecycle stages)
+- ✅ Click any node for full details in sidebar (token usage, timing, thinking traces)
+- ✅ Thinking traces displayed correctly (full untruncated text from after_model_callback)
+- ✅ SSE connection stable with reconnection (state-snapshot on reconnect, exponential backoff)
+- ⏳ Confirmation dialogs work for sensitive operations — **infra built, E2E verification deferred to Phase 6+**
 
 ---
 
@@ -488,6 +488,7 @@ The Command Center frontend was built in three stages:
 - Structured output schemas per agent
 - Span-level citation extraction
 - Agent output aggregation for Synthesis
+- **HITL E2E verification** (deferred from Phase 5): Domain agents trigger confirmations for sensitive operations
 
 **Technical Notes:**
 - Each agent has unique output_key to avoid race conditions
@@ -510,6 +511,7 @@ The Command Center frontend was built in three stages:
 - **Hypothesis evaluations included in agent output**
 - **Domain-specific entity taxonomy extracted**
 - Outputs aggregated for next phase
+- **HITL confirmation flow verified E2E** (agent triggers → modal appears → user responds → agent continues)
 
 ---
 
@@ -972,8 +974,8 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 2.1*
-*Updated: 2026-02-04 (Phase 5 description updated post-4.1 completion)*
+*Roadmap Version: 2.2*
+*Updated: 2026-02-05 (Phase 5 complete)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
@@ -986,3 +988,5 @@ For 2 developers working simultaneously:
 *Phase 4 verified: 2026-02-03 (6/6 must-haves)*
 *Phase 4.1 planned: 2026-02-04 (4 plans in 3 waves)*
 *Phase 4.1 complete: 2026-02-04 (all 4 plans done, 18 commits)*
+*Phase 5 planned: 2026-02-04 (4 plans in 3 waves)*
+*Phase 5 complete: 2026-02-05 (all 4 plans + 15 post-plan fixes, 26 commits total)*

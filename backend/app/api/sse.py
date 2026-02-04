@@ -225,6 +225,7 @@ async def command_center_generator(case_id: str):
     """
     # Send state snapshot immediately on connect
     snapshot = await build_state_snapshot(case_id)
+    snapshot["type"] = AgentEventType.STATE_SNAPSHOT.value
     yield {
         "event": AgentEventType.STATE_SNAPSHOT.value,
         "data": json.dumps(snapshot),

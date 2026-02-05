@@ -43,12 +43,12 @@ export function SidebarTabs({
             key={tab.href}
             onClick={() => handleTabClick(tab.href)}
             data-active={isActive}
+            data-tooltip={collapsed ? tab.title : undefined}
             className={clsx(
               "sidebar-tab-btn w-full flex items-center gap-3 px-3 py-2 rounded-lg",
               "transition-colors duration-150",
-              collapsed ? "justify-center" : "justify-start",
+              collapsed ? "justify-center tooltip-trigger" : "justify-start",
             )}
-            title={collapsed ? tab.title : undefined}
             aria-label={tab.title}
             aria-current={isActive ? "page" : undefined}
           >
@@ -66,6 +66,7 @@ export function SidebarTabs({
           background-color: transparent;
           color: var(--muted-foreground);
           font-weight: 400;
+          position: relative;
         }
 
         .sidebar-tab-btn[data-active="true"] {

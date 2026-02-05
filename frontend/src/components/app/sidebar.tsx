@@ -40,6 +40,7 @@ export function Sidebar({ user }: SidebarProps) {
       style={{
         backgroundColor: "var(--card)",
         borderRight: "1px solid var(--border)",
+        zIndex: 1000,
       }}
     >
       {/* Logo */}
@@ -171,7 +172,7 @@ export function Sidebar({ user }: SidebarProps) {
           opacity: 0;
           pointer-events: none;
           transition: opacity 150ms ease-out;
-          z-index: 50;
+          z-index: 9999;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
@@ -196,7 +197,7 @@ export function Sidebar({ user }: SidebarProps) {
           opacity: 0;
           pointer-events: none;
           transition: opacity 150ms ease-out;
-          z-index: 50;
+          z-index: 9999;
         }
 
         .tooltip-trigger[data-tooltip]:hover::before {

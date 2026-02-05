@@ -8,8 +8,6 @@ export default function LibraryPage() {
   const caseId = params.id as string;
 
   return (
-    <div className="h-screen flex flex-col">
-      <CaseLibrary caseId={caseId} caseName="Offshore Holdings Investigation" />
-    </div>
+    <CaseLibrary caseId={caseId} caseName="Offshore Holdings Investigation" />
   );
 }

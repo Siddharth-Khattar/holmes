@@ -79,7 +79,7 @@ export const FileUpload = ({
         onClick={handleClick}
         whileHover={disabled ? undefined : "animate"}
         className={cn(
-          "group/file relative block w-full cursor-pointer overflow-hidden rounded-lg p-10",
+          "group/file relative block w-full cursor-pointer overflow-hidden rounded-lg p-6",
           disabled && "cursor-not-allowed opacity-50",
         )}
       >

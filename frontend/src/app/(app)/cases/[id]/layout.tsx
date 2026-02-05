@@ -60,14 +60,14 @@ export default function CaseLayout({
   if (loading) {
     return (
       <div className="px-6 pt-4 pb-6 lg:px-8">
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-1">
           <div
-            className="h-5 w-48 rounded animate-pulse"
+            className="h-7 w-64 rounded animate-pulse"
             style={{ backgroundColor: "var(--muted)" }}
           />
         </div>
         <div
-          className="h-4 w-72 rounded animate-pulse mb-4"
+          className="h-5 w-80 rounded animate-pulse mb-4"
           style={{ backgroundColor: "var(--muted)" }}
         />
         <div
@@ -91,16 +91,16 @@ export default function CaseLayout({
     >
       <div className="px-6 pt-4 pb-6 lg:px-8">
         {/* Case header: title and status */}
-        <div className="flex items-center gap-2.5 mb-0.5">
+        <div className="flex items-center gap-2.5 mb-1">
           <h1
-            className="text-base font-medium"
+            className="text-xl font-semibold"
             style={{ color: "var(--foreground)" }}
           >
             {caseData.name}
           </h1>
           <span
             className={clsx(
-              "px-2 py-0.5 rounded-full text-xs font-medium",
+              "px-2.5 py-1 rounded-full text-xs font-medium",
               status.className,
             )}
             style={status.style}
@@ -112,7 +112,7 @@ export default function CaseLayout({
         {/* Case description */}
         {caseData.description && (
           <p
-            className="max-w-2xl text-xs mb-4"
+            className="max-w-2xl text-sm mb-4"
             style={{ color: "var(--muted-foreground)" }}
           >
             {caseData.description}

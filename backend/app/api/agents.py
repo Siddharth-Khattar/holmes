@@ -13,6 +13,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import CurrentUser
+from app.config import get_settings
 from app.database import get_db
 from app.models import Case, CaseFile
 from app.models.agent_execution import AgentExecution, AgentExecutionStatus
@@ -88,6 +89,54 @@ async def _get_user_case(
 
 
 # ---------------------------------------------------------------------------
+# Metadata helpers
+# ---------------------------------------------------------------------------
+
+
+def _build_execution_metadata(
+    execution: AgentExecution,
+    model_name: str,
+) -> dict[str, object]:
+    """Build enriched metadata dict from an AgentExecution record.
+
+    Includes token counts, timing, model identification, and thinking traces
+    for inclusion in agent-complete SSE events.
+
+    Args:
+        execution: The completed AgentExecution database record.
+        model_name: Gemini model ID used for this agent.
+
+    Returns:
+        Dict with inputTokens, outputTokens, durationMs, startedAt,
+        completedAt, model, and thinkingTraces.
+    """
+    duration_ms: int | None = None
+    if execution.started_at and execution.completed_at:
+        delta = execution.completed_at - execution.started_at
+        duration_ms = int(delta.total_seconds() * 1000)
+
+    # Join thinking traces into a single string for the frontend sidebar
+    thinking_text = ""
+    if execution.thinking_traces:
+        thinking_text = "\n".join(
+            trace.get("thought", "") if isinstance(trace, dict) else str(trace)
+            for trace in execution.thinking_traces
+        )
+
+    return {
+        "inputTokens": execution.input_tokens or 0,
+        "outputTokens": execution.output_tokens or 0,
+        "durationMs": duration_ms or 0,
+        "startedAt": execution.started_at.isoformat() if execution.started_at else None,
+        "completedAt": (
+            execution.completed_at.isoformat() if execution.completed_at else None
+        ),
+        "model": model_name,
+        "thinkingTraces": thinking_text,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Background analysis task
 # ---------------------------------------------------------------------------
 
@@ -121,12 +170,17 @@ async def run_analysis_workflow(
     - processing-complete: When entire pipeline is done
     """
     # Import here to avoid circular dependency (agents -> services -> agents)
+    from app.agents.base import create_sse_publish_fn
     from app.agents.orchestrator import run_orchestrator
     from app.agents.triage import run_triage
     from app.database import _get_sessionmaker
 
+    settings = get_settings()
     session_factory = _get_sessionmaker()
     pipeline_start = time.monotonic()
+
+    # Create a bound SSE publish function for real-time THINKING_UPDATE events
+    publish_fn = create_sse_publish_fn(case_id)
 
     async with session_factory() as db:
         try:
@@ -186,6 +240,7 @@ async def run_analysis_workflow(
                 user_id=user_id,
                 files=files,
                 db_session=db,
+                publish_event=publish_fn,
             )
 
             if triage_output is None:
@@ -204,6 +259,25 @@ async def run_analysis_workflow(
                 await db.commit()
                 return
 
+            # Query triage execution record for metadata and parent chain
+            triage_exec_result = await db.execute(
+                select(AgentExecution)
+                .where(
+                    AgentExecution.workflow_id == UUID(workflow_id),
+                    AgentExecution.agent_name == "triage",
+                )
+                .order_by(AgentExecution.created_at.desc())
+                .limit(1)
+            )
+            triage_execution = triage_exec_result.scalar_one_or_none()
+
+            # Build enriched metadata for triage completion event
+            triage_metadata = (
+                _build_execution_metadata(triage_execution, settings.gemini_flash_model)
+                if triage_execution
+                else {}
+            )
+
             await emit_agent_complete(
                 case_id=case_id,
                 agent_type="triage",
@@ -220,6 +294,7 @@ async def run_analysis_workflow(
                             },
                         }
                     ],
+                    "metadata": triage_metadata,
                 },
             )
 
@@ -231,17 +306,6 @@ async def run_analysis_workflow(
                 workflow_id,
                 triage_duration_s,
             )
-            # Find triage execution record for parent chain
-            triage_exec_result = await db.execute(
-                select(AgentExecution)
-                .where(
-                    AgentExecution.workflow_id == UUID(workflow_id),
-                    AgentExecution.agent_name == "triage",
-                )
-                .order_by(AgentExecution.created_at.desc())
-                .limit(1)
-            )
-            triage_execution = triage_exec_result.scalar_one_or_none()
 
             orchestrator_task_id = str(uuid4())
             await emit_agent_started(
@@ -258,6 +322,7 @@ async def run_analysis_workflow(
                 user_id=user_id,
                 triage_output=triage_output,
                 db_session=db,
+                publish_event=publish_fn,
                 parent_execution_id=triage_execution.id if triage_execution else None,
             )
 
@@ -271,6 +336,24 @@ async def run_analysis_workflow(
                 # Files stay in PROCESSING -- partial results preserved
                 await db.commit()
             else:
+                # Query orchestrator execution record for metadata
+                orch_exec_result = await db.execute(
+                    select(AgentExecution)
+                    .where(
+                        AgentExecution.workflow_id == UUID(workflow_id),
+                        AgentExecution.agent_name == "orchestrator",
+                    )
+                    .order_by(AgentExecution.created_at.desc())
+                    .limit(1)
+                )
+                orch_execution = orch_exec_result.scalar_one_or_none()
+
+                orch_metadata = (
+                    _build_execution_metadata(orch_execution, settings.gemini_pro_model)
+                    if orch_execution
+                    else {}
+                )
+
                 await emit_agent_complete(
                     case_id=case_id,
                     agent_type="orchestrator",
@@ -306,6 +389,7 @@ async def run_analysis_workflow(
                             }
                             for rd in orchestrator_output.routing_decisions
                         ],
+                        "metadata": orch_metadata,
                     },
                 )
 
@@ -320,14 +404,28 @@ async def run_analysis_workflow(
             # ---- Step 7: Emit processing-complete ----
             # Count entities from triage output
             total_entities = sum(len(fr.entities) for fr in triage_output.file_results)
+            total_duration_s = time.monotonic() - pipeline_start
+            total_duration_ms = int(total_duration_s * 1000)
+
+            # Aggregate token usage across all executions in this workflow
+            all_exec_result = await db.execute(
+                select(AgentExecution).where(
+                    AgentExecution.workflow_id == UUID(workflow_id),
+                )
+            )
+            all_executions = list(all_exec_result.scalars().all())
+            total_input_tokens = sum(e.input_tokens or 0 for e in all_executions)
+            total_output_tokens = sum(e.output_tokens or 0 for e in all_executions)
+
             await emit_processing_complete(
                 case_id=case_id,
                 files_processed=len(files),
                 entities_created=total_entities,
                 relationships_created=0,  # Relationships created by domain agents in Phase 6
+                total_duration_ms=total_duration_ms,
+                total_input_tokens=total_input_tokens,
+                total_output_tokens=total_output_tokens,
             )
-
-            total_duration_s = time.monotonic() - pipeline_start
             logger.info(
                 "Pipeline complete case=%s workflow=%s files=%d "
                 "total_duration_s=%.2f entities=%d",

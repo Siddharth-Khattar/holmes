@@ -1,14 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter, usePathname } from "next/navigation";
-import { ArrowLeft, Terminal, Network, Clock, FolderOpen } from "lucide-react";
-import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { clsx } from "clsx";
 
 import { api, ApiError } from "@/lib/api-client";
 import type { Case, CaseStatus } from "@/types/case";
-import { ExpandableTabs } from "@/components/ui/expandable-tabs";
 import { Chatbot } from "@/components/app/chatbot";
 
 const statusConfig: Record<
@@ -34,13 +31,6 @@ const statusConfig: Record<
   },
 };
 
-const navItems = [
-  { title: "Command Center", icon: Terminal, href: "/command-center" },
-  { title: "Knowledge Graph", icon: Network, href: "/knowledge-graph" },
-  { title: "Evidence Library", icon: FolderOpen, href: "/library" },
-  { title: "Timeline", icon: Clock, href: "/timeline" },
-];
-
 export default function CaseLayout({
   children,
 }: {
@@ -48,7 +38,6 @@ export default function CaseLayout({
 }) {
   const params = useParams();
   const router = useRouter();
-  const pathname = usePathname();
   const [caseData, setCaseData] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -71,18 +60,14 @@ export default function CaseLayout({
   if (loading) {
     return (
       <div className="px-6 pt-4 pb-6 lg:px-8">
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-1">
           <div
-            className="h-4 w-4 rounded animate-pulse"
-            style={{ backgroundColor: "var(--muted)" }}
-          />
-          <div
-            className="h-5 w-48 rounded animate-pulse"
+            className="h-7 w-64 rounded animate-pulse"
             style={{ backgroundColor: "var(--muted)" }}
           />
         </div>
         <div
-          className="h-4 w-72 rounded animate-pulse mb-4 ml-7"
+          className="h-5 w-80 rounded animate-pulse mb-4"
           style={{ backgroundColor: "var(--muted)" }}
         />
         <div
@@ -98,19 +83,6 @@ export default function CaseLayout({
   }
 
   const status = statusConfig[caseData.status];
-  const basePath = `/cases/${params.id}`;
-
-  // Get current section from pathname
-  const currentSection = pathname.split("/").pop() || "upload";
-
-  // Debug: log to verify matching
-  console.log("CaseLayout - pathname:", pathname);
-  console.log("CaseLayout - currentSection:", currentSection);
-  console.log("CaseLayout - activeTab:", `/${currentSection}`);
-
-  const handleTabChange = (href: string) => {
-    router.push(`${basePath}${href}`);
-  };
 
   return (
     <div
@@ -118,55 +90,29 @@ export default function CaseLayout({
       style={{ backgroundColor: "var(--background)" }}
     >
       <div className="px-6 pt-4 pb-6 lg:px-8">
-        {/* Case header row: back arrow, title, status, and navigation tabs */}
-        <div className="flex items-center justify-between mb-0.5">
-          <div className="flex items-center gap-2.5">
-            <Link
-              href="/cases"
-              className="inline-flex items-center justify-center rounded-md p-1.5 transition-colors"
-              style={{ color: "var(--muted-foreground)" }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "var(--foreground)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "var(--muted-foreground)";
-              }}
-              aria-label="Back to cases"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-            <h1
-              className="text-base font-medium"
-              style={{ color: "var(--foreground)" }}
-            >
-              {caseData.name}
-            </h1>
-            <span
-              className={clsx(
-                "px-2 py-0.5 rounded-full text-xs font-medium",
-                status.className,
-              )}
-              style={status.style}
-            >
-              {status.label}
-            </span>
-          </div>
-
-          {/* Floating Navigation Tabs - Top Right */}
-          <div className="shrink-0">
-            <ExpandableTabs
-              tabs={navItems}
-              activeTab={`/${currentSection}`}
-              onTabChange={handleTabChange}
-              className="shadow-[0_8px_32px_0_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.4)]"
-            />
-          </div>
+        {/* Case header: title and status */}
+        <div className="flex items-center gap-2.5 mb-1">
+          <h1
+            className="text-xl font-semibold"
+            style={{ color: "var(--foreground)" }}
+          >
+            {caseData.name}
+          </h1>
+          <span
+            className={clsx(
+              "px-2.5 py-1 rounded-full text-xs font-medium",
+              status.className,
+            )}
+            style={status.style}
+          >
+            {status.label}
+          </span>
         </div>
 
         {/* Case description */}
         {caseData.description && (
           <p
-            className="max-w-2xl text-xs mb-4 ml-9"
+            className="max-w-2xl text-sm mb-4"
             style={{ color: "var(--muted-foreground)" }}
           >
             {caseData.description}

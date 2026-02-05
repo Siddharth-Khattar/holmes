@@ -398,6 +398,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cases/{case_id}/confirmations/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Respond to a pending confirmation
+         * @description Approve or reject a pending agent confirmation request.
+         *
+         *     This unblocks the waiting pipeline coroutine, allowing the agent to
+         *     proceed (if approved) or abort/skip (if rejected).
+         *
+         *     No auth required for hackathon simplicity -- the SSE event is already
+         *     scoped to the case.
+         */
+        post: operations["respond_to_confirmation_api_cases__case_id__confirmations__request_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/confirmations/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List pending confirmations for a case
+         * @description Return all pending confirmations for a case.
+         *
+         *     Used by the frontend to display confirmation dialogs and notification
+         *     badges when the user navigates to the Command Center.
+         */
+        get: operations["list_pending_confirmations_api_cases__case_id__confirmations_pending_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -659,6 +708,98 @@ export interface components {
              * @description Rationale for the complexity assessment
              */
             reasoning?: string | null;
+        };
+        /**
+         * ConfirmationListResponse
+         * @description Response listing pending confirmations for a case.
+         */
+        ConfirmationListResponse: {
+            /**
+             * Confirmations
+             * @description List of pending confirmation requests
+             */
+            confirmations: components["schemas"]["ConfirmationRequest"][];
+            /**
+             * Count
+             * @description Total number of pending confirmations
+             */
+            count: number;
+        };
+        /**
+         * ConfirmationRequest
+         * @description Data describing a pending confirmation request.
+         */
+        ConfirmationRequest: {
+            /**
+             * Request Id
+             * @description Unique ID for this confirmation request
+             */
+            request_id: string;
+            /**
+             * Case Id
+             * @description Case this confirmation belongs to
+             */
+            case_id: string;
+            /**
+             * Agent Type
+             * @description Agent type requesting confirmation (e.g. financial, legal)
+             */
+            agent_type: string;
+            /**
+             * Action Description
+             * @description Human-readable description of the pending action
+             */
+            action_description: string;
+            /**
+             * Affected Items
+             * @description List of items (file names, entity IDs) affected by the action
+             */
+            affected_items?: string[];
+            /**
+             * Context
+             * @description Additional context about the action for frontend display
+             */
+            context?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             * @description When the confirmation was requested
+             */
+            created_at?: string;
+        };
+        /**
+         * ConfirmationResolveResponse
+         * @description Response after resolving a confirmation.
+         */
+        ConfirmationResolveResponse: {
+            /**
+             * Status
+             * @description Resolution status
+             */
+            status: string;
+            /**
+             * Approved
+             * @description Whether the action was approved
+             */
+            approved: boolean;
+        };
+        /**
+         * ConfirmationResponseBody
+         * @description Request body for responding to a pending confirmation.
+         */
+        ConfirmationResponseBody: {
+            /**
+             * Approved
+             * @description Whether to approve the pending action
+             */
+            approved: boolean;
+            /**
+             * Reason
+             * @description Optional reason for the decision
+             */
+            reason?: string | null;
         };
         /**
          * DomainScore
@@ -2177,6 +2318,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    respond_to_confirmation_api_cases__case_id__confirmations__request_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmationResponseBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmationResolveResponse"];
+                };
+            };
+            /** @description Confirmation not found or already resolved */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_pending_confirmations_api_cases__case_id__confirmations_pending_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmationListResponse"];
                 };
             };
             /** @description Validation Error */

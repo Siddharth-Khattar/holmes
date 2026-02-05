@@ -105,10 +105,11 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
       {/* Dropdown Menu */}
       {isOpen && (
         <div
-          className="absolute bottom-full left-0 mb-2 w-48 rounded-lg shadow-lg py-1 z-50"
+          className="absolute bottom-full left-0 mb-2 w-48 rounded-lg shadow-lg py-1"
           style={{
             backgroundColor: "var(--popover)",
             border: "1px solid var(--border)",
+            zIndex: 9999,
           }}
           role="menu"
         >
@@ -117,7 +118,7 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
             onClick={() => {
               setTheme(resolvedTheme === "dark" ? "light" : "dark");
             }}
-            className="flex items-center gap-3 w-full px-4 py-2 text-sm transition-colors duration-150"
+            className="flex items-center gap-3 w-full px-4 py-2 text-sm transition-colors duration-150 hover:bg-[var(--muted)]"
             style={{ color: "var(--foreground)" }}
             role="menuitem"
           >
@@ -141,7 +142,7 @@ export function UserMenu({ user, collapsed = false }: UserMenuProps) {
               setIsOpen(false);
               logout();
             }}
-            className="flex items-center gap-3 w-full px-4 py-2 text-sm transition-colors duration-150"
+            className="flex items-center gap-3 w-full px-4 py-2 text-sm transition-colors duration-150 hover:bg-[var(--muted)]"
             style={{ color: "var(--foreground)" }}
             role="menuitem"
           >

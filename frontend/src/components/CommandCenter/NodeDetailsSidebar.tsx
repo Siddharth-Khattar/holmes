@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
+import { formatDuration, formatNumber, formatTime } from "@/lib/formatting";
+import { ExecutionTimeline } from "@/components/CommandCenter/ExecutionTimeline";
 import type {
   AgentType,
   AgentState,
@@ -35,6 +37,7 @@ import type {
 interface NodeDetailsSidebarProps {
   agentType: AgentType | null;
   agentState: AgentState | null;
+  allAgentStates?: Map<AgentType, AgentState>;
   onClose: () => void;
 }
 
@@ -283,16 +286,28 @@ function OrchestratorSections({ agentState }: AgentSectionsProps) {
           badge={result.routingDecisions.length}
         >
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table
+              className="w-full text-xs"
+              aria-label="File routing decisions"
+            >
               <thead>
                 <tr className="border-b border-stone/15">
-                  <th className="text-left py-2 pr-2 text-stone font-medium">
+                  <th
+                    scope="col"
+                    className="text-left py-2 pr-2 text-stone font-medium"
+                  >
                     File
                   </th>
-                  <th className="text-left py-2 px-2 text-stone font-medium">
+                  <th
+                    scope="col"
+                    className="text-left py-2 px-2 text-stone font-medium"
+                  >
                     Agent
                   </th>
-                  <th className="text-right py-2 pl-2 text-stone font-medium">
+                  <th
+                    scope="col"
+                    className="text-right py-2 pl-2 text-stone font-medium"
+                  >
                     Score
                   </th>
                 </tr>
@@ -308,7 +323,7 @@ function OrchestratorSections({ agentState }: AgentSectionsProps) {
                         {decision.targetAgent}
                       </td>
                       <td className="py-2 pl-2 text-right text-stone">
-                        {Math.round(decision.domainScore * 100)}%
+                        {Math.round(decision.domainScore)}%
                       </td>
                     </tr>
                   ),
@@ -713,6 +728,7 @@ function getSourceLabel(agentType: AgentType): string {
 export function NodeDetailsSidebar({
   agentType,
   agentState,
+  allAgentStates,
   onClose,
 }: NodeDetailsSidebarProps) {
   if (!agentType || !agentState) return null;
@@ -832,6 +848,97 @@ export function NodeDetailsSidebar({
           )}
         </CollapsibleSection>
 
+        {/* Token Usage */}
+        {(() => {
+          const inputTokens = result?.metadata?.inputTokens as
+            | number
+            | undefined;
+          const outputTokens = result?.metadata?.outputTokens as
+            | number
+            | undefined;
+          const model = result?.metadata?.model as string | undefined;
+          if (inputTokens === undefined && outputTokens === undefined)
+            return null;
+          return (
+            <CollapsibleSection
+              title="Token Usage"
+              color="hsl(var(--cc-accent))"
+              icon={<BarChart3 className="w-3.5 h-3.5" />}
+            >
+              <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
+                {inputTokens !== undefined && (
+                  <>
+                    <span className="text-stone text-xs">Input Tokens</span>
+                    <span className="text-smoke text-xs font-medium text-right">
+                      {formatNumber(inputTokens)}
+                    </span>
+                  </>
+                )}
+                {outputTokens !== undefined && (
+                  <>
+                    <span className="text-stone text-xs">Output Tokens</span>
+                    <span className="text-smoke text-xs font-medium text-right">
+                      {formatNumber(outputTokens)}
+                    </span>
+                  </>
+                )}
+                {model && (
+                  <>
+                    <span className="text-stone text-xs">Model</span>
+                    <span className="text-smoke text-xs font-medium text-right truncate">
+                      {model}
+                    </span>
+                  </>
+                )}
+              </div>
+            </CollapsibleSection>
+          );
+        })()}
+
+        {/* Timing */}
+        {(() => {
+          const durationMs = result?.metadata?.durationMs as number | undefined;
+          const startedAt = result?.metadata?.startedAt as string | undefined;
+          const completedAt = result?.metadata?.completedAt as
+            | string
+            | undefined;
+          if (!durationMs && !startedAt) return null;
+          return (
+            <CollapsibleSection
+              title="Timing"
+              color="hsl(var(--cc-accent))"
+              icon={<Clock className="w-3.5 h-3.5" />}
+            >
+              <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
+                {durationMs !== undefined && durationMs > 0 && (
+                  <>
+                    <span className="text-stone text-xs">Duration</span>
+                    <span className="text-smoke text-xs font-medium text-right">
+                      {formatDuration(durationMs)}
+                    </span>
+                  </>
+                )}
+                {startedAt && (
+                  <>
+                    <span className="text-stone text-xs">Started</span>
+                    <span className="text-smoke text-xs font-medium text-right">
+                      {formatTime(startedAt)}
+                    </span>
+                  </>
+                )}
+                {completedAt && (
+                  <>
+                    <span className="text-stone text-xs">Completed</span>
+                    <span className="text-smoke text-xs font-medium text-right">
+                      {formatTime(completedAt)}
+                    </span>
+                  </>
+                )}
+              </div>
+            </CollapsibleSection>
+          );
+        })()}
+
         {/* Agent-type-specific sections */}
         {agentType === "triage" && <TriageSections agentState={agentState} />}
         {agentType === "orchestrator" && (
@@ -915,7 +1022,7 @@ export function NodeDetailsSidebar({
                             &rarr; {decision.targetAgent}
                           </span>
                           <span className="text-xs text-[hsl(var(--cc-accent))]">
-                            {(decision.domainScore * 100).toFixed(0)}%
+                            {Math.round(decision.domainScore)}%
                           </span>
                         </div>
                         <div className="text-xs text-stone">
@@ -991,6 +1098,26 @@ export function NodeDetailsSidebar({
             </div>
           </CollapsibleSection>
         )}
+
+        {/* Execution Timeline (requires multiple agents with timing data) */}
+        {allAgentStates &&
+          (() => {
+            let agentsWithTiming = 0;
+            for (const [, s] of allAgentStates) {
+              if (s.lastResult?.metadata?.durationMs) agentsWithTiming++;
+            }
+            if (agentsWithTiming < 2) return null;
+            return (
+              <CollapsibleSection
+                title="Execution Timeline"
+                color="hsl(var(--cc-accent))"
+                icon={<BarChart3 className="w-3.5 h-3.5" />}
+                badge={`${agentsWithTiming} agents`}
+              >
+                <ExecutionTimeline agentStates={allAgentStates} />
+              </CollapsibleSection>
+            );
+          })()}
 
         {/* Idle/empty state */}
         {!agentState.currentTask &&

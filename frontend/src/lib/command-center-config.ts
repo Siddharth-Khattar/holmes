@@ -46,6 +46,14 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
     position: { x: 0, y: 0 },
     model: "Gemini 3 Pro",
   },
+  evidence: {
+    type: "evidence",
+    name: "Evidence Agent",
+    description: "Analyzes evidence authenticity and chain of custody",
+    color: "",
+    position: { x: 0, y: 0 },
+    model: "Gemini 3 Pro",
+  },
   "knowledge-graph": {
     type: "knowledge-graph",
     name: "Knowledge Graph Agent",
@@ -65,9 +73,11 @@ export const DEFAULT_CONNECTIONS: Array<{
   { source: "orchestrator", target: "financial" },
   { source: "orchestrator", target: "legal" },
   { source: "orchestrator", target: "strategy" },
+  { source: "orchestrator", target: "evidence" },
   { source: "financial", target: "knowledge-graph" },
   { source: "legal", target: "knowledge-graph" },
   { source: "strategy", target: "knowledge-graph" },
+  { source: "evidence", target: "knowledge-graph" },
 ];
 
 // Per-agent color variable pair: tint (subtle background) and accent (bright text/glow)
@@ -92,6 +102,10 @@ export const AGENT_TYPE_COLORS: Record<AgentType, AgentColorVars> = {
   strategy: {
     tint: "var(--cc-strategy-tint)",
     accent: "var(--cc-strategy-accent)",
+  },
+  evidence: {
+    tint: "var(--cc-evidence-tint)",
+    accent: "var(--cc-evidence-accent)",
   },
   "knowledge-graph": {
     tint: "var(--cc-kg-tint)",

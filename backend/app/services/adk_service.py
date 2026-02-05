@@ -6,13 +6,20 @@ import hashlib
 import logging
 import os
 import tempfile
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from google.adk.artifacts import GcsArtifactService
 from google.adk.runners import Runner
 from google.adk.sessions import DatabaseSessionService, Session
-from google.cloud import storage
+
+# google-cloud-storage doesn't ship type stubs (no py.typed marker)
+# See: https://github.com/googleapis/python-storage/issues/393
+from google.cloud import storage  # type: ignore[import-untyped,attr-defined]
 from google.genai import types
+
+if TYPE_CHECKING:
+    from google.adk.agents.base_agent import BaseAgent
 
 from app.config import get_settings
 from app.models.file import CaseFile
@@ -64,7 +71,7 @@ def get_artifact_service() -> GcsArtifactService:
 
 
 def create_stage_runner(
-    agent: "BaseAgent",  # noqa: F821 — forward ref to avoid circular import
+    agent: "BaseAgent",
 ) -> Runner:
     """Create a Runner for a single pipeline stage.
 
@@ -228,7 +235,13 @@ async def prepare_file_via_api(
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval
             poll_interval = min(poll_interval * 1.5, 15.0)
-            uploaded = genai_client.files.get(name=uploaded.name)
+            # Type narrowing: uploaded.name is guaranteed non-None after successful upload
+            file_name = uploaded.name
+            if file_name is None:
+                raise RuntimeError(
+                    "File API returned file without name - upload may have failed"
+                )
+            uploaded = genai_client.files.get(name=file_name)
 
         if uploaded.state and uploaded.state.name == "FAILED":
             raise RuntimeError(f"File API processing failed: {uploaded.name}")

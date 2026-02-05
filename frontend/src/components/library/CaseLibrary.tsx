@@ -6,7 +6,6 @@ import {
   Video,
   Music,
   Image as ImageIcon,
-  Eye,
   Download,
   Trash2,
   AlertTriangle,
@@ -15,6 +14,7 @@ import {
   Loader2,
   Check,
   Minus,
+  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { FileUpload } from "@/components/ui/file-upload";
@@ -27,6 +27,7 @@ import {
   FileResponse,
 } from "@/lib/api/files";
 import { useFileUpload, FileUploadProgress } from "@/hooks/useFileUpload";
+import { RedactModal } from "./RedactModal";
 
 // Types for UI display
 type SupportedFileType = "pdf" | "video" | "audio" | "image";
@@ -138,6 +139,9 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
     new Set(),
   );
   const [isDeleting, setIsDeleting] = useState(false);
+  const [redactModalFile, setRedactModalFile] = useState<LibraryFile | null>(
+    null,
+  );
 
   // File upload hook
   const {
@@ -270,11 +274,43 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
     [upload, refreshFiles, clearError],
   );
 
-  // File actions
-  const handleViewFile = useCallback((file: LibraryFile) => {
-    console.log("View file:", file);
-    // TODO: Open in source panel
+  // Helper function to get mock file URLs for demonstration
+  const getMockFileUrl = useCallback((fileType: SupportedFileType): string => {
+    switch (fileType) {
+      case "image":
+        return "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=800&h=600&fit=crop";
+      case "video":
+        return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
+      case "pdf":
+        return "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+      case "audio":
+        return "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+      default:
+        return "";
+    }
   }, []);
+
+  const handleRedactFile = useCallback(
+    async (file: LibraryFile) => {
+      // For demonstration, use mock URLs
+      // In production, this would fetch the actual file URL from the backend
+
+      // Use mock URL directly for now to avoid API errors during demo
+      const mockUrl = getMockFileUrl(file.type);
+      setRedactModalFile({ ...file, url: mockUrl });
+
+      // TODO: Uncomment when backend is ready
+      // try {
+      //   const url = await getDownloadUrl(caseId, file.id);
+      //   setRedactModalFile({ ...file, url });
+      // } catch (err) {
+      //   console.error("Failed to get file URL:", err);
+      //   const mockUrl = getMockFileUrl(file.type);
+      //   setRedactModalFile({ ...file, url: mockUrl });
+      // }
+    },
+    [getMockFileUrl],
+  );
 
   const handleDownloadFile = useCallback(
     async (file: LibraryFile) => {
@@ -480,9 +516,9 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
   };
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div className="flex flex-col w-full">
       {/* Header */}
-      <div className="flex-none px-6 py-3 border-b border-warm-gray/15 dark:border-stone/15">
+      <div className="px-6 py-3 border-b border-warm-gray/15 dark:border-stone/15">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-base font-medium text-foreground">
@@ -512,7 +548,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="flex-none mx-6 mt-4"
+            className="mx-6 mt-4"
           >
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/50 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
@@ -589,7 +625,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="flex-none mx-6 mt-4"
+            className="mx-6 mt-4"
           >
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg p-4">
               <div className="flex items-center justify-between">
@@ -618,7 +654,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="flex-none mx-6 mt-4"
+            className="mx-6 mt-4"
           >
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 rounded-lg p-4">
               <div className="flex items-center space-x-3">
@@ -639,7 +675,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
       </AnimatePresence>
 
       {/* File Upload Zone */}
-      <div className="flex-none mx-6 mt-6">
+      <div className="mx-6 mt-6">
         <div className="border border-dashed border-warm-gray/25 dark:border-stone/30 rounded-lg overflow-hidden">
           <FileUpload
             onChange={handleFileUpload}
@@ -651,32 +687,41 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
       </div>
 
       {/* Filters and Search */}
-      <div className="flex-none px-6 py-4 space-y-4">
-        {/* Category Filters */}
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">Filter:</span>
-          {(
-            [
-              "all",
-              "evidence",
-              "legal",
-              "strategy",
-              "reference",
-            ] as FileCategory[]
-          ).map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-2.5 py-0.5 text-xs rounded-lg transition-colors ${
-                selectedCategory === category
-                  ? "bg-accent-light dark:bg-[#f5f4ef] text-cream dark:text-charcoal"
-                  : "bg-warm-gray/8 dark:bg-stone/10 text-muted-foreground hover:bg-warm-gray/12 dark:hover:bg-stone/15"
-              }`}
-            >
-              {category.charAt(0).toUpperCase() + category.slice(1)}
-            </button>
-          ))}
+      <div className="px-6 py-4 space-y-4">
+        {/* Category Filters with Quick Analysis Tip */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Filter:</span>
+            {(
+              [
+                "all",
+                "evidence",
+                "legal",
+                "strategy",
+                "reference",
+              ] as FileCategory[]
+            ).map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-2.5 py-0.5 text-xs rounded-lg transition-colors ${
+                  selectedCategory === category
+                    ? "bg-accent-light dark:bg-[#f5f4ef] text-cream dark:text-charcoal"
+                    : "bg-warm-gray/8 dark:bg-stone/10 text-muted-foreground hover:bg-warm-gray/12 dark:hover:bg-stone/15"
+                }`}
+              >
+                {category.charAt(0).toUpperCase() + category.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Redact and Download Tip */}
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
+            <span>Redact and download: Click</span>
+            <Sparkles className="w-3 h-3 text-purple-500" />
+            <span>on any file</span>
+          </div>
         </div>
 
         {/* Search */}
@@ -699,7 +744,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="flex-none mx-6 mb-4"
+            className="mx-6 mb-4"
           >
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-lg p-4">
               <div className="flex items-start space-x-3">
@@ -754,7 +799,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="flex-none mx-6 mb-4"
+            className="mx-6 mb-4"
           >
             <div className="flex items-center justify-between rounded-lg px-4 py-3 bg-blue-500/15 dark:bg-blue-500/15 border border-blue-500/30 dark:border-blue-500/30">
               <div className="flex items-center space-x-3">
@@ -787,7 +832,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
       </AnimatePresence>
 
       {/* File List */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div className="px-6 pb-6">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
@@ -884,11 +929,11 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-center space-x-2">
                         <button
-                          onClick={() => handleViewFile(file)}
+                          onClick={() => handleRedactFile(file)}
                           className="p-1.5 rounded hover:bg-warm-gray/12 dark:hover:bg-stone/15 transition-colors"
-                          title="View file"
+                          title="Redact & Download"
                         >
-                          <Eye className="w-4 h-4 text-muted-foreground" />
+                          <Sparkles className="w-4 h-4 text-purple-500" />
                         </button>
                         <button
                           onClick={() => handleDownloadFile(file)}
@@ -914,13 +959,19 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
         )}
       </div>
 
-      {/* Footer */}
-      <div className="flex-none px-6 py-3 border-t border-warm-gray/15 dark:border-stone/15 text-xs text-muted-foreground">
-        <p>
-          Quick Analysis Modal: Click <Eye className="inline w-3 h-3" /> on any
-          file to open detailed analysis
-        </p>
-      </div>
+      {/* Redact Modal */}
+      {redactModalFile && (
+        <RedactModal
+          isOpen={!!redactModalFile}
+          onClose={() => setRedactModalFile(null)}
+          file={{
+            id: redactModalFile.id,
+            name: redactModalFile.name,
+            type: redactModalFile.type,
+            url: redactModalFile.url,
+          }}
+        />
+      )}
     </div>
   );
 }

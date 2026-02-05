@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-04
-**Current Phase:** 5 of 12 (Agent Flow) — FRONTEND_DONE, backend pending
-**Current Plan:** None (Phase 5 frontend complete from 4.1 revamp; backend planning needed)
+**Last Updated:** 2026-02-05
+**Current Phase:** 5 of 12 (Agent Flow) — COMPLETE
+**Next Phase:** 6 (Domain Agents)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -15,7 +15,7 @@
 | 3 | File Ingestion | COMPLETE | 2026-02-02 | 2026-02-02 | Verified 6/6 truths |
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
-| 5 | Agent Flow | FRONTEND_DONE | - | - | Backend SSE needed |
+| 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
 | 6 | Domain Agents | NOT_STARTED | - | - | |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
@@ -31,23 +31,24 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 4.1 Complete** (2026-02-04): Full agent decision tree revamp across 4 plans, 19 commits
-  - Plan 01: Installed @xyflow/react + @dagrejs/dagre, scoped CSS variables, DecisionNode component
-  - Plan 02: NodeDetailsSidebar with spring animation, collapsible color-coded sections, agent-type dispatch
-  - Plan 03: ReactFlow canvas + dagre layout, FileGroupNode, CommandCenter rewrite, useAgentStates/useAgentFlowGraph hooks, layout engine, mock data
-  - Plan 04 (unplanned refinement): Muted color palette (~50% saturation), gray edges, FileRoutingEdge with click-to-expand file popups, sidebar lifted to page level as 30% screen-width panel
-  - New utility modules: command-center-graph.ts (node/edge builder), command-center-layout.ts (dagre engine)
-- **Post-4.1 cleanup** (2026-02-04): Extracted shared `CanvasZoomControls` component (`ui/canvas-zoom-controls.tsx`) used by both Command Center and Knowledge Graph
+- **Phase 5 Complete** (2026-02-05): Agent Flow with full SSE pipeline (4 plans, 26 commits total)
+  - Plan 01: SSE event enrichment (thinking traces, token usage, state snapshots)
+  - Plan 02: Backend HITL confirmation service (asyncio.Event pause/resume, REST API) — **infra only, verification deferred**
+  - Plan 03: Frontend SSE integration (event handlers, validators, thinking accumulation)
+  - Plan 04: HITL confirmation UI, token display, execution timeline Gantt chart — **infra only, verification deferred**
+  - Post-plan: 15+ commits for critical fixes (race conditions, type safety, validation alignment, accessibility)
+  - Key fixes: domainScore 0-100 validation, taskId/requestId alignment, tool-called events, P0 race conditions
+  - **Note:** HITL infrastructure is built but no agent currently triggers confirmations; end-to-end verification deferred to Phase 6+ when domain agents can invoke HITL
 
 **What's next:**
-- Phase 5 backend work: SSE streaming real agent data, thinking traces, token usage, HITL dialogs
-- Phase 6 (Domain Agents), Phase 7 (Synthesis & KG)
+- Phase 6 (Domain Agents): Financial, Legal, Strategy, Evidence agents — will verify HITL end-to-end
+- Phase 7 (Synthesis & KG): Backend agents for knowledge graph population
 
 ---
 
 ## Implementation Mapping: Requirements -> Files
 
-### REQ-VIS-001: Agent Flow — FRONTEND_DONE
+### REQ-VIS-001: Agent Flow — COMPLETE
 
 | Component | File Path |
 |-----------|-----------|
@@ -68,10 +69,23 @@
 | Types | `frontend/src/types/command-center.ts` |
 | Command center page | `frontend/src/app/(app)/cases/[id]/command-center/page.tsx` |
 | Command center demo page | `frontend/src/app/(app)/cases/[id]/command-center-demo/page.tsx` |
+| HITL confirmation modal | `frontend/src/components/CommandCenter/ConfirmationModal.tsx` |
+| Execution timeline (Gantt) | `frontend/src/components/CommandCenter/ExecutionTimeline.tsx` |
+| Confirmations API client | `frontend/src/lib/api/confirmations.ts` |
+| SSE event validation | `frontend/src/lib/command-center-validation.ts` |
 | Agent nodes (legacy, dead code) | `frontend/src/components/CommandCenter/AgentNode.tsx` |
 | Details panel (legacy, dead code) | `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx` |
+| **Backend: SSE endpoint** | `backend/app/api/sse.py` |
+| **Backend: Agent events pub/sub** | `backend/app/services/agent_events.py` |
+| **Backend: Confirmation service** | `backend/app/services/confirmation_service.py` |
+| **Backend: Confirmation API** | `backend/app/api/confirmations.py` |
+| **Backend: Agent callbacks + SSE publish** | `backend/app/agents/base.py` |
+| **Backend: Pipeline orchestration** | `backend/app/api/agents.py` |
 
-**Backend API Needed:** `SSE GET /api/cases/:caseId/command-center/stream`
+**Backend API:** ✅ Complete
+- `SSE GET /sse/cases/:caseId/command-center/stream` (state-snapshot, thinking-update, tool-called, agent lifecycle, confirmation events)
+- `POST /api/cases/:caseId/confirmations/:requestId` (approve/reject HITL confirmation)
+- `GET /api/cases/:caseId/confirmations/pending` (list pending confirmations)
 
 ---
 
@@ -175,6 +189,8 @@ All frontend features need these backend endpoints:
 | Command Center SSE | `/sse/cases/:caseId/command-center/stream` | SSE | HIGH | DONE |
 | Start Analysis | `/api/cases/:caseId/analyze` | POST | HIGH | DONE |
 | Analysis Status | `/api/cases/:caseId/analysis/:workflowId` | GET | HIGH | DONE |
+| Confirmations | `/api/cases/:caseId/confirmations/:requestId` | POST | HIGH | DONE |
+| Pending Confirmations | `/api/cases/:caseId/confirmations/pending` | GET | HIGH | DONE |
 
 ---
 
@@ -266,6 +282,26 @@ All frontend features need these backend endpoints:
 | Layout computation | Inline in CommandCenter vs Extracted module | Extracted command-center-layout.ts | Dagre engine isolated; progressive visibility logic separated |
 | Agent state management | Inline in CommandCenter vs Custom hook | Extracted useAgentStates hook | State logic reusable across command-center and command-center-demo pages |
 | Sidebar ownership | CommandCenter (absolute overlay) vs Page level (30% panel) | Page level 30% panel | Sidebar as peer to canvas, not overlay; cleaner layout, no z-index issues |
+| PublishFn type alias | type keyword vs TypeAlias annotation | TypeAlias annotation | Pyright compatibility when importing across modules with from __future__ import annotations |
+| SSE thinking traces | Truncated vs Full text | Full untruncated text | CONTEXT.md: "Show full unfiltered thinking output"; DB storage still capped at 2000 chars |
+| SSE reconnection | Event replay vs State snapshot | State snapshot | Simpler; queries most recent workflow executions, no sequence tracking needed |
+| Publish type unification | Separate PublishEventFn per module vs Shared PublishFn | Shared PublishFn from base.py | Single canonical type alias; removes duplicate definitions in triage/orchestrator |
+| Confirmation timeout | Timeout vs Indefinite wait | Indefinite wait | Per CONTEXT.md: "Agent waits indefinitely for user response" |
+| Confirmation storage | Database vs In-memory | In-memory dicts | Single-instance hackathon deployment; three dicts for events/results/requests |
+| Confirmation auth | Full auth vs No auth | No auth | Hackathon simplicity; SSE events already scoped to case |
+| Confirmation SSE emission from sync | Inline await vs loop.create_task | loop.create_task | resolve_confirmation is sync (called from FastAPI endpoint); uses create_task for non-blocking async SSE emission |
+| Frontend SSE URL | Relative /api/ path vs NEXT_PUBLIC_API_URL | NEXT_PUBLIC_API_URL + /sse/ prefix | Matches backend route pattern; env var consistent with REST API client |
+| Backend status mapping | Direct string passthrough vs Mapped enum | mapSnapshotStatus() translation | Backend sends pending/running/completed/failed; frontend uses idle/processing/complete/error |
+| Confirmation state shape | Separate store vs In useAgentStates | In useAgentStates as pendingConfirmations array | Colocated with agent state; Plan 04 consumes directly |
+| Sidebar token/timing sections | Inline variables vs IIFE scoping | IIFE pattern for CollapsibleSections | Scopes metadata extraction locally without polluting component scope |
+| Sidebar cross-agent data | React context vs Optional prop | allAgentStates optional prop | Self-contained; avoids provider overhead for single consumer |
+| Confirmation modal dismiss | Click-outside-to-dismiss vs Blocked | Blocked (no outside dismiss) | Important agent decisions should not be accidentally dismissed |
+| Tab notification badge | New cross-page context vs Tab badge property | Tab badge property | Lightweight; rendering support in ExpandableTabs, wiring per-page |
+| SSE domainScore range | Normalize to 0-1 in backend vs Accept 0-100 in frontend | Accept 0-100 in frontend | Backend schema uses 0-100 (percentage); frontend validation and display adjusted |
+| Confirmation event field naming | requestId vs taskId | taskId | Backend sends taskId consistently; frontend types/validation aligned |
+| SSE event type field | Implicit from event name vs Explicit in payload | Explicit type field in every payload | Frontend validation dispatches on data.type; ensures consistent event handling |
+| Tool-called event mapping | Map TOOL_COMPLETED separately vs Same as TOOL_CALLED | Same event type | Both TOOL_CALLED and TOOL_COMPLETED mapped to tool-called SSE event |
+| Thinking update timestamp | Required vs Optional | Optional in frontend, always sent by backend | Backend callbacks include timestamp; emit_thinking_update adds default; frontend validates optionally |
 
 ---
 
@@ -277,8 +313,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-04
-Stopped at: Phase 4.1 complete (19 commits) + post-4.1 cleanup (shared CanvasZoomControls). Phase 5 description updated in ROADMAP.md.
+Last session: 2026-02-05
+Stopped at: Phase 5 complete; ready to begin Phase 6 (Domain Agents)
 Resume file: None
 
 ---

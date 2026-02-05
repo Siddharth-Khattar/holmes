@@ -802,7 +802,7 @@ export function NodeDetailsSidebar({
       {/* ---- Scrollable content ---- */}
       <div
         className="flex-1 overflow-y-auto"
-        style={{ scrollbarWidth: "none" }}
+        style={{ scrollbarWidth: "thin" }}
       >
         {/* Current Task (always visible at top when processing) */}
         {agentState.currentTask && (

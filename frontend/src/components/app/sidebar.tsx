@@ -1,5 +1,5 @@
 // ABOUTME: Collapsible sidebar navigation for authenticated app shell
-// ABOUTME: Minimized by default (~64px), expands on hover (~240px) like Linear/Notion
+// ABOUTME: Manual toggle control for expand/collapse with production-grade state management
 
 "use client";
 
@@ -70,7 +70,6 @@ export function Sidebar({ user }: SidebarProps) {
       <nav className="flex-1 py-4 px-2">
         <ul className="space-y-3">
           {navItems.map((item) => {
-            // Only mark as active if on exact path or direct children (not nested like /cases/[id])
             const isActive = pathname === item.href;
             const Icon = item.icon;
 
@@ -79,31 +78,14 @@ export function Sidebar({ user }: SidebarProps) {
                 <Link
                   href={item.href}
                   className={clsx(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg",
+                    "sidebar-nav-item flex items-center gap-3 px-3 py-2 rounded-lg",
                     "transition-colors duration-150",
+                    isActive
+                      ? "sidebar-nav-item-active"
+                      : "sidebar-nav-item-inactive",
                   )}
-                  style={{
-                    backgroundColor: isActive ? "var(--muted)" : "transparent",
-                    color: isActive
-                      ? "var(--foreground)"
-                      : "var(--muted-foreground)",
-                    fontWeight: isActive ? 600 : 400,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = "var(--muted)";
-                      e.currentTarget.style.opacity = "0.5";
-                      e.currentTarget.style.color = "var(--foreground)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = "transparent";
-                      e.currentTarget.style.opacity = "1";
-                      e.currentTarget.style.color = "var(--muted-foreground)";
-                    }
-                  }}
                   title={!isExpanded ? item.label : undefined}
+                  aria-current={isActive ? "page" : undefined}
                 >
                   <Icon className="w-5 h-5 shrink-0" />
                   {isExpanded && (
@@ -126,21 +108,10 @@ export function Sidebar({ user }: SidebarProps) {
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className={clsx(
-            "w-full flex items-center gap-3 px-3 py-2 rounded-lg",
+            "sidebar-toggle w-full flex items-center gap-3 px-3 py-2 rounded-lg",
             "transition-colors duration-150",
             isExpanded ? "justify-start" : "justify-center",
           )}
-          style={{
-            color: "var(--muted-foreground)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "var(--muted)";
-            e.currentTarget.style.opacity = "0.5";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "transparent";
-            e.currentTarget.style.opacity = "1";
-          }}
           title={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
           aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
         >
@@ -161,6 +132,37 @@ export function Sidebar({ user }: SidebarProps) {
       <div className="p-2" style={{ borderTop: "1px solid var(--border)" }}>
         <UserMenu user={user} collapsed={!isExpanded} />
       </div>
+
+      {/* Scoped styles for navigation items */}
+      <style jsx>{`
+        .sidebar-nav-item-active {
+          background-color: var(--muted);
+          color: var(--foreground);
+          font-weight: 600;
+        }
+
+        .sidebar-nav-item-inactive {
+          background-color: transparent;
+          color: var(--muted-foreground);
+          font-weight: 400;
+        }
+
+        .sidebar-nav-item-inactive:hover {
+          background-color: var(--muted);
+          opacity: 0.5;
+          color: var(--foreground);
+        }
+
+        .sidebar-toggle {
+          background-color: transparent;
+          color: var(--muted-foreground);
+        }
+
+        .sidebar-toggle:hover {
+          background-color: var(--muted);
+          opacity: 0.5;
+        }
+      `}</style>
     </aside>
   );
 }

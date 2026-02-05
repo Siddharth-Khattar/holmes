@@ -43,31 +43,14 @@ export function SidebarTabs({
             key={tab.href}
             onClick={() => handleTabClick(tab.href)}
             className={clsx(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-lg",
+              "sidebar-tab w-full flex items-center gap-3 px-3 py-2 rounded-lg",
               "transition-colors duration-150",
               collapsed ? "justify-center" : "justify-start",
+              isActive ? "sidebar-tab-active" : "sidebar-tab-inactive",
             )}
-            style={{
-              backgroundColor: isActive ? "var(--muted)" : "transparent",
-              color: isActive ? "var(--foreground)" : "var(--muted-foreground)",
-              fontWeight: isActive ? 600 : 400,
-            }}
-            onMouseEnter={(e) => {
-              if (!isActive) {
-                e.currentTarget.style.backgroundColor = "var(--muted)";
-                e.currentTarget.style.opacity = "0.5";
-                e.currentTarget.style.color = "var(--foreground)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isActive) {
-                e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.opacity = "1";
-                e.currentTarget.style.color = "var(--muted-foreground)";
-              }
-            }}
             title={collapsed ? tab.title : undefined}
             aria-label={tab.title}
+            aria-current={isActive ? "page" : undefined}
           >
             <Icon className="w-5 h-5 shrink-0" />
             {!collapsed && (
@@ -78,6 +61,25 @@ export function SidebarTabs({
           </button>
         );
       })}
+      <style jsx>{`
+        .sidebar-tab-active {
+          background-color: var(--muted);
+          color: var(--foreground);
+          font-weight: 600;
+        }
+
+        .sidebar-tab-inactive {
+          background-color: transparent;
+          color: var(--muted-foreground);
+          font-weight: 400;
+        }
+
+        .sidebar-tab-inactive:hover {
+          background-color: var(--muted);
+          opacity: 0.5;
+          color: var(--foreground);
+        }
+      `}</style>
     </div>
   );
 }

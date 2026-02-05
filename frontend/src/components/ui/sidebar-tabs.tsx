@@ -50,6 +50,7 @@ export function SidebarTabs({
             style={{
               backgroundColor: isActive ? "var(--muted)" : "transparent",
               color: isActive ? "var(--foreground)" : "var(--muted-foreground)",
+              fontWeight: isActive ? 600 : 400,
             }}
             onMouseEnter={(e) => {
               if (!isActive) {

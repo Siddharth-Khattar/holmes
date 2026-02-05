@@ -89,6 +89,7 @@ export function Sidebar({ user }: SidebarProps) {
                     color: isActive
                       ? "var(--foreground)"
                       : "var(--muted-foreground)",
+                    fontWeight: isActive ? 600 : 400,
                   }}
                   title={!isExpanded ? item.label : undefined}
                 >

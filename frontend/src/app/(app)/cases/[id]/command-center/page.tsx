@@ -21,12 +21,20 @@ export default function CommandCenterPage() {
     isReconnecting,
   } = useAgentStates(caseId);
 
-  const { setContent, clearContent } = useDetailSidebarDispatch();
+  const { setContent, clearContent, setCollapsed } = useDetailSidebarDispatch();
 
-  // Deselect handler: clears both local state and sidebar content
-  const handleClose = useCallback(() => {
-    setSelectedAgent(null);
-  }, []);
+  // User-initiated agent selection: also ensures sidebar is expanded.
+  // This is separate from the sync effect (which handles passive SSE updates
+  // without forcing the sidebar open if the user collapsed it).
+  const handleSelectAgent = useCallback(
+    (agent: AgentType | null) => {
+      setSelectedAgent(agent);
+      if (agent) {
+        setCollapsed(false);
+      }
+    },
+    [setCollapsed],
+  );
 
   // Sync selectedAgent + agentStates into the app-wide detail sidebar
   useEffect(() => {
@@ -37,13 +45,12 @@ export default function CommandCenterPage() {
           agentType: selectedAgent,
           agentState: agentStates.get(selectedAgent) ?? null,
           allAgentStates: agentStates,
-          onClose: handleClose,
         },
       });
     } else {
       clearContent();
     }
-  }, [selectedAgent, agentStates, setContent, clearContent, handleClose]);
+  }, [selectedAgent, agentStates, setContent, clearContent]);
 
   // Clear sidebar content on unmount (navigate away from Command Center)
   useEffect(() => {
@@ -74,7 +81,7 @@ export default function CommandCenterPage() {
         isConnected={isConnected}
         isReconnecting={isReconnecting}
         selectedAgent={selectedAgent}
-        onSelectAgent={setSelectedAgent}
+        onSelectAgent={handleSelectAgent}
         className="h-full w-full"
       />
 

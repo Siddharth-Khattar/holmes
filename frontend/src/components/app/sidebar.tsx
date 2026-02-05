@@ -77,12 +77,10 @@ export function Sidebar({ user }: SidebarProps) {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  data-active={isActive}
                   className={clsx(
-                    "sidebar-nav-item flex items-center gap-3 px-3 py-2 rounded-lg",
+                    "sidebar-nav-link flex items-center gap-3 px-3 py-2 rounded-lg",
                     "transition-colors duration-150",
-                    isActive
-                      ? "sidebar-nav-item-active"
-                      : "sidebar-nav-item-inactive",
                   )}
                   title={!isExpanded ? item.label : undefined}
                   aria-current={isActive ? "page" : undefined}
@@ -133,21 +131,20 @@ export function Sidebar({ user }: SidebarProps) {
         <UserMenu user={user} collapsed={!isExpanded} />
       </div>
 
-      {/* Scoped styles for navigation items */}
-      <style jsx>{`
-        .sidebar-nav-item-active {
-          background-color: var(--muted);
-          color: var(--foreground);
-          font-weight: 600;
-        }
-
-        .sidebar-nav-item-inactive {
+      <style jsx global>{`
+        .sidebar-nav-link {
           background-color: transparent;
           color: var(--muted-foreground);
           font-weight: 400;
         }
 
-        .sidebar-nav-item-inactive:hover {
+        .sidebar-nav-link[data-active="true"] {
+          background-color: var(--muted);
+          color: var(--foreground);
+          font-weight: 600;
+        }
+
+        .sidebar-nav-link[data-active="false"]:hover {
           background-color: color-mix(in srgb, var(--muted) 50%, transparent);
           color: var(--foreground);
         }

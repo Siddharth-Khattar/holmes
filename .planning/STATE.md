@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-06
 **Current Phase:** 6 of 12 (Domain Agents) — IN PROGRESS
-**Current Plan:** 2 of 5 complete
+**Current Plan:** 3 of 5 complete
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -16,7 +16,7 @@
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
-| 6 | Domain Agents | IN_PROGRESS | 2026-02-06 | - | Plans 01-02 complete (schemas, factory, prompts) |
+| 6 | Domain Agents | IN_PROGRESS | 2026-02-06 | - | Plans 01-03 complete (schemas, factory, prompts, domain agents + parallel runner) |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
@@ -31,16 +31,14 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 6 Plan 02** (2026-02-06): Domain agent system prompts for all 4 agents
-  - FINANCIAL_SYSTEM_PROMPT (8,238 chars): transaction analysis, account mapping, anomaly detection
-  - LEGAL_SYSTEM_PROMPT (9,154 chars): contract obligations, regulatory compliance, risk identification
-  - EVIDENCE_SYSTEM_PROMPT (11,251 chars): authenticity, chain of custody, quality_assessment output
-  - STRATEGY_SYSTEM_PROMPT (10,466 chars): case strengths/weaknesses, receives domain agent summaries
-  - All include entity taxonomies, hypothesis evaluation, confidence scoring, context injection
-  - Updated prompts/__init__.py to re-export all 6 system prompt constants
+- **Phase 6 Plan 03** (2026-02-06): Domain agent modules and parallel runner
+  - financial.py, legal.py, evidence.py: identical template with context_injection, stage_suffix, Pro-to-Flash fallback
+  - domain_runner.py: AgentTask dataclass, compute_agent_tasks (single source of truth), run_domain_agents_parallel, build_strategy_context
+  - File-group-based spawning: one agent instance per (file_group, agent_type) pair
+  - Independent DB sessions per parallel task via session factory callable
+  - build_strategy_context produces text summaries for Strategy agent consumption
 
 **What's next:**
-- Phase 6 Plan 03: Domain runner pipeline (file-group spawning, parallel execution)
 - Phase 6 Plan 04: HITL integration for low-confidence findings
 - Phase 6 Plan 05: End-to-end verification
 
@@ -311,6 +309,10 @@ All frontend features need these backend endpoints:
 | Strategy agent input description | Implicit vs Explicit in prompt | Explicit dual-input documentation | Prompt explicitly describes own files + domain agent summaries as two input types |
 | Evidence quality_assessment | Optional vs Always required | Always required in prompt | Evidence agent must always produce quality_assessment even when no findings |
 | Domain prompt JSON examples | No examples vs Full realistic examples | Full realistic domain-specific examples | Guides model toward correct output structure with domain-appropriate content |
+| Resilience pattern | ResilientAgentWrapper class vs Inline fallback | Inline Pro-to-Flash fallback | Less indirection for 4-agent setup; functionally equivalent retry-with-simpler-model |
+| Domain runner dispatch | Hardcoded if/elif vs Dict dispatch table | Dict dispatch table (RUN_FNS) | Clean mapping from agent_type string to run function; extensible |
+| Parallel agent DB sessions | Shared caller session vs Independent per task | Independent per task via factory | Avoids SQLAlchemy shared session conflicts (RESEARCH.md Pitfall 3) |
+| Fallback metadata storage | Separate field vs Nested in output_data | _metadata key in output_data JSONB | Avoids schema changes; metadata colocated with output |
 
 ---
 
@@ -323,7 +325,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 06-02-PLAN.md (domain agent system prompts)
+Stopped at: Completed 06-03-PLAN.md (domain agent modules + parallel runner)
 Resume file: None
 
 ---

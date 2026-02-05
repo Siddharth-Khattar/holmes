@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-05
-**Current Phase:** 5 of 12 (Agent Flow) — COMPLETE
-**Next Phase:** 6 (Domain Agents)
+**Last Updated:** 2026-02-06
+**Current Phase:** 6 of 12 (Domain Agents) — IN PROGRESS
+**Current Plan:** 1 of 5 complete
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -16,7 +16,7 @@
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
-| 6 | Domain Agents | NOT_STARTED | - | - | |
+| 6 | Domain Agents | IN_PROGRESS | 2026-02-06 | - | Plan 01 complete (schemas, factory, infra) |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
@@ -31,18 +31,20 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 5 Complete** (2026-02-05): Agent Flow with full SSE pipeline (4 plans, 26 commits total)
-  - Plan 01: SSE event enrichment (thinking traces, token usage, state snapshots)
-  - Plan 02: Backend HITL confirmation service (asyncio.Event pause/resume, REST API) — **infra only, verification deferred**
-  - Plan 03: Frontend SSE integration (event handlers, validators, thinking accumulation)
-  - Plan 04: HITL confirmation UI, token display, execution timeline Gantt chart — **infra only, verification deferred**
-  - Post-plan: 15+ commits for critical fixes (race conditions, type safety, validation alignment, accessibility)
-  - Key fixes: domainScore 0-100 validation, taskId/requestId alignment, tool-called events, P0 race conditions
-  - **Note:** HITL infrastructure is built but no agent currently triggers confirmations; end-to-end verification deferred to Phase 6+ when domain agents can invoke HITL
+- **Phase 6 Plan 01** (2026-02-06): Domain output schemas, factory methods, and infrastructure
+  - 4 domain output schemas (FinancialOutput, LegalOutput, EvidenceOutput, StrategyOutput)
+  - Shared types: Citation, DomainEntity, Finding, HypothesisEvaluation, EvidenceQualityAssessment
+  - RoutingDecision.context_injection for case-specific framing
+  - 4 factory methods with lazy imports, generate_content_config media_resolution
+  - build_domain_agent_content with video/audio File API routing
+  - CONFIDENCE_THRESHOLD = 40 for HITL triggers
+  - Orchestrator prompt updated with context_injection guidance
 
 **What's next:**
-- Phase 6 (Domain Agents): Financial, Legal, Strategy, Evidence agents — will verify HITL end-to-end
-- Phase 7 (Synthesis & KG): Backend agents for knowledge graph population
+- Phase 6 Plan 02: Domain agent system prompts (financial, legal, evidence, strategy)
+- Phase 6 Plan 03: Domain runner pipeline (file-group spawning, parallel execution)
+- Phase 6 Plan 04: HITL integration for low-confidence findings
+- Phase 6 Plan 05: End-to-end verification
 
 ---
 
@@ -302,6 +304,11 @@ All frontend features need these backend endpoints:
 | SSE event type field | Implicit from event name vs Explicit in payload | Explicit type field in every payload | Frontend validation dispatches on data.type; ensures consistent event handling |
 | Tool-called event mapping | Map TOOL_COMPLETED separately vs Same as TOOL_CALLED | Same event type | Both TOOL_CALLED and TOOL_COMPLETED mapped to tool-called SSE event |
 | Thinking update timestamp | Required vs Optional | Optional in frontend, always sent by backend | Backend callbacks include timestamp; emit_thinking_update adds default; frontend validates optionally |
+| Domain entity type field | Literal enum vs Free-form str | Free-form str | Supports per-domain taxonomies (monetary_amount, statute, alias, etc.) with 'other' overflow |
+| Strategy media resolution | HIGH vs MEDIUM | MEDIUM | Strategy processes playbooks/docs, not dense scanned content requiring high-res OCR |
+| Domain agent model default | Flash vs Pro | MODEL_PRO | Domain analysis requires complex reasoning; Pro model for all 4 agents |
+| Domain factory imports | Top-level vs Lazy | Lazy imports inside factory methods | Handles parallel plan execution where prompt modules may not exist yet |
+| Video/audio file preparation | Size-based routing vs Always File API | Always File API for video/audio | Avoids VideoMetadata + inline data 500 error (Gemini API issue) |
 
 ---
 
@@ -313,8 +320,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-05
-Stopped at: Phase 5 complete; ready to begin Phase 6 (Domain Agents)
+Last session: 2026-02-06
+Stopped at: Completed 06-01-PLAN.md (domain output schemas and factory methods)
 Resume file: None
 
 ---

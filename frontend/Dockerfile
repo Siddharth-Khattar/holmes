@@ -2,7 +2,7 @@
 # ABOUTME: Multi-stage build using Bun for deps/build, Node for runtime
 
 # Dependencies stage - install all workspace dependencies
-FROM oven/bun:latest AS deps
+FROM oven/bun:1.3 AS deps
 WORKDIR /app
 
 # Copy workspace root files for proper resolution
@@ -14,7 +14,7 @@ COPY frontend/package.json ./frontend/
 RUN cd frontend && bun install --frozen-lockfile
 
 # Builder stage - build the Next.js application
-FROM oven/bun:latest AS builder
+FROM oven/bun:1.3 AS builder
 WORKDIR /app
 
 # Build arguments for Next.js public env vars (inlined at build time)

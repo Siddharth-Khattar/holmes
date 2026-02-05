@@ -5,7 +5,6 @@
 
 import { useState, type ReactNode } from "react";
 import {
-  X,
   ChevronDown,
   ChevronUp,
   AlertTriangle,
@@ -38,7 +37,6 @@ interface NodeDetailsSidebarProps {
   agentType: AgentType | null;
   agentState: AgentState | null;
   allAgentStates?: Map<AgentType, AgentState>;
-  onClose: () => void;
 }
 
 // -----------------------------------------------------------------------
@@ -729,7 +727,6 @@ export function NodeDetailsSidebar({
   agentType,
   agentState,
   allAgentStates,
-  onClose,
 }: NodeDetailsSidebarProps) {
   if (!agentType || !agentState) return null;
 
@@ -754,21 +751,13 @@ export function NodeDetailsSidebar({
           background: `linear-gradient(135deg, hsl(${tint} / 0.15) 0%, transparent 100%)`,
         }}
       >
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-smoke truncate">
-              {config.name}
-            </h3>
-            <p className="text-xs text-stone mt-0.5 leading-relaxed">
-              {config.description}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-stone/10 transition-colors shrink-0 ml-2"
-          >
-            <X className="w-5 h-5 text-stone" />
-          </button>
+        <div className="mb-3">
+          <h3 className="text-lg font-semibold text-smoke truncate">
+            {config.name}
+          </h3>
+          <p className="text-xs text-stone mt-0.5 leading-relaxed">
+            {config.description}
+          </p>
         </div>
 
         {/* Status + Model badges */}
@@ -802,7 +791,7 @@ export function NodeDetailsSidebar({
       {/* ---- Scrollable content ---- */}
       <div
         className="flex-1 overflow-y-auto"
-        style={{ scrollbarWidth: "none" }}
+        style={{ scrollbarWidth: "thin" }}
       >
         {/* Current Task (always visible at top when processing) */}
         {agentState.currentTask && (

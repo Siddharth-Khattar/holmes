@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
 import { CommandCenter } from "@/components/CommandCenter";
-import { NodeDetailsSidebar } from "@/components/CommandCenter/NodeDetailsSidebar";
 import { ConfirmationModal } from "@/components/CommandCenter/ConfirmationModal";
 import { useAgentStates } from "@/hooks/useAgentStates";
+import { useDetailSidebarDispatch } from "@/hooks";
 import type { AgentType } from "@/types/command-center";
 
 export default function CommandCenterPage() {
@@ -22,6 +21,45 @@ export default function CommandCenterPage() {
     isReconnecting,
   } = useAgentStates(caseId);
 
+  const { setContent, clearContent, setCollapsed } = useDetailSidebarDispatch();
+
+  // User-initiated agent selection: also ensures sidebar is expanded.
+  // This is separate from the sync effect (which handles passive SSE updates
+  // without forcing the sidebar open if the user collapsed it).
+  const handleSelectAgent = useCallback(
+    (agent: AgentType | null) => {
+      setSelectedAgent(agent);
+      if (agent) {
+        setCollapsed(false);
+      }
+    },
+    [setCollapsed],
+  );
+
+  // Sync selectedAgent + agentStates into the app-wide detail sidebar
+  useEffect(() => {
+    if (selectedAgent) {
+      setContent({
+        type: "command-center-agent",
+        props: {
+          agentType: selectedAgent,
+          agentState: agentStates.get(selectedAgent) ?? null,
+          allAgentStates: agentStates,
+        },
+      });
+    } else {
+      clearContent();
+    }
+  }, [selectedAgent, agentStates, setContent, clearContent]);
+
+  // Clear sidebar content on unmount (navigate away from Command Center)
+  useEffect(() => {
+    return () => {
+      clearContent();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Fallback handler for removing a resolved confirmation from local state.
   // The SSE confirmation-resolved event in useAgentStates also handles this,
   // but this provides immediate UI feedback before the SSE round-trip.
@@ -34,42 +72,18 @@ export default function CommandCenterPage() {
 
   return (
     <div
-      className="command-center-scope flex flex-row w-full"
+      className="command-center-scope w-full"
       style={{ height: "calc(100vh - 200px)" }}
     >
-      <div className="flex-1 min-w-0">
-        <CommandCenter
-          agentStates={agentStates}
-          lastProcessingSummary={lastProcessingSummary}
-          isConnected={isConnected}
-          isReconnecting={isReconnecting}
-          selectedAgent={selectedAgent}
-          onSelectAgent={setSelectedAgent}
-          className="h-full w-full"
-        />
-      </div>
-      <AnimatePresence>
-        {selectedAgent && (
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: "30%" }}
-            exit={{ width: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="flex-none overflow-hidden"
-            style={{
-              background: "var(--color-jet)",
-              borderLeft: "1px solid hsl(0 0% 50% / 0.15)",
-            }}
-          >
-            <NodeDetailsSidebar
-              agentType={selectedAgent}
-              agentState={agentStates.get(selectedAgent) ?? null}
-              allAgentStates={agentStates}
-              onClose={() => setSelectedAgent(null)}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <CommandCenter
+        agentStates={agentStates}
+        lastProcessingSummary={lastProcessingSummary}
+        isConnected={isConnected}
+        isReconnecting={isReconnecting}
+        selectedAgent={selectedAgent}
+        onSelectAgent={handleSelectAgent}
+        className="h-full w-full"
+      />
 
       {/* HITL Confirmation Modal - show first pending confirmation */}
       {pendingConfirmations.length > 0 && (

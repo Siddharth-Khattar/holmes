@@ -11,7 +11,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { CanvasZoomControls } from "@/components/ui/canvas-zoom-controls";
-import { EvidenceSourcePanel } from "./evidence-source-panel";
+import { useDetailSidebarDispatch } from "@/hooks";
 import {
   forceSimulation,
   forceLink,
@@ -135,10 +135,34 @@ export function KnowledgeGraph({
   );
   const [isSimulationRunning, setIsSimulationRunning] = useState(true);
   const manuallyStoppedRef = useRef(false);
-  const [sourcePanelEvidence, setSourcePanelEvidence] =
-    useState<Evidence | null>(null);
-  const [isSourcePanelMinimized, setIsSourcePanelMinimized] = useState(false);
-  const [isPanelClosing, setIsPanelClosing] = useState(false);
+  const [selectedEvidence, setSelectedEvidence] = useState<Evidence | null>(
+    null,
+  );
+
+  // Detail sidebar dispatch for evidence source panel
+  const { setContent, clearContent, setCollapsed } = useDetailSidebarDispatch();
+
+  // Sync selected evidence to the app-wide detail sidebar
+  useEffect(() => {
+    if (selectedEvidence) {
+      setContent({
+        type: "knowledge-graph-evidence",
+        props: {
+          evidence: selectedEvidence,
+        },
+      });
+    } else {
+      clearContent();
+    }
+  }, [selectedEvidence, setContent, clearContent]);
+
+  // Clear sidebar on unmount (navigation away from KG)
+  useEffect(() => {
+    return () => {
+      clearContent();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Initialize dimensions
   useEffect(() => {
@@ -512,12 +536,11 @@ export function KnowledgeGraph({
           if (!hasMoved) {
             setSelectedNode(nodeId);
 
-            // If source panel is open and this is an evidence node, auto-open it
+            // If evidence panel is open and an evidence node is clicked, show it
             const clickedNode = nodes.find((n) => n.id === nodeId);
-            if (sourcePanelEvidence && clickedNode?.type === "evidence") {
-              const evidence = clickedNode.data as Evidence;
-              setSourcePanelEvidence(evidence);
-              setIsSourcePanelMinimized(false);
+            if (selectedEvidence && clickedNode?.type === "evidence") {
+              setSelectedEvidence(clickedNode.data as Evidence);
+              setCollapsed(false);
             }
           }
 
@@ -531,7 +554,7 @@ export function KnowledgeGraph({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [isSimulationRunning, nodes, sourcePanelEvidence],
+    [isSimulationRunning, nodes, selectedEvidence, setCollapsed],
   );
 
   // Handle connection creation
@@ -976,7 +999,7 @@ export function KnowledgeGraph({
 
   return (
     <div
-      className="relative w-full h-full rounded-lg shadow-2xl flex gap-2 overflow-hidden border-2 border-warm-gray/30 dark:border-stone/30 bg-background dark:bg-jet"
+      className="relative w-full h-full rounded-lg shadow-2xl flex overflow-hidden border-2 border-warm-gray/30 dark:border-stone/30 bg-background dark:bg-jet"
       style={{
         minHeight: "600px",
       }}
@@ -999,42 +1022,8 @@ export function KnowledgeGraph({
           backgroundSize: "24px 24px",
         }}
       />
-      {/* Source Panel - Left Side */}
-      <div
-        className="flex-none overflow-hidden transition-all duration-300 ease-in-out"
-        style={{
-          width:
-            sourcePanelEvidence || isPanelClosing
-              ? isSourcePanelMinimized
-                ? "60px"
-                : "40%"
-              : "0px",
-          opacity: isPanelClosing ? 0 : 1,
-        }}
-      >
-        {sourcePanelEvidence && (
-          <div className="h-full w-full">
-            <EvidenceSourcePanel
-              evidence={sourcePanelEvidence}
-              isMinimized={isSourcePanelMinimized}
-              onClose={() => {
-                setIsPanelClosing(true);
-                setTimeout(() => {
-                  setSourcePanelEvidence(null);
-                  setIsSourcePanelMinimized(false);
-                  setIsPanelClosing(false);
-                }, 300);
-              }}
-              onToggleMinimize={() =>
-                setIsSourcePanelMinimized(!isSourcePanelMinimized)
-              }
-            />
-          </div>
-        )}
-      </div>
-
       {/* Main Graph Container */}
-      <div className="flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex-none px-6 py-3 border-b border-warm-gray/15 dark:border-stone/15 relative z-10">
           <div className="flex items-start justify-between">
@@ -1350,8 +1339,8 @@ export function KnowledgeGraph({
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => {
-                              setSourcePanelEvidence(evidence);
-                              setIsSourcePanelMinimized(false);
+                              setSelectedEvidence(evidence);
+                              setCollapsed(false);
                             }}
                             className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors bg-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/30"
                           >

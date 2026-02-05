@@ -10,6 +10,10 @@ export { useCommandCenterSSE } from "./useCommandCenterSSE";
 // Chatbot hooks
 export { useChatbot } from "./useChatbot";
 
+// Detail Sidebar hooks
+export { useDetailSidebar, useDetailSidebarDispatch } from "./useDetailSidebar";
+export { useResizeHandle } from "./useResizeHandle";
+
 // Existing hooks
 export { useLogout } from "./use-logout";
 export {

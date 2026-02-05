@@ -14,8 +14,6 @@ env:
   FRONTEND_SERVICE: holmes-frontend
   # Stabilize any generation that may depend on hash iteration order.
   PYTHONHASHSEED: "0"
-  # Fast deploy mode for test-deployment branch (parallel builds, less defensive)
-  FAST_DEPLOY: ${{ github.ref_name == 'test-deployment' }}
 
 jobs:
   # Job 1: Type generation check
@@ -106,7 +104,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push backend image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./backend
           push: true
@@ -125,29 +123,16 @@ jobs:
           region: ${{ env.REGION }}
           image: ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:${{ github.sha }}
 
-  # Job 3: Frontend lint and build
-  # On test-deployment: runs in parallel with backend (fast mode)
-  # On main/development: waits for backend to complete first (defensive mode)
+  # Job 3: Frontend lint and build (runs in parallel with backend)
   frontend:
     runs-on: ubuntu-latest
     needs: types
     permissions:
       contents: read
       id-token: write
-      checks: read
 
     steps:
       - uses: actions/checkout@v4
-
-      # Defensive mode: wait for backend job to complete before proceeding
-      - name: Wait for backend deployment (defensive mode)
-        if: github.ref_name == 'main' || github.ref_name == 'development'
-        uses: lewagon/wait-on-check-action@v1.3.4
-        with:
-          ref: ${{ github.sha }}
-          check-name: backend
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 10
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -165,6 +150,7 @@ jobs:
           bun install
           cd frontend
           bun run lint
+          bunx prettier --check src
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -206,7 +192,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push frontend image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: frontend/Dockerfile
@@ -218,7 +204,6 @@ jobs:
             NEXT_PUBLIC_API_URL=${{ steps.backend-url.outputs.url }}
             NEXT_PUBLIC_VIDEO_URL=https://storage.googleapis.com/${{ vars.GCP_PROJECT_ID }}-media/video.mp4
             NEXT_PUBLIC_APP_URL=${{ steps.frontend-url.outputs.url }}
-            BETTER_AUTH_URL=${{ steps.frontend-url.outputs.url }}
           cache-from: |
             type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:cache-${{ github.ref_name }}
             type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:cache-main

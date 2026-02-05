@@ -112,7 +112,6 @@ export default function CommandCenterDemoPage() {
               <NodeDetailsSidebar
                 agentType={selectedAgent}
                 agentState={agentStates.get(selectedAgent) ?? null}
-                onClose={() => setSelectedAgent(null)}
               />
             </motion.div>
           )}

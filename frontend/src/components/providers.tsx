@@ -6,6 +6,7 @@
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { DetailSidebarProvider } from "@/contexts/detail-sidebar-context";
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -35,7 +36,7 @@ export function Providers({ children }: ProvidersProps) {
         disableTransitionOnChange
         storageKey="holmes-theme"
       >
-        {children}
+        <DetailSidebarProvider>{children}</DetailSidebarProvider>
       </NextThemesProvider>
     </QueryClientProvider>
   );

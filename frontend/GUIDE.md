@@ -3,6 +3,7 @@
 ## Theming
 
 ### Theme Architecture
+
 - **Dark mode**: Default (`:root`, `.dark`)
 - **Light mode**: Warm sepia/parchment (`.light` class)
 - **Provider**: `next-themes` with `attribute="class"`
@@ -37,23 +38,24 @@ className="bg-charcoal text-smoke border-smoke/10"
 
 ### Available CSS Variables
 
-| Variable | Usage |
-|----------|-------|
-| `--background` | Page background |
-| `--foreground` | Primary text |
-| `--card` | Card/panel backgrounds |
-| `--card-foreground` | Text on cards |
-| `--muted` | Subtle backgrounds |
-| `--muted-foreground` | Secondary/muted text |
-| `--border` | Borders and dividers |
-| `--primary` | Primary buttons/accents |
-| `--primary-foreground` | Text on primary |
-| `--popover` | Dropdown/popover backgrounds |
-| `--popover-foreground` | Text in popovers |
+| Variable               | Usage                        |
+| ---------------------- | ---------------------------- |
+| `--background`         | Page background              |
+| `--foreground`         | Primary text                 |
+| `--card`               | Card/panel backgrounds       |
+| `--card-foreground`    | Text on cards                |
+| `--muted`              | Subtle backgrounds           |
+| `--muted-foreground`   | Secondary/muted text         |
+| `--border`             | Borders and dividers         |
+| `--primary`            | Primary buttons/accents      |
+| `--primary-foreground` | Text on primary              |
+| `--popover`            | Dropdown/popover backgrounds |
+| `--popover-foreground` | Text in popovers             |
 
 ### Component Patterns
 
 **Inline styles for theme colors:**
+
 ```tsx
 <div
   className="rounded-lg p-4"
@@ -67,9 +69,10 @@ className="bg-charcoal text-smoke border-smoke/10"
 ```
 
 **Tailwind `dark:` prefix works** for non-semantic colors:
+
 ```tsx
 // Status colors - use dark: variant for contrast
-className="text-amber-500 dark:text-amber-400"
+className = "text-amber-500 dark:text-amber-400";
 ```
 
 ### Pages That Stay Dark
@@ -78,6 +81,7 @@ className="text-amber-500 dark:text-amber-400"
 - **Auth pages** (`app/(auth)/`): Uses `var(--color-charcoal)` directly
 
 These pages stay dark because:
+
 1. They use hardcoded dark color tokens
 2. They lack the `.theme-scope` class, so light mode component styles don't apply
 

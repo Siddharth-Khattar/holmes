@@ -466,6 +466,16 @@ The Command Center frontend was built in three stages:
 
 **Requirements:** REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006, REQ-AGENT-007b, REQ-AGENT-007c, REQ-AGENT-007d, REQ-AGENT-007h, REQ-AGENT-002 (complete), REQ-HYPO-002, REQ-HYPO-003
 
+**Plans:** 5 plans in 3 waves
+
+Plans:
+- [ ] 06-01-PLAN.md — Domain output schemas, factory extension, infrastructure updates
+- [ ] 06-02-PLAN.md — Domain agent prompts (Financial, Legal, Evidence, Strategy)
+- [ ] 06-03-PLAN.md — Financial, Legal, Evidence agent modules + parallel runner
+- [ ] 06-04-PLAN.md — Strategy agent module (sequential, receives domain summaries)
+- [ ] 06-05-PLAN.md — Pipeline wiring, SSE events, HITL confirmation integration
+
+
 **Deliverables:**
 - Financial Analysis Agent (`thinking_level="medium"`, `media_resolution="high"`)
   - **Full entity taxonomy for financial domain** (monetary_amount, account, transaction, asset)
@@ -990,3 +1000,4 @@ For 2 developers working simultaneously:
 *Phase 4.1 complete: 2026-02-04 (all 4 plans done, 18 commits)*
 *Phase 5 planned: 2026-02-04 (4 plans in 3 waves)*
 *Phase 5 complete: 2026-02-05 (all 4 plans + 15 post-plan fixes, 26 commits total)*
+*Phase 6 planned: 2026-02-05 (5 plans in 3 waves)*

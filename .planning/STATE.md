@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-06
 **Current Phase:** 6 of 12 (Domain Agents) — IN PROGRESS
-**Current Plan:** 1 of 5 complete
+**Current Plan:** 2 of 5 complete
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -16,7 +16,7 @@
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
-| 6 | Domain Agents | IN_PROGRESS | 2026-02-06 | - | Plan 01 complete (schemas, factory, infra) |
+| 6 | Domain Agents | IN_PROGRESS | 2026-02-06 | - | Plans 01-02 complete (schemas, factory, prompts) |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
@@ -31,17 +31,15 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 6 Plan 01** (2026-02-06): Domain output schemas, factory methods, and infrastructure
-  - 4 domain output schemas (FinancialOutput, LegalOutput, EvidenceOutput, StrategyOutput)
-  - Shared types: Citation, DomainEntity, Finding, HypothesisEvaluation, EvidenceQualityAssessment
-  - RoutingDecision.context_injection for case-specific framing
-  - 4 factory methods with lazy imports, generate_content_config media_resolution
-  - build_domain_agent_content with video/audio File API routing
-  - CONFIDENCE_THRESHOLD = 40 for HITL triggers
-  - Orchestrator prompt updated with context_injection guidance
+- **Phase 6 Plan 02** (2026-02-06): Domain agent system prompts for all 4 agents
+  - FINANCIAL_SYSTEM_PROMPT (8,238 chars): transaction analysis, account mapping, anomaly detection
+  - LEGAL_SYSTEM_PROMPT (9,154 chars): contract obligations, regulatory compliance, risk identification
+  - EVIDENCE_SYSTEM_PROMPT (11,251 chars): authenticity, chain of custody, quality_assessment output
+  - STRATEGY_SYSTEM_PROMPT (10,466 chars): case strengths/weaknesses, receives domain agent summaries
+  - All include entity taxonomies, hypothesis evaluation, confidence scoring, context injection
+  - Updated prompts/__init__.py to re-export all 6 system prompt constants
 
 **What's next:**
-- Phase 6 Plan 02: Domain agent system prompts (financial, legal, evidence, strategy)
 - Phase 6 Plan 03: Domain runner pipeline (file-group spawning, parallel execution)
 - Phase 6 Plan 04: HITL integration for low-confidence findings
 - Phase 6 Plan 05: End-to-end verification
@@ -309,6 +307,10 @@ All frontend features need these backend endpoints:
 | Domain agent model default | Flash vs Pro | MODEL_PRO | Domain analysis requires complex reasoning; Pro model for all 4 agents |
 | Domain factory imports | Top-level vs Lazy | Lazy imports inside factory methods | Handles parallel plan execution where prompt modules may not exist yet |
 | Video/audio file preparation | Size-based routing vs Always File API | Always File API for video/audio | Avoids VideoMetadata + inline data 500 error (Gemini API issue) |
+| Domain prompt structure | Freeform vs Standardized 12-section | Standardized 12-section | Consistent structure across all 4 domain agents; easier to maintain and compare |
+| Strategy agent input description | Implicit vs Explicit in prompt | Explicit dual-input documentation | Prompt explicitly describes own files + domain agent summaries as two input types |
+| Evidence quality_assessment | Optional vs Always required | Always required in prompt | Evidence agent must always produce quality_assessment even when no findings |
+| Domain prompt JSON examples | No examples vs Full realistic examples | Full realistic domain-specific examples | Guides model toward correct output structure with domain-appropriate content |
 
 ---
 
@@ -321,7 +323,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 06-01-PLAN.md (domain output schemas and factory methods)
+Stopped at: Completed 06-02-PLAN.md (domain agent system prompts)
 Resume file: None
 
 ---

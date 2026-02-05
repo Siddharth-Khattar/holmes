@@ -148,8 +148,7 @@ export function Sidebar({ user }: SidebarProps) {
         }
 
         .sidebar-nav-item-inactive:hover {
-          background-color: var(--muted);
-          opacity: 0.5;
+          background-color: color-mix(in srgb, var(--muted) 50%, transparent);
           color: var(--foreground);
         }
 
@@ -159,8 +158,7 @@ export function Sidebar({ user }: SidebarProps) {
         }
 
         .sidebar-toggle:hover {
-          background-color: var(--muted);
-          opacity: 0.5;
+          background-color: color-mix(in srgb, var(--muted) 50%, transparent);
         }
       `}</style>
     </aside>

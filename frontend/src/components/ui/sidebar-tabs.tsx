@@ -75,8 +75,7 @@ export function SidebarTabs({
         }
 
         .sidebar-tab-inactive:hover {
-          background-color: var(--muted);
-          opacity: 0.5;
+          background-color: color-mix(in srgb, var(--muted) 50%, transparent);
           color: var(--foreground);
         }
       `}</style>

@@ -6,7 +6,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Briefcase } from "lucide-react";
+import { Briefcase, ChevronLeft, ChevronRight } from "lucide-react";
 import { clsx } from "clsx";
 import { UserMenu } from "./user-menu";
 import { ThemedLogo } from "./themed-logo";
@@ -27,13 +27,11 @@ const navItems = [
 ];
 
 export function Sidebar({ user }: SidebarProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const pathname = usePathname();
 
   return (
     <aside
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
       className={clsx(
         "flex flex-col min-h-screen sticky top-0 self-start",
         "transition-[width] duration-200 ease-out",
@@ -104,6 +102,40 @@ export function Sidebar({ user }: SidebarProps) {
         {/* Case-specific navigation */}
         <CaseNavSection collapsed={!isExpanded} />
       </nav>
+
+      {/* Toggle button */}
+      <div className="p-2" style={{ borderTop: "1px solid var(--border)" }}>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={clsx(
+            "w-full flex items-center gap-3 px-3 py-2 rounded-lg",
+            "transition-colors duration-150",
+            isExpanded ? "justify-start" : "justify-center",
+          )}
+          style={{
+            color: "var(--muted-foreground)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "var(--muted)";
+            e.currentTarget.style.opacity = "0.5";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent";
+            e.currentTarget.style.opacity = "1";
+          }}
+          title={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+          aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+        >
+          {isExpanded ? (
+            <>
+              <ChevronLeft className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Collapse</span>
+            </>
+          ) : (
+            <ChevronRight className="w-5 h-5 shrink-0" />
+          )}
+        </button>
+      </div>
 
       {/* User Menu at bottom */}
       <div className="p-2" style={{ borderTop: "1px solid var(--border)" }}>

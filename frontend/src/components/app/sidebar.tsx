@@ -208,6 +208,7 @@ export function Sidebar({ user }: SidebarProps) {
         .sidebar-toggle {
           background-color: transparent;
           color: var(--muted-foreground);
+          position: relative;
         }
 
         .sidebar-toggle:hover {

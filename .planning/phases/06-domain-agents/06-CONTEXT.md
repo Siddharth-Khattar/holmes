@@ -39,9 +39,10 @@ Implement four domain analysis agents (Financial, Legal, Legal Strategy, Evidenc
 - **Orchestrator provides agent routing info** — when invoking Legal Strategy, orchestrator tells it which agents were invoked and for what, so it knows where to request information.
 
 ### Orchestrator routing
-- **File-level routing** — orchestrator decides which agents get each file based on triage domain scores. Already partially built in Phase 4.
+- **File-group based spawning** — orchestrator groups related files via `file_groups` (already in OrchestratorOutput schema). Domain runner spawns one agent instance PER (group, agent_type) pair, not one per agent type. E.g., if orchestrator creates 2 financial groups, 2 separate Financial agent instances run concurrently with different file subsets and group-specific context. Fallback: when files aren't explicitly grouped, each file-to-agent routing becomes an implicit single-file group.
+- **Context injection per routing decision** — add `context_injection: str | None` to `RoutingDecision` schema. Orchestrator provides case-specific framing per file (e.g., "This is a patent infringement case. Focus on claims mapping."). This context is prepended to the agent's user message, adapting the fixed agent prompts to the specific case without requiring custom agent types. `FileGroupForProcessing.shared_context` serves as context injection for grouped files.
 - **Dynamic reasoning for routing** — no fixed threshold. Orchestrator uses LLM judgment to decide which agents are worth running per file. Consistent with Phase 4 decision.
-- **True parallel execution** for Financial, Legal, Evidence agents (all at once via ADK ParallelAgent). Legal Strategy runs as a separate stage after them.
+- **True parallel execution** for all agent instances via asyncio.gather (NOT ADK ParallelAgent). Legal Strategy runs as a separate stage after them.
 - **Batch-then-route** for multi-file uploads — triage all files first, then orchestrator makes holistic routing decisions across the batch.
 - **Raw file only to domain agents** — no triage summary passed. Domain agents analyze from scratch for independent assessment.
 - **Continue with partial results on failure** — if a domain agent fails entirely (even after Flash fallback), other agents' findings are still valuable. Mark the failed agent and continue.

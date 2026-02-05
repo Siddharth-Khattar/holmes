@@ -10,6 +10,7 @@ import { Briefcase } from "lucide-react";
 import { clsx } from "clsx";
 import { UserMenu } from "./user-menu";
 import { ThemedLogo } from "./themed-logo";
+import { CaseNavSection } from "./case-nav-section";
 
 interface SidebarProps {
   user: {
@@ -98,6 +99,9 @@ export function Sidebar({ user }: SidebarProps) {
             );
           })}
         </ul>
+
+        {/* Case-specific navigation */}
+        <CaseNavSection collapsed={!isExpanded} />
       </nav>
 
       {/* User Menu at bottom */}

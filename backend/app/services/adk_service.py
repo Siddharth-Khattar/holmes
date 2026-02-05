@@ -298,3 +298,42 @@ async def build_agent_content(
         parts.append(file_part)
 
     return types.Content(role="user", parts=parts)
+
+
+async def build_domain_agent_content(
+    files: list[CaseFile],
+    gcs_bucket: str,
+    prompt: str,
+) -> types.Content:
+    """Build multimodal content for domain agents.
+
+    Unlike build_agent_content (used by triage), this function forces
+    video and audio files through the File API regardless of size.
+    VideoMetadata is more reliable with File API URI references than
+    with inline data (known Gemini API issue -- see RESEARCH.md Pitfall 6).
+
+    Args:
+        files: Case files to include as multimodal parts.
+        gcs_bucket: GCS bucket name for file downloads.
+        prompt: Text prompt to prepend before file parts.
+
+    Returns:
+        A Content object with role="user" containing the prompt and file parts.
+    """
+    parts: list[types.Part] = [types.Part(text=prompt)]
+
+    for f in files:
+        parts.append(
+            types.Part(text=f"\n\n--- File: {f.original_filename} (ID: {f.id}) ---")
+        )
+        # Force File API for video/audio regardless of size to avoid
+        # VideoMetadata + inline data 500 error
+        if f.mime_type.startswith(("video/", "audio/")):
+            file_part = await prepare_file_via_api(
+                gcs_bucket, f.storage_path, f.mime_type, f.original_filename
+            )
+        else:
+            file_part = await prepare_file_for_agent(f, gcs_bucket)
+        parts.append(file_part)
+
+    return types.Content(role="user", parts=parts)

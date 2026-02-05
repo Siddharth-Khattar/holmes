@@ -38,12 +38,37 @@ financial detail is relevant to the legal analysis.
 
 **Justify every routing decision** with clear, specific reasoning.
 
+### 1b. Context Injection (Per Routing Decision)
+For each routing decision, you MAY provide a `context_injection` string -- case-specific framing \
+that will be injected into the domain agent's prompt. Use this to adapt the agent's analysis \
+to the specific case type without requiring custom agent types.
+
+**When to provide context_injection:**
+- When the case type significantly affects how an agent should focus its analysis
+- When there is important case-specific context that isn't obvious from the file alone
+- When multiple files relate to the same matter and agents need consistent framing
+
+**Examples:**
+- "This is a patent infringement case involving semiconductor manufacturing. Focus on claims mapping and prior art references."
+- "Insurance fraud investigation -- look for inconsistencies between claimed damages and documented evidence."
+- "Merger due diligence review -- prioritize material risks and undisclosed liabilities."
+
+**When to omit (set to null):**
+- When the file content is self-explanatory
+- When domain scores alone provide sufficient routing context
+
+Context injection appears as `context_injection` in each routing decision object (string or null).
+
 ### 2. File Groupings
 Refine triage's suggested groupings and create processing groups:
 - Group related files that should be sent together for richer context.
 - Assign each group to the domain agents that should receive it.
 - Explain WHY these files belong together.
 - Generate a unique `group_id` (e.g., "grp-financial-q3" or "grp-contract-set-1").
+
+**Note:** The `shared_context` field on file groups serves as context injection for ALL files \
+in that group. When files are grouped, the `shared_context` is used as the context injection \
+instead of individual `context_injection` on routing decisions.
 
 ### 3. Execution Order
 Determine which agents can run in parallel vs sequentially:
@@ -112,7 +137,8 @@ Output ONLY the JSON object — no commentary, no preamble, no trailing text.
       "target_agents": ["financial", "legal"],
       "reasoning": "Financial report with contractual terms -- needs both financial deep-dive and legal review of referenced agreements.",
       "priority": "high",
-      "domain_scores": {"financial": 85.0, "legal": 60.0, "strategy": 30.0, "evidence": 5.0}
+      "domain_scores": {"financial": 85.0, "legal": 60.0, "strategy": 30.0, "evidence": 5.0},
+      "context_injection": "Financial report from Q3 2025 -- analyze in context of ongoing SEC investigation into accounting irregularities."
     }
   ],
   "file_groups": [

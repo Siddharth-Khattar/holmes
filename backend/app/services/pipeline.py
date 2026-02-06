@@ -810,6 +810,10 @@ async def run_analysis_workflow(
                         error="Strategy agent failed to produce output",
                     )
 
+                # Commit so the strategy execution record is visible to
+                # snapshot queries from reconnecting SSE clients during HITL.
+                await db.commit()
+
             # ---- Stage 5: HITL for Low-Confidence Findings ----
             if domain_results:
                 for domain_agent, domain_run_list in domain_results.items():

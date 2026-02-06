@@ -1,10 +1,12 @@
 # ABOUTME: Agent execution API endpoints for starting and tracking analysis workflows.
 # ABOUTME: Provides POST to start analysis, GET for status, and background task orchestration.
 
+import asyncio
 import logging
 import time
+from collections.abc import Coroutine
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
@@ -187,7 +189,7 @@ async def run_analysis_workflow(
     from app.agents.strategy import run_strategy
     from app.agents.triage import run_triage
     from app.database import _get_sessionmaker
-    from app.services.confirmation import request_confirmation
+    from app.services.confirmation import ConfirmationResult, request_confirmation
 
     settings = get_settings()
     session_factory = _get_sessionmaker()
@@ -470,21 +472,31 @@ async def run_analysis_workflow(
                     skip_per_agent_hitl = plan_confirmation.approved
 
                 # Step 3: Per-agent HITL (only if user chose to review individually)
+                # All flagged confirmations fire concurrently so the frontend
+                # receives them as a batch and the user can review in one pass.
                 if not skip_per_agent_hitl:
+                    # Collect flagged (rd, agent_type) pairs with their coroutines
+                    _hitl_coros: list[
+                        tuple[
+                            str,
+                            str,
+                            Coroutine[Any, Any, ConfirmationResult],
+                        ]
+                    ] = []
                     for rd in orchestrator_output.routing_decisions:
                         if rd.routing_confidence is None:
                             continue
-                        agents_to_remove: list[str] = []
                         for agent_type in rd.target_agents:
                             threshold = settings.get_routing_hitl_threshold(agent_type)
                             if rd.routing_confidence < threshold:
-                                confirmation = await request_confirmation(
+                                coro = request_confirmation(
                                     case_id=case_id,
                                     agent_type="orchestrator",
                                     action_description=(
                                         f"Deploy {agent_type} agent on "
                                         f"'{rd.file_name or rd.file_id}'? "
-                                        f"(confidence: {rd.routing_confidence:.0f}/100)"
+                                        f"(confidence: "
+                                        f"{rd.routing_confidence:.0f}/100)"
                                     ),
                                     affected_items=[rd.file_id],
                                     context={
@@ -492,18 +504,35 @@ async def run_analysis_workflow(
                                         "file_name": rd.file_name,
                                         "agent_under_review": agent_type,
                                         "all_target_agents": rd.target_agents,
-                                        "routing_confidence": rd.routing_confidence,
+                                        "routing_confidence": (rd.routing_confidence),
                                         "hitl_threshold": threshold,
                                         "reasoning": rd.reasoning,
-                                        "domain_scores": rd.domain_scores.model_dump(),
+                                        "domain_scores": (
+                                            rd.domain_scores.model_dump()
+                                        ),
                                     },
                                 )
-                                if not confirmation.approved:
-                                    agents_to_remove.append(agent_type)
-                        if agents_to_remove:
-                            rd.target_agents = [
-                                a for a in rd.target_agents if a not in agents_to_remove
-                            ]
+                                _hitl_coros.append((rd.file_id, agent_type, coro))
+
+                    if _hitl_coros:
+                        # Fire all confirmation SSE events concurrently;
+                        # frontend receives them as a batch for one dialog
+                        results = await asyncio.gather(
+                            *(coro for _, _, coro in _hitl_coros)
+                        )
+                        # Map rejections back to routing decisions
+                        rejections: dict[str, list[str]] = {}
+                        for (file_id, agent_type, _), result in zip(
+                            _hitl_coros, results, strict=True
+                        ):
+                            if not result.approved:
+                                rejections.setdefault(file_id, []).append(agent_type)
+                        for rd in orchestrator_output.routing_decisions:
+                            to_remove = rejections.get(rd.file_id, [])
+                            if to_remove:
+                                rd.target_agents = [
+                                    a for a in rd.target_agents if a not in to_remove
+                                ]
 
                 # Step 4: Clean up empty routing decisions and file groups
                 orchestrator_output.routing_decisions = [

@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-06
 **Current Phase:** 6 of 12 (Domain Agents) — IN PROGRESS
-**Current Plan:** 3 of 5 complete
+**Current Plan:** 4 of 5 complete
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -16,7 +16,7 @@
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
-| 6 | Domain Agents | IN_PROGRESS | 2026-02-06 | - | Plans 01-03 complete (schemas, factory, prompts, domain agents + parallel runner) |
+| 6 | Domain Agents | IN_PROGRESS | 2026-02-06 | - | Plans 01-04 complete (schemas, factory, prompts, domain agents + parallel runner, strategy agent) |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
@@ -31,15 +31,15 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 6 Plan 03** (2026-02-06): Domain agent modules and parallel runner
-  - financial.py, legal.py, evidence.py: identical template with context_injection, stage_suffix, Pro-to-Flash fallback
-  - domain_runner.py: AgentTask dataclass, compute_agent_tasks (single source of truth), run_domain_agents_parallel, build_strategy_context
-  - File-group-based spawning: one agent instance per (file_group, agent_type) pair
-  - Independent DB sessions per parallel task via session factory callable
-  - build_strategy_context produces text summaries for Strategy agent consumption
+- **Phase 6 Plan 04** (2026-02-06): Strategy agent module
+  - strategy.py: StrategyAgent class, parse_strategy_output, _prepare_strategy_content, run_strategy
+  - Dual-input content preparation: own files (via build_domain_agent_content) + domain agent text summaries
+  - Consumes build_strategy_context() output from domain_runner.py as domain_summaries param
+  - Pro-to-Flash fallback, stage-isolated sessions, context_injection/stage_suffix consistency
+  - Graceful early return when no files AND no domain summaries
+  - Execution record tracks domain_summaries_length and has_own_files in input_data
 
 **What's next:**
-- Phase 6 Plan 04: HITL integration for low-confidence findings
 - Phase 6 Plan 05: End-to-end verification
 
 ---
@@ -313,6 +313,8 @@ All frontend features need these backend endpoints:
 | Domain runner dispatch | Hardcoded if/elif vs Dict dispatch table | Dict dispatch table (RUN_FNS) | Clean mapping from agent_type string to run function; extensible |
 | Parallel agent DB sessions | Shared caller session vs Independent per task | Independent per task via factory | Avoids SQLAlchemy shared session conflicts (RESEARCH.md Pitfall 3) |
 | Fallback metadata storage | Separate field vs Nested in output_data | _metadata key in output_data JSONB | Avoids schema changes; metadata colocated with output |
+| Strategy no-files content | build_domain_agent_content vs text-only Content | text-only Content when files=[] | Strategy may run with only domain summaries; text-only avoids empty file preparation |
+| Strategy input_data tracking | Minimal vs Verbose | Verbose (domain_summaries_length + has_own_files) | Audit visibility into what strategy agent actually received |
 
 ---
 
@@ -325,7 +327,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 06-03-PLAN.md (domain agent modules + parallel runner)
+Stopped at: Completed 06-04-PLAN.md (strategy agent module)
 Resume file: None
 
 ---

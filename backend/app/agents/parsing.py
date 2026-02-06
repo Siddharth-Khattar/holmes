@@ -1,9 +1,11 @@
 # ABOUTME: Shared parsing helpers for extracting structured data from ADK events.
-# ABOUTME: Used by both triage and orchestrator agents for JSON extraction, token usage, and thinking traces.
+# ABOUTME: Used by all pipeline agents for JSON extraction, token usage, thinking traces, and structured output parsing.
 
+import json
 import logging
 
 from google.adk.events import Event
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -67,3 +69,47 @@ def extract_thinking_traces(events: list[Event]) -> list[dict[str, object]]:
                     }
                 )
     return traces
+
+
+def extract_structured_json[OutputT: BaseModel](
+    events: list[Event],
+    output_type: type[OutputT],
+    agent_name: str,
+) -> OutputT | None:
+    """Parse structured output from ADK events into a Pydantic model.
+
+    Generic replacement for per-agent parse functions (parse_financial_output,
+    parse_legal_output, etc.). Scans events in reverse to find the final agent
+    response containing structured JSON output.
+
+    Args:
+        events: List of ADK events from runner execution.
+        output_type: Pydantic model class to validate against.
+        agent_name: Agent name for log messages.
+
+    Returns:
+        Parsed output model instance, or None if parsing fails.
+    """
+    for event in reversed(events):
+        if not event.is_final_response():
+            continue
+
+        if event.content and event.content.parts:
+            for part in event.content.parts:
+                if part.text:
+                    json_str = extract_json_from_text(part.text)
+                    if json_str is None:
+                        continue
+                    try:
+                        data = json.loads(json_str)
+                        return output_type.model_validate(data)
+                    except (json.JSONDecodeError, ValueError) as exc:
+                        logger.warning(
+                            "Failed to parse %s output JSON: %s",
+                            agent_name,
+                            exc,
+                        )
+                        continue
+
+    logger.error("No valid %s output found in agent events", agent_name)
+    return None

@@ -1,11 +1,12 @@
-# ABOUTME: Template Method base class for domain agent execution.
+# ABOUTME: Config-driven domain agent runner with Pro-to-Flash fallback execution.
 # ABOUTME: Eliminates ~1200 lines of duplicated run/retry/fallback logic across 4 domain agents.
 
 from __future__ import annotations
 
 import json
 import logging
-from abc import ABC, abstractmethod
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -34,8 +35,29 @@ from app.services.agent_events import emit_agent_fallback
 logger = logging.getLogger(__name__)
 
 
-class DomainAgentRunner[OutputT: BaseModel](ABC):
-    """Template Method base class for running domain agents.
+# Type alias for the agent factory function signature.
+# Args: (case_id, model, publish_fn) -> LlmAgent
+AgentFactoryFn = Callable[[str, str, PublishFn | None], LlmAgent]
+
+
+@dataclass(frozen=True)
+class DomainAgentConfig:
+    """Configuration for a standard domain agent (Financial, Legal, Evidence).
+
+    Standard domain agents share the same content preparation pattern
+    (context injection + domain prompt + hypotheses + files) and differ
+    only in their name, output type, prompt text, and factory method.
+    Strategy overrides _prepare_content and cannot use this config.
+    """
+
+    agent_name: str
+    output_type: type[BaseModel]
+    domain_prompt: str
+    create_agent: AgentFactoryFn
+
+
+class DomainAgentRunner[OutputT: BaseModel]:
+    """Domain agent runner with Pro-to-Flash fallback execution.
 
     Encapsulates the shared execution pattern across Financial, Legal,
     Evidence, and Strategy agents:
@@ -46,22 +68,48 @@ class DomainAgentRunner[OutputT: BaseModel](ABC):
     5. Fall back to Flash model if Pro fails
     6. Emit fallback SSE event
     7. Update execution record (COMPLETED/FAILED)
-    8. Transaction rollback on exception
+    8. Flush on exception to preserve audit trail
 
-    Subclasses override four hooks to specialize behavior:
-    - get_agent_name()
-    - _prepare_content()
-    - _get_output_type()
-    - _create_agent_instance()
+    Standard domain agents (Financial, Legal, Evidence) are fully driven
+    by a DomainAgentConfig — no subclassing needed.  Strategy subclasses
+    this class to override _prepare_content for its domain-summary-aware
+    content preparation.
     """
 
-    # -- Abstract hooks (each agent overrides) --------------------------------
+    def __init__(self, config: DomainAgentConfig | None = None) -> None:
+        self._config = config
 
-    @abstractmethod
+    # -- Hook methods (read from config, or overridden by Strategy) -----------
+
     def get_agent_name(self) -> str:
         """Return the logical agent name (e.g., 'financial', 'legal')."""
+        if self._config is not None:
+            return self._config.agent_name
+        raise NotImplementedError(
+            "Subclass must provide config or override get_agent_name"
+        )
 
-    @abstractmethod
+    def _get_output_type(self) -> type[OutputT]:
+        """Return the Pydantic output model class for this agent."""
+        if self._config is not None:
+            return self._config.output_type  # type: ignore[return-value]
+        raise NotImplementedError(
+            "Subclass must provide config or override _get_output_type"
+        )
+
+    def _create_agent_instance(
+        self,
+        case_id: str,
+        model: str,
+        publish_fn: PublishFn | None,
+    ) -> LlmAgent:
+        """Create a fresh ADK LlmAgent instance for this agent type."""
+        if self._config is not None:
+            return self._config.create_agent(case_id, model, publish_fn)
+        raise NotImplementedError(
+            "Subclass must provide config or override _create_agent_instance"
+        )
+
     async def _prepare_content(
         self,
         files: list[CaseFile],
@@ -70,20 +118,22 @@ class DomainAgentRunner[OutputT: BaseModel](ABC):
         context_injection: str | None = None,
         **kwargs: object,
     ) -> types.Content:
-        """Build multimodal content for this agent type."""
+        """Build multimodal content for this agent type.
 
-    @abstractmethod
-    def _get_output_type(self) -> type[OutputT]:
-        """Return the Pydantic output model class for this agent."""
-
-    @abstractmethod
-    def _create_agent_instance(
-        self,
-        case_id: str,
-        model: str,
-        publish_fn: PublishFn | None,
-    ) -> LlmAgent:
-        """Create a fresh ADK LlmAgent instance for this agent type."""
+        Standard agents use the config's domain_prompt via _build_standard_content.
+        Strategy overrides this method entirely.
+        """
+        if self._config is not None:
+            return await self._build_standard_content(
+                domain_prompt=self._config.domain_prompt,
+                files=files,
+                gcs_bucket=gcs_bucket,
+                hypotheses=hypotheses,
+                context_injection=context_injection,
+            )
+        raise NotImplementedError(
+            "Subclass must provide config or override _prepare_content"
+        )
 
     # -- Shared content builder (used by Financial, Legal, Evidence) -----------
 

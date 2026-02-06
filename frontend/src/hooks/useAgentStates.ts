@@ -183,22 +183,27 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     setAgentStates((prev) => {
       const next = new Map(prev);
       const state = next.get(baseType);
-      if (state?.currentTask) {
-        const completedTask = {
-          ...state.currentTask,
-          completedAt: new Date(),
-          status: "complete" as const,
-        };
+      if (state) {
+        // Build completedTask for processingHistory only when currentTask
+        // is available (may be absent after snapshot restoration).
+        const completedTask = state.currentTask
+          ? {
+              ...state.currentTask,
+              completedAt: new Date(),
+              status: "complete" as const,
+            }
+          : null;
+        const updatedHistory = completedTask
+          ? [completedTask, ...state.processingHistory].slice(0, 5)
+          : state.processingHistory;
+
         next.set(baseType, {
           ...state,
           // Only transition to idle if no remaining active compound agents for this base type
           status: hasRemainingActive ? "processing" : "idle",
           currentTask: hasRemainingActive ? state.currentTask : undefined,
           lastResult: mergeAgentResult(e.result, state.lastResult),
-          processingHistory: [completedTask, ...state.processingHistory].slice(
-            0,
-            5,
-          ),
+          processingHistory: updatedHistory,
         });
       }
       return next;
@@ -220,22 +225,27 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     setAgentStates((prev) => {
       const next = new Map(prev);
       const state = next.get(baseType);
-      if (state?.currentTask) {
-        const errorTask = {
-          ...state.currentTask,
-          completedAt: new Date(),
-          status: "error" as const,
-          error: e.error,
-        };
+      if (state) {
+        // Build errorTask for processingHistory only when currentTask
+        // is available (may be absent after snapshot restoration).
+        const errorTask = state.currentTask
+          ? {
+              ...state.currentTask,
+              completedAt: new Date(),
+              status: "error" as const,
+              error: e.error,
+            }
+          : null;
+        const updatedHistory = errorTask
+          ? [errorTask, ...state.processingHistory].slice(0, 5)
+          : state.processingHistory;
+
         next.set(baseType, {
           ...state,
           // Only transition to error if no remaining active compound agents
           status: hasRemainingActive ? "processing" : "error",
           currentTask: hasRemainingActive ? state.currentTask : undefined,
-          processingHistory: [errorTask, ...state.processingHistory].slice(
-            0,
-            5,
-          ),
+          processingHistory: updatedHistory,
         });
       }
       return next;
@@ -401,12 +411,38 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
                 metadata: validatedMetadata,
               };
 
+          // Synthesize a currentTask for processing agents so the sidebar
+          // shows task info and subsequent agent-complete events can produce
+          // proper processingHistory entries (avoids the currentTask guard).
+          const syntheticTask =
+            frontendStatus === "processing"
+              ? {
+                  taskId: "",
+                  fileId: "",
+                  fileName: agentName,
+                  startedAt:
+                    typeof meta?.startedAt === "string"
+                      ? new Date(meta.startedAt)
+                      : new Date(),
+                  status: "processing" as const,
+                }
+              : undefined;
+
+          // Track compound agent IDs for processing agents so that
+          // subsequent agent-complete events resolve compound tracking.
+          if (frontendStatus === "processing") {
+            const tracking = activeCompoundAgentsRef.current;
+            if (!tracking.has(baseType)) tracking.set(baseType, new Set());
+            tracking.get(baseType)!.add(agentName);
+          }
+
           // Preserve processingHistory and lastResult from previous state
           // while taking status and result authoritatively from server.
           const prevState = prev.get(baseType);
           next.set(baseType, {
             ...freshState,
             status: frontendStatus,
+            currentTask: syntheticTask,
             processingHistory: prevState?.processingHistory ?? [],
             lastResult: mergeAgentResult(snapshotResult, prevState?.lastResult),
           });

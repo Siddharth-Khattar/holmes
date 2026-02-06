@@ -9,13 +9,13 @@ from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.agents.parsing import format_thinking_traces
 from app.config import get_settings
 from app.models import Case, CaseFile
 from app.models.agent_execution import AgentExecution
 from app.models.case import CaseStatus
 from app.models.file import FileStatus
 from app.services.agent_events import (
+    build_execution_metadata,
     emit_agent_complete,
     emit_agent_error,
     emit_agent_started,
@@ -23,46 +23,6 @@ from app.services.agent_events import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Metadata helpers
-# ---------------------------------------------------------------------------
-
-
-def _build_execution_metadata(
-    execution: AgentExecution,
-    model_name: str,
-) -> dict[str, object]:
-    """Build enriched metadata dict from an AgentExecution record.
-
-    Includes token counts, timing, model identification, and thinking traces
-    for inclusion in agent-complete SSE events.
-
-    Args:
-        execution: The completed AgentExecution database record.
-        model_name: Gemini model ID used for this agent.
-
-    Returns:
-        Dict with inputTokens, outputTokens, durationMs, startedAt,
-        completedAt, model, and thinkingTraces.
-    """
-    duration_ms: int | None = None
-    if execution.started_at and execution.completed_at:
-        delta = execution.completed_at - execution.started_at
-        duration_ms = int(delta.total_seconds() * 1000)
-
-    return {
-        "inputTokens": execution.input_tokens or 0,
-        "outputTokens": execution.output_tokens or 0,
-        "durationMs": duration_ms or 0,
-        "startedAt": execution.started_at.isoformat() if execution.started_at else None,
-        "completedAt": (
-            execution.completed_at.isoformat() if execution.completed_at else None
-        ),
-        "model": model_name,
-        "thinkingTraces": format_thinking_traces(execution.thinking_traces),
-    }
 
 
 # ---------------------------------------------------------------------------
@@ -294,7 +254,7 @@ async def run_analysis_workflow(
 
             # Build enriched metadata for triage completion event
             triage_metadata = (
-                _build_execution_metadata(triage_execution, settings.gemini_flash_model)
+                build_execution_metadata(triage_execution, settings.gemini_flash_model)
                 if triage_execution
                 else {}
             )
@@ -371,7 +331,7 @@ async def run_analysis_workflow(
                 orch_execution = orch_exec_result.scalar_one_or_none()
 
                 orch_metadata = (
-                    _build_execution_metadata(orch_execution, settings.gemini_pro_model)
+                    build_execution_metadata(orch_execution, settings.gemini_pro_model)
                     if orch_execution
                     else {}
                 )
@@ -623,7 +583,7 @@ async def run_analysis_workflow(
                             )
                             agent_exec = exec_result.scalar_one_or_none()
                             agent_metadata = (
-                                _build_execution_metadata(
+                                build_execution_metadata(
                                     agent_exec, settings.gemini_pro_model
                                 )
                                 if agent_exec
@@ -813,7 +773,7 @@ async def run_analysis_workflow(
                     )
                     strat_exec = strat_exec_result.scalar_one_or_none()
                     strat_metadata = (
-                        _build_execution_metadata(strat_exec, settings.gemini_pro_model)
+                        build_execution_metadata(strat_exec, settings.gemini_pro_model)
                         if strat_exec
                         else {}
                     )

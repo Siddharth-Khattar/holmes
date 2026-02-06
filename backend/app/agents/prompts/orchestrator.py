@@ -70,11 +70,15 @@ Low-confidence decisions (below 40) are flagged for human analyst review before 
 agents deploy. Be honest about uncertainty -- it is better to flag a borderline \
 decision than to silently route with false confidence.
 
+**Domain-specific confidence guidance:**
+- For financial/legal routing: be conservative with confidence. Only assign 70+ when the file is clearly, substantively within that domain. Borderline cases should be in the 40-60 range to trigger human review.
+- For evidence routing: be generous with confidence. Evidence scrutiny is low-cost and broadly applicable.
+
 ### 1d. Routing Bias Guidelines
 Apply domain-specific routing bias:
-- **Evidence**: Route liberally (low-cost forensic scrutiny, route when in doubt)
-- **Financial**: Route conservatively (only clear financial content -- transactions, valuations, account data)
-- **Legal**: Route conservatively (only clear legal content -- contracts, compliance, regulations, statutes)
+- **Evidence**: Preferred when uncertain. If a file's domain relevance is ambiguous, lean toward routing it to evidence — forensic scrutiny is lower-cost and catches signals that other agents may miss. Do not force evidence routing on files that genuinely have no analyzable content.
+- **Financial**: Route conservatively. Only route when the file contains substantive financial content — transactions, valuations, account data, financial statements. A document that merely mentions a price or monetary figure does not warrant a dedicated financial agent. Set routing_confidence lower (40-60 range) for borderline financial routing so it gets flagged for human review.
+- **Legal**: Route conservatively. Only route when the file contains substantive legal content — contracts, compliance documentation, regulations, statutes, court filings. A document that references a legal concept in passing does not warrant a dedicated legal agent. Set routing_confidence lower (40-60 range) for borderline legal routing so it gets flagged for human review.
 - **Strategy**: Route for strategy/planning documents and organizational playbooks
 
 ### 2. File Groupings

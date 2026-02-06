@@ -30,6 +30,8 @@ class AgentEventType(str, Enum):
     STATE_SNAPSHOT = "state-snapshot"
     CONFIRMATION_REQUIRED = "confirmation-required"
     CONFIRMATION_RESOLVED = "confirmation-resolved"
+    CONFIRMATION_BATCH_REQUIRED = "confirmation-batch-required"
+    CONFIRMATION_BATCH_RESOLVED = "confirmation-batch-resolved"
 
 
 # ---------------------------------------------------------------------------
@@ -390,4 +392,65 @@ async def emit_confirmation_resolved(
         case_id,
         AgentEventType.CONFIRMATION_RESOLVED,
         data,
+    )
+
+
+async def emit_confirmation_batch_required(
+    case_id: str,
+    agent_type: str,
+    batch_id: str,
+    items: list[dict[str, Any]],
+    context: dict[str, Any] | None = None,
+) -> None:
+    """Emit a batch confirmation request as a single atomic SSE event.
+
+    All flagged items arrive in one event so the frontend can render a
+    single multi-item review dialog instead of N individual dialogs.
+
+    Args:
+        case_id: UUID string of the case.
+        agent_type: Agent type requesting confirmation.
+        batch_id: Unique identifier for this batch.
+        items: List of item dicts each with itemId, actionDescription,
+            affectedItems, and context.
+        context: Optional batch-level context.
+    """
+    data: dict[str, Any] = {
+        "type": AgentEventType.CONFIRMATION_BATCH_REQUIRED.value,
+        "agentType": agent_type,
+        "batchId": batch_id,
+        "items": items,
+    }
+    if context is not None:
+        data["context"] = context
+    await publish_agent_event(
+        case_id,
+        AgentEventType.CONFIRMATION_BATCH_REQUIRED,
+        data,
+    )
+
+
+async def emit_confirmation_batch_resolved(
+    case_id: str,
+    agent_type: str,
+    batch_id: str,
+    decisions: list[dict[str, Any]],
+) -> None:
+    """Emit a batch confirmation resolved event.
+
+    Args:
+        case_id: UUID string of the case.
+        agent_type: Agent type whose batch was resolved.
+        batch_id: Batch identifier.
+        decisions: List of per-item decisions.
+    """
+    await publish_agent_event(
+        case_id,
+        AgentEventType.CONFIRMATION_BATCH_RESOLVED,
+        {
+            "type": AgentEventType.CONFIRMATION_BATCH_RESOLVED.value,
+            "agentType": agent_type,
+            "batchId": batch_id,
+            "decisions": decisions,
+        },
     )

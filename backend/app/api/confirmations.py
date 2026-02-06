@@ -8,8 +8,10 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.services.confirmation import (
+    BatchItemDecision,
     ConfirmationRequest,
     get_pending_confirmations,
+    resolve_batch_confirmation,
     resolve_confirmation,
 )
 
@@ -48,6 +50,31 @@ class ConfirmationListResponse(BaseModel):
         ..., description="List of pending confirmation requests"
     )
     count: int = Field(..., description="Total number of pending confirmations")
+
+
+class BatchDecisionBody(BaseModel):
+    """Per-item decision within a batch response."""
+
+    item_id: str = Field(..., description="ID of the item being decided")
+    approved: bool = Field(..., description="Whether this item was approved")
+    reason: str | None = Field(
+        default=None, description="Optional reason", max_length=1000
+    )
+
+
+class BatchConfirmationResponseBody(BaseModel):
+    """Request body for responding to a batch confirmation."""
+
+    decisions: list[BatchDecisionBody] = Field(
+        ..., description="Per-item approval decisions"
+    )
+
+
+class BatchConfirmationResolveResponse(BaseModel):
+    """Response after resolving a batch confirmation."""
+
+    status: str = Field(..., description="Resolution status")
+    resolved_count: int = Field(..., description="Number of items resolved")
 
 
 # ---------------------------------------------------------------------------
@@ -118,4 +145,56 @@ async def list_pending_confirmations(
     return ConfirmationListResponse(
         confirmations=pending,
         count=len(pending),
+    )
+
+
+@router.post(
+    "/api/cases/{case_id}/confirmations/batch/{batch_id}",
+    response_model=BatchConfirmationResolveResponse,
+    summary="Respond to a batch confirmation with per-item decisions",
+    responses={
+        404: {"description": "Batch not found or already resolved"},
+    },
+)
+async def respond_to_batch_confirmation(
+    case_id: UUID,
+    batch_id: str,
+    body: BatchConfirmationResponseBody,
+) -> BatchConfirmationResolveResponse:
+    """Submit per-item decisions for a batch confirmation.
+
+    The frontend receives a ``confirmation-batch-required`` SSE event with
+    all flagged items, renders a single multi-item review dialog, and
+    submits all decisions here in one request.
+    """
+    decisions = [
+        BatchItemDecision(
+            item_id=d.item_id,
+            approved=d.approved,
+            reason=d.reason,
+        )
+        for d in body.decisions
+    ]
+
+    resolved = resolve_batch_confirmation(
+        batch_id=batch_id,
+        decisions=decisions,
+    )
+
+    if not resolved:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Batch confirmation {batch_id} not found or already resolved",
+        )
+
+    logger.info(
+        "Batch confirmation responded via API: case=%s batch_id=%s items=%d",
+        case_id,
+        batch_id,
+        len(decisions),
+    )
+
+    return BatchConfirmationResolveResponse(
+        status="resolved",
+        resolved_count=len(decisions),
     )

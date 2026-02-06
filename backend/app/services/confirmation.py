@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 
 from app.config import get_settings
 from app.services.agent_events import (
+    emit_confirmation_batch_required,
+    emit_confirmation_batch_resolved,
     emit_confirmation_required,
     emit_confirmation_resolved,
 )
@@ -61,6 +63,60 @@ class ConfirmationResult(BaseModel):
     )
 
 
+class BatchConfirmationItem(BaseModel):
+    """A single item within a batch confirmation request."""
+
+    item_id: str = Field(..., description="Unique ID for this item within the batch")
+    action_description: str = Field(
+        ..., description="Human-readable description of the pending action"
+    )
+    affected_items: list[str] = Field(
+        default_factory=list,
+        description="Items affected by this specific action",
+    )
+    context: dict[str, object] = Field(
+        default_factory=dict,
+        description="Per-item context for frontend display",
+    )
+
+
+class BatchConfirmationRequest(BaseModel):
+    """A batch of confirmation items sent and resolved as a single unit."""
+
+    batch_id: str = Field(..., description="Unique ID for this batch")
+    case_id: str = Field(..., description="Case this batch belongs to")
+    agent_type: str = Field(..., description="Agent type requesting the batch")
+    items: list[BatchConfirmationItem] = Field(
+        ..., description="Individual items to review"
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="When the batch was requested",
+    )
+
+
+class BatchItemDecision(BaseModel):
+    """User's decision on a single item within a batch."""
+
+    item_id: str = Field(..., description="ID of the item being decided")
+    approved: bool = Field(..., description="Whether this item was approved")
+    reason: str | None = Field(
+        default=None, description="Optional reason for this decision"
+    )
+
+
+class BatchConfirmationResult(BaseModel):
+    """User's response to a batch confirmation request."""
+
+    decisions: list[BatchItemDecision] = Field(
+        ..., description="Per-item approval decisions"
+    )
+    responded_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        description="When the user responded",
+    )
+
+
 # ---------------------------------------------------------------------------
 # In-memory stores (suitable for single-instance hackathon deployment)
 # ---------------------------------------------------------------------------
@@ -73,6 +129,11 @@ _confirmation_results: dict[str, ConfirmationResult] = {}
 
 # Maps request_id -> original request data (for listing and frontend display)
 _confirmation_requests: dict[str, ConfirmationRequest] = {}
+
+# Batch confirmation stores (same pattern, keyed by batch_id)
+_pending_batch_confirmations: dict[str, asyncio.Event] = {}
+_batch_confirmation_results: dict[str, BatchConfirmationResult] = {}
+_batch_confirmation_requests: dict[str, BatchConfirmationRequest] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -247,6 +308,151 @@ def resolve_confirmation(
     return True
 
 
+async def request_batch_confirmation(
+    case_id: str,
+    agent_type: str,
+    items: list[BatchConfirmationItem],
+    context: dict[str, object] | None = None,
+) -> BatchConfirmationResult:
+    """Request batch human confirmation as a single atomic unit.
+
+    Emits ONE SSE event containing all items, then blocks until the user
+    responds with per-item decisions via the batch REST endpoint. The
+    frontend renders a single multi-item review dialog.
+
+    Args:
+        case_id: UUID string of the case.
+        agent_type: Agent type requesting confirmation.
+        items: List of BatchConfirmationItem to review.
+        context: Optional batch-level context for frontend display.
+
+    Returns:
+        BatchConfirmationResult with per-item decisions.
+    """
+    batch_id = str(uuid4())
+    event = asyncio.Event()
+
+    _pending_batch_confirmations[batch_id] = event
+    _batch_confirmation_requests[batch_id] = BatchConfirmationRequest(
+        batch_id=batch_id,
+        case_id=case_id,
+        agent_type=agent_type,
+        items=items,
+    )
+
+    logger.info(
+        "Batch confirmation requested: batch_id=%s case=%s agent=%s items=%d",
+        batch_id,
+        case_id,
+        agent_type,
+        len(items),
+    )
+
+    await emit_confirmation_batch_required(
+        case_id=case_id,
+        agent_type=agent_type,
+        batch_id=batch_id,
+        items=[item.model_dump(mode="json") for item in items],
+        context=context,
+    )
+
+    timeout_seconds = _settings.confirmation_timeout_seconds
+    try:
+        if timeout_seconds > 0:
+            await asyncio.wait_for(event.wait(), timeout=timeout_seconds)
+        else:
+            await event.wait()
+    except TimeoutError:
+        logger.warning(
+            "Batch confirmation timed out after %ss: batch_id=%s",
+            timeout_seconds,
+            batch_id,
+        )
+        _pending_batch_confirmations.pop(batch_id, None)
+        _batch_confirmation_requests.pop(batch_id, None)
+        # Reject all items on timeout
+        return BatchConfirmationResult(
+            decisions=[
+                BatchItemDecision(
+                    item_id=item.item_id,
+                    approved=False,
+                    reason=f"Timed out after {timeout_seconds} seconds",
+                )
+                for item in items
+            ],
+        )
+
+    result = _batch_confirmation_results.pop(batch_id)
+    _batch_confirmation_requests.pop(batch_id, None)
+
+    logger.info(
+        "Batch confirmation resolved: batch_id=%s approved=%d/%d",
+        batch_id,
+        sum(1 for d in result.decisions if d.approved),
+        len(result.decisions),
+    )
+    return result
+
+
+def resolve_batch_confirmation(
+    batch_id: str,
+    decisions: list[BatchItemDecision],
+) -> bool:
+    """Resolve a pending batch confirmation, unblocking the waiting pipeline.
+
+    Called by the REST API when the user submits per-item decisions.
+
+    Args:
+        batch_id: The batch confirmation ID to resolve.
+        decisions: Per-item approval decisions.
+
+    Returns:
+        True if the batch was found and resolved, False if not found.
+    """
+    event = _pending_batch_confirmations.pop(batch_id, None)
+    if event is None:
+        logger.warning(
+            "Batch confirmation not found: batch_id=%s (already resolved or invalid)",
+            batch_id,
+        )
+        return False
+
+    _batch_confirmation_results[batch_id] = BatchConfirmationResult(
+        decisions=decisions,
+    )
+
+    original = _batch_confirmation_requests.get(batch_id)
+    case_id = original.case_id if original else ""
+    agent_type_val = original.agent_type if original else "unknown"
+
+    event.set()
+
+    logger.info(
+        "Batch confirmation resolved via API: batch_id=%s items=%d",
+        batch_id,
+        len(decisions),
+    )
+
+    # Emit SSE event asynchronously (best-effort)
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(
+            emit_confirmation_batch_resolved(
+                case_id=case_id,
+                agent_type=agent_type_val,
+                batch_id=batch_id,
+                decisions=[d.model_dump(mode="json") for d in decisions],
+            )
+        )
+    except RuntimeError:
+        logger.debug(
+            "No event loop for SSE emission of batch-resolved: batch_id=%s",
+            batch_id,
+        )
+
+    return True
+
+
 def get_pending_confirmations(case_id: str) -> list[ConfirmationRequest]:
     """Return all pending confirmations for a case.
 
@@ -308,4 +514,21 @@ def cleanup_stale_confirmations(max_age_seconds: float | None = None) -> int:
             max_age_seconds,
         )
 
-    return len(stale_ids)
+    # Also clean up stale batch confirmations
+    stale_batch_ids: list[str] = []
+    for req in _batch_confirmation_requests.values():
+        age = (now - req.created_at).total_seconds()
+        if age > max_age_seconds:
+            stale_batch_ids.append(req.batch_id)
+
+    for batch_id in stale_batch_ids:
+        _pending_batch_confirmations.pop(batch_id, None)
+        _batch_confirmation_requests.pop(batch_id, None)
+        _batch_confirmation_results.pop(batch_id, None)
+        logger.warning(
+            "Cleaned up stale batch confirmation: batch_id=%s age=%ss",
+            batch_id,
+            max_age_seconds,
+        )
+
+    return len(stale_ids) + len(stale_batch_ids)

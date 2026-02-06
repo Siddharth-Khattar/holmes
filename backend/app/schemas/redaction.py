@@ -1,4 +1,4 @@
-# ABOUTME: Pydantic schemas for PDF and image redaction API endpoints.
+# ABOUTME: Pydantic schemas for PDF, image, and video redaction API endpoints.
 
 from typing import Literal
 
@@ -68,3 +68,33 @@ class ImageRedactionResult(BaseModel):
     segments_censored: int = Field(description="Number of segments censored")
     processing_time_seconds: float = Field(description="Processing time in seconds")
     method: str = Field(description="Censorship method used")
+
+
+
+class VideoRedactionRequest(BaseModel):
+    """Request to redact/censor content from a video."""
+
+    prompt: str = Field(
+        description="Natural language description of what to censor",
+        examples=["Blur all faces", "Pixelate license plates"],
+    )
+    method: Literal["blur", "pixelate", "blackbox"] = Field(
+        default="blur",
+        description="Censorship method to apply",
+    )
+
+
+class VideoRedactionResult(BaseModel):
+    """Result of a video redaction/censorship operation."""
+
+    censored_video: str = Field(description="Base64 encoded censored video")
+    visualization_image: str = Field(default="", description="Base64 encoded visualization frame")
+    categories_selected: list[str] = Field(default_factory=list, description="Categories detected")
+    agent1_reasoning: str = Field(default="", description="AI reasoning for category selection")
+    segments_found: int = Field(default=0, description="Number of segments found")
+    segments_censored: int = Field(default=0, description="Number of segments censored")
+    frames_processed: int = Field(default=0, description="Number of frames processed")
+    video_duration_seconds: float = Field(default=0.0, description="Video duration in seconds")
+    processing_time_seconds: float = Field(default=0.0, description="Processing time in seconds")
+    method: str = Field(description="Censorship method used")
+    logs: list[str] = Field(default_factory=list, description="Pipeline processing logs")

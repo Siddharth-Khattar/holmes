@@ -273,7 +273,9 @@ class DomainAgentRunner[OutputT: BaseModel](ABC):
             execution.status = AgentExecutionStatus.FAILED
             execution.error_message = str(exc)[:2000]
             execution.completed_at = datetime.now(tz=UTC)
-            await db_session.rollback()
+            # Flush (not rollback) so the FAILED execution record is preserved
+            # for audit. The caller (run_domain_agents_parallel) commits.
+            await db_session.flush()
             return None
 
     # -- Private: model attempt loop ------------------------------------------

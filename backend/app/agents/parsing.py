@@ -5,7 +5,7 @@ import json
 import logging
 
 from google.adk.events import Event
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ def extract_structured_json[OutputT: BaseModel](
                     try:
                         data = json.loads(json_str)
                         return output_type.model_validate(data)
-                    except (json.JSONDecodeError, ValueError) as exc:
+                    except (json.JSONDecodeError, ValueError, ValidationError) as exc:
                         logger.warning(
                             "Failed to parse %s output JSON: %s",
                             agent_name,

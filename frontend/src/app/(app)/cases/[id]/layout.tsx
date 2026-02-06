@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { clsx } from "clsx";
 
 import { api, ApiError } from "@/lib/api-client";
 import type { Case, CaseStatus } from "@/types/case";
 import { Chatbot } from "@/components/app/chatbot";
+import { AnalysisTrigger } from "@/components/app/analysis-trigger";
+
+const PROCESSING_POLL_INTERVAL_MS = 10_000;
 
 const statusConfig: Record<
   CaseStatus,
@@ -40,22 +43,44 @@ export default function CaseLayout({
   const router = useRouter();
   const [caseData, setCaseData] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    async function fetchCase() {
-      try {
-        const data = await api.get<Case>(`/api/cases/${params.id}`);
-        setCaseData(data);
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 404) {
-          router.push("/cases");
-        }
-      } finally {
-        setLoading(false);
+  const fetchCase = useCallback(async () => {
+    try {
+      const data = await api.get<Case>(`/api/cases/${params.id}`);
+      setCaseData(data);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        router.push("/cases");
       }
     }
-    fetchCase();
   }, [params.id, router]);
+
+  // Initial fetch
+  useEffect(() => {
+    async function load() {
+      await fetchCase();
+      setLoading(false);
+    }
+    load();
+  }, [fetchCase]);
+
+  // Poll while PROCESSING to pick up status changes
+  useEffect(() => {
+    if (caseData?.status === "PROCESSING") {
+      pollRef.current = setInterval(fetchCase, PROCESSING_POLL_INTERVAL_MS);
+    }
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [caseData?.status, fetchCase]);
+
+  const handleAnalysisStarted = useCallback(() => {
+    fetchCase();
+  }, [fetchCase]);
 
   if (loading) {
     return (
@@ -90,23 +115,32 @@ export default function CaseLayout({
       style={{ backgroundColor: "var(--background)" }}
     >
       <div className="px-6 pt-4 pb-6 lg:px-8">
-        {/* Case header: title and status */}
-        <div className="flex items-center gap-2.5 mb-1">
-          <h1
-            className="text-xl font-semibold"
-            style={{ color: "var(--foreground)" }}
-          >
-            {caseData.name}
-          </h1>
-          <span
-            className={clsx(
-              "px-2.5 py-1 rounded-full text-xs font-medium",
-              status.className,
-            )}
-            style={status.style}
-          >
-            {status.label}
-          </span>
+        {/* Case header: title, status, and analysis trigger */}
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2.5">
+            <h1
+              className="text-xl font-semibold"
+              style={{ color: "var(--foreground)" }}
+            >
+              {caseData.name}
+            </h1>
+            <span
+              className={clsx(
+                "px-2.5 py-1 rounded-full text-xs font-medium",
+                status.className,
+              )}
+              style={status.style}
+            >
+              {status.label}
+            </span>
+          </div>
+
+          <AnalysisTrigger
+            caseId={caseData.id}
+            caseStatus={caseData.status}
+            fileCount={caseData.file_count}
+            onAnalysisStarted={handleAnalysisStarted}
+          />
         </div>
 
         {/* Case description */}

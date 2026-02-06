@@ -10,11 +10,34 @@ from pydantic import BaseModel, ValidationError
 logger = logging.getLogger(__name__)
 
 
+def _attempt_json_repair(text: str) -> str:
+    """Best-effort repair of truncated JSON by trimming to the last closing brace.
+
+    LLMs sometimes truncate JSON output mid-string (e.g., "Unterminated string").
+    This attempts to salvage valid JSON by stripping trailing incomplete content.
+    The caller still validates with json.loads(), so corrupt data cannot slip through.
+
+    Args:
+        text: Raw JSON candidate string, possibly truncated.
+
+    Returns:
+        Repaired text if a trailing `}` was found, otherwise the original text.
+    """
+    stripped = text.rstrip()
+    if stripped.endswith("}"):
+        return stripped
+    last_brace = stripped.rfind("}")
+    if last_brace == -1:
+        return text
+    return stripped[: last_brace + 1]
+
+
 def extract_json_from_text(text: str) -> str | None:
     """Extract JSON from model response text, handling markdown code fences.
 
     Tolerates missing closing fences — if the model opens a code block
     but never closes it, everything after the opening fence is used.
+    Applies best-effort repair for truncated JSON before returning.
     """
     # Try ```json fence first, then bare ``` fence
     for fence in ("```json", "```"):
@@ -26,12 +49,12 @@ def extract_json_from_text(text: str) -> str | None:
         # No closing fence — take everything after the opening fence
         candidate = text[start:end].strip() if end != -1 else text[start:].strip()
         if candidate:
-            return candidate
+            return _attempt_json_repair(candidate)
 
     # Try the whole text as JSON
     text = text.strip()
     if text.startswith("{"):
-        return text
+        return _attempt_json_repair(text)
 
     return None
 

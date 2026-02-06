@@ -412,6 +412,10 @@ async def run_analysis_workflow(
                     },
                 )
 
+            # Commit so the orchestrator execution record is visible to domain
+            # agent sessions, which use separate DB sessions via session_factory.
+            await db.commit()
+
             # ---- Stage 3: Domain Agents (File-Group-Based Parallel) ----
             # domain_results type: dict[str, list[tuple[BaseModel | None, str]]]
             # where key=agent_type, value=list of (result, group_label) tuples

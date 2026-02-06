@@ -682,6 +682,8 @@ async def run_analysis_workflow(
             elif strategy_requested and not any_domain_ran and strategy_files:
                 # Case 2: No domain agents ran but strategy has its own files.
                 # Distinguish deliberate strategy-only routing from domain agent failure.
+                # strategy_requested is only True when orchestrator_output is not None
+                assert orchestrator_output is not None
                 domain_agent_types = frozenset({"financial", "legal", "evidence"})
                 domain_routing_intended = any(
                     any(a in domain_agent_types for a in rd.target_agents)

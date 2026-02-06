@@ -254,6 +254,26 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
         totalInputTokens: e.totalInputTokens,
         totalOutputTokens: e.totalOutputTokens,
       });
+
+      // Clear compound agent tracking — pipeline is done
+      activeCompoundAgentsRef.current.clear();
+
+      // Transition any agents still stuck in "processing" to "idle".
+      // This handles cases where an agent-complete/agent-error event was
+      // lost or never emitted (e.g., BaseException in domain_runner).
+      setAgentStates((prev) => {
+        const next = new Map(prev);
+        for (const [agentType, state] of next) {
+          if (state.status === "processing") {
+            next.set(agentType, {
+              ...state,
+              status: "idle",
+              currentTask: undefined,
+            });
+          }
+        }
+        return next;
+      });
     },
     [],
   );
@@ -303,7 +323,10 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     activeCompoundAgentsRef.current.clear();
 
     setAgentStates((prev) => {
-      const next = new Map(prev);
+      // Start from fresh initial states so agents NOT present in the
+      // snapshot revert to idle (authoritative). Previous approach of
+      // cloning `prev` caused stale processing states to persist.
+      const next = createInitialStates();
       for (const [agentName, agentData] of Object.entries(e.agents)) {
         // Validate agentData structure before using it
         if (
@@ -324,8 +347,8 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
           continue;
         }
 
-        const existingState = next.get(baseType);
-        if (existingState) {
+        const freshState = next.get(baseType);
+        if (freshState) {
           const frontendStatus = mapSnapshotStatus(agentData.status);
           // Safely extract metadata with type checks
           const meta = agentData.metadata;
@@ -378,15 +401,14 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
                 metadata: validatedMetadata,
               };
 
-          // Merge with existing accumulated state (e.g. live thinking traces
-          // from thinking-update events received before this snapshot)
+          // Preserve processingHistory and lastResult from previous state
+          // while taking status and result authoritatively from server.
+          const prevState = prev.get(baseType);
           next.set(baseType, {
-            ...existingState,
+            ...freshState,
             status: frontendStatus,
-            lastResult: mergeAgentResult(
-              snapshotResult,
-              existingState.lastResult,
-            ),
+            processingHistory: prevState?.processingHistory ?? [],
+            lastResult: mergeAgentResult(snapshotResult, prevState?.lastResult),
           });
         }
       }

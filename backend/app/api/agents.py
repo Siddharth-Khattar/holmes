@@ -171,6 +171,10 @@ async def run_analysis_workflow(
     """
     # Import here to avoid circular dependency (agents -> services -> agents)
     from app.agents.base import create_sse_publish_fn
+    from app.agents.domain_runner import (
+        compute_agent_tasks,
+        run_domain_agents_parallel,
+    )
     from app.agents.orchestrator import run_orchestrator
     from app.agents.triage import run_triage
     from app.database import _get_sessionmaker
@@ -326,6 +330,7 @@ async def run_analysis_workflow(
                 parent_execution_id=triage_execution.id if triage_execution else None,
             )
 
+            orch_execution: AgentExecution | None = None
             if orchestrator_output is None:
                 await emit_agent_error(
                     case_id=case_id,
@@ -393,7 +398,123 @@ async def run_analysis_workflow(
                     },
                 )
 
-            # ---- Step 6: Update file statuses to ANALYZED ----
+            # ---- Stage 3: Domain Agents (File-Group-Based Parallel) ----
+            # domain_results type: dict[str, list[tuple[BaseModel | None, str]]]
+            # where key=agent_type, value=list of (result, group_label) tuples
+            domain_results: dict[str, list[tuple[BaseModel | None, str]]] = {}
+
+            if orchestrator_output:
+                logger.info(
+                    "Pipeline starting stage=domain_agents case=%s workflow=%s",
+                    case_id,
+                    workflow_id,
+                )
+
+                # Use compute_agent_tasks (single source of truth) to determine what
+                # agent instances will run. This is the same function that
+                # run_domain_agents_parallel calls internally, ensuring SSE events
+                # match exactly the tasks that will execute.
+                expected_tasks = compute_agent_tasks(orchestrator_output, files)
+
+                # Emit agent-started for each expected (agent_type, group_label) pair
+                # Use compound identifier: "{agent_type}_{group_label}"
+                domain_task_ids: dict[str, str] = {}  # compound_id -> task_id
+                for task in expected_tasks:
+                    compound_id = f"{task.agent_type}_{task.group_label}"
+                    task_id = str(uuid4())
+                    domain_task_ids[compound_id] = task_id
+                    await emit_agent_started(
+                        case_id=case_id,
+                        agent_type=compound_id,
+                        task_id=task_id,
+                        file_id=str(first_file.id),
+                        file_name=f"{task.agent_type}-{task.group_label}",
+                    )
+
+                # Run file-group-based parallel domain agents
+                # (each creates own DB session via session_factory)
+                domain_results = await run_domain_agents_parallel(
+                    case_id=case_id,
+                    workflow_id=workflow_id,
+                    user_id=user_id,
+                    routing=orchestrator_output,
+                    files=files,
+                    hypotheses=[],  # Empty until hypothesis system exists (Phase 7)
+                    db_session_factory=session_factory,
+                    publish_event=publish_fn,
+                    orchestrator_execution_id=orch_execution.id
+                    if orch_execution
+                    else None,
+                )
+
+                # Emit agent-complete/error for each agent instance
+                for agent_type, result_list in domain_results.items():
+                    for result, group_label in result_list:
+                        compound_id = f"{agent_type}_{group_label}"
+                        task_id = domain_task_ids.get(compound_id, str(uuid4()))
+
+                        if result is not None:
+                            finding_count = (
+                                len(result.findings)
+                                if hasattr(result, "findings")
+                                else 0
+                            )
+                            entity_count = (
+                                len(result.entities)
+                                if hasattr(result, "entities")
+                                else 0
+                            )
+
+                            # Query execution record for metadata
+                            exec_result = await db.execute(
+                                select(AgentExecution)
+                                .where(
+                                    AgentExecution.workflow_id == UUID(workflow_id),
+                                    AgentExecution.agent_name == agent_type,
+                                )
+                                .order_by(AgentExecution.created_at.desc())
+                                .limit(1)
+                            )
+                            agent_exec = exec_result.scalar_one_or_none()
+                            agent_metadata = (
+                                _build_execution_metadata(
+                                    agent_exec, settings.gemini_pro_model
+                                )
+                                if agent_exec
+                                else {}
+                            )
+
+                            await emit_agent_complete(
+                                case_id=case_id,
+                                agent_type=compound_id,
+                                task_id=task_id,
+                                result={
+                                    "taskId": task_id,
+                                    "agentType": compound_id,
+                                    "baseAgentType": agent_type,
+                                    "groupLabel": group_label,
+                                    "outputs": [
+                                        {
+                                            "type": f"{agent_type}-findings",
+                                            "data": {
+                                                "findingCount": finding_count,
+                                                "entityCount": entity_count,
+                                                "groupLabel": group_label,
+                                            },
+                                        }
+                                    ],
+                                    "metadata": agent_metadata,
+                                },
+                            )
+                        else:
+                            await emit_agent_error(
+                                case_id=case_id,
+                                agent_type=compound_id,
+                                task_id=task_id,
+                                error=f"{agent_type} agent ({group_label}) failed to produce output",
+                            )
+
+            # ---- Final: Update file statuses to ANALYZED ----
             await db.execute(
                 update(CaseFile)
                 .where(CaseFile.id.in_([UUID(fid) for fid in file_ids]))
@@ -401,8 +522,17 @@ async def run_analysis_workflow(
             )
             await db.commit()
 
-            # ---- Step 7: Emit processing-complete ----
-            # Count entities from triage output
+            # ---- Final: Emit processing-complete ----
+            # Count findings and entities across all domain agents (multi-result structure)
+            total_findings = 0
+            total_domain_entities = 0
+            for _agent_type, result_list in domain_results.items():
+                for result, _group_label in result_list:
+                    if result is not None and hasattr(result, "findings"):
+                        total_findings += len(result.findings)
+                    if result is not None and hasattr(result, "entities"):
+                        total_domain_entities += len(result.entities)
+
             total_entities = sum(len(fr.entities) for fr in triage_output.file_results)
             total_duration_s = time.monotonic() - pipeline_start
             total_duration_ms = int(total_duration_s * 1000)
@@ -420,20 +550,21 @@ async def run_analysis_workflow(
             await emit_processing_complete(
                 case_id=case_id,
                 files_processed=len(files),
-                entities_created=total_entities,
-                relationships_created=0,  # Relationships created by domain agents in Phase 6
+                entities_created=total_entities + total_domain_entities,
+                relationships_created=0,  # Relationships created by KG Agent in Phase 7
                 total_duration_ms=total_duration_ms,
                 total_input_tokens=total_input_tokens,
                 total_output_tokens=total_output_tokens,
             )
             logger.info(
                 "Pipeline complete case=%s workflow=%s files=%d "
-                "total_duration_s=%.2f entities=%d",
+                "total_duration_s=%.2f entities=%d findings=%d",
                 case_id,
                 workflow_id,
                 len(files),
                 total_duration_s,
-                total_entities,
+                total_entities + total_domain_entities,
+                total_findings,
             )
 
         except Exception as exc:

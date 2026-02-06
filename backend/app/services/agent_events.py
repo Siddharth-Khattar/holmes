@@ -288,6 +288,43 @@ async def emit_thinking_update(
     )
 
 
+async def emit_agent_fallback(
+    case_id: str,
+    agent_type: str,
+    fallback_model: str,
+    reason: str | None = None,
+) -> None:
+    """Emit a thinking-update event indicating an agent fell back to a simpler model.
+
+    Rendered as a warning badge on the agent node in the Command Center.
+    Uses thinking-update event type since the frontend already handles it.
+
+    Args:
+        case_id: UUID string of the case.
+        agent_type: Agent type that fell back (e.g., "financial").
+        fallback_model: Name of the fallback model used.
+        reason: Optional reason for the fallback.
+    """
+    from datetime import UTC, datetime
+
+    warning_text = f"[FALLBACK] Agent switched to {fallback_model}"
+    if reason:
+        warning_text += f": {reason}"
+
+    await publish_agent_event(
+        case_id,
+        AgentEventType.THINKING_UPDATE,
+        {
+            "type": AgentEventType.THINKING_UPDATE.value,
+            "agentType": agent_type,
+            "thought": warning_text,
+            "timestamp": datetime.now(tz=UTC).isoformat(),
+            "isFallback": True,
+            "fallbackModel": fallback_model,
+        },
+    )
+
+
 async def emit_confirmation_required(
     case_id: str,
     agent_type: str,

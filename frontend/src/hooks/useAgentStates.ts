@@ -7,6 +7,7 @@ import { useCommandCenterSSE } from "@/hooks/useCommandCenterSSE";
 import { AGENT_CONFIGS } from "@/lib/command-center-config";
 import { extractBaseAgentType } from "@/lib/command-center-validation";
 import type {
+  AgentResult,
   AgentState,
   AgentStatus,
   AgentType,
@@ -55,6 +56,32 @@ function createInitialStates(): Map<AgentType, AgentState> {
     });
   }
   return states;
+}
+
+/**
+ * Merges an incoming AgentResult with the existing accumulated state.
+ * Backend values are authoritative for tokens, duration, model, and outputs.
+ * For thinkingTraces and toolsCalled, prefers backend if non-empty,
+ * otherwise falls back to frontend-accumulated values.
+ */
+function mergeAgentResult(
+  incoming: AgentResult,
+  existing: AgentResult | undefined,
+): AgentResult {
+  const incomingTraces = incoming.metadata?.thinkingTraces;
+  const existingTraces = existing?.metadata?.thinkingTraces;
+
+  return {
+    ...incoming,
+    metadata: {
+      ...(incoming.metadata || {}),
+      thinkingTraces:
+        (typeof incomingTraces === "string" && incomingTraces) ||
+        (typeof existingTraces === "string" && existingTraces) ||
+        "",
+    },
+    toolsCalled: incoming.toolsCalled ?? existing?.toolsCalled,
+  };
 }
 
 export interface UseAgentStatesReturn {
@@ -151,7 +178,7 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
           // Only transition to idle if no remaining active compound agents for this base type
           status: hasRemainingActive ? "processing" : "idle",
           currentTask: hasRemainingActive ? state.currentTask : undefined,
-          lastResult: e.result,
+          lastResult: mergeAgentResult(e.result, state.lastResult),
           processingHistory: [completedTask, ...state.processingHistory].slice(
             0,
             5,

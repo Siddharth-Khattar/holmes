@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-06
 **Current Phase:** 6 of 12 (Domain Agents) — COMPLETE
-**Current Plan:** 5 of 5 complete
+**Next Phase:** 7 (Synthesis & Knowledge Graph)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -31,16 +31,17 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 6 Plan 05** (2026-02-06): Pipeline wiring (final Phase 6 plan)
-  - Wired Stages 3-5 into run_analysis_workflow: domain agents, strategy, HITL
-  - SSE pre-emission via compute_agent_tasks (single source of truth from domain_runner)
-  - Compound SSE identifiers ({agent_type}_{group_label}) for multi-instance agents
-  - emit_agent_fallback helper for fallback warning events
-  - Status endpoint extended with domain_results_summary and domain_analysis stage
-  - Backward compatible: triage-only and triage+orchestrator flows preserved
+- **Phase 6 Complete** (2026-02-06): Domain Agents — 5 plans, 14 commits, 10/10 must-haves verified
+  - Plan 01: Domain output schemas (8 Pydantic models), factory methods, CONFIDENCE_THRESHOLD, video-aware content builder
+  - Plan 02: 4 domain agent system prompts (8-11K chars) with entity taxonomies, hypothesis evaluation
+  - Plan 03: Financial, Legal, Evidence agent modules + file-group parallel runner with compute_agent_tasks
+  - Plan 04: Strategy agent with dual-input content prep (own files + domain summaries)
+  - Plan 05: Pipeline wiring (Triage → Orchestrator → Domain → Strategy → HITL → Complete), compound SSE identifiers
+  - **Key architecture**: File-group-based spawning (one agent instance per group), context_injection from orchestrator
+  - **HITL**: Low-confidence findings (< 40) trigger confirmation via existing Phase 5 infrastructure
 
 **What's next:**
-- Phase 7: Synthesis & Knowledge Graph (backend agents + APIs, connect to existing frontend)
+- Phase 7: Synthesis & Knowledge Graph (Synthesis Agent, KG Agent, hypothesis system, entity resolution, connect to existing frontend)
 
 ---
 
@@ -331,7 +332,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 06-05-PLAN.md (pipeline wiring - Phase 6 complete)
+Stopped at: Phase 6 complete (verified 10/10); ready to begin Phase 7 (Synthesis & Knowledge Graph)
 Resume file: None
 
 ---

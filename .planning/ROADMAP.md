@@ -28,7 +28,7 @@
 | 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e | ✅ COMPLETE |
 | 4.1 | Agent Decision Tree Revamp (INSERTED) | Replace D3 Command Center with @xyflow/react + dagre decision tree | REQ-VIS-001 (visual quality) | ✅ COMPLETE |
 | 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 | ✅ COMPLETE |
-| 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ⏳ NOT_STARTED |
+| 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ✅ COMPLETE |
 | 7 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, Hypothesis system, Task generation, 5-layer KG | REQ-AGENT-008/009, REQ-VIS-003, REQ-HYPO-001/004/005/006, REQ-TASK-001/002 | 🟡 FRONTEND_DONE |
 | 8 | Intelligence Layer & Geospatial | Contradictions, Gaps, Geospatial Agent, Map View, Earth Engine | REQ-WOW-*, REQ-VIS-005/006, REQ-GEO-* | ⏳ NOT_STARTED |
 | 9 | Chat Interface & Research | Chat UI, Research/Discovery (Chat + Orchestrator-triggered), Hypothesis View, Context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
@@ -37,7 +37,7 @@
 | 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i | ⏳ NOT_STARTED |
 
 > **Status Legend:** ✅ COMPLETE | 🟡 FRONTEND_DONE (backend pending) | ⏳ NOT_STARTED | ⏳ PLANNED
-> **Note:** Phase 5 complete (2026-02-05, full SSE pipeline + HITL). Phases 7, 9, 10 have frontend UI implemented by Yatharth (2026-02-02). Backend integration remains for those phases.
+> **Note:** Phase 6 complete (2026-02-06, all 4 domain agents + pipeline wiring). Phases 7, 9, 10 have frontend UI implemented by Yatharth (2026-02-02). Backend integration remains for those phases.
 
 **Post-MVP:**
 | Phase | Name | Focus | Requirements |
@@ -464,16 +464,20 @@ The Command Center frontend was built in three stages:
 
 **Goal:** Implement all four domain analysis agents with proper thinking configuration.
 
+**Status:** ✅ COMPLETE (2026-02-06) — 5 plans, 14 commits
+
+**Verification:** `.planning/phases/06-domain-agents/06-VERIFICATION.md` — 10/10 must-haves verified
+
 **Requirements:** REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006, REQ-AGENT-007b, REQ-AGENT-007c, REQ-AGENT-007d, REQ-AGENT-007h, REQ-AGENT-002 (complete), REQ-HYPO-002, REQ-HYPO-003
 
 **Plans:** 5 plans in 3 waves
 
 Plans:
-- [ ] 06-01-PLAN.md — Domain output schemas, factory extension, infrastructure updates
-- [ ] 06-02-PLAN.md — Domain agent prompts (Financial, Legal, Evidence, Strategy)
-- [ ] 06-03-PLAN.md — Financial, Legal, Evidence agent modules + parallel runner
-- [ ] 06-04-PLAN.md — Strategy agent module (sequential, receives domain summaries)
-- [ ] 06-05-PLAN.md — Pipeline wiring, SSE events, HITL confirmation integration
+- [x] 06-01-PLAN.md — Domain output schemas, factory extension, infrastructure updates
+- [x] 06-02-PLAN.md — Domain agent prompts (Financial, Legal, Evidence, Strategy)
+- [x] 06-03-PLAN.md — Financial, Legal, Evidence agent modules + parallel runner
+- [x] 06-04-PLAN.md — Strategy agent module (sequential, receives domain summaries)
+- [x] 06-05-PLAN.md — Pipeline wiring, SSE events, HITL confirmation integration
 
 
 **Deliverables:**
@@ -984,8 +988,8 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 2.2*
-*Updated: 2026-02-05 (Phase 5 complete)*
+*Roadmap Version: 2.3*
+*Updated: 2026-02-06 (Phase 6 complete)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
@@ -1001,3 +1005,4 @@ For 2 developers working simultaneously:
 *Phase 5 planned: 2026-02-04 (4 plans in 3 waves)*
 *Phase 5 complete: 2026-02-05 (all 4 plans + 15 post-plan fixes, 26 commits total)*
 *Phase 6 planned: 2026-02-05 (5 plans in 3 waves)*
+*Phase 6 complete: 2026-02-06 (5 plans, 14 commits, 10/10 verified)*

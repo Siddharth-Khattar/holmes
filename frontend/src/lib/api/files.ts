@@ -94,10 +94,12 @@ export async function uploadFile(
 export async function getDownloadUrl(
   caseId: string,
   fileId: string,
+  inline: boolean = false,
 ): Promise<string> {
   const headers = await getAuthHeaders();
+  const inlineParam = inline ? "?inline=true" : "";
   const res = await fetch(
-    `${API_URL}/api/cases/${caseId}/files/${fileId}/download`,
+    `${API_URL}/api/cases/${caseId}/files/${fileId}/download${inlineParam}`,
     { headers },
   );
   if (!res.ok) {

@@ -282,68 +282,39 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
     [upload, refreshFiles, clearError],
   );
 
-  // Helper function to get mock file URLs for demonstration
-  const getMockFileUrl = useCallback((fileType: SupportedFileType): string => {
-    switch (fileType) {
-      case "image":
-        return "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=800&h=600&fit=crop";
-      case "video":
-        return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
-      case "pdf":
-        return "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
-      case "audio":
-        return "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-      default:
-        return "";
-    }
-  }, []);
-
   const handleRedactFile = useCallback(
     async (file: LibraryFile) => {
-      // For demonstration, use mock URLs
-      // In production, this would fetch the actual file URL from the backend
-
-      // Use mock URL directly for now to avoid API errors during demo
-      const mockUrl = getMockFileUrl(file.type);
-      setRedactModalFile({ ...file, url: mockUrl });
-
-      // TODO: Uncomment when backend is ready
-      // try {
-      //   const url = await getDownloadUrl(caseId, file.id);
-      //   setRedactModalFile({ ...file, url });
-      // } catch (err) {
-      //   console.error("Failed to get file URL:", err);
-      //   const mockUrl = getMockFileUrl(file.type);
-      //   setRedactModalFile({ ...file, url: mockUrl });
-      // }
+      try {
+        // Fetch real signed URL from backend with inline=true for viewing in redaction modal
+        const url = await getDownloadUrl(caseId, file.id, true);
+        setRedactModalFile({ ...file, url });
+      } catch (err) {
+        console.error("Failed to get file URL:", err);
+        alert("Failed to load file for redaction. Please try again.");
+      }
     },
-    [getMockFileUrl],
+    [caseId],
   );
 
   const handlePreviewFile = useCallback(
     async (file: LibraryFile) => {
-      // For demonstration, use mock URLs
-      // In production, this would fetch the actual file URL from the backend
-      const mockUrl = getMockFileUrl(file.type);
-      setPreviewModalFile({ ...file, url: mockUrl });
-
-      // TODO: Uncomment when backend is ready
-      // try {
-      //   const url = await getDownloadUrl(caseId, file.id);
-      //   setPreviewModalFile({ ...file, url });
-      // } catch (err) {
-      //   console.error("Failed to get file URL:", err);
-      //   const mockUrl = getMockFileUrl(file.type);
-      //   setPreviewModalFile({ ...file, url: mockUrl });
-      // }
+      try {
+        // Fetch real signed URL from backend with inline=true for preview
+        const url = await getDownloadUrl(caseId, file.id, true);
+        setPreviewModalFile({ ...file, url });
+      } catch (err) {
+        console.error("Failed to get file URL:", err);
+        alert("Failed to load file preview. Please try again.");
+      }
     },
-    [getMockFileUrl],
+    [caseId],
   );
 
   const handleDownloadFile = useCallback(
     async (file: LibraryFile) => {
       try {
-        const url = await getDownloadUrl(caseId, file.id);
+        // Fetch download URL with inline=false to force download
+        const url = await getDownloadUrl(caseId, file.id, false);
         window.open(url, "_blank");
       } catch (err) {
         console.error("Failed to get download URL:", err);

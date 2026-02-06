@@ -17,7 +17,25 @@ import {
   SkipBack,
   SkipForward,
   Download,
+  Loader2,
 } from "lucide-react";
+
+/**
+ * Loading overlay component shown while file is loading
+ */
+function LoadingOverlay({ fileName, fileSize }: { fileName?: string; fileSize?: number }) {
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm z-10">
+      <Loader2 className="w-12 h-12 animate-spin text-accent-light mb-4" />
+      <p className="text-sm font-medium text-foreground mb-1">Loading {fileName || "file"}...</p>
+      {fileSize && (
+        <p className="text-xs text-muted-foreground">
+          {(fileSize / (1024 * 1024)).toFixed(1)} MB
+        </p>
+      )}
+    </div>
+  );
+}
 
 /**
  * Supported file types for the EvidenceViewer
@@ -78,6 +96,15 @@ export function EvidenceViewer({
   onDownload,
   initialZoom = 100,
 }: EvidenceViewerProps) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Reset loading state when URL changes
+  useEffect(() => {
+    setIsLoading(true);
+    setLoadError(null);
+  }, [url]);
+
   // Render the appropriate viewer based on file type
   switch (type) {
     case "pdf":
@@ -91,6 +118,10 @@ export function EvidenceViewer({
           onFullscreenRequest={onFullscreenRequest}
           onDownload={onDownload}
           initialZoom={initialZoom}
+          isLoading={isLoading}
+          setIsLoading={setIsLoading}
+          loadError={loadError}
+          setLoadError={setLoadError}
         />
       );
     case "video":
@@ -103,6 +134,10 @@ export function EvidenceViewer({
           compact={compact}
           onFullscreenRequest={onFullscreenRequest}
           onDownload={onDownload}
+          isLoading={isLoading}
+          setIsLoading={setIsLoading}
+          loadError={loadError}
+          setLoadError={setLoadError}
         />
       );
     case "image":
@@ -116,6 +151,10 @@ export function EvidenceViewer({
           onFullscreenRequest={onFullscreenRequest}
           onDownload={onDownload}
           initialZoom={initialZoom}
+          isLoading={isLoading}
+          setIsLoading={setIsLoading}
+          loadError={loadError}
+          setLoadError={setLoadError}
         />
       );
     case "audio":
@@ -127,6 +166,10 @@ export function EvidenceViewer({
           showControls={showControls}
           compact={compact}
           onDownload={onDownload}
+          isLoading={isLoading}
+          setIsLoading={setIsLoading}
+          loadError={loadError}
+          setLoadError={setLoadError}
         />
       );
     default:
@@ -151,6 +194,10 @@ interface PDFViewerProps {
   onFullscreenRequest?: () => void;
   onDownload?: () => void;
   initialZoom?: number;
+  isLoading: boolean;
+  setIsLoading: (loading: boolean) => void;
+  loadError: string | null;
+  setLoadError: (error: string | null) => void;
 }
 
 function PDFViewer({
@@ -162,6 +209,8 @@ function PDFViewer({
   onFullscreenRequest,
   onDownload,
   initialZoom = 100,
+  isLoading,
+  setIsLoading,
 }: PDFViewerProps) {
   const [zoom, setZoom] = useState(initialZoom);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -170,11 +219,18 @@ function PDFViewer({
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 25, 50));
   const handleResetZoom = () => setZoom(100);
 
+  // Handle iframe load
+  const handleIframeLoad = useCallback(() => {
+    setIsLoading(false);
+  }, [setIsLoading]);
+
   // Construct PDF URL with zoom parameter if supported
   const pdfUrl = url.includes("#") ? url : `${url}#zoom=${zoom}`;
 
   return (
-    <div className={`flex flex-col h-full ${className}`}>
+    <div className={`flex flex-col h-full relative ${className}`}>
+      {/* Loading Overlay */}
+      {isLoading && <LoadingOverlay fileName={fileName} />}
       {/* Controls Bar */}
       {showControls && !compact && (
         <div className="flex-none flex items-center justify-between px-3 py-2 bg-warm-gray/5 dark:bg-stone/10 border-b border-warm-gray/15 dark:border-stone/15">
@@ -239,6 +295,7 @@ function PDFViewer({
           src={pdfUrl}
           className="w-full h-full border-0"
           title={fileName || "PDF Document"}
+          onLoad={handleIframeLoad}
           style={{
             transform: `scale(${zoom / 100})`,
             transformOrigin: "top left",
@@ -263,6 +320,10 @@ interface VideoViewerProps {
   compact?: boolean;
   onFullscreenRequest?: () => void;
   onDownload?: () => void;
+  isLoading: boolean;
+  setIsLoading: (loading: boolean) => void;
+  loadError: string | null;
+  setLoadError: (error: string | null) => void;
 }
 
 function VideoViewer({
@@ -273,6 +334,8 @@ function VideoViewer({
   compact = false,
   onFullscreenRequest,
   onDownload,
+  isLoading,
+  setIsLoading,
 }: VideoViewerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -359,12 +422,14 @@ function VideoViewer({
     <div className={`flex flex-col h-full ${className}`}>
       {/* Video Element */}
       <div className="flex-1 relative bg-black flex items-center justify-center">
+        {isLoading && <LoadingOverlay fileName={fileName} />}
         <video
           ref={videoRef}
           src={url}
           className="max-w-full max-h-full object-contain"
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
+          onLoadedData={() => setIsLoading(false)}
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
           onClick={togglePlay}
@@ -492,6 +557,10 @@ interface ImageViewerProps {
   onFullscreenRequest?: () => void;
   onDownload?: () => void;
   initialZoom?: number;
+  isLoading: boolean;
+  setIsLoading: (loading: boolean) => void;
+  loadError: string | null;
+  setLoadError: (error: string | null) => void;
 }
 
 function ImageViewer({
@@ -503,6 +572,8 @@ function ImageViewer({
   onFullscreenRequest,
   onDownload,
   initialZoom = 100,
+  isLoading,
+  setIsLoading,
 }: ImageViewerProps) {
   const [zoom, setZoom] = useState(initialZoom);
   const [rotation, setRotation] = useState(0);
@@ -519,6 +590,14 @@ function ImageViewer({
     setPosition({ x: 0, y: 0 });
   };
   const handleRotate = () => setRotation((prev) => (prev + 90) % 360);
+
+  const handleImageLoad = useCallback(() => {
+    setIsLoading(false);
+  }, [setIsLoading]);
+
+  const handleImageError = useCallback(() => {
+    setIsLoading(false);
+  }, [setIsLoading]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -564,7 +643,10 @@ function ImageViewer({
   }, []);
 
   return (
-    <div className={`flex flex-col h-full ${className}`}>
+    <div className={`flex flex-col h-full relative ${className}`}>
+      {/* Loading Overlay */}
+      {isLoading && <LoadingOverlay fileName={fileName} />}
+
       {/* Controls Bar */}
       {showControls && !compact && (
         <div className="flex-none flex items-center justify-between px-3 py-2 bg-warm-gray/5 dark:bg-stone/10 border-b border-warm-gray/15 dark:border-stone/15">
@@ -645,6 +727,8 @@ function ImageViewer({
           src={url}
           alt={fileName || "Image"}
           className="max-w-full max-h-full object-contain select-none"
+          onLoad={handleImageLoad}
+          onError={handleImageError}
           style={{
             transform: `scale(${zoom / 100}) rotate(${rotation}deg) translate(${position.x / (zoom / 100)}px, ${position.y / (zoom / 100)}px)`,
             transition: isDragging ? "none" : "transform 0.2s ease-out",
@@ -667,6 +751,10 @@ interface AudioViewerProps {
   showControls?: boolean;
   compact?: boolean;
   onDownload?: () => void;
+  isLoading: boolean;
+  setIsLoading: (loading: boolean) => void;
+  loadError: string | null;
+  setLoadError: (error: string | null) => void;
 }
 
 function AudioViewer({
@@ -676,6 +764,8 @@ function AudioViewer({
   showControls = true,
   compact = false,
   onDownload,
+  isLoading,
+  setIsLoading,
 }: AudioViewerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -803,6 +893,7 @@ function AudioViewer({
           src={url}
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
+          onLoadedData={() => setIsLoading(false)}
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
         />

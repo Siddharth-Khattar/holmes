@@ -95,7 +95,7 @@ export async function getDownloadUrl(
   caseId: string,
   fileId: string,
   inline: boolean = false,
-): Promise<string> {
+): Promise<DownloadUrlResponse> {
   const headers = await getAuthHeaders();
   const inlineParam = inline ? "?inline=true" : "";
   const res = await fetch(
@@ -109,7 +109,7 @@ export async function getDownloadUrl(
     throw new Error(error.detail || "Failed to get download URL");
   }
   const data: DownloadUrlResponse = await res.json();
-  return data.download_url;
+  return data; // Return full response with expires_in
 }
 
 export async function deleteFile(

@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { CommandCenter } from "@/components/CommandCenter";
 import { ConfirmationModal } from "@/components/CommandCenter/ConfirmationModal";
+import { BatchConfirmationModal } from "@/components/CommandCenter/BatchConfirmationModal";
 import { useAgentStates } from "@/hooks/useAgentStates";
 import { useDetailSidebarDispatch } from "@/hooks";
 import type { AgentType } from "@/types/command-center";
@@ -17,6 +18,9 @@ export default function CommandCenterPage() {
     agentStates,
     lastProcessingSummary,
     pendingConfirmations,
+    pendingBatchConfirmations,
+    removePendingConfirmation,
+    removePendingBatchConfirmation,
     isConnected,
     isReconnecting,
   } = useAgentStates(caseId);
@@ -60,15 +64,21 @@ export default function CommandCenterPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fallback handler for removing a resolved confirmation from local state.
-  // The SSE confirmation-resolved event in useAgentStates also handles this,
-  // but this provides immediate UI feedback before the SSE round-trip.
-  const handleConfirmationResolved = useCallback((requestId: string) => {
-    // useAgentStates manages the pendingConfirmations array via SSE events.
-    // This callback exists for the ConfirmationModal to signal completion.
-    // The SSE confirmation-resolved handler will handle the actual state update.
-    void requestId;
-  }, []);
+  // Optimistic removal for immediate UI feedback before SSE round-trip.
+  // The SSE resolved events in useAgentStates serve as backup.
+  const handleConfirmationResolved = useCallback(
+    (requestId: string) => {
+      removePendingConfirmation(requestId);
+    },
+    [removePendingConfirmation],
+  );
+
+  const handleBatchConfirmationResolved = useCallback(
+    (batchId: string) => {
+      removePendingBatchConfirmation(batchId);
+    },
+    [removePendingBatchConfirmation],
+  );
 
   return (
     <div
@@ -85,14 +95,20 @@ export default function CommandCenterPage() {
         className="h-full w-full"
       />
 
-      {/* HITL Confirmation Modal - show first pending confirmation */}
-      {pendingConfirmations.length > 0 && (
+      {/* HITL Confirmation Modals - batch takes priority over single */}
+      {pendingBatchConfirmations.length > 0 ? (
+        <BatchConfirmationModal
+          batch={pendingBatchConfirmations[0]}
+          caseId={caseId}
+          onResolved={handleBatchConfirmationResolved}
+        />
+      ) : pendingConfirmations.length > 0 ? (
         <ConfirmationModal
           confirmation={pendingConfirmations[0]}
           caseId={caseId}
           onResolved={handleConfirmationResolved}
         />
-      )}
+      ) : null}
     </div>
   );
 }

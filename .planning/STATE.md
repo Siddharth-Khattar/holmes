@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-05
-**Current Phase:** 5 of 12 (Agent Flow) — COMPLETE
-**Next Phase:** 6 (Domain Agents)
+**Last Updated:** 2026-02-06
+**Current Phase:** 6 of 12 (Domain Agents) — COMPLETE
+**Next Phase:** 7 (Synthesis & Knowledge Graph)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -16,7 +16,7 @@
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
-| 6 | Domain Agents | NOT_STARTED | - | - | |
+| 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
@@ -31,18 +31,43 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 5 Complete** (2026-02-05): Agent Flow with full SSE pipeline (4 plans, 26 commits total)
-  - Plan 01: SSE event enrichment (thinking traces, token usage, state snapshots)
-  - Plan 02: Backend HITL confirmation service (asyncio.Event pause/resume, REST API) — **infra only, verification deferred**
-  - Plan 03: Frontend SSE integration (event handlers, validators, thinking accumulation)
-  - Plan 04: HITL confirmation UI, token display, execution timeline Gantt chart — **infra only, verification deferred**
-  - Post-plan: 15+ commits for critical fixes (race conditions, type safety, validation alignment, accessibility)
-  - Key fixes: domainScore 0-100 validation, taskId/requestId alignment, tool-called events, P0 race conditions
-  - **Note:** HITL infrastructure is built but no agent currently triggers confirmations; end-to-end verification deferred to Phase 6+ when domain agents can invoke HITL
+- **Phase 6 Complete** (2026-02-06): Domain Agents — 5 plans (14 commits) + 21 post-plan commits (35 total)
+  - **Plans 01-05** (initial implementation):
+    - Plan 01: Domain output schemas (8 Pydantic models), factory methods, CONFIDENCE_THRESHOLD, video-aware content builder
+    - Plan 02: 4 domain agent system prompts (8-11K chars) with entity taxonomies, hypothesis evaluation
+    - Plan 03: Financial, Legal, Evidence agent modules + file-group parallel runner with compute_agent_tasks
+    - Plan 04: Strategy agent with dual-input content prep (own files + domain summaries)
+    - Plan 05: Pipeline wiring (Triage → Orchestrator → Domain → Strategy → HITL → Complete), compound SSE identifiers
+  - **Post-plan refactoring** (commits c21343e → 9daa3e9):
+    - DomainAgentRunner Template Method base class extracted; all 4 domain agents migrated to it
+    - `extract_structured_json` generic parser added to parsing.py (replaces per-agent parse functions)
+    - `_build_standard_content()` extracted into DomainAgentRunner for shared content prep
+    - Magic numbers consolidated into Settings config
+    - asyncio fire-and-forget, exception narrowing, type safety improvements
+  - **Per-agent routing HITL** (commits 37dca4b → c591422):
+    - Routing confidence scoring with per-agent-type HITL thresholds
+    - Per-agent rejection (reject one agent, keep others) via batch confirmation modal
+    - Atomic batch confirmation with asyncio.gather for parallel HITL requests
+    - Strategy agent standalone execution with HITL support
+    - Orchestrator routing bias and confidence guidance strengthened in prompt
+  - **Production hardening** (commits b8bd937 → 603875a):
+    - Orchestrator execution committed to DB before domain agent launch (avoids FK issues)
+    - Exception catching in domain agent runner for SSE error emission
+    - lastResult included in state snapshot for refresh resilience
+    - lastResult merge in handleAgentComplete and handleStateSnapshot to preserve accumulated data
+    - DomainEntity.metadata changed to dict[str, str] for Gemini structured output compliance
+    - Dedicated thinking traces section added to AgentDetailsPanel
+  - **Pipeline bugfixes from live testing** (commits b4d8160 → bce0258):
+    - compute_agent_tasks: covered_pairs tracking (file_id, agent_type) instead of grouped_file_ids to dispatch per-file routing to additional agents
+    - Strategy agent gated on orchestrator routing decision (no longer runs unconditionally)
+    - Thinking-text parts excluded from JSON parsing (skip part.thought=True in extract_structured_json)
+    - Triage parser consolidated into extract_structured_json (DRY)
+    - DomainEntity.metadata changed to list[MetadataEntry] for structured output compliance
+    - Routing decisions flattened to one card per (file, agent) pair in both live SSE and state snapshots
+    - JSON thinking traces normalized to readable text via format_thinking_traces()
 
 **What's next:**
-- Phase 6 (Domain Agents): Financial, Legal, Strategy, Evidence agents — will verify HITL end-to-end
-- Phase 7 (Synthesis & KG): Backend agents for knowledge graph population
+- Phase 7: Synthesis & Knowledge Graph (Synthesis Agent, KG Agent, hypothesis system, entity resolution, connect to existing frontend)
 
 ---
 
@@ -81,6 +106,10 @@
 | **Backend: Confirmation API** | `backend/app/api/confirmations.py` |
 | **Backend: Agent callbacks + SSE publish** | `backend/app/agents/base.py` |
 | **Backend: Pipeline orchestration** | `backend/app/api/agents.py` |
+| **Backend: DomainAgentRunner base** | `backend/app/agents/domain_agent_runner.py` |
+| **Backend: Domain runner (parallel)** | `backend/app/agents/domain_runner.py` |
+| **Backend: Shared parsing helpers** | `backend/app/agents/parsing.py` |
+| **Backend: State snapshots** | `backend/app/api/sse.py` |
 
 **Backend API:** ✅ Complete
 - `SSE GET /sse/cases/:caseId/command-center/stream` (state-snapshot, thinking-update, tool-called, agent lifecycle, confirmation events)
@@ -298,10 +327,38 @@ All frontend features need these backend endpoints:
 | Confirmation modal dismiss | Click-outside-to-dismiss vs Blocked | Blocked (no outside dismiss) | Important agent decisions should not be accidentally dismissed |
 | Tab notification badge | New cross-page context vs Tab badge property | Tab badge property | Lightweight; rendering support in ExpandableTabs, wiring per-page |
 | SSE domainScore range | Normalize to 0-1 in backend vs Accept 0-100 in frontend | Accept 0-100 in frontend | Backend schema uses 0-100 (percentage); frontend validation and display adjusted |
+| Domain agent architecture | Per-agent run functions vs Template Method base class | DomainAgentRunner Template Method | Eliminates ~800 lines of duplication; subclasses override only agent_type, output_type, _create_agent |
+| Domain agent parsing | Per-agent parse_X_output vs Generic extract_structured_json | Generic extract_structured_json | Single function in parsing.py replaces 4 near-identical parsers; handles code fences, thought filtering, retry |
+| Routing HITL granularity | All-or-nothing vs Per-agent-type | Per-agent-type rejection | User can reject routing to one agent while keeping others; batch modal with individual checkboxes |
+| Routing HITL thresholds | Global threshold vs Per-agent-type | Per-agent-type thresholds | ROUTING_CONFIDENCE_THRESHOLDS dict in agents.py: financial=50, legal=50, evidence=40, strategy=60 |
+| Strategy dispatch gating | Run whenever domain agents ran vs Orchestrator-requested only | Orchestrator-requested only | Strategy only runs when explicitly in routing decisions, parallel_agents, or sequential_agents |
+| compute_agent_tasks dedup | Skip grouped files vs Track (file_id, agent_type) covered pairs | Track covered pairs | Allows per-file routing to additional agents not covered by file group routing |
+| DomainEntity.metadata | dict[str, str] vs list[MetadataEntry] | list[MetadataEntry] | Gemini structured output requires list of objects, not arbitrary dict; MetadataEntry has key+value fields |
+| Thinking trace display | Raw text passthrough vs JSON normalization | JSON normalization via format_thinking_traces | Gemini multimodal thinking produces JSON; normalize to key-labeled text for readability |
+| SSE routing decisions | One card per file (first agent) vs One card per (file, agent) | One card per (file, agent) | Flattened double loop ensures all target agents visible in frontend sidebar |
 | Confirmation event field naming | requestId vs taskId | taskId | Backend sends taskId consistently; frontend types/validation aligned |
 | SSE event type field | Implicit from event name vs Explicit in payload | Explicit type field in every payload | Frontend validation dispatches on data.type; ensures consistent event handling |
 | Tool-called event mapping | Map TOOL_COMPLETED separately vs Same as TOOL_CALLED | Same event type | Both TOOL_CALLED and TOOL_COMPLETED mapped to tool-called SSE event |
 | Thinking update timestamp | Required vs Optional | Optional in frontend, always sent by backend | Backend callbacks include timestamp; emit_thinking_update adds default; frontend validates optionally |
+| Domain entity type field | Literal enum vs Free-form str | Free-form str | Supports per-domain taxonomies (monetary_amount, statute, alias, etc.) with 'other' overflow |
+| Strategy media resolution | HIGH vs MEDIUM | MEDIUM | Strategy processes playbooks/docs, not dense scanned content requiring high-res OCR |
+| Domain agent model default | Flash vs Pro | MODEL_PRO | Domain analysis requires complex reasoning; Pro model for all 4 agents |
+| Domain factory imports | Top-level vs Lazy | Lazy imports inside factory methods | Handles parallel plan execution where prompt modules may not exist yet |
+| Video/audio file preparation | Size-based routing vs Always File API | Always File API for video/audio | Avoids VideoMetadata + inline data 500 error (Gemini API issue) |
+| Domain prompt structure | Freeform vs Standardized 12-section | Standardized 12-section | Consistent structure across all 4 domain agents; easier to maintain and compare |
+| Strategy agent input description | Implicit vs Explicit in prompt | Explicit dual-input documentation | Prompt explicitly describes own files + domain agent summaries as two input types |
+| Evidence quality_assessment | Optional vs Always required | Always required in prompt | Evidence agent must always produce quality_assessment even when no findings |
+| Domain prompt JSON examples | No examples vs Full realistic examples | Full realistic domain-specific examples | Guides model toward correct output structure with domain-appropriate content |
+| Resilience pattern | ResilientAgentWrapper class vs Inline fallback | Inline Pro-to-Flash fallback | Less indirection for 4-agent setup; functionally equivalent retry-with-simpler-model |
+| Domain runner dispatch | Hardcoded if/elif vs Dict dispatch table | Dict dispatch table (RUN_FNS) | Clean mapping from agent_type string to run function; extensible |
+| Parallel agent DB sessions | Shared caller session vs Independent per task | Independent per task via factory | Avoids SQLAlchemy shared session conflicts (RESEARCH.md Pitfall 3) |
+| Fallback metadata storage | Separate field vs Nested in output_data | _metadata key in output_data JSONB | Avoids schema changes; metadata colocated with output |
+| Strategy no-files content | build_domain_agent_content vs text-only Content | text-only Content when files=[] | Strategy may run with only domain summaries; text-only avoids empty file preparation |
+| Strategy input_data tracking | Minimal vs Verbose | Verbose (domain_summaries_length + has_own_files) | Audit visibility into what strategy agent actually received |
+| SSE compound identifiers | Single agent_type vs Compound {type}_{group} | Compound {agent_type}_{group_label} | Supports multiple instances of same agent type in Command Center |
+| SSE pre-emission source | Inline file-group iteration vs compute_agent_tasks | compute_agent_tasks from domain_runner | Single source of truth; SSE events always match actual execution tasks |
+| Pipeline terminal stage | Orchestrator vs Strategy | Strategy completion | Strategy runs after parallel domain agents; marks pipeline as "complete" |
+| Pipeline failure scope | All failures fatal vs Pipeline-level only | Pipeline-level only (triage/orchestrator/pipeline) | Partial domain agent failures are expected and non-fatal |
 
 ---
 
@@ -313,8 +370,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-05
-Stopped at: Phase 5 complete; ready to begin Phase 6 (Domain Agents)
+Last session: 2026-02-06
+Stopped at: Phase 6 complete (35 commits, verified 10/10 + 21 post-plan hardening/bugfix commits); ready to begin Phase 7 (Synthesis & Knowledge Graph)
 Resume file: None
 
 ---

@@ -151,7 +151,11 @@ export function AgentDetailsPanel({
                     <div className="p-3 rounded-lg bg-white/50 dark:bg-jet/50 border border-warm-gray/10 dark:border-stone/10">
                       <pre className="text-xs text-stone font-mono overflow-x-auto">
                         {JSON.stringify(
-                          agentState.lastResult.metadata,
+                          Object.fromEntries(
+                            Object.entries(
+                              agentState.lastResult.metadata,
+                            ).filter(([key]) => key !== "thinkingTraces"),
+                          ),
                           null,
                           2,
                         )}
@@ -163,6 +167,37 @@ export function AgentDetailsPanel({
             )}
           </div>
         )}
+
+        {/* Thinking Traces Section */}
+        {typeof agentState.lastResult?.metadata?.thinkingTraces === "string" &&
+          agentState.lastResult.metadata.thinkingTraces.length > 0 && (
+            <div className="border-b border-stone/10">
+              <button
+                onClick={() => toggleSection("thinking")}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-stone/5 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-stone uppercase tracking-wide">
+                    Thinking Traces
+                  </span>
+                </div>
+                {isExpanded("thinking") ? (
+                  <ChevronUp className="w-4 h-4 text-stone" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-stone" />
+                )}
+              </button>
+              {isExpanded("thinking") && (
+                <div className="px-6 pb-4">
+                  <div className="p-3 rounded-lg bg-white/50 dark:bg-jet/50 border border-warm-gray/10 dark:border-stone/10 max-h-80 overflow-y-auto">
+                    <pre className="text-xs text-stone font-mono whitespace-pre-wrap break-words">
+                      {agentState.lastResult.metadata.thinkingTraces as string}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
         {/* Tools Called Section */}
         {agentState.lastResult?.toolsCalled &&

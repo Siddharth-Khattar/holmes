@@ -137,6 +137,14 @@ resource "google_storage_bucket_iam_member" "backend_storage_access" {
   member = "serviceAccount:${google_service_account.backend.email}"
 }
 
+# Allow backend SA to sign blobs as itself via IAM Credentials API.
+# Required for generating V4 signed download URLs on Cloud Run.
+resource "google_service_account_iam_member" "backend_self_sign" {
+  service_account_id = google_service_account.backend.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${google_service_account.backend.email}"
+}
+
 # -----------------------------------------------------------------------------
 # Frontend Service Account IAM Bindings
 # -----------------------------------------------------------------------------

@@ -38,12 +38,59 @@ financial detail is relevant to the legal analysis.
 
 **Justify every routing decision** with clear, specific reasoning.
 
+### 1b. Context Injection (Per Routing Decision)
+For each routing decision, you MAY provide a `context_injection` string -- case-specific framing \
+that will be injected into the domain agent's prompt. Use this to adapt the agent's analysis \
+to the specific case type without requiring custom agent types.
+
+**When to provide context_injection:**
+- When the case type significantly affects how an agent should focus its analysis
+- When there is important case-specific context that isn't obvious from the file alone
+- When multiple files relate to the same matter and agents need consistent framing
+
+**Examples:**
+- "This is a patent infringement case involving semiconductor manufacturing. Focus on claims mapping and prior art references."
+- "Insurance fraud investigation -- look for inconsistencies between claimed damages and documented evidence."
+- "Merger due diligence review -- prioritize material risks and undisclosed liabilities."
+
+**When to omit (set to null):**
+- When the file content is self-explanatory
+- When domain scores alone provide sufficient routing context
+
+Context injection appears as `context_injection` in each routing decision object (string or null).
+
+### 1c. Routing Confidence (Per Decision)
+For EACH routing decision, provide a `routing_confidence` score (0-100):
+- **90-100**: Clear-cut routing -- high domain scores, obvious match
+- **60-89**: Reasonable routing -- solid rationale, may benefit from review
+- **40-59**: Borderline routing -- ambiguous signals, multiple valid interpretations
+- **0-39**: Uncertain routing -- weak signals, conflicting indicators
+
+Low-confidence decisions (below 40) are flagged for human analyst review before \
+agents deploy. Be honest about uncertainty -- it is better to flag a borderline \
+decision than to silently route with false confidence.
+
+**Domain-specific confidence guidance:**
+- For financial/legal routing: be conservative with confidence. Only assign 70+ when the file is clearly, substantively within that domain. Borderline cases should be in the 40-60 range to trigger human review.
+- For evidence routing: be generous with confidence. Evidence scrutiny is low-cost and broadly applicable.
+
+### 1d. Routing Bias Guidelines
+Apply domain-specific routing bias:
+- **Evidence**: Preferred when uncertain. If a file's domain relevance is ambiguous, lean toward routing it to evidence — forensic scrutiny is lower-cost and catches signals that other agents may miss. Do not force evidence routing on files that genuinely have no analyzable content.
+- **Financial**: Route conservatively. Only route when the file contains substantive financial content — transactions, valuations, account data, financial statements. A document that merely mentions a price or monetary figure does not warrant a dedicated financial agent. Set routing_confidence lower (40-60 range) for borderline financial routing so it gets flagged for human review.
+- **Legal**: Route conservatively. Only route when the file contains substantive legal content — contracts, compliance documentation, regulations, statutes, court filings. A document that references a legal concept in passing does not warrant a dedicated legal agent. Set routing_confidence lower (40-60 range) for borderline legal routing so it gets flagged for human review.
+- **Strategy**: Route for strategy/planning documents and organizational playbooks
+
 ### 2. File Groupings
 Refine triage's suggested groupings and create processing groups:
 - Group related files that should be sent together for richer context.
 - Assign each group to the domain agents that should receive it.
 - Explain WHY these files belong together.
 - Generate a unique `group_id` (e.g., "grp-financial-q3" or "grp-contract-set-1").
+
+**Note:** The `shared_context` field on file groups serves as context injection for ALL files \
+in that group. When files are grouped, the `shared_context` is used as the context injection \
+instead of individual `context_injection` on routing decisions.
 
 ### 3. Execution Order
 Determine which agents can run in parallel vs sequentially:
@@ -112,7 +159,9 @@ Output ONLY the JSON object — no commentary, no preamble, no trailing text.
       "target_agents": ["financial", "legal"],
       "reasoning": "Financial report with contractual terms -- needs both financial deep-dive and legal review of referenced agreements.",
       "priority": "high",
-      "domain_scores": {"financial": 85.0, "legal": 60.0, "strategy": 30.0, "evidence": 5.0}
+      "domain_scores": {"financial": 85.0, "legal": 60.0, "strategy": 30.0, "evidence": 5.0},
+      "context_injection": "Financial report from Q3 2025 -- analyze in context of ongoing SEC investigation into accounting irregularities.",
+      "routing_confidence": 85.0
     }
   ],
   "file_groups": [

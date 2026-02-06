@@ -149,10 +149,10 @@ class RoutingDomainScores(BaseModel):
     output schema stays compatible with constrained decoding.
     """
 
-    financial: float = Field(default=0.0, ge=0, le=100, description="Financial score")
-    legal: float = Field(default=0.0, ge=0, le=100, description="Legal score")
-    strategy: float = Field(default=0.0, ge=0, le=100, description="Strategy score")
-    evidence: float = Field(default=0.0, ge=0, le=100, description="Evidence score")
+    financial: float = Field(..., ge=0, le=100, description="Financial score")
+    legal: float = Field(..., ge=0, le=100, description="Legal score")
+    strategy: float = Field(..., ge=0, le=100, description="Strategy score")
+    evidence: float = Field(..., ge=0, le=100, description="Evidence score")
 
 
 class RoutingDecision(BaseModel):
@@ -176,8 +176,21 @@ class RoutingDecision(BaseModel):
         default="medium", description="Processing priority for this file"
     )
     domain_scores: RoutingDomainScores = Field(
-        default_factory=RoutingDomainScores,
+        ...,
         description="Triage domain scores carried forward for reference",
+    )
+    context_injection: str | None = Field(
+        default=None,
+        description="Case-specific framing injected into the domain agent's prompt. "
+        "Adapts the agent's analysis to the specific case type without requiring "
+        "custom agent types. E.g., 'This is a patent infringement case. Focus on claims mapping.'",
+    )
+    routing_confidence: float | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+        description="Orchestrator's confidence in this routing (0-100). "
+        "Low values trigger HITL review before agents deploy.",
     )
 
 
@@ -252,6 +265,327 @@ class OrchestratorOutput(BaseModel):
     warnings: list[str] = Field(
         default_factory=list,
         description="Concerns, edge cases, or caveats noted during routing",
+    )
+
+
+# --- Shared domain agent types ---
+
+
+class Citation(BaseModel):
+    """Span-level citation for a finding.
+
+    Links a finding back to its exact location within a source file,
+    enabling click-to-navigate in the source viewer (Phase 10).
+    """
+
+    file_id: str = Field(..., description="ID of the source file")
+    locator: str = Field(
+        ...,
+        description="Exact location within the file. "
+        "Format: 'page:3', 'ts:01:23:45', 'region:x,y,w,h'",
+    )
+    excerpt: str | None = Field(
+        default=None,
+        max_length=500,
+        description="Relevant text excerpt from the cited location",
+    )
+
+
+class MetadataEntry(BaseModel):
+    """Single key-value metadata pair for domain entities.
+
+    Replaces dict to avoid generating additionalProperties in JSON schema,
+    which the Gemini API rejects for structured output.
+    """
+
+    key: str = Field(..., description="Metadata key (e.g., 'currency', 'jurisdiction')")
+    value: str = Field(..., description="Metadata value")
+
+
+class DomainEntity(BaseModel):
+    """Entity extracted by a domain agent.
+
+    Each domain has its own entity taxonomy (see per-domain output docstrings)
+    plus an 'other' overflow type for unexpected entities. The `type` field is
+    a free-form string rather than a fixed Literal to accommodate domain-specific
+    taxonomies and the overflow category.
+    """
+
+    type: str = Field(
+        ...,
+        description="Domain-specific entity type (e.g., 'monetary_amount', 'statute', 'alias'). "
+        "Each domain defines its own taxonomy with 'other' as overflow.",
+    )
+    value: str = Field(..., description="Extracted entity value")
+    context: str | None = Field(
+        default=None, description="Surrounding text for disambiguation"
+    )
+    confidence: float = Field(
+        ...,
+        ge=0,
+        le=100,
+        description="Agent self-assessed confidence score (0-100)",
+    )
+    metadata: list[MetadataEntry] = Field(
+        default_factory=list,
+        description="Domain-dependent metadata depth (e.g., currency for amounts, "
+        "jurisdiction for statutes)",
+    )
+
+
+class Finding(BaseModel):
+    """A single domain-specific finding with citations and extracted entities.
+
+    Findings are the primary output unit of domain agents. Each finding
+    belongs to a domain-specific category and carries span-level citations
+    back to source material.
+    """
+
+    category: str = Field(
+        ...,
+        description="Domain-specific category name "
+        "(e.g., 'Transactions', 'Contract Obligations', 'Authenticity Analysis')",
+    )
+    title: str = Field(..., max_length=200, description="Concise finding title")
+    description: str = Field(
+        ..., max_length=2000, description="Detailed finding description"
+    )
+    confidence: float = Field(
+        ...,
+        ge=0,
+        le=100,
+        description="Agent self-assessed confidence score (0-100)",
+    )
+    citations: list[Citation] = Field(
+        default_factory=list,
+        description="Span-level citations linking to source material",
+    )
+    entities: list[DomainEntity] = Field(
+        default_factory=list,
+        description="Entities extracted within this finding's context",
+    )
+
+
+class HypothesisEvaluation(BaseModel):
+    """Agent's evaluation of an existing hypothesis against its findings.
+
+    Domain agents evaluate (not propose) hypotheses. They assess whether
+    their findings support, contradict, or are neutral toward each hypothesis.
+    """
+
+    hypothesis_id: str = Field(..., description="ID of the hypothesis being evaluated")
+    stance: Literal["supports", "contradicts", "neutral"] = Field(
+        ..., description="Agent's assessment of the hypothesis"
+    )
+    confidence: float = Field(
+        ...,
+        ge=0,
+        le=100,
+        description="Confidence in this evaluation (0-100)",
+    )
+    reasoning: str = Field(
+        ...,
+        max_length=2000,
+        description="Explanation of why the agent reached this stance",
+    )
+    citations: list[Citation] = Field(
+        default_factory=list,
+        description="Citations supporting this evaluation",
+    )
+
+
+# --- Per-domain output models ---
+
+
+class FinancialOutput(BaseModel):
+    """Structured output from the Financial domain agent.
+
+    Entity taxonomy types:
+        monetary_amount, account, transaction, asset,
+        financial_instrument, tax_record, other
+
+    Finding categories:
+        Transactions, Account Relationships, Anomalies,
+        Valuations, Cash Flow Patterns
+    """
+
+    findings: list[Finding] = Field(
+        default_factory=list,
+        description="Financial findings extracted from analyzed files",
+    )
+    hypothesis_evaluations: list[HypothesisEvaluation] = Field(
+        default_factory=list,
+        description="Evaluations of existing hypotheses against financial findings",
+    )
+    entities: list[DomainEntity] = Field(
+        default_factory=list,
+        description="Top-level financial entities extracted across all findings",
+    )
+    no_findings_explanation: str | None = Field(
+        default=None,
+        description="Explanation when the agent finds nothing relevant in the file. "
+        "Confirms analysis completeness rather than a missed extraction.",
+    )
+    extraction_mode: Literal["dense", "curated"] = Field(
+        default="curated",
+        description="Extraction depth: 'dense' maximizes graph richness, "
+        "'curated' applies confidence-threshold filtering for high-signal output",
+    )
+
+
+class LegalOutput(BaseModel):
+    """Structured output from the Legal domain agent.
+
+    Entity taxonomy types:
+        statute, case_citation, contract, legal_term, court,
+        obligation, party, clause, other
+
+    Finding categories:
+        Contract Obligations, Regulatory Compliance, Legal Risks,
+        Precedents, Violations
+    """
+
+    findings: list[Finding] = Field(
+        default_factory=list,
+        description="Legal findings extracted from analyzed files",
+    )
+    hypothesis_evaluations: list[HypothesisEvaluation] = Field(
+        default_factory=list,
+        description="Evaluations of existing hypotheses against legal findings",
+    )
+    entities: list[DomainEntity] = Field(
+        default_factory=list,
+        description="Top-level legal entities extracted across all findings",
+    )
+    no_findings_explanation: str | None = Field(
+        default=None,
+        description="Explanation when the agent finds nothing relevant in the file",
+    )
+    extraction_mode: Literal["dense", "curated"] = Field(
+        default="curated",
+        description="Extraction depth: 'dense' maximizes graph richness, "
+        "'curated' applies confidence-threshold filtering for high-signal output",
+    )
+
+
+class EvidenceQualityAssessment(BaseModel):
+    """Quality assessment of evidence integrity and reliability.
+
+    Provides a single composite quality score (not a breakdown) per
+    CONTEXT.md decision, plus detailed authenticity and custody analysis.
+    """
+
+    overall_score: float = Field(
+        ...,
+        ge=0,
+        le=100,
+        description="Single composite quality score (0-100)",
+    )
+    authenticity_concerns: list[str] = Field(
+        default_factory=list,
+        description="Identified concerns about evidence authenticity",
+    )
+    custody_chain_complete: bool = Field(
+        ...,
+        description="Whether the chain of custody appears complete",
+    )
+    custody_gaps: list[str] = Field(
+        default_factory=list,
+        description="Identified gaps in the chain of custody",
+    )
+    corroboration_status: Literal["strong", "moderate", "weak", "uncorroborated"] = (
+        Field(
+            ...,
+            description="Level of corroboration from other evidence sources",
+        )
+    )
+    recommendation: Literal["ADMIT", "VERIFY", "CHALLENGE", "EXCLUDE"] = Field(
+        ...,
+        description="Recommended action for this piece of evidence",
+    )
+
+
+class EvidenceOutput(BaseModel):
+    """Structured output from the Evidence domain agent.
+
+    Entity taxonomy types:
+        communication, alias, vehicle, property, timestamp,
+        physical_evidence, digital_artifact, witness, other
+
+    Finding categories:
+        Authenticity Analysis, Chain of Custody, Corroboration,
+        Digital Forensics, Physical Evidence
+    """
+
+    findings: list[Finding] = Field(
+        default_factory=list,
+        description="Evidence findings extracted from analyzed files",
+    )
+    hypothesis_evaluations: list[HypothesisEvaluation] = Field(
+        default_factory=list,
+        description="Evaluations of existing hypotheses against evidence findings",
+    )
+    entities: list[DomainEntity] = Field(
+        default_factory=list,
+        description="Top-level evidence entities extracted across all findings",
+    )
+    no_findings_explanation: str | None = Field(
+        default=None,
+        description="Explanation when the agent finds nothing relevant in the file",
+    )
+    extraction_mode: Literal["dense", "curated"] = Field(
+        default="curated",
+        description="Extraction depth: 'dense' maximizes graph richness, "
+        "'curated' applies confidence-threshold filtering for high-signal output",
+    )
+    quality_assessment: EvidenceQualityAssessment | None = Field(
+        default=None,
+        description="Composite quality assessment of the evidence's integrity and reliability",
+    )
+
+
+class StrategyOutput(BaseModel):
+    """Structured output from the Legal Strategy domain agent.
+
+    The Strategy agent handles legal strategy for the case: firm playbooks,
+    internal strategy docs, and case approach planning. It is NOT an evidence
+    analysis agent. It runs AFTER domain agents and can incorporate their findings.
+
+    Entity taxonomy types:
+        strategic_decision, organizational_unit, stakeholder,
+        objective, risk_factor, other
+
+    Finding categories:
+        Case Strengths, Case Weaknesses, Investigation Priorities,
+        Strategic Recommendations, Risk Assessment
+    """
+
+    findings: list[Finding] = Field(
+        default_factory=list,
+        description="Strategic findings extracted from analyzed files",
+    )
+    hypothesis_evaluations: list[HypothesisEvaluation] = Field(
+        default_factory=list,
+        description="Evaluations of existing hypotheses against strategic findings",
+    )
+    entities: list[DomainEntity] = Field(
+        default_factory=list,
+        description="Top-level strategy entities extracted across all findings",
+    )
+    no_findings_explanation: str | None = Field(
+        default=None,
+        description="Explanation when the agent finds nothing relevant in the file",
+    )
+    extraction_mode: Literal["dense", "curated"] = Field(
+        default="curated",
+        description="Extraction depth: 'dense' maximizes graph richness, "
+        "'curated' applies confidence-threshold filtering for high-signal output",
+    )
+    domain_agent_summaries_received: list[str] = Field(
+        default_factory=list,
+        description="Names of domain agents whose summaries were incorporated "
+        "(e.g., ['financial', 'legal', 'evidence']). Populated when strategy agent "
+        "runs after other domain agents.",
     )
 
 

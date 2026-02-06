@@ -28,7 +28,7 @@
 | 4 | Core Agent System | ADK setup, Triage Agent, Orchestrator, Research/Discovery stubs | REQ-AGENT-001/002/007/007a/007b/007e | ✅ COMPLETE |
 | 4.1 | Agent Decision Tree Revamp (INSERTED) | Replace D3 Command Center with @xyflow/react + dagre decision tree | REQ-VIS-001 (visual quality) | ✅ COMPLETE |
 | 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 | ✅ COMPLETE |
-| 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ⏳ NOT_STARTED |
+| 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ✅ COMPLETE |
 | 7 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, Hypothesis system, Task generation, 5-layer KG | REQ-AGENT-008/009, REQ-VIS-003, REQ-HYPO-001/004/005/006, REQ-TASK-001/002 | 🟡 FRONTEND_DONE |
 | 8 | Intelligence Layer & Geospatial | Contradictions, Gaps, Geospatial Agent, Map View, Earth Engine | REQ-WOW-*, REQ-VIS-005/006, REQ-GEO-* | ⏳ NOT_STARTED |
 | 9 | Chat Interface & Research | Chat UI, Research/Discovery (Chat + Orchestrator-triggered), Hypothesis View, Context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
@@ -37,7 +37,7 @@
 | 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i | ⏳ NOT_STARTED |
 
 > **Status Legend:** ✅ COMPLETE | 🟡 FRONTEND_DONE (backend pending) | ⏳ NOT_STARTED | ⏳ PLANNED
-> **Note:** Phase 5 complete (2026-02-05, full SSE pipeline + HITL). Phases 7, 9, 10 have frontend UI implemented by Yatharth (2026-02-02). Backend integration remains for those phases.
+> **Note:** Phase 6 complete (2026-02-06, 35 commits: 5 plans + refactoring + routing HITL + production hardening + live-testing bugfixes). Phases 7, 9, 10 have frontend UI implemented by Yatharth (2026-02-02). Backend integration remains for those phases.
 
 **Post-MVP:**
 | Phase | Name | Focus | Requirements |
@@ -464,14 +464,28 @@ The Command Center frontend was built in three stages:
 
 **Goal:** Implement all four domain analysis agents with proper thinking configuration.
 
+**Status:** ✅ COMPLETE (2026-02-06) — 5 plans (14 commits) + 21 post-plan commits (35 total)
+
+**Verification:** `.planning/phases/06-domain-agents/06-VERIFICATION.md` — 10/10 must-haves verified + post-plan addendum
+
 **Requirements:** REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006, REQ-AGENT-007b, REQ-AGENT-007c, REQ-AGENT-007d, REQ-AGENT-007h, REQ-AGENT-002 (complete), REQ-HYPO-002, REQ-HYPO-003
 
+**Plans:** 5 plans in 3 waves
+
+Plans:
+- [x] 06-01-PLAN.md — Domain output schemas, factory extension, infrastructure updates
+- [x] 06-02-PLAN.md — Domain agent prompts (Financial, Legal, Evidence, Strategy)
+- [x] 06-03-PLAN.md — Financial, Legal, Evidence agent modules + parallel runner
+- [x] 06-04-PLAN.md — Strategy agent module (sequential, receives domain summaries)
+- [x] 06-05-PLAN.md — Pipeline wiring, SSE events, HITL confirmation integration
+
+
 **Deliverables:**
-- Financial Analysis Agent (`thinking_level="medium"`, `media_resolution="high"`)
+- Financial Analysis Agent (`thinking_level="high"`, `media_resolution="high"`)
   - **Full entity taxonomy for financial domain** (monetary_amount, account, transaction, asset)
 - Legal Analysis Agent (`thinking_level="high"`, `media_resolution="high"`)
   - **Full entity taxonomy for legal domain** (statute, case_citation, contract, legal_term, court)
-- Strategy Analysis Agent (`thinking_level="medium"`)
+- Strategy Analysis Agent (`thinking_level="high"`, `media_resolution="medium"`)
 - Evidence Analysis Agent (`thinking_level="high"`, `media_resolution="high"`)
   - Authenticity analysis (manipulation detection, metadata consistency)
   - Chain of custody documentation
@@ -480,38 +494,69 @@ The Command Center frontend was built in three stages:
   - **Full entity taxonomy for evidence domain** (communication, alias, vehicle, property, timestamp)
 - **Hypothesis evaluation in all domain agent prompts**
   - Agents evaluate findings against existing hypotheses
-  - Output includes hypothesis_evaluations and new_hypotheses
-- Parallel execution via ADK ParallelAgent
-- ResilientAgentWrapper for each domain agent (Pro → Flash fallback)
-- Domain-specific tool definitions
-- Video/audio processing with VideoMetadata for timestamps
-- Structured output schemas per agent
+  - Output includes hypothesis_evaluations
+- Parallel execution via asyncio.gather (not ADK ParallelAgent)
+- Inline Pro-to-Flash fallback for each domain agent
+- Video/audio processing via Gemini File API
+- Structured output schemas per agent (Pydantic models)
 - Span-level citation extraction
 - Agent output aggregation for Synthesis
 - **HITL E2E verification** (deferred from Phase 5): Domain agents trigger confirmations for sensitive operations
+- **DomainAgentRunner Template Method base class** (post-plan refactoring)
+  - All 4 domain agents migrated to subclasses (~800 lines of duplication eliminated)
+  - `extract_structured_json` generic parser replaces per-agent parse functions
+- **Per-agent routing HITL system** (post-plan feature)
+  - Routing confidence scoring with per-agent-type thresholds
+  - Batch confirmation modal with per-agent rejection
+  - Strategy agent standalone execution with HITL
+- **Production hardening** (post-plan)
+  - State snapshot refresh resilience (lastResult preservation)
+  - Exception handling in domain agent runner for SSE error emission
+  - Orchestrator execution committed to DB before domain agent launch
+  - JSON thinking trace normalization for Gemini multimodal output
+- **Pipeline bugfixes from live testing** (post-plan)
+  - compute_agent_tasks covered-pairs tracking for per-file multi-agent routing
+  - Strategy gated on orchestrator routing decision
+  - Routing decisions flattened to one card per (file, agent) pair
+  - Thought parts excluded from JSON parsing
 
 **Technical Notes:**
-- Each agent has unique output_key to avoid race conditions
 - All agents receive file content directly (Gemini multimodal)
 - Citation format: `{file_id}#{locator}` where locator is page/timestamp/region
-- Domain agents run in parallel after Orchestrator routing
+- Domain agents run in parallel via asyncio.gather after Orchestrator routing
 - Use `media_resolution="high"` for dense document processing
-- Video segments: use `VideoMetadata(start_offset, end_offset)`
-- Audio: request speaker diarization in prompts
-- ResilientAgentWrapper catches failures and falls back to Flash model
+- Video/audio forced through Gemini File API regardless of size
+- Audio: request speaker diarization in prompts (best-effort)
+- Inline Pro-to-Flash fallback pattern (not separate ResilientAgentWrapper class)
+- **DomainAgentRunner** Template Method base class: subclasses override agent_type, output_type, _create_agent
+- **extract_structured_json** generic parser: filters thought parts, handles code fences, validates via Pydantic
+- **format_thinking_traces**: normalizes JSON-structured thinking (common with multimodal) to readable text
+- **compute_agent_tasks** uses covered_pairs set[tuple[str, str]] to track (file_id, agent_type) coverage
+- **Per-agent routing HITL**: ROUTING_CONFIDENCE_THRESHOLDS per agent type, batch confirmation modal
+- **Strategy gating**: only runs when explicitly requested by orchestrator (parallel_agents/sequential_agents/routing_decisions)
 - **Domain agent prompts include: "Evaluate findings against existing hypotheses"**
+- **Key architecture files:**
+  - `backend/app/agents/domain_agent_runner.py` — DomainAgentRunner Template Method base class
+  - `backend/app/agents/domain_runner.py` — compute_agent_tasks, run_domain_agents_parallel, build_strategy_context
+  - `backend/app/agents/parsing.py` — extract_structured_json, extract_response_texts, format_thinking_traces
+  - `backend/app/api/agents.py` — Pipeline wiring, strategy gating, routing HITL, SSE emission
+  - `backend/app/api/sse.py` — State snapshots, thinking trace normalization, routing decision flattening
 
-**Exit Criteria:**
-- All four domain agents process files
-- Parallel execution verified
-- Thinking traces captured for all agents
-- Video/audio processed with timestamp extraction
-- Graceful degradation works (fallback to Flash)
-- Structured findings with citations output
-- **Hypothesis evaluations included in agent output**
-- **Domain-specific entity taxonomy extracted**
-- Outputs aggregated for next phase
-- **HITL confirmation flow verified E2E** (agent triggers → modal appears → user responds → agent continues)
+**Exit Criteria:** ✓ ALL MET (10/10 + post-plan hardening)
+- ✅ All four domain agents process files (migrated to DomainAgentRunner base class)
+- ✅ Parallel execution via asyncio.gather with independent DB sessions
+- ✅ Thinking traces captured for all agents (JSON normalized for multimodal)
+- ✅ Video/audio forced through File API for reliable processing
+- ✅ Graceful degradation works (inline Pro-to-Flash fallback)
+- ✅ Structured findings with span-level citations output
+- ✅ Hypothesis evaluations included in agent output
+- ✅ Domain-specific entity taxonomy extracted
+- ✅ Outputs aggregated for next phase (build_strategy_context + domain_results dict)
+- ✅ HITL confirmation flow verified E2E (agent triggers → modal appears → user responds → agent continues)
+- ✅ Per-agent routing HITL with batch confirmation (post-plan)
+- ✅ Strategy agent gated on orchestrator routing decision (post-plan)
+- ✅ Routing decisions display all target agents per file (post-plan)
+- ✅ State snapshot refresh resilience with lastResult preservation (post-plan)
 
 ---
 
@@ -974,8 +1019,8 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 2.2*
-*Updated: 2026-02-05 (Phase 5 complete)*
+*Roadmap Version: 2.4*
+*Updated: 2026-02-06 (Phase 6 complete — 35 commits including post-plan hardening)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
@@ -990,3 +1035,5 @@ For 2 developers working simultaneously:
 *Phase 4.1 complete: 2026-02-04 (all 4 plans done, 18 commits)*
 *Phase 5 planned: 2026-02-04 (4 plans in 3 waves)*
 *Phase 5 complete: 2026-02-05 (all 4 plans + 15 post-plan fixes, 26 commits total)*
+*Phase 6 planned: 2026-02-05 (5 plans in 3 waves)*
+*Phase 6 complete: 2026-02-06 (5 plans + 21 post-plan commits = 35 total, 10/10 verified + hardening)*

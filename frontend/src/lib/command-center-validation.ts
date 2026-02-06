@@ -11,6 +11,8 @@ import type {
   StateSnapshotEvent,
   ConfirmationRequiredEvent,
   ConfirmationResolvedEvent,
+  ConfirmationBatchRequiredEvent,
+  ConfirmationBatchResolvedEvent,
   ToolCalledEvent,
   AgentType,
 } from "@/types/command-center";
@@ -35,6 +37,32 @@ function isValidAgentType(value: unknown): value is AgentType {
 }
 
 /**
+ * Extracts the base AgentType from a compound agent ID (e.g. "financial_grp_0" → "financial").
+ * Returns the AgentType directly if it is already a base type, or null if unrecognized.
+ */
+export function extractBaseAgentType(agentId: string): AgentType | null {
+  // Direct match first
+  if (VALID_AGENT_TYPES.includes(agentId as AgentType)) {
+    return agentId as AgentType;
+  }
+  // Prefix match: check if agentId starts with "<baseType>_"
+  for (const baseType of VALID_AGENT_TYPES) {
+    if (agentId.startsWith(baseType + "_")) {
+      return baseType;
+    }
+  }
+  return null;
+}
+
+/**
+ * Validates that a value is a valid agent identifier — either a base AgentType
+ * or a compound agent ID that resolves to one (e.g. "financial_grp_0").
+ */
+function isValidAgentId(value: unknown): boolean {
+  return typeof value === "string" && extractBaseAgentType(value) !== null;
+}
+
+/**
  * Validates agent-started event
  */
 function validateAgentStartedEvent(data: unknown): data is AgentStartedEvent {
@@ -44,7 +72,7 @@ function validateAgentStartedEvent(data: unknown): data is AgentStartedEvent {
 
   return (
     event.type === "agent-started" &&
-    isValidAgentType(event.agentType) &&
+    isValidAgentId(event.agentType) &&
     typeof event.taskId === "string" &&
     typeof event.fileId === "string" &&
     typeof event.fileName === "string"
@@ -61,7 +89,7 @@ function validateAgentCompleteEvent(data: unknown): data is AgentCompleteEvent {
 
   if (
     event.type !== "agent-complete" ||
-    !isValidAgentType(event.agentType) ||
+    !isValidAgentId(event.agentType) ||
     typeof event.taskId !== "string"
   ) {
     return false;
@@ -73,7 +101,7 @@ function validateAgentCompleteEvent(data: unknown): data is AgentCompleteEvent {
 
   if (
     typeof result.taskId !== "string" ||
-    !isValidAgentType(result.agentType) ||
+    !isValidAgentId(result.agentType) ||
     !Array.isArray(result.outputs)
   ) {
     return false;
@@ -141,7 +169,7 @@ function validateAgentErrorEvent(data: unknown): data is AgentErrorEvent {
 
   return (
     event.type === "agent-error" &&
-    isValidAgentType(event.agentType) &&
+    isValidAgentId(event.agentType) &&
     typeof event.taskId === "string" &&
     typeof event.error === "string"
   );
@@ -200,7 +228,7 @@ function validateThinkingUpdateEvent(
   // timestamp is optional (present in ADK callbacks, may be absent in direct emissions)
   if (
     event.type !== "thinking-update" ||
-    !isValidAgentType(event.agentType) ||
+    !isValidAgentId(event.agentType) ||
     typeof event.thought !== "string"
   ) {
     return false;
@@ -349,6 +377,80 @@ function validateConfirmationResolvedEvent(
 }
 
 /**
+ * Validates confirmation-batch-required event
+ */
+function validateConfirmationBatchRequiredEvent(
+  data: unknown,
+): data is ConfirmationBatchRequiredEvent {
+  if (typeof data !== "object" || data === null) return false;
+
+  const event = data as Record<string, unknown>;
+
+  if (
+    event.type !== "confirmation-batch-required" ||
+    !isValidAgentType(event.agentType) ||
+    typeof event.batchId !== "string" ||
+    !Array.isArray(event.items)
+  ) {
+    return false;
+  }
+
+  // Validate each batch item
+  for (const item of event.items) {
+    if (typeof item !== "object" || item === null) return false;
+    const batchItem = item as Record<string, unknown>;
+    if (
+      typeof batchItem.item_id !== "string" ||
+      typeof batchItem.action_description !== "string"
+    ) {
+      return false;
+    }
+    // Optional affected_items must be array if present
+    if (
+      batchItem.affected_items !== undefined &&
+      !Array.isArray(batchItem.affected_items)
+    ) {
+      return false;
+    }
+    // Optional context must be object if present
+    if (
+      batchItem.context !== undefined &&
+      (typeof batchItem.context !== "object" || batchItem.context === null)
+    ) {
+      return false;
+    }
+  }
+
+  // Optional context must be object if present
+  if (
+    event.context !== undefined &&
+    (typeof event.context !== "object" || event.context === null)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Validates confirmation-batch-resolved event
+ */
+function validateConfirmationBatchResolvedEvent(
+  data: unknown,
+): data is ConfirmationBatchResolvedEvent {
+  if (typeof data !== "object" || data === null) return false;
+
+  const event = data as Record<string, unknown>;
+
+  return (
+    event.type === "confirmation-batch-resolved" &&
+    typeof event.batchId === "string" &&
+    isValidAgentType(event.agentType) &&
+    typeof event.resolvedCount === "number"
+  );
+}
+
+/**
  * Validates tool-called event
  */
 function validateToolCalledEvent(data: unknown): data is ToolCalledEvent {
@@ -358,7 +460,7 @@ function validateToolCalledEvent(data: unknown): data is ToolCalledEvent {
 
   return (
     event.type === "tool-called" &&
-    isValidAgentType(event.agentType) &&
+    isValidAgentId(event.agentType) &&
     typeof event.toolName === "string" &&
     typeof event.timestamp === "string"
   );
@@ -433,6 +535,20 @@ export function validateCommandCenterEvent(
         return data as ConfirmationResolvedEvent;
       }
       console.warn("Invalid confirmation-resolved event", data);
+      return null;
+
+    case "confirmation-batch-required":
+      if (validateConfirmationBatchRequiredEvent(data)) {
+        return data as ConfirmationBatchRequiredEvent;
+      }
+      console.warn("Invalid confirmation-batch-required event", data);
+      return null;
+
+    case "confirmation-batch-resolved":
+      if (validateConfirmationBatchResolvedEvent(data)) {
+        return data as ConfirmationBatchResolvedEvent;
+      }
+      console.warn("Invalid confirmation-batch-resolved event", data);
       return null;
 
     case "tool-called":

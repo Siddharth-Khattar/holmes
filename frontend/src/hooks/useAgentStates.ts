@@ -345,15 +345,32 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
                 }
               : undefined;
 
+          // Build the snapshot lastResult, always injecting validatedMetadata
+          // so thinking traces from the execution-level metadata are never lost.
+          const snapshotResult: AgentResult = agentData.lastResult
+            ? {
+                ...(agentData.lastResult as AgentResult),
+                metadata: {
+                  ...(agentData.lastResult as AgentResult).metadata,
+                  ...validatedMetadata,
+                },
+              }
+            : {
+                taskId: "",
+                agentType: baseType,
+                outputs: [],
+                metadata: validatedMetadata,
+              };
+
+          // Merge with existing accumulated state (e.g. live thinking traces
+          // from thinking-update events received before this snapshot)
           next.set(baseType, {
             ...existingState,
             status: frontendStatus,
-            lastResult: agentData.lastResult || {
-              taskId: "",
-              agentType: baseType,
-              outputs: [],
-              metadata: validatedMetadata,
-            },
+            lastResult: mergeAgentResult(
+              snapshotResult,
+              existingState.lastResult,
+            ),
           });
         }
       }

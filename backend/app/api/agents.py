@@ -591,30 +591,69 @@ async def run_analysis_workflow(
                 for result_list in domain_results.values()
             )
 
-            if orchestrator_output and any_domain_ran:
-                logger.info(
-                    "Pipeline starting stage=strategy case=%s workflow=%s",
-                    case_id,
-                    workflow_id,
-                )
-
-                # Build text summaries of domain agent findings (handles multi-result structure)
-                domain_summaries = build_strategy_context(domain_results)
-
-                # Find strategy-routed files
-                strategy_file_ids: set[str] = set()
-                strategy_context_injection: str | None = None
+            # Identify strategy-routed files (needed for both standalone and domain-summary paths)
+            strategy_file_ids: set[str] = set()
+            strategy_context_injection: str | None = None
+            if orchestrator_output:
                 for rd in orchestrator_output.routing_decisions:
                     if "strategy" in rd.target_agents:
                         strategy_file_ids.add(rd.file_id)
-                        # Use context_injection from the first strategy routing decision
                         if strategy_context_injection is None and rd.context_injection:
                             strategy_context_injection = rd.context_injection
 
-                file_lookup = {str(f.id): f for f in files}
-                strategy_files = [
-                    file_lookup[fid] for fid in strategy_file_ids if fid in file_lookup
-                ]
+            file_lookup = {str(f.id): f for f in files}
+            strategy_files = [
+                file_lookup[fid] for fid in strategy_file_ids if fid in file_lookup
+            ]
+
+            # Determine whether to run strategy and with what inputs
+            run_strategy_agent = False
+            domain_summaries = ""
+
+            if orchestrator_output and any_domain_ran:
+                # Case 1: Domain agents ran -- strategy gets their summaries
+                run_strategy_agent = True
+                domain_summaries = build_strategy_context(domain_results)
+            elif orchestrator_output and not any_domain_ran and strategy_files:
+                # Case 2: No domain agents ran but strategy has its own files.
+                # Confirm with user before running standalone.
+                standalone_confirmation = await request_confirmation(
+                    case_id=case_id,
+                    agent_type="strategy",
+                    action_description=(
+                        f"No domain agents produced results. Run strategy agent "
+                        f"standalone with {len(strategy_files)} file(s)?"
+                    ),
+                    affected_items=[str(f.id) for f in strategy_files],
+                    context={
+                        "strategy_file_count": len(strategy_files),
+                        "strategy_file_names": [
+                            f.original_filename for f in strategy_files
+                        ],
+                    },
+                )
+                if standalone_confirmation.approved:
+                    run_strategy_agent = True
+                    logger.info(
+                        "Strategy standalone approved for case=%s with %d files",
+                        case_id,
+                        len(strategy_files),
+                    )
+                else:
+                    logger.info(
+                        "Strategy standalone rejected for case=%s (reason: %s)",
+                        case_id,
+                        standalone_confirmation.reason,
+                    )
+
+            if run_strategy_agent:
+                logger.info(
+                    "Pipeline starting stage=strategy case=%s workflow=%s "
+                    "standalone=%s",
+                    case_id,
+                    workflow_id,
+                    not any_domain_ran,
+                )
 
                 strategy_task_id = str(uuid4())
                 await emit_agent_started(

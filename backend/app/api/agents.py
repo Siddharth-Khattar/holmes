@@ -685,15 +685,27 @@ async def run_analysis_workflow(
                 file_lookup[fid] for fid in strategy_file_ids if fid in file_lookup
             ]
 
+            # Determine whether the orchestrator requested strategy analysis.
+            # Strategy only runs when explicitly routed — having domain results
+            # alone is not sufficient. This prevents strategy from running on
+            # cases where it was never requested (e.g., pure evidence analysis).
+            strategy_requested = False
+            if orchestrator_output:
+                strategy_requested = (
+                    bool(strategy_file_ids)
+                    or "strategy" in orchestrator_output.parallel_agents
+                    or "strategy" in orchestrator_output.sequential_agents
+                )
+
             # Determine whether to run strategy and with what inputs
             run_strategy_agent = False
             domain_summaries = ""
 
-            if orchestrator_output and any_domain_ran:
-                # Case 1: Domain agents ran -- strategy gets their summaries
+            if strategy_requested and any_domain_ran:
+                # Case 1: Strategy requested + domain agents ran → summaries path
                 run_strategy_agent = True
                 domain_summaries = build_strategy_context(domain_results)
-            elif orchestrator_output and not any_domain_ran and strategy_files:
+            elif strategy_requested and not any_domain_ran and strategy_files:
                 # Case 2: No domain agents ran but strategy has its own files.
                 # Distinguish deliberate strategy-only routing from domain agent failure.
                 domain_agent_types = frozenset({"financial", "legal", "evidence"})
@@ -736,6 +748,12 @@ async def run_analysis_workflow(
                         case_id,
                         len(strategy_files),
                     )
+
+            if not strategy_requested:
+                logger.info(
+                    "Skipping strategy agent for case=%s: not requested by orchestrator",
+                    case_id,
+                )
 
             if run_strategy_agent:
                 logger.info(

@@ -203,24 +203,36 @@ async def run_domain_agents_parallel(
     ) -> tuple[str, BaseModel | None, str]:
         """Execute a single agent task with its own database session.
 
-        Returns (agent_type, result, group_label).
+        Returns (agent_type, result, group_label). Catches exceptions internally
+        so the result always appears in the output dict — this ensures agents.py
+        emits agent-error SSE events for failed agents instead of silently
+        dropping them from the gather results.
         """
-        run_fn = RUN_FNS[task.agent_type]
-        async with db_session_factory() as db:
-            result = await run_fn(
-                case_id=case_id,
-                workflow_id=workflow_id,
-                user_id=user_id,
-                files=task.files,
-                hypotheses=hypotheses,
-                db_session=db,
-                publish_event=publish_event,
-                parent_execution_id=orchestrator_execution_id,
-                context_injection=task.context_injection,
-                stage_suffix=task.stage_suffix,
+        try:
+            run_fn = RUN_FNS[task.agent_type]
+            async with db_session_factory() as db:
+                result = await run_fn(
+                    case_id=case_id,
+                    workflow_id=workflow_id,
+                    user_id=user_id,
+                    files=task.files,
+                    hypotheses=hypotheses,
+                    db_session=db,
+                    publish_event=publish_event,
+                    parent_execution_id=orchestrator_execution_id,
+                    context_injection=task.context_injection,
+                    stage_suffix=task.stage_suffix,
+                )
+                await db.commit()
+                return task.agent_type, result, task.group_label
+        except Exception as exc:
+            logger.error(
+                "Domain agent %s (%s) failed with exception: %s",
+                task.agent_type,
+                task.group_label,
+                exc,
             )
-            await db.commit()
-            return task.agent_type, result, task.group_label
+            return task.agent_type, None, task.group_label
 
     # Launch ALL tasks concurrently
     coros = [_run_agent_with_session(t) for t in tasks]

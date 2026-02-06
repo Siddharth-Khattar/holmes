@@ -2,12 +2,29 @@
 # ABOUTME: Defines structured output types for Triage and Orchestrator agents plus CRUD schemas for execution records.
 
 from datetime import datetime
+from enum import Enum
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.agent_execution import AgentExecutionStatus
+
+
+class AnalysisMode(str, Enum):
+    """Mode for starting an analysis workflow."""
+
+    UPLOADED_ONLY = "uploaded_only"
+    RERUN_ALL = "rerun_all"
+
+
+class AnalysisStartRequest(BaseModel):
+    """Optional request body for starting an analysis workflow."""
+
+    mode: AnalysisMode = Field(
+        default=AnalysisMode.UPLOADED_ONLY,
+        description="'uploaded_only' processes new files; 'rerun_all' resets analyzed/error files first.",
+    )
 
 
 class DomainScore(BaseModel):

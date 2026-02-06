@@ -23,11 +23,19 @@ import {
 /**
  * Loading overlay component shown while file is loading
  */
-function LoadingOverlay({ fileName, fileSize }: { fileName?: string; fileSize?: number }) {
+function LoadingOverlay({
+  fileName,
+  fileSize,
+}: {
+  fileName?: string;
+  fileSize?: number;
+}) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm z-10">
       <Loader2 className="w-12 h-12 animate-spin text-accent-light mb-4" />
-      <p className="text-sm font-medium text-foreground mb-1">Loading {fileName || "file"}...</p>
+      <p className="text-sm font-medium text-foreground mb-1">
+        Loading {fileName || "file"}...
+      </p>
       {fileSize && (
         <p className="text-xs text-muted-foreground">
           {(fileSize / (1024 * 1024)).toFixed(1)} MB
@@ -99,11 +107,13 @@ export function EvidenceViewer({
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Reset loading state when URL changes
-  useEffect(() => {
+  // Reset loading state when URL changes (during render, not in an effect)
+  const [prevUrl, setPrevUrl] = useState(url);
+  if (url !== prevUrl) {
+    setPrevUrl(url);
     setIsLoading(true);
     setLoadError(null);
-  }, [url]);
+  }
 
   // Render the appropriate viewer based on file type
   switch (type) {
@@ -836,9 +846,10 @@ function AudioViewer({
   };
 
   return (
-    <div className={`flex flex-col h-full ${className}`}>
+    <div className={`relative flex flex-col h-full ${className}`}>
+      {isLoading && <LoadingOverlay fileName={fileName} />}
       {/* Audio Visualization Area */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-b from-purple-500/5 to-purple-500/10 dark:from-purple-500/10 dark:to-purple-500/20 p-8">
+      <div className="flex-1 flex flex-col items-center justify-center bg-linear-to-b from-purple-500/5 to-purple-500/10 dark:from-purple-500/10 dark:to-purple-500/20 p-8">
         {/* Audio Icon */}
         <div className="w-24 h-24 rounded-full bg-purple-500/10 dark:bg-purple-500/20 flex items-center justify-center mb-6">
           <svg

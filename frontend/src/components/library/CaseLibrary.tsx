@@ -29,6 +29,7 @@ import {
 } from "@/lib/api/files";
 import { useFileUpload, FileUploadProgress } from "@/hooks/useFileUpload";
 import { useFileUrlCache } from "@/hooks/useFileUrlCache";
+import { emitCaseDataChanged } from "@/lib/case-events";
 import { RedactModal } from "./RedactModal";
 import {
   EvidencePreviewModal,
@@ -151,7 +152,6 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
   const [previewModalFile, setPreviewModalFile] = useState<LibraryFile | null>(
     null,
   );
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [preloadedUrls, setPreloadedUrls] = useState<Map<string, string>>(
     new Map(),
   );
@@ -292,25 +292,24 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
 
   const handleRedactFile = useCallback(
     async (file: LibraryFile) => {
+      // Check cache — if hit, open with URL immediately
+      const cachedUrl = getCachedUrl(caseId, file.id);
+      if (cachedUrl) {
+        setRedactModalFile({ ...file, url: cachedUrl });
+        return;
+      }
+
+      // Open modal immediately with empty URL (modal shows loading state)
+      setRedactModalFile({ ...file, url: "" });
+
       try {
-        setIsLoadingPreview(true);
-        
-        // Check cache first
-        let url = getCachedUrl(caseId, file.id);
-        
-        if (!url) {
-          // Fetch real signed URL from backend with inline=true for viewing in redaction modal
-          const response = await getDownloadUrl(caseId, file.id, true);
-          url = response.download_url;
-          setCachedUrl(caseId, file.id, url, response.expires_in);
-        }
-        
-        setRedactModalFile({ ...file, url });
+        const response = await getDownloadUrl(caseId, file.id, true);
+        setCachedUrl(caseId, file.id, response.download_url, response.expires_in);
+        setRedactModalFile({ ...file, url: response.download_url });
       } catch (err) {
         console.error("Failed to get file URL:", err);
+        setRedactModalFile(null);
         alert("Failed to load file for redaction. Please try again.");
-      } finally {
-        setIsLoadingPreview(false);
       }
     },
     [caseId, getCachedUrl, setCachedUrl],
@@ -318,30 +317,25 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
 
   const handlePreviewFile = useCallback(
     async (file: LibraryFile) => {
+      // Check cache or preloaded URLs — if hit, open immediately
+      const cachedUrl =
+        getCachedUrl(caseId, file.id) || preloadedUrls.get(file.id) || null;
+      if (cachedUrl) {
+        setPreviewModalFile({ ...file, url: cachedUrl });
+        return;
+      }
+
+      // Open modal immediately with empty URL (modal shows loading state)
+      setPreviewModalFile({ ...file, url: "" });
+
       try {
-        setIsLoadingPreview(true);
-        
-        // Check cache first
-        let url = getCachedUrl(caseId, file.id);
-        
-        if (!url) {
-          // Check if we preloaded it
-          url = preloadedUrls.get(file.id) || null;
-          
-          if (!url) {
-            // Fetch real signed URL from backend with inline=true for preview
-            const response = await getDownloadUrl(caseId, file.id, true);
-            url = response.download_url;
-            setCachedUrl(caseId, file.id, url, response.expires_in);
-          }
-        }
-        
-        setPreviewModalFile({ ...file, url });
+        const response = await getDownloadUrl(caseId, file.id, true);
+        setCachedUrl(caseId, file.id, response.download_url, response.expires_in);
+        setPreviewModalFile({ ...file, url: response.download_url });
       } catch (err) {
         console.error("Failed to get file URL:", err);
+        setPreviewModalFile(null);
         alert("Failed to load file preview. Please try again.");
-      } finally {
-        setIsLoadingPreview(false);
       }
     },
     [caseId, getCachedUrl, setCachedUrl, preloadedUrls],
@@ -391,6 +385,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
         await deleteFile(caseId, file.id);
         // Remove from local state
         setFiles((prev) => prev.filter((f) => f.id !== file.id));
+        emitCaseDataChanged();
         // Clear from cache
         clearCacheForFile(caseId, file.id);
       } catch (err) {
@@ -468,6 +463,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
           try {
             await deleteFile(caseId, file.id);
             setFiles((prev) => prev.filter((f) => f.id !== file.id));
+            emitCaseDataChanged();
           } catch (err) {
             console.error("Failed to remove duplicate:", err);
             alert("Failed to remove duplicate. Please try again.");
@@ -537,6 +533,10 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
         alert(
           `Deleted ${result.deleted_count} files. ${result.failed_ids.length} files failed to delete.`,
         );
+      }
+
+      if (result.deleted_count > 0) {
+        emitCaseDataChanged();
       }
     } catch (err) {
       console.error("Bulk delete failed:", err);

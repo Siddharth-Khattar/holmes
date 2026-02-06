@@ -6,7 +6,7 @@
 import { useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { createPortal } from "react-dom";
-import { X, FileText, Video, Image as ImageIcon, Music } from "lucide-react";
+import { X, FileText, Video, Image as ImageIcon, Music, Loader2 } from "lucide-react";
 import { EvidenceViewer, type EvidenceFileType } from "./EvidenceViewer";
 
 /**
@@ -216,13 +216,22 @@ export function EvidencePreviewModal({
 
               {/* Content */}
               <div className="flex-1 overflow-hidden">
-                <EvidenceViewer
-                  url={url}
-                  type={type}
-                  fileName={fileName}
-                  showControls={true}
-                  onDownload={onDownload}
-                />
+                {url ? (
+                  <EvidenceViewer
+                    url={url}
+                    type={type}
+                    fileName={fileName}
+                    showControls={true}
+                    onDownload={onDownload}
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-3">
+                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                    <span className="text-sm text-muted-foreground">
+                      Loading {fileName || "file"}...
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>

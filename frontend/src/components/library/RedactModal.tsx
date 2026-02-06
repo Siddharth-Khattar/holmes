@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import Image from "next/image";
 import { X, Download, Sparkles, Loader2, AlertCircle, CheckCircle, FileText, Image as ImageIcon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -32,7 +32,74 @@ interface RedactModalProps {
 type RedactionStatus = "idle" | "processing" | "success" | "error";
 type RedactionMethod = "blur" | "pixelate";
 
+// Particle positions for the scan overlay: [left%, delay, duration]
+const SCAN_PARTICLES: [number, string, string][] = [
+  [12, "0s", "2.8s"],
+  [30, "0.5s", "3.2s"],
+  [50, "1.0s", "2.6s"],
+  [70, "0.3s", "3.0s"],
+  [88, "1.2s", "2.9s"],
+];
+
+/**
+ * GPU-composited scanning overlay shown on the original file during
+ * redaction processing. All animations use transform/opacity only
+ * (no layout-triggering properties) for smooth 60fps rendering.
+ */
+function ScanOverlay({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
+  // Read container height once on mount for the CSS variable
+  const height = containerRef.current?.offsetHeight ?? 600;
+
+  return (
+    <div
+      className="absolute inset-0 pointer-events-none z-10"
+      style={{ "--scan-height": `${height}px` } as React.CSSProperties}
+    >
+      {/* Subtle dark tint */}
+      <div className="absolute inset-0 bg-black/10" />
+
+      {/* Shimmer sweep - single GPU layer */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div
+          className="absolute inset-0 will-change-transform opacity-[0.06]"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 30%, rgba(168,85,247,0.5) 50%, transparent 70%)",
+            animation: "scan-shimmer 2.5s ease-in-out infinite",
+          }}
+        />
+      </div>
+
+      {/* Scanning line - uses translateY instead of top */}
+      <div
+        className="absolute top-0 left-0 right-0 will-change-transform"
+        style={{ animation: "scan-sweep 3s ease-in-out infinite" }}
+      >
+        {/* Glow trail */}
+        <div className="h-16 bg-gradient-to-t from-purple-500/15 to-transparent" />
+        {/* Core line */}
+        <div className="h-[2px] bg-purple-500 shadow-[0_0_12px_3px_rgba(168,85,247,0.4)]" />
+      </div>
+
+      {/* Floating particles - 5 elements, transform-only animation */}
+      {SCAN_PARTICLES.map(([left, delay, duration], i) => (
+        <div
+          key={i}
+          className="absolute w-1 h-1 rounded-full bg-purple-400/80 will-change-transform"
+          style={{
+            left: `${left}%`,
+            top: "50%",
+            boxShadow: "0 0 4px 1px rgba(192,132,252,0.5)",
+            animation: `scan-particle ${duration} ${delay} ease-out infinite`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
+  const originalPanelRef = useRef<HTMLDivElement>(null);
   const [showRedactionInput, setShowRedactionInput] = useState(false);
   const [redactionPrompt, setRedactionPrompt] = useState("");
   const [redactionMethod, setRedactionMethod] = useState<RedactionMethod>("blur");
@@ -271,8 +338,19 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                 {/* Main Content Area */}
                 <div className="flex flex-1 overflow-hidden">
                   {/* Left Half - Original File/Image */}
-                  <div className="flex-1 border-r border-warm-gray/15 dark:border-stone/15 overflow-hidden">
-                    {isPdf ? (
+                  <div
+                    ref={originalPanelRef}
+                    className="flex-1 border-r border-warm-gray/15 dark:border-stone/15 overflow-hidden relative"
+                  >
+                    {!file.url ? (
+                      /* URL still loading — show skeleton */
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-warm-gray/5 dark:bg-stone/5">
+                        <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+                        <span className="text-sm text-muted-foreground">
+                          Loading {isPdf ? "document" : "image"}...
+                        </span>
+                      </div>
+                    ) : isPdf ? (
                       <iframe
                         src={file.url}
                         className="w-full h-full"
@@ -288,6 +366,11 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                           unoptimized
                         />
                       </div>
+                    )}
+
+                    {/* Scanning overlay while processing - GPU-composited CSS animations */}
+                    {status === "processing" && (
+                      <ScanOverlay containerRef={originalPanelRef} />
                     )}
                   </div>
 
@@ -352,22 +435,11 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                           <h3 className="text-lg font-semibold text-foreground mb-2">
                             Processing {isPdf ? "Redaction" : "Censorship"}
                           </h3>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            {isPdf 
+                          <p className="text-sm text-muted-foreground">
+                            {isPdf
                               ? "Analyzing document and applying redactions..."
                               : "Analyzing image and applying censorship..."}
                           </p>
-                          <div className="w-full max-w-xs mx-auto bg-warm-gray/20 dark:bg-stone/20 rounded-full h-1.5 overflow-hidden">
-                            <motion.div
-                              initial={{ width: "0%" }}
-                              animate={{ width: "100%" }}
-                              transition={{
-                                duration: 10,
-                                ease: "linear",
-                              }}
-                              className="bg-purple-600 h-1.5 rounded-full"
-                            />
-                          </div>
                           <p className="text-xs text-muted-foreground mt-4">
                             This may take 10-30 seconds depending on {isPdf ? "document" : "image"} size
                           </p>

@@ -75,6 +75,10 @@ class Case(Base):
         server_default="0",
         nullable=False,
     )
+    latest_workflow_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=text("now()"),

@@ -196,5 +196,69 @@ Four items flagged for human verification as they require live API calls and vis
 
 ---
 
-_Verified: 2026-02-06T01:30:00Z_
+## Post-Verification Addendum (21 additional commits)
+
+After the initial 10/10 verification, significant post-plan work was done: refactoring, new capabilities, production hardening, and live-testing bugfixes (21 commits, c21343e → bce0258).
+
+### Architecture Changes
+
+| Change | Commits | Impact |
+|--------|---------|--------|
+| **DomainAgentRunner Template Method** | 5ed4d52, 4520f69, 9daa3e9 | Extracted base class; all 4 domain agents are now thin subclasses. Eliminated ~800 lines of duplication. Subclasses override `agent_type`, `output_type`, `_create_agent`. Content prep via `_build_standard_content()`. |
+| **extract_structured_json generic parser** | e75146e, 918d301 | Single parser replaces 4 per-agent `parse_X_output` functions. Filters `part.thought=True` via `extract_response_texts()` to prevent thinking-text from being parsed as JSON. Triage parser consolidated (DRY). |
+| **format_thinking_traces normalization** | bce0258 | Gemini multimodal thinking produces JSON-structured deliberation. New `format_thinking_traces()` recursively extracts readable text from JSON blobs. Shared by both `agents.py` and `sse.py` (replaces duplicated inline joining). |
+| **Settings config consolidation** | c21343e | Magic numbers (retry counts, token caps) moved to Settings dataclass. |
+
+### New Capabilities
+
+| Capability | Commits | Details |
+|------------|---------|---------|
+| **Per-agent routing HITL** | 37dca4b, 82e30cf, e2b55b0, a66198d | Routing confidence scoring with per-agent-type thresholds (financial=50, legal=50, evidence=40, strategy=60). User can reject routing to individual agents while keeping others. |
+| **Batch confirmation modal** | 84282f1, c591422, ebe27b2, 3c173f0 | Frontend batch confirmation infrastructure. Per-agent HITL confirmations batched via asyncio.gather. Atomic batch confirmation for parallel requests. |
+| **Strategy standalone execution** | 1375b04, eb66971 | Strategy agent can run standalone (summary-only, no files). Distinguishes deliberate strategy-only routing from domain failure. |
+| **Strategy gating** | 1971c7c | Strategy only runs when explicitly requested by orchestrator (in parallel_agents, sequential_agents, or routing_decisions). Prevents unconditional strategy execution. |
+| **Compound SSE identifiers** | 77c649e | Frontend support for compound agent types (e.g., "financial_grp_0", "evidence_ungrouped_0"). Resolves to base AgentType for node matching. |
+
+### Production Hardening
+
+| Fix | Commits | Details |
+|-----|---------|---------|
+| **Orchestrator execution commit timing** | fc107f7, d223150 | Orchestrator execution committed to DB before domain agent launch to avoid FK constraint issues. |
+| **Domain runner exception handling** | ee3cb03 | Exceptions caught in domain agent runner so SSE error events are emitted for failed agents. |
+| **State snapshot refresh resilience** | cd0212a, 5b98aaa, 299b3d4 | lastResult included in state snapshots; handleAgentComplete and handleStateSnapshot merge lastResult to preserve accumulated traces and data across page refreshes. |
+| **DomainEntity.metadata schema** | 0f9ea6d, c305cd7 | Changed from dict[str, str] to list[MetadataEntry] for Gemini structured output compliance. MetadataEntry has key+value string fields. |
+| **Thinking traces UI** | 603875a | Dedicated thinking traces section in AgentDetailsPanel (frontend). |
+
+### Pipeline Bugfixes (Live Testing)
+
+| Bug | Commit | Root Cause → Fix |
+|-----|--------|------------------|
+| **Legal agent not dispatched** | b4d8160 | `compute_agent_tasks` used `grouped_file_ids: set[str]` which skipped all grouped files in ungrouped loop. Changed to `covered_pairs: set[tuple[str, str]]` tracking (file_id, agent_type) coverage, so per-file routing to additional agents (e.g., legal for case-report.pdf) is no longer silently dropped. |
+| **Strategy runs unconditionally** | 1971c7c | Strategy ran whenever any domain agent succeeded, ignoring orchestrator routing. Added `strategy_requested` gate checking routing_decisions, parallel_agents, and sequential_agents. |
+| **Triage parse warnings** | 918d301 | `extract_structured_json` iterated all event parts including thinking parts. Added `extract_response_texts()` which filters `part.thought=True`. Also consolidated triage's duplicate parser. |
+| **Routing decisions show first agent only** | fa594ef | `agents.py` and `sse.py` both used `rd.target_agents[0]` which dropped additional agents. Flattened to double loop: one card per (file, agent) pair with domain-specific scores. |
+| **JSON thinking traces unreadable** | bce0258 | Gemini multimodal thinking produces JSON blobs instead of natural language. Added `format_thinking_traces()` with `_normalize_thought_text()` and `_flatten_json_to_text()` for recursive JSON→text conversion. |
+
+### Updated Artifact List (post-plan additions)
+
+| Artifact | Provides |
+|----------|----------|
+| `backend/app/agents/domain_agent_runner.py` | DomainAgentRunner Template Method base class with run(), _attempt_model_loop(), _build_standard_content() |
+| `backend/app/agents/parsing.py` | extract_response_texts, extract_structured_json (refactored), format_thinking_traces, _normalize_thought_text, _flatten_json_to_text |
+| `backend/app/schemas/agent.py` | MetadataEntry model; DomainEntity.metadata changed to list[MetadataEntry] |
+
+### Updated Key Decisions (post-plan)
+
+| Decision | Chosen | Rationale |
+|----------|--------|-----------|
+| Domain agent architecture | DomainAgentRunner Template Method | Eliminates duplication; subclasses are ~30 lines each |
+| Routing HITL granularity | Per-agent-type rejection | User control over individual agent routing |
+| Strategy dispatch | Gated on orchestrator decision | Prevents wasted tokens when orchestrator doesn't request strategy |
+| compute_agent_tasks dedup | covered_pairs set[tuple] | Allows per-file routing to agents not covered by file groups |
+| Thinking trace display | JSON normalization | Gemini multimodal thinking often produces JSON; normalize for readability |
+
+---
+
+_Verified: 2026-02-06T01:30:00Z (initial)_
+_Post-verification addendum: 2026-02-06 (21 additional commits)_
 _Verifier: Claude (gsd-verifier)_

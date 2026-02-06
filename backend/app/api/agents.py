@@ -426,65 +426,103 @@ async def run_analysis_workflow(
                 # match exactly the tasks that will execute.
                 expected_tasks = compute_agent_tasks(orchestrator_output, files)
 
-                # ---- Routing HITL: review low-confidence routing decisions ----
-                rejected_file_ids: set[str] = set()
+                # ---- Routing HITL: per-agent-type confidence thresholds ----
+                # Step 1: Identify (file, agent) pairs below per-agent thresholds
+                skip_per_agent_hitl = True
+                flagged_pairs: list[dict[str, object]] = []
                 for rd in orchestrator_output.routing_decisions:
-                    if (
-                        rd.routing_confidence is not None
-                        and rd.routing_confidence
-                        < settings.routing_confidence_threshold
-                    ):
-                        logger.info(
-                            "Low routing confidence for file=%s (%s): "
-                            "confidence=%.1f, agents=%s, requesting HITL",
-                            rd.file_name or rd.file_id,
-                            rd.file_id,
-                            rd.routing_confidence,
-                            rd.target_agents,
-                        )
-                        routing_confirmation = await request_confirmation(
-                            case_id=case_id,
-                            agent_type="orchestrator",
-                            action_description=(
-                                f"Uncertain routing (confidence {rd.routing_confidence:.0f}/100): "
-                                f"Route '{rd.file_name or rd.file_id}' to {rd.target_agents}"
-                            ),
-                            affected_items=[rd.file_id],
-                            context={
-                                "file_id": rd.file_id,
-                                "file_name": rd.file_name,
-                                "target_agents": rd.target_agents,
-                                "routing_confidence": rd.routing_confidence,
-                                "reasoning": rd.reasoning,
-                                "domain_scores": rd.domain_scores.model_dump(),
-                            },
-                        )
-                        if not routing_confirmation.approved:
-                            rejected_file_ids.add(rd.file_id)
-                            logger.info(
-                                "Routing rejected by user for file=%s (reason: %s)",
-                                rd.file_id,
-                                routing_confirmation.reason,
+                    if rd.routing_confidence is None:
+                        continue
+                    for agent_type in rd.target_agents:
+                        threshold = settings.get_routing_hitl_threshold(agent_type)
+                        if rd.routing_confidence < threshold:
+                            flagged_pairs.append(
+                                {
+                                    "file_name": rd.file_name or rd.file_id,
+                                    "agent": agent_type,
+                                    "confidence": rd.routing_confidence,
+                                    "threshold": threshold,
+                                }
                             )
 
-                # Filter rejected files from routing and recompute tasks
-                if rejected_file_ids:
-                    orchestrator_output.routing_decisions = [
-                        rd
-                        for rd in orchestrator_output.routing_decisions
-                        if rd.file_id not in rejected_file_ids
+                # Step 2: Plan-level HITL overview when flagged pairs exist
+                if flagged_pairs:
+                    plan_confirmation = await request_confirmation(
+                        case_id=case_id,
+                        agent_type="orchestrator",
+                        action_description=(
+                            f"Routing plan ready. {len(flagged_pairs)} agent "
+                            f"assignment(s) flagged for review. Approve all or "
+                            f"review individually?"
+                        ),
+                        affected_items=[
+                            f"{p['file_name']} -> {p['agent']}" for p in flagged_pairs
+                        ],
+                        context={
+                            "total_decisions": len(
+                                orchestrator_output.routing_decisions
+                            ),
+                            "flagged_count": len(flagged_pairs),
+                            "flagged_pairs": flagged_pairs,
+                            "routing_summary": orchestrator_output.routing_summary,
+                        },
+                    )
+                    skip_per_agent_hitl = plan_confirmation.approved
+
+                # Step 3: Per-agent HITL (only if user chose to review individually)
+                if not skip_per_agent_hitl:
+                    for rd in orchestrator_output.routing_decisions:
+                        if rd.routing_confidence is None:
+                            continue
+                        agents_to_remove: list[str] = []
+                        for agent_type in rd.target_agents:
+                            threshold = settings.get_routing_hitl_threshold(agent_type)
+                            if rd.routing_confidence < threshold:
+                                confirmation = await request_confirmation(
+                                    case_id=case_id,
+                                    agent_type="orchestrator",
+                                    action_description=(
+                                        f"Deploy {agent_type} agent on "
+                                        f"'{rd.file_name or rd.file_id}'? "
+                                        f"(confidence: {rd.routing_confidence:.0f}/100)"
+                                    ),
+                                    affected_items=[rd.file_id],
+                                    context={
+                                        "file_id": rd.file_id,
+                                        "file_name": rd.file_name,
+                                        "agent_under_review": agent_type,
+                                        "all_target_agents": rd.target_agents,
+                                        "routing_confidence": rd.routing_confidence,
+                                        "hitl_threshold": threshold,
+                                        "reasoning": rd.reasoning,
+                                        "domain_scores": rd.domain_scores.model_dump(),
+                                    },
+                                )
+                                if not confirmation.approved:
+                                    agents_to_remove.append(agent_type)
+                        if agents_to_remove:
+                            rd.target_agents = [
+                                a for a in rd.target_agents if a not in agents_to_remove
+                            ]
+
+                # Step 4: Clean up empty routing decisions and file groups
+                orchestrator_output.routing_decisions = [
+                    rd
+                    for rd in orchestrator_output.routing_decisions
+                    if rd.target_agents
+                ]
+                for fg in orchestrator_output.file_groups:
+                    valid_agents: set[str] = set()
+                    for rd in orchestrator_output.routing_decisions:
+                        if rd.file_id in fg.file_ids:
+                            valid_agents.update(rd.target_agents)
+                    fg.target_agents = [
+                        a for a in fg.target_agents if a in valid_agents
                     ]
-                    orchestrator_output.file_groups = [
-                        fg
-                        for fg in orchestrator_output.file_groups
-                        if not all(fid in rejected_file_ids for fid in fg.file_ids)
-                    ]
-                    # Remove rejected file_ids from remaining groups
-                    for fg in orchestrator_output.file_groups:
-                        fg.file_ids = [
-                            fid for fid in fg.file_ids if fid not in rejected_file_ids
-                        ]
-                    expected_tasks = compute_agent_tasks(orchestrator_output, files)
+                orchestrator_output.file_groups = [
+                    fg for fg in orchestrator_output.file_groups if fg.target_agents
+                ]
+                expected_tasks = compute_agent_tasks(orchestrator_output, files)
 
                 # Emit agent-started for each expected (agent_type, group_label) pair
                 # Use compound identifier: "{agent_type}_{group_label}"

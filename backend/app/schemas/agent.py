@@ -185,6 +185,13 @@ class RoutingDecision(BaseModel):
         "Adapts the agent's analysis to the specific case type without requiring "
         "custom agent types. E.g., 'This is a patent infringement case. Focus on claims mapping.'",
     )
+    routing_confidence: float | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+        description="Orchestrator's confidence in this routing (0-100). "
+        "Low values trigger HITL review before agents deploy.",
+    )
 
 
 class FileGroupForProcessing(BaseModel):

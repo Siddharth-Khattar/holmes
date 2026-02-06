@@ -426,6 +426,66 @@ async def run_analysis_workflow(
                 # match exactly the tasks that will execute.
                 expected_tasks = compute_agent_tasks(orchestrator_output, files)
 
+                # ---- Routing HITL: review low-confidence routing decisions ----
+                rejected_file_ids: set[str] = set()
+                for rd in orchestrator_output.routing_decisions:
+                    if (
+                        rd.routing_confidence is not None
+                        and rd.routing_confidence
+                        < settings.routing_confidence_threshold
+                    ):
+                        logger.info(
+                            "Low routing confidence for file=%s (%s): "
+                            "confidence=%.1f, agents=%s, requesting HITL",
+                            rd.file_name or rd.file_id,
+                            rd.file_id,
+                            rd.routing_confidence,
+                            rd.target_agents,
+                        )
+                        routing_confirmation = await request_confirmation(
+                            case_id=case_id,
+                            agent_type="orchestrator",
+                            action_description=(
+                                f"Uncertain routing (confidence {rd.routing_confidence:.0f}/100): "
+                                f"Route '{rd.file_name or rd.file_id}' to {rd.target_agents}"
+                            ),
+                            affected_items=[rd.file_id],
+                            context={
+                                "file_id": rd.file_id,
+                                "file_name": rd.file_name,
+                                "target_agents": rd.target_agents,
+                                "routing_confidence": rd.routing_confidence,
+                                "reasoning": rd.reasoning,
+                                "domain_scores": rd.domain_scores.model_dump(),
+                            },
+                        )
+                        if not routing_confirmation.approved:
+                            rejected_file_ids.add(rd.file_id)
+                            logger.info(
+                                "Routing rejected by user for file=%s (reason: %s)",
+                                rd.file_id,
+                                routing_confirmation.reason,
+                            )
+
+                # Filter rejected files from routing and recompute tasks
+                if rejected_file_ids:
+                    orchestrator_output.routing_decisions = [
+                        rd
+                        for rd in orchestrator_output.routing_decisions
+                        if rd.file_id not in rejected_file_ids
+                    ]
+                    orchestrator_output.file_groups = [
+                        fg
+                        for fg in orchestrator_output.file_groups
+                        if not all(fid in rejected_file_ids for fid in fg.file_ids)
+                    ]
+                    # Remove rejected file_ids from remaining groups
+                    for fg in orchestrator_output.file_groups:
+                        fg.file_ids = [
+                            fid for fid in fg.file_ids if fid not in rejected_file_ids
+                        ]
+                    expected_tasks = compute_agent_tasks(orchestrator_output, files)
+
                 # Emit agent-started for each expected (agent_type, group_label) pair
                 # Use compound identifier: "{agent_type}_{group_label}"
                 domain_task_ids: dict[str, str] = {}  # compound_id -> task_id

@@ -59,6 +59,24 @@ to the specific case type without requiring custom agent types.
 
 Context injection appears as `context_injection` in each routing decision object (string or null).
 
+### 1c. Routing Confidence (Per Decision)
+For EACH routing decision, provide a `routing_confidence` score (0-100):
+- **90-100**: Clear-cut routing -- high domain scores, obvious match
+- **60-89**: Reasonable routing -- solid rationale, may benefit from review
+- **40-59**: Borderline routing -- ambiguous signals, multiple valid interpretations
+- **0-39**: Uncertain routing -- weak signals, conflicting indicators
+
+Low-confidence decisions (below 40) are flagged for human analyst review before \
+agents deploy. Be honest about uncertainty -- it is better to flag a borderline \
+decision than to silently route with false confidence.
+
+### 1d. Routing Bias Guidelines
+Apply domain-specific routing bias:
+- **Evidence**: Route liberally (low-cost forensic scrutiny, route when in doubt)
+- **Financial**: Route conservatively (only clear financial content -- transactions, valuations, account data)
+- **Legal**: Route conservatively (only clear legal content -- contracts, compliance, regulations, statutes)
+- **Strategy**: Route for strategy/planning documents and organizational playbooks
+
 ### 2. File Groupings
 Refine triage's suggested groupings and create processing groups:
 - Group related files that should be sent together for richer context.
@@ -138,7 +156,8 @@ Output ONLY the JSON object — no commentary, no preamble, no trailing text.
       "reasoning": "Financial report with contractual terms -- needs both financial deep-dive and legal review of referenced agreements.",
       "priority": "high",
       "domain_scores": {"financial": 85.0, "legal": 60.0, "strategy": 30.0, "evidence": 5.0},
-      "context_injection": "Financial report from Q3 2025 -- analyze in context of ongoing SEC investigation into accounting irregularities."
+      "context_injection": "Financial report from Q3 2025 -- analyze in context of ongoing SEC investigation into accounting irregularities.",
+      "routing_confidence": 85.0
     }
   ],
   "file_groups": [

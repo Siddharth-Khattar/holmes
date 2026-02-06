@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { clsx } from "clsx";
 
 import { api, ApiError } from "@/lib/api-client";
+import { onCaseDataChanged } from "@/lib/case-events";
 import type { Case, CaseStatus } from "@/types/case";
 import { Chatbot } from "@/components/app/chatbot";
 import { AnalysisTrigger } from "@/components/app/analysis-trigger";
@@ -78,6 +79,11 @@ export default function CaseLayout({
     };
   }, [caseData?.status, fetchCase]);
 
+  // Refetch when child pages modify case data (e.g. file uploads/deletions)
+  useEffect(() => {
+    return onCaseDataChanged(fetchCase);
+  }, [fetchCase]);
+
   const handleAnalysisStarted = useCallback(() => {
     fetchCase();
   }, [fetchCase]);
@@ -139,6 +145,7 @@ export default function CaseLayout({
             caseId={caseData.id}
             caseStatus={caseData.status}
             fileCount={caseData.file_count}
+            hasAnalysis={caseData.latest_workflow_id !== null}
             onAnalysisStarted={handleAnalysisStarted}
           />
         </div>

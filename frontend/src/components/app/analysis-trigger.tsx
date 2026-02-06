@@ -17,6 +17,7 @@ interface AnalysisTriggerProps {
   caseId: string;
   caseStatus: CaseStatus;
   fileCount: number;
+  hasAnalysis: boolean;
   onAnalysisStarted: () => void;
 }
 
@@ -24,6 +25,7 @@ export function AnalysisTrigger({
   caseId,
   caseStatus,
   fileCount,
+  hasAnalysis,
   onAnalysisStarted,
 }: AnalysisTriggerProps) {
   const router = useRouter();
@@ -90,8 +92,11 @@ export function AnalysisTrigger({
     );
   }
 
-  // DRAFT state: simple "Run Analysis" button
-  if (caseStatus === "DRAFT") {
+  // No prior analysis: simple "Run Analysis" button
+  // Show split button when the case has been analyzed before (any status)
+  const hasPriorAnalysis =
+    hasAnalysis || caseStatus === "READY" || caseStatus === "ERROR";
+  if (!hasPriorAnalysis) {
     return (
       <button
         onClick={() => handleStart("uploaded_only")}
@@ -112,7 +117,7 @@ export function AnalysisTrigger({
     );
   }
 
-  // READY or ERROR state: split button with dropdown
+  // Prior analysis exists: split button with dropdown for rerun options
   return (
     <div className="relative">
       <div

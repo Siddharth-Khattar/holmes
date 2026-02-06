@@ -654,34 +654,46 @@ async def run_analysis_workflow(
                 domain_summaries = build_strategy_context(domain_results)
             elif orchestrator_output and not any_domain_ran and strategy_files:
                 # Case 2: No domain agents ran but strategy has its own files.
-                # Confirm with user before running standalone.
-                standalone_confirmation = await request_confirmation(
-                    case_id=case_id,
-                    agent_type="strategy",
-                    action_description=(
-                        f"No domain agents produced results. Run strategy agent "
-                        f"standalone with {len(strategy_files)} file(s)?"
-                    ),
-                    affected_items=[str(f.id) for f in strategy_files],
-                    context={
-                        "strategy_file_count": len(strategy_files),
-                        "strategy_file_names": [
-                            f.original_filename for f in strategy_files
-                        ],
-                    },
+                # Distinguish deliberate strategy-only routing from domain agent failure.
+                domain_agent_types = frozenset({"financial", "legal", "evidence"})
+                domain_routing_intended = any(
+                    any(a in domain_agent_types for a in rd.target_agents)
+                    for rd in orchestrator_output.routing_decisions
                 )
-                if standalone_confirmation.approved:
+                if domain_routing_intended:
+                    # Domain agents were expected but all failed — ask user
+                    standalone_confirmation = await request_confirmation(
+                        case_id=case_id,
+                        agent_type="strategy",
+                        action_description=(
+                            f"Domain agents were routed but produced no results. "
+                            f"Run strategy agent standalone with "
+                            f"{len(strategy_files)} file(s)?"
+                        ),
+                        affected_items=[str(f.id) for f in strategy_files],
+                        context={
+                            "strategy_file_count": len(strategy_files),
+                            "strategy_file_names": [
+                                f.original_filename for f in strategy_files
+                            ],
+                            "domain_agents_expected": True,
+                        },
+                    )
+                    if standalone_confirmation.approved:
+                        run_strategy_agent = True
+                    else:
+                        logger.info(
+                            "Strategy standalone rejected for case=%s (reason: %s)",
+                            case_id,
+                            standalone_confirmation.reason,
+                        )
+                else:
+                    # Deliberate strategy-only routing — run directly
                     run_strategy_agent = True
                     logger.info(
-                        "Strategy standalone approved for case=%s with %d files",
+                        "Strategy-only routing (deliberate) for case=%s with %d files",
                         case_id,
                         len(strategy_files),
-                    )
-                else:
-                    logger.info(
-                        "Strategy standalone rejected for case=%s (reason: %s)",
-                        case_id,
-                        standalone_confirmation.reason,
                     )
 
             if run_strategy_agent:

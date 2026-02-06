@@ -18,8 +18,14 @@ from app.config import get_settings
 from app.database import get_db
 from app.models import Case, CaseFile
 from app.models.agent_execution import AgentExecution, AgentExecutionStatus
+from app.models.case import CaseStatus
 from app.models.file import FileStatus
-from app.schemas.agent import OrchestratorOutput, TriageOutput
+from app.schemas.agent import (
+    AnalysisMode,
+    AnalysisStartRequest,
+    OrchestratorOutput,
+    TriageOutput,
+)
 from app.schemas.common import ErrorResponse
 from app.services.agent_events import (
     emit_agent_complete,
@@ -946,6 +952,14 @@ async def run_analysis_workflow(
                 total_input_tokens=total_input_tokens,
                 total_output_tokens=total_output_tokens,
             )
+
+            # Update case status to READY on successful completion
+            case_result = await db.execute(select(Case).where(Case.id == UUID(case_id)))
+            completed_case = case_result.scalar_one_or_none()
+            if completed_case:
+                completed_case.status = CaseStatus.READY
+                await db.commit()
+
             logger.info(
                 "Pipeline complete case=%s workflow=%s files=%d "
                 "total_duration_s=%.2f entities=%d findings=%d",
@@ -966,16 +980,22 @@ async def run_analysis_workflow(
                 pipeline_duration_s,
                 exc,
             )
-            # Update file statuses to ERROR
+            # Update file statuses to ERROR and case status to ERROR
             try:
                 await db.execute(
                     update(CaseFile)
                     .where(CaseFile.id.in_([UUID(fid) for fid in file_ids]))
                     .values(status=FileStatus.ERROR)
                 )
+                case_result = await db.execute(
+                    select(Case).where(Case.id == UUID(case_id))
+                )
+                failed_case = case_result.scalar_one_or_none()
+                if failed_case:
+                    failed_case.status = CaseStatus.ERROR
                 await db.commit()
             except Exception:
-                logger.exception("Failed to update file statuses to ERROR")
+                logger.exception("Failed to update file/case statuses to ERROR")
 
             # Emit error event
             await emit_agent_error(
@@ -1000,6 +1020,7 @@ async def run_analysis_workflow(
         400: {"model": ErrorResponse, "description": "No files to analyze"},
         401: {"model": ErrorResponse, "description": "Unauthorized"},
         404: {"model": ErrorResponse, "description": "Case not found"},
+        409: {"model": ErrorResponse, "description": "Analysis already in progress"},
     },
 )
 async def start_analysis(
@@ -1007,10 +1028,15 @@ async def start_analysis(
     background_tasks: BackgroundTasks,
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
+    request_body: AnalysisStartRequest | None = None,
 ) -> AnalysisStartResponse:
-    """Start agent analysis for all uploaded files in a case.
+    """Start agent analysis for case files.
 
     Per CONTEXT.md: "Batch after uploads -- user explicitly starts analysis"
+
+    Supports two modes via the optional request body:
+    - uploaded_only (default): Process only files with UPLOADED status.
+    - rerun_all: Reset ANALYZED/ERROR files to UPLOADED first, then process all.
 
     This triggers:
     1. Triage Agent on all UPLOADED files
@@ -1023,6 +1049,8 @@ async def start_analysis(
     Returns workflow_id for tracking progress via the status endpoint
     or the Command Center SSE stream.
     """
+    mode = (request_body or AnalysisStartRequest()).mode
+
     # Validate case ownership
     case = await _get_user_case(db, case_id, current_user.id)
     if not case:
@@ -1031,7 +1059,26 @@ async def start_analysis(
             detail="Case not found",
         )
 
-    # Find all UPLOADED files in this case
+    # Concurrency guard: reject if analysis is already running
+    if case.status == CaseStatus.PROCESSING:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Analysis already in progress for this case.",
+        )
+
+    # Rerun mode: reset terminal-state files back to UPLOADED
+    if mode == AnalysisMode.RERUN_ALL:
+        await db.execute(
+            update(CaseFile)
+            .where(
+                CaseFile.case_id == case_id,
+                CaseFile.status.in_([FileStatus.ANALYZED, FileStatus.ERROR]),
+            )
+            .values(status=FileStatus.UPLOADED)
+        )
+        await db.commit()
+
+    # Find all UPLOADED files in this case (works for both modes)
     result = await db.execute(
         select(CaseFile).where(
             CaseFile.case_id == case_id,
@@ -1041,14 +1088,23 @@ async def start_analysis(
     files = list(result.scalars().all())
 
     if not files:
+        detail = (
+            "No uploaded files to analyze. Upload files first."
+            if mode == AnalysisMode.UPLOADED_ONLY
+            else "No files to rerun analysis on."
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No uploaded files to analyze. Upload files first.",
+            detail=detail,
         )
 
-    # Generate workflow ID
+    # Generate workflow ID and persist case state before scheduling
     workflow_id = uuid4()
     file_ids = [str(f.id) for f in files]
+
+    case.status = CaseStatus.PROCESSING
+    case.latest_workflow_id = workflow_id
+    await db.commit()
 
     # Schedule background analysis
     background_tasks.add_task(
@@ -1060,10 +1116,11 @@ async def start_analysis(
     )
 
     logger.info(
-        "Analysis started: case=%s workflow=%s files=%d",
+        "Analysis started: case=%s workflow=%s files=%d mode=%s",
         case_id,
         workflow_id,
         len(files),
+        mode.value,
     )
 
     return AnalysisStartResponse(

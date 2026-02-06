@@ -170,14 +170,17 @@ async def run_analysis_workflow(
     - processing-complete: When entire pipeline is done
     """
     # Import here to avoid circular dependency (agents -> services -> agents)
-    from app.agents.base import create_sse_publish_fn
+    from app.agents.base import CONFIDENCE_THRESHOLD, create_sse_publish_fn
     from app.agents.domain_runner import (
+        build_strategy_context,
         compute_agent_tasks,
         run_domain_agents_parallel,
     )
     from app.agents.orchestrator import run_orchestrator
+    from app.agents.strategy import run_strategy
     from app.agents.triage import run_triage
     from app.database import _get_sessionmaker
+    from app.services.confirmation import request_confirmation
 
     settings = get_settings()
     session_factory = _get_sessionmaker()
@@ -514,6 +517,187 @@ async def run_analysis_workflow(
                                 error=f"{agent_type} agent ({group_label}) failed to produce output",
                             )
 
+            # ---- Stage 4: Legal Strategy Agent (Sequential, after domain agents) ----
+            strategy_result = None
+            any_domain_ran = any(
+                any(r is not None for r, _label in result_list)
+                for result_list in domain_results.values()
+            )
+
+            if orchestrator_output and any_domain_ran:
+                logger.info(
+                    "Pipeline starting stage=strategy case=%s workflow=%s",
+                    case_id,
+                    workflow_id,
+                )
+
+                # Build text summaries of domain agent findings (handles multi-result structure)
+                domain_summaries = build_strategy_context(domain_results)
+
+                # Find strategy-routed files
+                strategy_file_ids: set[str] = set()
+                strategy_context_injection: str | None = None
+                for rd in orchestrator_output.routing_decisions:
+                    if "strategy" in rd.target_agents:
+                        strategy_file_ids.add(rd.file_id)
+                        # Use context_injection from the first strategy routing decision
+                        if strategy_context_injection is None and rd.context_injection:
+                            strategy_context_injection = rd.context_injection
+
+                file_lookup = {str(f.id): f for f in files}
+                strategy_files = [
+                    file_lookup[fid] for fid in strategy_file_ids if fid in file_lookup
+                ]
+
+                strategy_task_id = str(uuid4())
+                await emit_agent_started(
+                    case_id=case_id,
+                    agent_type="strategy",
+                    task_id=strategy_task_id,
+                    file_id=str(first_file.id),
+                    file_name="strategy-analysis",
+                )
+
+                strategy_result = await run_strategy(
+                    case_id=case_id,
+                    workflow_id=workflow_id,
+                    user_id=user_id,
+                    files=strategy_files,
+                    domain_summaries=domain_summaries,
+                    hypotheses=[],
+                    db_session=db,
+                    publish_event=publish_fn,
+                    parent_execution_id=orch_execution.id if orch_execution else None,
+                    context_injection=strategy_context_injection,
+                )
+
+                if strategy_result:
+                    # Query strategy execution for metadata
+                    strat_exec_result = await db.execute(
+                        select(AgentExecution)
+                        .where(
+                            AgentExecution.workflow_id == UUID(workflow_id),
+                            AgentExecution.agent_name == "strategy",
+                        )
+                        .order_by(AgentExecution.created_at.desc())
+                        .limit(1)
+                    )
+                    strat_exec = strat_exec_result.scalar_one_or_none()
+                    strat_metadata = (
+                        _build_execution_metadata(strat_exec, settings.gemini_pro_model)
+                        if strat_exec
+                        else {}
+                    )
+
+                    await emit_agent_complete(
+                        case_id=case_id,
+                        agent_type="strategy",
+                        task_id=strategy_task_id,
+                        result={
+                            "taskId": strategy_task_id,
+                            "agentType": "strategy",
+                            "outputs": [
+                                {
+                                    "type": "strategy-findings",
+                                    "data": {
+                                        "findingCount": len(strategy_result.findings),
+                                    },
+                                }
+                            ],
+                            "metadata": strat_metadata,
+                        },
+                    )
+                else:
+                    await emit_agent_error(
+                        case_id=case_id,
+                        agent_type="strategy",
+                        task_id=strategy_task_id,
+                        error="Strategy agent failed to produce output",
+                    )
+
+            # ---- Stage 5: HITL for Low-Confidence Findings ----
+            if domain_results:
+                for agent_type, result_list in domain_results.items():
+                    for result, group_label in result_list:
+                        if result is None or not hasattr(result, "findings"):
+                            continue
+                        for finding in result.findings:
+                            if finding.confidence < CONFIDENCE_THRESHOLD:
+                                logger.info(
+                                    "Low-confidence finding from %s (%s): %s "
+                                    "(confidence=%s), requesting HITL",
+                                    agent_type,
+                                    group_label,
+                                    finding.title,
+                                    finding.confidence,
+                                )
+                                confirmation_result = await request_confirmation(
+                                    case_id=case_id,
+                                    agent_type=agent_type,
+                                    action_description=(
+                                        f"Low-confidence finding "
+                                        f"({finding.confidence}/100): {finding.title}"
+                                    ),
+                                    affected_items=[
+                                        c.file_id for c in finding.citations
+                                    ],
+                                    context={
+                                        "finding_title": finding.title,
+                                        "finding_category": finding.category,
+                                        "finding_description": finding.description[
+                                            :500
+                                        ],
+                                        "confidence": finding.confidence,
+                                        "agent": agent_type,
+                                        "group_label": group_label,
+                                    },
+                                )
+                                if not confirmation_result.approved:
+                                    logger.info(
+                                        "Finding rejected by user: %s from %s/%s "
+                                        "(reason: %s)",
+                                        finding.title,
+                                        agent_type,
+                                        group_label,
+                                        confirmation_result.reason,
+                                    )
+                                    # Mark finding as rejected (for audit trail)
+                                    # Finding remains in output but excluded from KG in Phase 7
+
+            # Also check strategy results for HITL
+            if strategy_result and hasattr(strategy_result, "findings"):
+                for finding in strategy_result.findings:
+                    if finding.confidence < CONFIDENCE_THRESHOLD:
+                        logger.info(
+                            "Low-confidence finding from strategy: %s "
+                            "(confidence=%s), requesting HITL",
+                            finding.title,
+                            finding.confidence,
+                        )
+                        confirmation_result = await request_confirmation(
+                            case_id=case_id,
+                            agent_type="strategy",
+                            action_description=(
+                                f"Low-confidence finding "
+                                f"({finding.confidence}/100): {finding.title}"
+                            ),
+                            affected_items=[c.file_id for c in finding.citations],
+                            context={
+                                "finding_title": finding.title,
+                                "finding_category": finding.category,
+                                "finding_description": finding.description[:500],
+                                "confidence": finding.confidence,
+                                "agent": "strategy",
+                            },
+                        )
+                        if not confirmation_result.approved:
+                            logger.info(
+                                "Finding rejected by user: %s from strategy "
+                                "(reason: %s)",
+                                finding.title,
+                                confirmation_result.reason,
+                            )
+
             # ---- Final: Update file statuses to ANALYZED ----
             await db.execute(
                 update(CaseFile)
@@ -532,6 +716,10 @@ async def run_analysis_workflow(
                         total_findings += len(result.findings)
                     if result is not None and hasattr(result, "entities"):
                         total_domain_entities += len(result.entities)
+
+            # Also count strategy findings
+            if strategy_result and hasattr(strategy_result, "findings"):
+                total_findings += len(strategy_result.findings)
 
             total_entities = sum(len(fr.entities) for fr in triage_output.file_results)
             total_duration_s = time.monotonic() - pipeline_start

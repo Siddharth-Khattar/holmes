@@ -3,12 +3,13 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Play, Loader2, ChevronDown, RefreshCw, FilePlus2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { startAnalysis, ApiError, type AnalysisMode } from "@/lib/api/analysis";
+import { emitAnalysisReset } from "@/lib/case-events";
 import type { CaseStatus } from "@/types/case";
 
 type TriggerState = "idle" | "submitting" | "navigating";
@@ -32,6 +33,20 @@ export function AnalysisTrigger({
   const [triggerState, setTriggerState] = useState<TriggerState>("idle");
   const [showDropdown, setShowDropdown] = useState(false);
 
+  // Reset triggerState when caseStatus changes. After the user triggers
+  // analysis, triggerState transitions: idle → submitting → navigating.
+  // Once the layout poll picks up the new caseStatus (PROCESSING → READY/ERROR),
+  // reset to idle so the button becomes interactive again.
+  useEffect(() => {
+    if (triggerState !== "idle") {
+      setTriggerState("idle");
+    }
+    // Only reset when caseStatus changes — triggerState is intentionally
+    // omitted from the dependency array to avoid resetting during the
+    // idle → submitting → navigating flow within a single status.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [caseStatus]);
+
   const handleStart = useCallback(
     async (mode: AnalysisMode) => {
       if (triggerState !== "idle") return;
@@ -42,6 +57,7 @@ export function AnalysisTrigger({
       try {
         await startAnalysis(caseId, mode);
         setTriggerState("navigating");
+        emitAnalysisReset();
         onAnalysisStarted();
         router.push(`/cases/${caseId}/command-center`);
       } catch (error) {

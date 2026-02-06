@@ -315,7 +315,7 @@ class DomainEntity(BaseModel):
         le=100,
         description="Agent self-assessed confidence score (0-100)",
     )
-    metadata: dict[str, object] = Field(
+    metadata: dict[str, str] = Field(
         default_factory=dict,
         description="Domain-dependent metadata depth (e.g., currency for amounts, "
         "jurisdiction for statutes)",

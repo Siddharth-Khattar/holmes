@@ -149,10 +149,10 @@ class RoutingDomainScores(BaseModel):
     output schema stays compatible with constrained decoding.
     """
 
-    financial: float = Field(default=0.0, ge=0, le=100, description="Financial score")
-    legal: float = Field(default=0.0, ge=0, le=100, description="Legal score")
-    strategy: float = Field(default=0.0, ge=0, le=100, description="Strategy score")
-    evidence: float = Field(default=0.0, ge=0, le=100, description="Evidence score")
+    financial: float = Field(..., ge=0, le=100, description="Financial score")
+    legal: float = Field(..., ge=0, le=100, description="Legal score")
+    strategy: float = Field(..., ge=0, le=100, description="Strategy score")
+    evidence: float = Field(..., ge=0, le=100, description="Evidence score")
 
 
 class RoutingDecision(BaseModel):
@@ -176,7 +176,7 @@ class RoutingDecision(BaseModel):
         default="medium", description="Processing priority for this file"
     )
     domain_scores: RoutingDomainScores = Field(
-        default_factory=RoutingDomainScores,
+        ...,
         description="Triage domain scores carried forward for reference",
     )
     context_injection: str | None = Field(

@@ -1005,9 +1005,11 @@ async def get_analysis_status(
     if triage_exec and triage_exec.output_data:
         try:
             triage_result = TriageOutput.model_validate(triage_exec.output_data)
-        except Exception:
+        except (ValueError, TypeError) as exc:
             logger.warning(
-                "Failed to parse stored triage output for workflow=%s", workflow_id
+                "Failed to parse stored triage output for workflow=%s: %s",
+                workflow_id,
+                exc,
             )
 
     if orchestrator_exec and orchestrator_exec.output_data:
@@ -1015,10 +1017,11 @@ async def get_analysis_status(
             orchestrator_result = OrchestratorOutput.model_validate(
                 orchestrator_exec.output_data
             )
-        except Exception:
+        except (ValueError, TypeError) as exc:
             logger.warning(
-                "Failed to parse stored orchestrator output for workflow=%s",
+                "Failed to parse stored orchestrator output for workflow=%s: %s",
                 workflow_id,
+                exc,
             )
 
     # Build domain results summary (multi-execution-aware)

@@ -18,7 +18,7 @@ from app.agents.evidence import run_evidence
 from app.agents.financial import run_financial
 from app.agents.legal import run_legal
 from app.models.file import CaseFile
-from app.schemas.agent import OrchestratorOutput
+from app.schemas.agent import EvidenceOutput, OrchestratorOutput
 
 logger = logging.getLogger(__name__)
 
@@ -297,8 +297,8 @@ def build_strategy_context(
                 )
                 continue
 
-            # Extract findings from the result model
-            findings = getattr(result, "findings", [])
+            # Extract findings from the result model (all domain outputs have .findings)
+            findings = result.findings if hasattr(result, "findings") else []
             finding_count = len(findings)
 
             section_lines: list[str] = [
@@ -306,8 +306,12 @@ def build_strategy_context(
             ]
 
             if not findings:
-                # Check for no_findings_explanation
-                no_findings = getattr(result, "no_findings_explanation", None)
+                # All domain outputs have .no_findings_explanation
+                no_findings = (
+                    result.no_findings_explanation
+                    if hasattr(result, "no_findings_explanation")
+                    else None
+                )
                 if no_findings:
                     section_lines.append(f"No findings: {no_findings}")
                 else:
@@ -325,15 +329,17 @@ def build_strategy_context(
                         f"(confidence: {finding.confidence:.0f}): {first_sentence}"
                     )
 
-            # Add quality assessment for evidence agent
-            if agent_type == "evidence":
-                quality = getattr(result, "quality_assessment", None)
-                if quality is not None:
-                    section_lines.append(
-                        f"Quality Assessment: score={quality.overall_score:.0f}, "
-                        f"recommendation={quality.recommendation}, "
-                        f"corroboration={quality.corroboration_status}"
-                    )
+            # Add quality assessment for evidence agent (only EvidenceOutput has this field)
+            if (
+                isinstance(result, EvidenceOutput)
+                and result.quality_assessment is not None
+            ):
+                quality = result.quality_assessment
+                section_lines.append(
+                    f"Quality Assessment: score={quality.overall_score:.0f}, "
+                    f"recommendation={quality.recommendation}, "
+                    f"corroboration={quality.corroboration_status}"
+                )
 
             sections.append("\n".join(section_lines))
 

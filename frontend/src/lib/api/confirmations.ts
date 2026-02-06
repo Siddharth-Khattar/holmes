@@ -20,25 +20,21 @@ export interface BatchConfirmationResponse {
 }
 
 /**
- * Send a confirmation response (approve or reject) for a pending agent action.
- * Unblocks the backend pipeline waiting on user decision.
+ * Shared POST helper for confirmation endpoints.
+ * Handles error extraction from response body and JSON parsing.
  */
-export async function respondToConfirmation(
-  caseId: string,
-  requestId: string,
-  approved: boolean,
-  reason?: string,
-): Promise<ConfirmationResponse> {
-  const res = await fetch(
-    `${API_URL}/api/cases/${caseId}/confirmations/${requestId}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ approved, reason }),
-    },
-  );
+async function postConfirmation<T>(
+  url: string,
+  body: Record<string, unknown>,
+  errorPrefix: string,
+): Promise<T> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
   if (!res.ok) {
-    // Try to extract error detail from response body
     let errorDetail = `HTTP ${res.status}`;
     try {
       const errorBody = await res.json();
@@ -48,15 +44,31 @@ export async function respondToConfirmation(
     } catch {
       // Ignore JSON parse errors on error response
     }
-    throw new Error(`Confirmation failed: ${errorDetail}`);
+    throw new Error(`${errorPrefix}: ${errorDetail}`);
   }
 
-  // Safely parse JSON response
   try {
     return await res.json();
   } catch {
     throw new Error("Invalid response from server");
   }
+}
+
+/**
+ * Send a confirmation response (approve or reject) for a pending agent action.
+ * Unblocks the backend pipeline waiting on user decision.
+ */
+export async function respondToConfirmation(
+  caseId: string,
+  requestId: string,
+  approved: boolean,
+  reason?: string,
+): Promise<ConfirmationResponse> {
+  return postConfirmation<ConfirmationResponse>(
+    `${API_URL}/api/cases/${caseId}/confirmations/${requestId}`,
+    { approved, reason },
+    "Confirmation failed",
+  );
 }
 
 /**
@@ -68,30 +80,9 @@ export async function respondToBatchConfirmation(
   batchId: string,
   decisions: BatchDecision[],
 ): Promise<BatchConfirmationResponse> {
-  const res = await fetch(
+  return postConfirmation<BatchConfirmationResponse>(
     `${API_URL}/api/cases/${caseId}/confirmations/batch/${batchId}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decisions }),
-    },
+    { decisions },
+    "Batch confirmation failed",
   );
-  if (!res.ok) {
-    let errorDetail = `HTTP ${res.status}`;
-    try {
-      const errorBody = await res.json();
-      if (errorBody.detail) {
-        errorDetail = errorBody.detail;
-      }
-    } catch {
-      // Ignore JSON parse errors on error response
-    }
-    throw new Error(`Batch confirmation failed: ${errorDetail}`);
-  }
-
-  try {
-    return await res.json();
-  } catch {
-    throw new Error("Invalid response from server");
-  }
 }

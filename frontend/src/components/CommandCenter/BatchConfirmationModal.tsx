@@ -36,6 +36,46 @@ interface BatchConfirmationModalProps {
 }
 
 // -----------------------------------------------------------------------
+// Context field extraction (validates types from Record<string, unknown>)
+// -----------------------------------------------------------------------
+interface BatchItemContext {
+  agentUnderReview: string | undefined;
+  fileName: string | undefined;
+  confidence: number | undefined;
+  reasoning: string | undefined;
+}
+
+function extractItemContext(
+  context: Record<string, unknown> | undefined,
+): BatchItemContext {
+  if (!context) {
+    return {
+      agentUnderReview: undefined,
+      fileName: undefined,
+      confidence: undefined,
+      reasoning: undefined,
+    };
+  }
+
+  const agentUnderReview =
+    typeof context.agent_under_review === "string"
+      ? context.agent_under_review
+      : undefined;
+  const fileName =
+    typeof context.file_name === "string" ? context.file_name : undefined;
+  const reasoning =
+    typeof context.reasoning === "string" ? context.reasoning : undefined;
+
+  // Validate and clamp confidence to [0, 1]
+  let confidence: number | undefined;
+  if (typeof context.routing_confidence === "number") {
+    confidence = Math.max(0, Math.min(1, context.routing_confidence));
+  }
+
+  return { agentUnderReview, fileName, confidence, reasoning };
+}
+
+// -----------------------------------------------------------------------
 // Confidence indicator
 // -----------------------------------------------------------------------
 function ConfidenceBadge({ score }: { score: number }) {
@@ -88,12 +128,8 @@ function BatchItemRow({
 }: BatchItemRowProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const agentUnderReview = item.context?.agent_under_review as
-    | string
-    | undefined;
-  const fileName = item.context?.file_name as string | undefined;
-  const confidence = item.context?.routing_confidence as number | undefined;
-  const reasoning = item.context?.reasoning as string | undefined;
+  const { agentUnderReview, fileName, confidence, reasoning } =
+    extractItemContext(item.context);
 
   return (
     <div

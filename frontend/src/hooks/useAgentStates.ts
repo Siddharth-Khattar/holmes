@@ -1,12 +1,11 @@
 // ABOUTME: Custom hook managing agent state lifecycle for the Command Center.
-// ABOUTME: Handles SSE event processing, state transitions, and demo mode fallback.
+// ABOUTME: Handles SSE event processing, state transitions, and compound agent tracking.
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 
 import { useCommandCenterSSE } from "@/hooks/useCommandCenterSSE";
 import { AGENT_CONFIGS } from "@/lib/command-center-config";
 import { extractBaseAgentType } from "@/lib/command-center-validation";
-import { createDemoAgentStates } from "@/lib/mock-command-center-data";
 import type {
   AgentState,
   AgentStatus,
@@ -25,9 +24,6 @@ import type {
   ConfirmationBatchResolvedEvent,
   ToolCalledEvent,
 } from "@/types/command-center";
-
-/** Delay before activating demo mode when no SSE connection is established */
-const DEMO_MODE_DELAY_MS = 3000;
 
 /**
  * Maps backend execution status strings to frontend AgentStatus values.
@@ -78,10 +74,8 @@ export interface UseAgentStatesReturn {
  * - Processes SSE events (started, complete, error, processing-complete)
  * - Handles thinking-update events by appending traces to agent state
  * - Handles state-snapshot events for reconnection state restoration
- * - Tracks pending HITL confirmation requests
- * - Falls back to demo mode with mock data when backend is unavailable
- *
- * TODO: Remove demo mode fallback when backend SSE is fully integrated
+ * - Tracks concurrent compound agents (e.g. "financial_grp_0") per base type
+ * - Tracks pending HITL confirmation requests (single and batch)
  */
 export function useAgentStates(caseId: string): UseAgentStatesReturn {
   const [agentStates, setAgentStates] =
@@ -136,10 +130,12 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     const baseType = extractBaseAgentType(e.agentType);
     if (!baseType) return;
 
-    // Remove compound ID from tracking
+    // Remove compound ID from tracking; clean up empty sets to prevent stale accumulation
     const tracking = activeCompoundAgentsRef.current;
     tracking.get(baseType)?.delete(e.agentType);
-    const hasRemainingActive = (tracking.get(baseType)?.size ?? 0) > 0;
+    const remainingSet = tracking.get(baseType);
+    const hasRemainingActive = (remainingSet?.size ?? 0) > 0;
+    if (!hasRemainingActive) tracking.delete(baseType);
 
     setAgentStates((prev) => {
       const next = new Map(prev);
@@ -171,10 +167,12 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     const baseType = extractBaseAgentType(e.agentType);
     if (!baseType) return;
 
-    // Remove compound ID from tracking
+    // Remove compound ID from tracking; clean up empty sets to prevent stale accumulation
     const tracking = activeCompoundAgentsRef.current;
     tracking.get(baseType)?.delete(e.agentType);
-    const hasRemainingActive = (tracking.get(baseType)?.size ?? 0) > 0;
+    const remainingSet = tracking.get(baseType);
+    const hasRemainingActive = (remainingSet?.size ?? 0) > 0;
+    if (!hasRemainingActive) tracking.delete(baseType);
 
     setAgentStates((prev) => {
       const next = new Map(prev);
@@ -258,6 +256,9 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
 
   const handleStateSnapshot = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as StateSnapshotEvent;
+    // Snapshot is authoritative server state — reset compound tracking to avoid stale entries
+    activeCompoundAgentsRef.current.clear();
+
     setAgentStates((prev) => {
       const next = new Map(prev);
       for (const [agentName, agentData] of Object.entries(e.agents)) {
@@ -429,28 +430,6 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     onConfirmationBatchResolved: handleConfirmationBatchResolved,
     onToolCalled: handleToolCalled,
   });
-
-  // ------- Demo mode fallback -------
-  // TODO: Remove when backend SSE is fully integrated
-
-  const demoApplied = useRef(false);
-
-  useEffect(() => {
-    if (demoApplied.current) return;
-    const timer = setTimeout(() => {
-      if (!isConnected && !demoApplied.current) {
-        demoApplied.current = true;
-        setAgentStates(createDemoAgentStates());
-      }
-    }, DEMO_MODE_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [isConnected]);
-
-  useEffect(() => {
-    if (isConnected) {
-      demoApplied.current = false;
-    }
-  }, [isConnected]);
 
   return {
     agentStates,

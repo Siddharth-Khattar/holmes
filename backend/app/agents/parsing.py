@@ -94,6 +94,30 @@ def extract_thinking_traces(events: list[Event]) -> list[dict[str, object]]:
     return traces
 
 
+def extract_response_texts(events: list[Event]) -> list[str]:
+    """Extract non-thought text parts from the final response event.
+
+    Scans events in reverse to find the last final response, then returns
+    all non-thought text parts. Thinking/reasoning parts (part.thought=True)
+    are internal model deliberation and are excluded — use
+    extract_thinking_traces() for those.
+
+    Returns:
+        List of response text strings, empty if no response found.
+    """
+    for event in reversed(events):
+        if not event.is_final_response():
+            continue
+        if not event.content or not event.content.parts:
+            continue
+        texts = [
+            part.text for part in event.content.parts if part.text and not part.thought
+        ]
+        if texts:
+            return texts
+    return []
+
+
 def extract_structured_json[OutputT: BaseModel](
     events: list[Event],
     output_type: type[OutputT],
@@ -102,8 +126,9 @@ def extract_structured_json[OutputT: BaseModel](
     """Parse structured output from ADK events into a Pydantic model.
 
     Generic replacement for per-agent parse functions (parse_financial_output,
-    parse_legal_output, etc.). Scans events in reverse to find the final agent
-    response containing structured JSON output.
+    parse_legal_output, etc.). Delegates event traversal to
+    extract_response_texts() so that thinking parts are excluded,
+    then parses the response text as JSON.
 
     Args:
         events: List of ADK events from runner execution.
@@ -113,26 +138,25 @@ def extract_structured_json[OutputT: BaseModel](
     Returns:
         Parsed output model instance, or None if parsing fails.
     """
-    for event in reversed(events):
-        if not event.is_final_response():
-            continue
+    response_texts = extract_response_texts(events)
+    if not response_texts:
+        logger.error("No response text found for %s", agent_name)
+        return None
 
-        if event.content and event.content.parts:
-            for part in event.content.parts:
-                if part.text:
-                    json_str = extract_json_from_text(part.text)
-                    if json_str is None:
-                        continue
-                    try:
-                        data = json.loads(json_str)
-                        return output_type.model_validate(data)
-                    except (json.JSONDecodeError, ValueError, ValidationError) as exc:
-                        logger.warning(
-                            "Failed to parse %s output JSON: %s",
-                            agent_name,
-                            exc,
-                        )
-                        continue
+    for text in response_texts:
+        json_str = extract_json_from_text(text)
+        if json_str is None:
+            continue
+        try:
+            data = json.loads(json_str)
+            return output_type.model_validate(data)
+        except (json.JSONDecodeError, ValueError, ValidationError) as exc:
+            logger.warning(
+                "Failed to parse %s output JSON: %s",
+                agent_name,
+                exc,
+            )
+            continue
 
     logger.error("No valid %s output found in agent events", agent_name)
     return None

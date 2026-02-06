@@ -1,7 +1,6 @@
 # ABOUTME: Triage Agent implementation for initial file classification and entity extraction.
 # ABOUTME: Processes files via Gemini Flash and outputs structured TriageOutput with domain scores.
 
-import json
 import logging
 from datetime import UTC, datetime
 from uuid import UUID
@@ -13,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.base import PublishFn
 from app.agents.factory import AgentFactory
 from app.agents.parsing import (
-    extract_json_from_text,
+    extract_structured_json,
     extract_thinking_traces,
     extract_token_usage,
 )
@@ -58,48 +57,6 @@ class TriageAgent:
     def agent(self):
         """Access the underlying ADK LlmAgent."""
         return self._agent
-
-
-# ---------------------------------------------------------------------------
-# Output parsing
-# ---------------------------------------------------------------------------
-
-
-def parse_triage_output(events: list[Event]) -> TriageOutput | None:
-    """Parse TriageOutput from ADK events.
-
-    Scans events in reverse to find the final agent response containing
-    the structured JSON output.
-
-    Args:
-        events: List of ADK events from runner execution.
-
-    Returns:
-        Parsed TriageOutput, or None if parsing fails.
-    """
-    # Collect all text from the final response event(s)
-    for event in reversed(events):
-        if not event.is_final_response():
-            continue
-
-        if event.content and event.content.parts:
-            for part in event.content.parts:
-                if part.text:
-                    json_str = extract_json_from_text(part.text)
-                    if json_str is None:
-                        continue
-                    try:
-                        data = json.loads(json_str)
-                        return TriageOutput.model_validate(data)
-                    except (json.JSONDecodeError, ValueError) as exc:
-                        logger.warning(
-                            "Failed to parse triage output JSON: %s",
-                            exc,
-                        )
-                        continue
-
-    logger.error("No valid triage output found in agent events")
-    return None
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +174,9 @@ async def run_triage(
             total_output_tokens += attempt_out
             all_thinking_traces.extend(extract_thinking_traces(attempt_events))
 
-            triage_output = parse_triage_output(attempt_events)
+            triage_output = extract_structured_json(
+                attempt_events, TriageOutput, "triage"
+            )
             if triage_output is not None:
                 break
 

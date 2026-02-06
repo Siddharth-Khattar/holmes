@@ -1,9 +1,10 @@
 // ABOUTME: Custom hook managing agent state lifecycle for the Command Center.
 // ABOUTME: Handles SSE event processing, state transitions, and compound agent tracking.
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 import { useCommandCenterSSE } from "@/hooks/useCommandCenterSSE";
+import { onAnalysisReset } from "@/lib/case-events";
 import { AGENT_CONFIGS } from "@/lib/command-center-config";
 import { extractBaseAgentType } from "@/lib/command-center-validation";
 import type {
@@ -119,6 +120,21 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
   // Tracks active compound agent IDs per base type (e.g. "financial" → {"financial_grp_0", "financial_grp_1"}).
   // Prevents premature status transitions when multiple compound agents share a base type.
   const activeCompoundAgentsRef = useRef(new Map<AgentType, Set<string>>());
+
+  // Clears all accumulated state back to initial values. Called when a new
+  // analysis workflow starts so previous results don't bleed into the new run.
+  const resetState = useCallback(() => {
+    setAgentStates(createInitialStates());
+    setLastProcessingSummary(null);
+    setPendingConfirmations([]);
+    setPendingBatchConfirmations([]);
+    activeCompoundAgentsRef.current.clear();
+  }, []);
+
+  // Listen for analysis-reset events from the AnalysisTrigger component
+  useEffect(() => {
+    return onAnalysisReset(resetState);
+  }, [resetState]);
 
   // ------- SSE event handlers -------
 

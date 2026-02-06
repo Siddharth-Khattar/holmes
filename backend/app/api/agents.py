@@ -8,7 +8,7 @@ from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1104,7 +1104,7 @@ async def get_analysis_status(
     if triage_exec and triage_exec.output_data:
         try:
             triage_result = TriageOutput.model_validate(triage_exec.output_data)
-        except (ValueError, TypeError) as exc:
+        except (ValueError, ValidationError) as exc:
             logger.warning(
                 "Failed to parse stored triage output for workflow=%s: %s",
                 workflow_id,
@@ -1116,7 +1116,7 @@ async def get_analysis_status(
             orchestrator_result = OrchestratorOutput.model_validate(
                 orchestrator_exec.output_data
             )
-        except (ValueError, TypeError) as exc:
+        except (ValueError, ValidationError) as exc:
             logger.warning(
                 "Failed to parse stored orchestrator output for workflow=%s: %s",
                 workflow_id,

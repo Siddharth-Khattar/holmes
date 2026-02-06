@@ -321,13 +321,19 @@ function VideoViewer({
 
   const skipBack = useCallback(() => {
     if (videoRef.current) {
-      videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10);
+      videoRef.current.currentTime = Math.max(
+        0,
+        videoRef.current.currentTime - 10,
+      );
     }
   }, []);
 
   const skipForward = useCallback(() => {
     if (videoRef.current) {
-      videoRef.current.currentTime = Math.min(duration, videoRef.current.currentTime + 10);
+      videoRef.current.currentTime = Math.min(
+        duration,
+        videoRef.current.currentTime + 10,
+      );
     }
   }, [duration]);
 
@@ -514,21 +520,27 @@ function ImageViewer({
   };
   const handleRotate = () => setRotation((prev) => (prev + 90) % 360);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (zoom > 100) {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
-    }
-  }, [zoom, position]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (zoom > 100) {
+        setIsDragging(true);
+        setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+      }
+    },
+    [zoom, position],
+  );
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isDragging) {
-      setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y,
-      });
-    }
-  }, [isDragging, dragStart]);
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (isDragging) {
+        setPosition({
+          x: e.clientX - dragStart.x,
+          y: e.clientY - dragStart.y,
+        });
+      }
+    },
+    [isDragging, dragStart],
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -711,13 +723,19 @@ function AudioViewer({
 
   const skipBack = useCallback(() => {
     if (audioRef.current) {
-      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+      audioRef.current.currentTime = Math.max(
+        0,
+        audioRef.current.currentTime - 10,
+      );
     }
   }, []);
 
   const skipForward = useCallback(() => {
     if (audioRef.current) {
-      audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10);
+      audioRef.current.currentTime = Math.min(
+        duration,
+        audioRef.current.currentTime + 10,
+      );
     }
   }, [duration]);
 

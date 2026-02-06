@@ -52,10 +52,10 @@ resource "google_cloud_run_v2_service" "backend" {
         }
       }
 
-      # Frontend URL for JWKS endpoint - updated by CI/CD after frontend deploys
+      # Frontend URL for JWKS endpoint and CORS origin
       env {
         name  = "FRONTEND_URL"
-        value = ""
+        value = google_cloud_run_v2_service.frontend.uri
       }
 
       volume_mounts {

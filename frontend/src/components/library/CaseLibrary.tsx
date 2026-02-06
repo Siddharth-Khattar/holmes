@@ -29,7 +29,10 @@ import {
 } from "@/lib/api/files";
 import { useFileUpload, FileUploadProgress } from "@/hooks/useFileUpload";
 import { RedactModal } from "./RedactModal";
-import { EvidencePreviewModal, type EvidenceFileType } from "@/components/ui/evidence-viewer";
+import {
+  EvidencePreviewModal,
+  type EvidenceFileType,
+} from "@/components/ui/evidence-viewer";
 
 // Types for UI display
 type SupportedFileType = "pdf" | "video" | "audio" | "image";

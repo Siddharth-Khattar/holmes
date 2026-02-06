@@ -177,7 +177,7 @@ async def run_analysis_workflow(
     - processing-complete: When entire pipeline is done
     """
     # Import here to avoid circular dependency (agents -> services -> agents)
-    from app.agents.base import CONFIDENCE_THRESHOLD, create_sse_publish_fn
+    from app.agents.base import create_sse_publish_fn
     from app.agents.domain_runner import (
         build_strategy_context,
         compute_agent_tasks,
@@ -629,7 +629,7 @@ async def run_analysis_workflow(
                         if result is None or not hasattr(result, "findings"):
                             continue
                         for finding in result.findings:
-                            if finding.confidence < CONFIDENCE_THRESHOLD:
+                            if finding.confidence < settings.confidence_threshold:
                                 logger.info(
                                     "Low-confidence finding from %s (%s): %s "
                                     "(confidence=%s), requesting HITL",
@@ -674,7 +674,7 @@ async def run_analysis_workflow(
             # Also check strategy results for HITL
             if strategy_result and hasattr(strategy_result, "findings"):
                 for finding in strategy_result.findings:
-                    if finding.confidence < CONFIDENCE_THRESHOLD:
+                    if finding.confidence < settings.confidence_threshold:
                         logger.info(
                             "Low-confidence finding from strategy: %s "
                             "(confidence=%s), requesting HITL",

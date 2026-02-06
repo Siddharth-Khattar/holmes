@@ -39,11 +39,6 @@ _settings = get_settings()
 MODEL_FLASH: str = _settings.gemini_flash_model
 MODEL_PRO: str = _settings.gemini_pro_model
 
-# Low-confidence finding threshold for HITL confirmation triggers.
-# Findings with confidence below this value (0-100) require user review.
-# Configurable per deployment; not surfaced in UI.
-CONFIDENCE_THRESHOLD: int = 40
-
 
 # ---------------------------------------------------------------------------
 # Thinking planner factory

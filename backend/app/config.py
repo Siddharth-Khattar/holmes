@@ -58,6 +58,15 @@ class Settings(BaseSettings):
     # File size (bytes) above which to use Gemini File API instead of inline data
     file_api_threshold: int = 100_000_000
 
+    # --- Agent execution configuration ---
+    max_parse_retries: int = 1
+    confidence_threshold: int = 40
+    routing_confidence_threshold: int = 40
+    file_api_timeout_seconds: int = 300
+    file_api_initial_poll_interval: float = 2.0
+    file_api_max_poll_interval: float = 15.0
+    file_api_poll_backoff_multiplier: float = 1.5
+
     # --- SSE / Real-time configuration ---
     # Heartbeat interval for SSE connections to keep alive on Cloud Run (per REQ-INF-004)
     sse_heartbeat_interval_seconds: float = 15.0

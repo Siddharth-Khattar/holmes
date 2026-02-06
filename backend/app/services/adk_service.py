@@ -224,9 +224,10 @@ async def prepare_file_via_api(
         )
 
         # Wait for processing with timeout and backoff (needed for video/audio)
-        max_file_api_wait_s = 300  # 5 min
+        settings = get_settings()
+        max_file_api_wait_s = settings.file_api_timeout_seconds
         elapsed = 0.0
-        poll_interval = 2.0
+        poll_interval = settings.file_api_initial_poll_interval
         while uploaded.state and uploaded.state.name == "PROCESSING":
             if elapsed >= max_file_api_wait_s:
                 raise RuntimeError(
@@ -234,7 +235,10 @@ async def prepare_file_via_api(
                 )
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval
-            poll_interval = min(poll_interval * 1.5, 15.0)
+            poll_interval = min(
+                poll_interval * settings.file_api_poll_backoff_multiplier,
+                settings.file_api_max_poll_interval,
+            )
             # Type narrowing: uploaded.name is guaranteed non-None after successful upload
             file_name = uploaded.name
             if file_name is None:

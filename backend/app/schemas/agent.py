@@ -291,6 +291,17 @@ class Citation(BaseModel):
     )
 
 
+class MetadataEntry(BaseModel):
+    """Single key-value metadata pair for domain entities.
+
+    Replaces dict to avoid generating additionalProperties in JSON schema,
+    which the Gemini API rejects for structured output.
+    """
+
+    key: str = Field(..., description="Metadata key (e.g., 'currency', 'jurisdiction')")
+    value: str = Field(..., description="Metadata value")
+
+
 class DomainEntity(BaseModel):
     """Entity extracted by a domain agent.
 
@@ -315,8 +326,8 @@ class DomainEntity(BaseModel):
         le=100,
         description="Agent self-assessed confidence score (0-100)",
     )
-    metadata: dict[str, str] = Field(
-        default_factory=dict,
+    metadata: list[MetadataEntry] = Field(
+        default_factory=list,
         description="Domain-dependent metadata depth (e.g., currency for amounts, "
         "jurisdiction for statutes)",
     )

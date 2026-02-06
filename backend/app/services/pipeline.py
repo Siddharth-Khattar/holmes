@@ -279,6 +279,10 @@ async def run_analysis_workflow(
                 },
             )
 
+            # Commit so the triage execution record is visible to snapshot
+            # queries from reconnecting SSE clients during orchestrator execution.
+            await db.commit()
+
             # ---- Stage 2: Orchestrator ----
             triage_duration_s = time.monotonic() - triage_start
             logger.info(

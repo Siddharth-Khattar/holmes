@@ -255,7 +255,7 @@ async def run_domain_agents_parallel(
     failures = 0
 
     for item in results:
-        if isinstance(item, Exception):
+        if isinstance(item, BaseException):
             logger.error("Domain agent task failed with exception: %s", item)
             failures += 1
             continue

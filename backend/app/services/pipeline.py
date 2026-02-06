@@ -1,4 +1,4 @@
-# ABOUTME: Analysis pipeline orchestrator extracted from api/agents.py.
+# ABOUTME: Analysis pipeline orchestrator with session-per-stage architecture.
 # ABOUTME: Runs as a background task coordinating triage, orchestrator, domain agents, and strategy.
 
 import logging
@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel
 from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.parsing import format_thinking_traces
 from app.config import get_settings
@@ -62,6 +63,88 @@ def _build_execution_metadata(
         "model": model_name,
         "thinkingTraces": format_thinking_traces(execution.thinking_traces),
     }
+
+
+# ---------------------------------------------------------------------------
+# Session-scoped status helpers
+# ---------------------------------------------------------------------------
+
+
+async def _update_case_status(
+    session_factory: async_sessionmaker[AsyncSession],
+    case_id: str,
+    status: CaseStatus,
+) -> None:
+    """Update case status using a fresh, short-lived DB session."""
+    async with session_factory() as db:
+        await db.execute(
+            update(Case).where(Case.id == UUID(case_id)).values(status=status)
+        )
+        await db.commit()
+
+
+async def _ensure_case_not_stuck(
+    session_factory: async_sessionmaker[AsyncSession],
+    case_id: str,
+) -> None:
+    """Safety net: if case is still PROCESSING after pipeline exits, force to ERROR.
+
+    Called from the finally block to guarantee cases never get stuck in PROCESSING.
+    """
+    try:
+        async with session_factory() as db:
+            result = await db.execute(
+                select(Case.status).where(Case.id == UUID(case_id))
+            )
+            current = result.scalar_one_or_none()
+            if current == CaseStatus.PROCESSING:
+                logger.warning(
+                    "Safety net: forcing case %s from PROCESSING to ERROR", case_id
+                )
+                await db.execute(
+                    update(Case)
+                    .where(Case.id == UUID(case_id))
+                    .values(status=CaseStatus.ERROR)
+                )
+                await db.commit()
+    except Exception:
+        logger.exception("Safety net failed for case=%s", case_id)
+
+
+async def _handle_pipeline_error(
+    session_factory: async_sessionmaker[AsyncSession],
+    case_id: str,
+    file_ids: list[str],
+    workflow_id: str,
+    exc: BaseException,
+) -> None:
+    """Handle pipeline-level errors using a fresh DB session.
+
+    Updates file statuses to ERROR, case status to ERROR, and emits
+    an error SSE event.
+    """
+    try:
+        async with session_factory() as db:
+            await db.execute(
+                update(CaseFile)
+                .where(CaseFile.id.in_([UUID(fid) for fid in file_ids]))
+                .values(status=FileStatus.ERROR)
+            )
+            await db.execute(
+                update(Case)
+                .where(Case.id == UUID(case_id))
+                .values(status=CaseStatus.ERROR)
+            )
+            await db.commit()
+    except Exception:
+        logger.exception("Failed to update statuses to ERROR for case=%s", case_id)
+
+    await emit_agent_error(
+        case_id=case_id,
+        agent_type="pipeline",
+        task_id=workflow_id,
+        error=str(exc)[:500],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -577,6 +660,23 @@ async def run_analysis_workflow(
                                 error=f"{agent_type} agent ({group_label}) failed to produce output",
                             )
 
+                # Bug fix: emit agent-error for expected tasks that have no results.
+                # run_domain_agents_parallel may swallow BaseException, leaving
+                # compound IDs with no agent-complete/agent-error event.
+                covered_compound_ids: set[str] = set()
+                for agent_type, result_list in domain_results.items():
+                    for _, group_label in result_list:
+                        covered_compound_ids.add(f"{agent_type}_{group_label}")
+
+                for compound_id, task_id in domain_task_ids.items():
+                    if compound_id not in covered_compound_ids:
+                        await emit_agent_error(
+                            case_id=case_id,
+                            agent_type=compound_id,
+                            task_id=task_id,
+                            error=f"Agent {compound_id} did not return any result",
+                        )
+
             # ---- Stage 4: Legal Strategy Agent (Sequential, after domain agents) ----
             strategy_result = None
             any_domain_ran = any(
@@ -875,11 +975,7 @@ async def run_analysis_workflow(
             )
 
             # Update case status to READY on successful completion
-            case_result = await db.execute(select(Case).where(Case.id == UUID(case_id)))
-            completed_case = case_result.scalar_one_or_none()
-            if completed_case:
-                completed_case.status = CaseStatus.READY
-                await db.commit()
+            await _update_case_status(session_factory, case_id, CaseStatus.READY)
 
             logger.info(
                 "Pipeline complete case=%s workflow=%s files=%d "
@@ -901,27 +997,10 @@ async def run_analysis_workflow(
                 pipeline_duration_s,
                 exc,
             )
-            # Update file statuses to ERROR and case status to ERROR
-            try:
-                await db.execute(
-                    update(CaseFile)
-                    .where(CaseFile.id.in_([UUID(fid) for fid in file_ids]))
-                    .values(status=FileStatus.ERROR)
-                )
-                case_result = await db.execute(
-                    select(Case).where(Case.id == UUID(case_id))
-                )
-                failed_case = case_result.scalar_one_or_none()
-                if failed_case:
-                    failed_case.status = CaseStatus.ERROR
-                await db.commit()
-            except Exception:
-                logger.exception("Failed to update file/case statuses to ERROR")
-
-            # Emit error event
-            await emit_agent_error(
-                case_id=case_id,
-                agent_type="pipeline",
-                task_id=workflow_id,
-                error=str(exc)[:500],
+            await _handle_pipeline_error(
+                session_factory, case_id, file_ids, workflow_id, exc
             )
+        finally:
+            # Safety net: if case is still PROCESSING, force to ERROR.
+            # Guarantees cases never get permanently stuck.
+            await _ensure_case_not_stuck(session_factory, case_id)

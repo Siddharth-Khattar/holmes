@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-06
-**Current Phase:** 6 of 12 (Domain Agents) — IN PROGRESS
-**Current Plan:** 4 of 5 complete
+**Current Phase:** 6 of 12 (Domain Agents) — COMPLETE
+**Current Plan:** 5 of 5 complete
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -16,7 +16,7 @@
 | 4 | Core Agent System | COMPLETE | 2026-02-03 | 2026-02-03 | Verified 6/6 must-haves |
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
-| 6 | Domain Agents | IN_PROGRESS | 2026-02-06 | - | Plans 01-04 complete (schemas, factory, prompts, domain agents + parallel runner, strategy agent) |
+| 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans: schemas, factory, prompts, domain agents + parallel runner, strategy agent, pipeline wiring |
 | 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
@@ -31,16 +31,16 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 6 Plan 04** (2026-02-06): Strategy agent module
-  - strategy.py: StrategyAgent class, parse_strategy_output, _prepare_strategy_content, run_strategy
-  - Dual-input content preparation: own files (via build_domain_agent_content) + domain agent text summaries
-  - Consumes build_strategy_context() output from domain_runner.py as domain_summaries param
-  - Pro-to-Flash fallback, stage-isolated sessions, context_injection/stage_suffix consistency
-  - Graceful early return when no files AND no domain summaries
-  - Execution record tracks domain_summaries_length and has_own_files in input_data
+- **Phase 6 Plan 05** (2026-02-06): Pipeline wiring (final Phase 6 plan)
+  - Wired Stages 3-5 into run_analysis_workflow: domain agents, strategy, HITL
+  - SSE pre-emission via compute_agent_tasks (single source of truth from domain_runner)
+  - Compound SSE identifiers ({agent_type}_{group_label}) for multi-instance agents
+  - emit_agent_fallback helper for fallback warning events
+  - Status endpoint extended with domain_results_summary and domain_analysis stage
+  - Backward compatible: triage-only and triage+orchestrator flows preserved
 
 **What's next:**
-- Phase 6 Plan 05: End-to-end verification
+- Phase 7: Synthesis & Knowledge Graph (backend agents + APIs, connect to existing frontend)
 
 ---
 
@@ -315,6 +315,10 @@ All frontend features need these backend endpoints:
 | Fallback metadata storage | Separate field vs Nested in output_data | _metadata key in output_data JSONB | Avoids schema changes; metadata colocated with output |
 | Strategy no-files content | build_domain_agent_content vs text-only Content | text-only Content when files=[] | Strategy may run with only domain summaries; text-only avoids empty file preparation |
 | Strategy input_data tracking | Minimal vs Verbose | Verbose (domain_summaries_length + has_own_files) | Audit visibility into what strategy agent actually received |
+| SSE compound identifiers | Single agent_type vs Compound {type}_{group} | Compound {agent_type}_{group_label} | Supports multiple instances of same agent type in Command Center |
+| SSE pre-emission source | Inline file-group iteration vs compute_agent_tasks | compute_agent_tasks from domain_runner | Single source of truth; SSE events always match actual execution tasks |
+| Pipeline terminal stage | Orchestrator vs Strategy | Strategy completion | Strategy runs after parallel domain agents; marks pipeline as "complete" |
+| Pipeline failure scope | All failures fatal vs Pipeline-level only | Pipeline-level only (triage/orchestrator/pipeline) | Partial domain agent failures are expected and non-fatal |
 
 ---
 
@@ -327,7 +331,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 06-04-PLAN.md (strategy agent module)
+Stopped at: Completed 06-05-PLAN.md (pipeline wiring - Phase 6 complete)
 Resume file: None
 
 ---

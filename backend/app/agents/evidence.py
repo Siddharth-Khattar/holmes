@@ -1,7 +1,6 @@
 # ABOUTME: Evidence domain agent for assessing authenticity, chain of custody, and corroboration.
 # ABOUTME: Thin subclass of DomainAgentRunner with evidence-specific content preparation.
 
-import json
 import logging
 from uuid import UUID
 
@@ -14,7 +13,6 @@ from app.agents.domain_agent_runner import DomainAgentRunner
 from app.agents.factory import AgentFactory
 from app.models.file import CaseFile
 from app.schemas.agent import EvidenceOutput
-from app.services.adk_service import build_domain_agent_content
 
 logger = logging.getLogger(__name__)
 
@@ -70,23 +68,15 @@ class EvidenceAgentRunner(DomainAgentRunner[EvidenceOutput]):
         context_injection: str | None = None,
         **kwargs: object,
     ) -> types.Content:
-        prompt_parts: list[str] = []
-        if context_injection:
-            prompt_parts.append(f"--- CASE CONTEXT ---\n{context_injection}\n---\n")
-        prompt_parts.append(
-            "Analyze the following documents as physical/digital evidence. "
-            "Assess authenticity, chain of custody, and corroboration."
-        )
-        if hypotheses:
-            prompt_parts.append(
-                "\n\n--- EXISTING HYPOTHESES TO EVALUATE ---\n"
-                + json.dumps(hypotheses, indent=2)
-            )
-
-        return await build_domain_agent_content(
+        return await self._build_standard_content(
+            domain_prompt=(
+                "Analyze the following documents as physical/digital evidence. "
+                "Assess authenticity, chain of custody, and corroboration."
+            ),
             files=files,
             gcs_bucket=gcs_bucket,
-            prompt="\n".join(prompt_parts),
+            hypotheses=hypotheses,
+            context_injection=context_injection,
         )
 
 

@@ -1,7 +1,6 @@
 # ABOUTME: Financial domain agent for extracting transactions, anomalies, and account relationships.
 # ABOUTME: Thin subclass of DomainAgentRunner with financial-specific content preparation.
 
-import json
 import logging
 from uuid import UUID
 
@@ -14,7 +13,6 @@ from app.agents.domain_agent_runner import DomainAgentRunner
 from app.agents.factory import AgentFactory
 from app.models.file import CaseFile
 from app.schemas.agent import FinancialOutput
-from app.services.adk_service import build_domain_agent_content
 
 logger = logging.getLogger(__name__)
 
@@ -70,23 +68,15 @@ class FinancialAgentRunner(DomainAgentRunner[FinancialOutput]):
         context_injection: str | None = None,
         **kwargs: object,
     ) -> types.Content:
-        prompt_parts: list[str] = []
-        if context_injection:
-            prompt_parts.append(f"--- CASE CONTEXT ---\n{context_injection}\n---\n")
-        prompt_parts.append(
-            "Analyze the following documents for financial insights. "
-            "Extract transactions, amounts, anomalies, and account relationships."
-        )
-        if hypotheses:
-            prompt_parts.append(
-                "\n\n--- EXISTING HYPOTHESES TO EVALUATE ---\n"
-                + json.dumps(hypotheses, indent=2)
-            )
-
-        return await build_domain_agent_content(
+        return await self._build_standard_content(
+            domain_prompt=(
+                "Analyze the following documents for financial insights. "
+                "Extract transactions, amounts, anomalies, and account relationships."
+            ),
             files=files,
             gcs_bucket=gcs_bucket,
-            prompt="\n".join(prompt_parts),
+            hypotheses=hypotheses,
+            context_injection=context_injection,
         )
 
 

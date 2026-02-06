@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
@@ -23,7 +24,11 @@ from app.agents.parsing import (
 from app.config import get_settings
 from app.models.agent_execution import AgentExecution, AgentExecutionStatus
 from app.models.file import CaseFile
-from app.services.adk_service import create_stage_runner, get_or_create_stage_session
+from app.services.adk_service import (
+    build_domain_agent_content,
+    create_stage_runner,
+    get_or_create_stage_session,
+)
 from app.services.agent_events import emit_agent_fallback
 
 logger = logging.getLogger(__name__)
@@ -79,6 +84,48 @@ class DomainAgentRunner[OutputT: BaseModel](ABC):
         publish_fn: PublishFn | None,
     ) -> LlmAgent:
         """Create a fresh ADK LlmAgent instance for this agent type."""
+
+    # -- Shared content builder (used by Financial, Legal, Evidence) -----------
+
+    async def _build_standard_content(
+        self,
+        domain_prompt: str,
+        files: list[CaseFile],
+        gcs_bucket: str,
+        hypotheses: list[dict[str, object]],
+        context_injection: str | None = None,
+    ) -> types.Content:
+        """Build multimodal content with the standard domain agent pattern.
+
+        Shared by Financial, Legal, and Evidence agents which all follow the
+        same pattern: context injection + domain prompt + hypotheses + files.
+        Strategy overrides _prepare_content entirely and does not use this.
+
+        Args:
+            domain_prompt: Domain-specific analysis instruction text.
+            files: Case files to include as multimodal parts.
+            gcs_bucket: GCS bucket name for file downloads.
+            hypotheses: Existing hypotheses for evaluation.
+            context_injection: Case-specific framing from orchestrator.
+
+        Returns:
+            Multimodal Content with prompt and file parts.
+        """
+        prompt_parts: list[str] = []
+        if context_injection:
+            prompt_parts.append(f"--- CASE CONTEXT ---\n{context_injection}\n---\n")
+        prompt_parts.append(domain_prompt)
+        if hypotheses:
+            prompt_parts.append(
+                "\n\n--- EXISTING HYPOTHESES TO EVALUATE ---\n"
+                + json.dumps(hypotheses, indent=2)
+            )
+
+        return await build_domain_agent_content(
+            files=files,
+            gcs_bucket=gcs_bucket,
+            prompt="\n".join(prompt_parts),
+        )
 
     # -- Template method: run() -----------------------------------------------
 

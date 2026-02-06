@@ -174,10 +174,10 @@ async def run_analysis_workflow(
             await db.commit()
 
             # ---- Step 2: Load files for triage ----
-            result = await db.execute(
+            file_query = await db.execute(
                 select(CaseFile).where(CaseFile.id.in_([UUID(fid) for fid in file_ids]))
             )
-            files = list(result.scalars().all())
+            files = list(file_query.scalars().all())
 
             if not files:
                 logger.error(
@@ -554,20 +554,20 @@ async def run_analysis_workflow(
                 )
 
                 # Emit agent-complete/error for each agent instance
-                for agent_type, result_list in domain_results.items():
-                    for result, group_label in result_list:
-                        compound_id = f"{agent_type}_{group_label}"
+                for domain_agent, domain_run_list in domain_results.items():
+                    for domain_output, grp_label in domain_run_list:
+                        compound_id = f"{domain_agent}_{grp_label}"
                         task_id = domain_task_ids.get(compound_id, str(uuid4()))
 
-                        if result is not None:
+                        if domain_output is not None:
                             finding_count = (
-                                len(result.findings)
-                                if hasattr(result, "findings")
+                                len(domain_output.findings)
+                                if hasattr(domain_output, "findings")
                                 else 0
                             )
                             entity_count = (
-                                len(result.entities)
-                                if hasattr(result, "entities")
+                                len(domain_output.entities)
+                                if hasattr(domain_output, "entities")
                                 else 0
                             )
 
@@ -576,7 +576,7 @@ async def run_analysis_workflow(
                                 select(AgentExecution)
                                 .where(
                                     AgentExecution.workflow_id == UUID(workflow_id),
-                                    AgentExecution.agent_name == agent_type,
+                                    AgentExecution.agent_name == domain_agent,
                                 )
                                 .order_by(AgentExecution.created_at.desc())
                                 .limit(1)
@@ -597,15 +597,15 @@ async def run_analysis_workflow(
                                 result={
                                     "taskId": task_id,
                                     "agentType": compound_id,
-                                    "baseAgentType": agent_type,
-                                    "groupLabel": group_label,
+                                    "baseAgentType": domain_agent,
+                                    "groupLabel": grp_label,
                                     "outputs": [
                                         {
-                                            "type": f"{agent_type}-findings",
+                                            "type": f"{domain_agent}-findings",
                                             "data": {
                                                 "findingCount": finding_count,
                                                 "entityCount": entity_count,
-                                                "groupLabel": group_label,
+                                                "groupLabel": grp_label,
                                             },
                                         }
                                     ],
@@ -617,16 +617,16 @@ async def run_analysis_workflow(
                                 case_id=case_id,
                                 agent_type=compound_id,
                                 task_id=task_id,
-                                error=f"{agent_type} agent ({group_label}) failed to produce output",
+                                error=f"{domain_agent} agent ({grp_label}) failed to produce output",
                             )
 
                 # Bug fix: emit agent-error for expected tasks that have no results.
                 # run_domain_agents_parallel may swallow BaseException, leaving
                 # compound IDs with no agent-complete/agent-error event.
                 covered_compound_ids: set[str] = set()
-                for agent_type, result_list in domain_results.items():
-                    for _, group_label in result_list:
-                        covered_compound_ids.add(f"{agent_type}_{group_label}")
+                for domain_agent, domain_run_list in domain_results.items():
+                    for _, grp_label in domain_run_list:
+                        covered_compound_ids.add(f"{domain_agent}_{grp_label}")
 
                 for compound_id, task_id in domain_task_ids.items():
                     if compound_id not in covered_compound_ids:
@@ -640,8 +640,8 @@ async def run_analysis_workflow(
             # ---- Stage 4: Legal Strategy Agent (Sequential, after domain agents) ----
             strategy_result = None
             any_domain_ran = any(
-                any(r is not None for r, _label in result_list)
-                for result_list in domain_results.values()
+                any(r is not None for r, _ in run_list)
+                for run_list in domain_results.values()
             )
 
             # Identify strategy-routed files (needed for both standalone and domain-summary paths)
@@ -808,23 +808,25 @@ async def run_analysis_workflow(
 
             # ---- Stage 5: HITL for Low-Confidence Findings ----
             if domain_results:
-                for agent_type, result_list in domain_results.items():
-                    for result, group_label in result_list:
-                        if result is None or not hasattr(result, "findings"):
+                for domain_agent, domain_run_list in domain_results.items():
+                    for domain_output, grp_label in domain_run_list:
+                        if domain_output is None or not hasattr(
+                            domain_output, "findings"
+                        ):
                             continue
-                        for finding in result.findings:
+                        for finding in domain_output.findings:
                             if finding.confidence < settings.confidence_threshold:
                                 logger.info(
                                     "Low-confidence finding from %s (%s): %s "
                                     "(confidence=%s), requesting HITL",
-                                    agent_type,
-                                    group_label,
+                                    domain_agent,
+                                    grp_label,
                                     finding.title,
                                     finding.confidence,
                                 )
                                 confirmation_result = await request_confirmation(
                                     case_id=case_id,
-                                    agent_type=agent_type,
+                                    agent_type=domain_agent,
                                     action_description=(
                                         f"Low-confidence finding "
                                         f"({finding.confidence}/100): {finding.title}"
@@ -839,8 +841,8 @@ async def run_analysis_workflow(
                                             :500
                                         ],
                                         "confidence": finding.confidence,
-                                        "agent": agent_type,
-                                        "group_label": group_label,
+                                        "agent": domain_agent,
+                                        "group_label": grp_label,
                                     },
                                 )
                                 if not confirmation_result.approved:
@@ -848,8 +850,8 @@ async def run_analysis_workflow(
                                         "Finding rejected by user: %s from %s/%s "
                                         "(reason: %s)",
                                         finding.title,
-                                        agent_type,
-                                        group_label,
+                                        domain_agent,
+                                        grp_label,
                                         confirmation_result.reason,
                                     )
                                     # Mark finding as rejected (for audit trail)
@@ -901,12 +903,12 @@ async def run_analysis_workflow(
             # Count findings and entities across all domain agents (multi-result structure)
             total_findings = 0
             total_domain_entities = 0
-            for _agent_type, result_list in domain_results.items():
-                for result, _group_label in result_list:
-                    if result is not None and hasattr(result, "findings"):
-                        total_findings += len(result.findings)
-                    if result is not None and hasattr(result, "entities"):
-                        total_domain_entities += len(result.entities)
+            for _, domain_run_list in domain_results.items():
+                for domain_output, _ in domain_run_list:
+                    if domain_output is not None and hasattr(domain_output, "findings"):
+                        total_findings += len(domain_output.findings)
+                    if domain_output is not None and hasattr(domain_output, "entities"):
+                        total_domain_entities += len(domain_output.entities)
 
             # Also count strategy findings
             if strategy_result and hasattr(strategy_result, "findings"):

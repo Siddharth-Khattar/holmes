@@ -15,6 +15,7 @@ import {
   Check,
   Minus,
   Sparkles,
+  Eye,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { FileUpload } from "@/components/ui/file-upload";
@@ -28,6 +29,7 @@ import {
 } from "@/lib/api/files";
 import { useFileUpload, FileUploadProgress } from "@/hooks/useFileUpload";
 import { RedactModal } from "./RedactModal";
+import { EvidencePreviewModal, type EvidenceFileType } from "@/components/ui/evidence-viewer";
 
 // Types for UI display
 type SupportedFileType = "pdf" | "video" | "audio" | "image";
@@ -140,6 +142,9 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
   );
   const [isDeleting, setIsDeleting] = useState(false);
   const [redactModalFile, setRedactModalFile] = useState<LibraryFile | null>(
+    null,
+  );
+  const [previewModalFile, setPreviewModalFile] = useState<LibraryFile | null>(
     null,
   );
 
@@ -307,6 +312,26 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
       //   console.error("Failed to get file URL:", err);
       //   const mockUrl = getMockFileUrl(file.type);
       //   setRedactModalFile({ ...file, url: mockUrl });
+      // }
+    },
+    [getMockFileUrl],
+  );
+
+  const handlePreviewFile = useCallback(
+    async (file: LibraryFile) => {
+      // For demonstration, use mock URLs
+      // In production, this would fetch the actual file URL from the backend
+      const mockUrl = getMockFileUrl(file.type);
+      setPreviewModalFile({ ...file, url: mockUrl });
+
+      // TODO: Uncomment when backend is ready
+      // try {
+      //   const url = await getDownloadUrl(caseId, file.id);
+      //   setPreviewModalFile({ ...file, url });
+      // } catch (err) {
+      //   console.error("Failed to get file URL:", err);
+      //   const mockUrl = getMockFileUrl(file.type);
+      //   setPreviewModalFile({ ...file, url: mockUrl });
       // }
     },
     [getMockFileUrl],
@@ -929,6 +954,13 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-center space-x-2">
                         <button
+                          onClick={() => handlePreviewFile(file)}
+                          className="p-1.5 rounded hover:bg-warm-gray/12 dark:hover:bg-stone/15 transition-colors"
+                          title="Preview file"
+                        >
+                          <Eye className="w-4 h-4 text-blue-500" />
+                        </button>
+                        <button
                           onClick={() => handleRedactFile(file)}
                           className="p-1.5 rounded hover:bg-warm-gray/12 dark:hover:bg-stone/15 transition-colors"
                           title="Redact & Download"
@@ -970,6 +1002,18 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
             type: redactModalFile.type,
             url: redactModalFile.url,
           }}
+        />
+      )}
+
+      {/* Evidence Preview Modal */}
+      {previewModalFile && (
+        <EvidencePreviewModal
+          isOpen={!!previewModalFile}
+          onClose={() => setPreviewModalFile(null)}
+          url={previewModalFile.url}
+          type={previewModalFile.type as EvidenceFileType}
+          fileName={previewModalFile.name}
+          onDownload={() => handleDownloadFile(previewModalFile)}
         />
       )}
     </div>

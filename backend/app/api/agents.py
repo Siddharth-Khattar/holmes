@@ -65,6 +65,14 @@ class AnalysisStatusResponse(BaseModel):
         default=None, description="When the workflow completed"
     )
     error: str | None = Field(default=None, description="Error message if failed")
+    domain_results_summary: dict[str, list[dict[str, object]]] | None = Field(
+        default=None,
+        description=(
+            "Summary of domain agent findings per agent type. "
+            "Each agent type maps to a list of execution summaries (one per file group). "
+            "Each summary contains: group_label, finding_count, status."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -155,13 +163,12 @@ async def run_analysis_workflow(
     Steps:
     1. Update file statuses to QUEUED
     2. Stage 1: Run Triage Agent (fresh session, multimodal files)
-        -> Store TriageOutput in agent_executions table
     3. Stage 2: Run Orchestrator Agent (fresh session, text-only input)
-        -> Store RoutingDecisions in agent_executions table
-    4. (Future) Stage 3: Run Domain Agents (parallel fresh sessions)
-    5. (Future) Stage 4: Run Synthesis Agent (fresh session)
-    6. Update file statuses to ANALYZED
-    7. Emit processing-complete event
+    4. Stage 3: Run Domain Agents (file-group-based parallel fresh sessions)
+    5. Stage 4: Run Strategy Agent (sequential, receives domain summaries)
+    6. Stage 5: HITL for low-confidence findings
+    7. Update file statuses to ANALYZED
+    8. Emit processing-complete event
 
     SSE events emitted at each stage transition:
     - agent-started: When an agent within a stage starts
@@ -813,8 +820,10 @@ async def start_analysis(
     This triggers:
     1. Triage Agent on all UPLOADED files
     2. Orchestrator Agent with triage results
-    3. (Future) Domain agents based on routing
-    4. (Future) Synthesis agent for final output
+    3. Domain Agents (Financial, Legal, Evidence) based on routing
+    4. Strategy Agent with domain summaries
+    5. HITL confirmation for low-confidence findings
+    6. (Future) Synthesis agent for final output
 
     Returns workflow_id for tracking progress via the status endpoint
     or the Command Center SSE stream.
@@ -916,13 +925,22 @@ async def get_analysis_status(
         )
 
     # Determine current status from executions
+    domain_agent_names = frozenset({"financial", "legal", "evidence"})
     triage_exec = None
     orchestrator_exec = None
+    domain_execs: dict[str, list[AgentExecution]] = {}
+    strategy_exec: AgentExecution | None = None
     for exec_record in executions:
         if exec_record.agent_name == "triage":
             triage_exec = exec_record
         elif exec_record.agent_name == "orchestrator":
             orchestrator_exec = exec_record
+        elif exec_record.agent_name in domain_agent_names:
+            if exec_record.agent_name not in domain_execs:
+                domain_execs[exec_record.agent_name] = []
+            domain_execs[exec_record.agent_name].append(exec_record)
+        elif exec_record.agent_name == "strategy":
+            strategy_exec = exec_record
 
     # Determine pipeline status
     pipeline_status: Literal[
@@ -931,13 +949,44 @@ async def get_analysis_status(
     error_msg: str | None = None
     completed_at: datetime | None = None
 
-    if any(e.status == AgentExecutionStatus.FAILED for e in executions):
+    # Check for fatal pipeline-level failures (not individual agent failures
+    # which are expected to be partial and non-fatal)
+    pipeline_failed = any(
+        e.status == AgentExecutionStatus.FAILED
+        and e.agent_name in ("triage", "orchestrator", "pipeline")
+        for e in executions
+    )
+
+    if pipeline_failed:
         pipeline_status = "error"
-        failed = [e for e in executions if e.status == AgentExecutionStatus.FAILED]
+        failed = [
+            e
+            for e in executions
+            if e.status == AgentExecutionStatus.FAILED
+            and e.agent_name in ("triage", "orchestrator", "pipeline")
+        ]
         error_msg = failed[0].error_message if failed else "Unknown error"
-    elif (
-        orchestrator_exec and orchestrator_exec.status == AgentExecutionStatus.COMPLETED
+    elif strategy_exec and strategy_exec.status == AgentExecutionStatus.COMPLETED:
+        pipeline_status = "complete"
+        completed_at = strategy_exec.completed_at
+    elif (strategy_exec and strategy_exec.status == AgentExecutionStatus.RUNNING) or (
+        domain_execs
+        and any(
+            e.status == AgentExecutionStatus.RUNNING
+            for exec_list in domain_execs.values()
+            for e in exec_list
+        )
     ):
+        pipeline_status = "domain_analysis"
+    elif domain_execs and not strategy_exec:
+        # All domain agents completed but strategy not started yet
+        pipeline_status = "domain_analysis"
+    elif (
+        orchestrator_exec
+        and orchestrator_exec.status == AgentExecutionStatus.COMPLETED
+        and not domain_execs
+    ):
+        # Backward compat: orchestrator done, no domain agents -> complete
         pipeline_status = "complete"
         completed_at = orchestrator_exec.completed_at
     elif orchestrator_exec and orchestrator_exec.status == AgentExecutionStatus.RUNNING:
@@ -972,6 +1021,37 @@ async def get_analysis_status(
                 workflow_id,
             )
 
+    # Build domain results summary (multi-execution-aware)
+    domain_summary: dict[str, list[dict[str, object]]] | None = None
+    if domain_execs:
+        domain_summary = {}
+        for agent_name, exec_list in domain_execs.items():
+            domain_summary[agent_name] = []
+            for exec_record in exec_list:
+                finding_count = 0
+                group_label: str = "unknown"
+                if exec_record.input_data and isinstance(exec_record.input_data, dict):
+                    raw_suffix = exec_record.input_data.get("stage_suffix", "")
+                    group_label = (
+                        raw_suffix.lstrip("_")
+                        if isinstance(raw_suffix, str)
+                        else "default"
+                    ) or "default"
+                if exec_record.output_data and isinstance(
+                    exec_record.output_data, dict
+                ):
+                    findings = exec_record.output_data.get("findings", [])
+                    finding_count = len(findings) if isinstance(findings, list) else 0
+                domain_summary[agent_name].append(
+                    {
+                        "group_label": group_label,
+                        "finding_count": finding_count,
+                        "status": exec_record.status.value
+                        if exec_record.status
+                        else "unknown",
+                    }
+                )
+
     # Find earliest started_at
     started_at = min(e.started_at for e in executions)
 
@@ -984,4 +1064,5 @@ async def get_analysis_status(
         started_at=started_at,
         completed_at=completed_at,
         error=error_msg,
+        domain_results_summary=domain_summary,
     )

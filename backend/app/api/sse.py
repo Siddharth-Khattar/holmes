@@ -16,6 +16,7 @@ from fastapi import APIRouter
 from sqlalchemy import select
 from sse_starlette import EventSourceResponse
 
+from app.agents.parsing import format_thinking_traces
 from app.config import get_settings
 from app.services.agent_events import (
     AgentEventType,
@@ -191,7 +192,8 @@ def _build_snapshot_last_result(
                 },
             }
         ]
-        # Convert snake_case routing decisions to camelCase for frontend
+        # Convert snake_case routing decisions to camelCase for frontend.
+        # Flatten to one card per (file, agent) pair with domain-specific scores.
         if isinstance(decisions, list):
             routing_decisions_camel: list[dict[str, Any]] = []
             for rd in decisions:
@@ -199,19 +201,18 @@ def _build_snapshot_last_result(
                     continue
                 target_agents = rd.get("target_agents", [])
                 domain_scores = rd.get("domain_scores", {})
-                score_values = [
-                    domain_scores.get(k, 0)
-                    for k in ("financial", "legal", "strategy", "evidence")
-                    if isinstance(domain_scores.get(k, 0), (int, float))
-                ]
-                routing_decisions_camel.append(
-                    {
-                        "fileId": rd.get("file_id", ""),
-                        "targetAgent": target_agents[0] if target_agents else "unknown",
-                        "reason": rd.get("reasoning", ""),
-                        "domainScore": max(score_values) if score_values else 0,
-                    }
-                )
+                for agent in target_agents:
+                    score = domain_scores.get(agent, 0)
+                    if not isinstance(score, (int, float)):
+                        score = 0
+                    routing_decisions_camel.append(
+                        {
+                            "fileId": rd.get("file_id", ""),
+                            "targetAgent": agent,
+                            "reason": rd.get("reasoning", ""),
+                            "domainScore": score,
+                        }
+                    )
             result["routingDecisions"] = routing_decisions_camel
 
     elif agent_name == "strategy":
@@ -302,15 +303,6 @@ async def build_state_snapshot(case_id: str) -> dict[str, Any]:
                     delta = execution.completed_at - execution.started_at
                     duration_ms = int(delta.total_seconds() * 1000)
 
-                thinking_text = ""
-                if execution.thinking_traces:
-                    thinking_text = "\n".join(
-                        trace.get("thought", "")
-                        if isinstance(trace, dict)
-                        else str(trace)
-                        for trace in execution.thinking_traces
-                    )
-
                 metadata_dict: dict[str, Any] = {
                     "inputTokens": execution.input_tokens or 0,
                     "outputTokens": execution.output_tokens or 0,
@@ -326,7 +318,7 @@ async def build_state_snapshot(case_id: str) -> dict[str, Any]:
                         else None
                     ),
                     "model": execution.model_name,
-                    "thinkingTraces": thinking_text,
+                    "thinkingTraces": format_thinking_traces(execution.thinking_traces),
                 }
 
                 agent_entry: dict[str, Any] = {

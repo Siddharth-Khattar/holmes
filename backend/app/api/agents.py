@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agents.parsing import format_thinking_traces
 from app.api.auth import CurrentUser
 from app.config import get_settings
 from app.database import get_db
@@ -123,14 +124,6 @@ def _build_execution_metadata(
         delta = execution.completed_at - execution.started_at
         duration_ms = int(delta.total_seconds() * 1000)
 
-    # Join thinking traces into a single string for the frontend sidebar
-    thinking_text = ""
-    if execution.thinking_traces:
-        thinking_text = "\n".join(
-            trace.get("thought", "") if isinstance(trace, dict) else str(trace)
-            for trace in execution.thinking_traces
-        )
-
     return {
         "inputTokens": execution.input_tokens or 0,
         "outputTokens": execution.output_tokens or 0,
@@ -140,7 +133,7 @@ def _build_execution_metadata(
             execution.completed_at.isoformat() if execution.completed_at else None
         ),
         "model": model_name,
-        "thinkingTraces": thinking_text,
+        "thinkingTraces": format_thinking_traces(execution.thinking_traces),
     }
 
 
@@ -395,18 +388,12 @@ async def run_analysis_workflow(
                         "routingDecisions": [
                             {
                                 "fileId": rd.file_id,
-                                "targetAgent": rd.target_agents[0]
-                                if rd.target_agents
-                                else "unknown",
+                                "targetAgent": agent,
                                 "reason": rd.reasoning,
-                                "domainScore": max(
-                                    rd.domain_scores.financial,
-                                    rd.domain_scores.legal,
-                                    rd.domain_scores.strategy,
-                                    rd.domain_scores.evidence,
-                                ),
+                                "domainScore": getattr(rd.domain_scores, agent, 0),
                             }
                             for rd in orchestrator_output.routing_decisions
+                            for agent in rd.target_agents
                         ],
                         "metadata": orch_metadata,
                     },

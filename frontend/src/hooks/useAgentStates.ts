@@ -4,6 +4,12 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 
 import { useCommandCenterSSE } from "@/hooks/useCommandCenterSSE";
+import {
+  clearCachedAgentStates,
+  deserializeCachedTask,
+  loadCachedAgentStates,
+  persistAgentStates,
+} from "@/lib/agent-state-cache";
 import { onAnalysisReset } from "@/lib/case-events";
 import { AGENT_CONFIGS } from "@/lib/command-center-config";
 import { extractBaseAgentType } from "@/lib/command-center-validation";
@@ -121,15 +127,23 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
   // Prevents premature status transitions when multiple compound agents share a base type.
   const activeCompoundAgentsRef = useRef(new Map<AgentType, Set<string>>());
 
+  // Persist agent states to sessionStorage on every state change.
+  // Bridges the gap for agents whose execution records haven't been
+  // committed to the DB yet — the cache supplements the backend snapshot.
+  useEffect(() => {
+    persistAgentStates(caseId, agentStates, activeCompoundAgentsRef.current);
+  }, [caseId, agentStates]);
+
   // Clears all accumulated state back to initial values. Called when a new
   // analysis workflow starts so previous results don't bleed into the new run.
   const resetState = useCallback(() => {
+    clearCachedAgentStates(caseId);
     setAgentStates(createInitialStates());
     setLastProcessingSummary(null);
     setPendingConfirmations([]);
     setPendingBatchConfirmations([]);
     activeCompoundAgentsRef.current.clear();
-  }, []);
+  }, [caseId]);
 
   // Listen for analysis-reset events from the AnalysisTrigger component
   useEffect(() => {
@@ -265,8 +279,9 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
         totalOutputTokens: e.totalOutputTokens,
       });
 
-      // Clear compound agent tracking — pipeline is done
+      // Pipeline is done — clear compound tracking and cached states
       activeCompoundAgentsRef.current.clear();
+      clearCachedAgentStates(caseId);
 
       // Transition any agents still stuck in "processing" to "idle".
       // This handles cases where an agent-complete/agent-error event was
@@ -285,7 +300,7 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
         return next;
       });
     },
-    [],
+    [caseId],
   );
 
   const handleThinkingUpdate = useCallback((event: CommandCenterSSEEvent) => {
@@ -327,130 +342,187 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     });
   }, []);
 
-  const handleStateSnapshot = useCallback((event: CommandCenterSSEEvent) => {
-    const e = event as StateSnapshotEvent;
-    // Snapshot is authoritative server state — reset compound tracking to avoid stale entries
-    activeCompoundAgentsRef.current.clear();
+  const handleStateSnapshot = useCallback(
+    (event: CommandCenterSSEEvent) => {
+      const e = event as StateSnapshotEvent;
+      // Snapshot is authoritative server state — reset compound tracking to avoid stale entries
+      activeCompoundAgentsRef.current.clear();
 
-    setAgentStates((prev) => {
-      // Start from fresh initial states so agents NOT present in the
-      // snapshot revert to idle (authoritative). Previous approach of
-      // cloning `prev` caused stale processing states to persist.
-      const next = createInitialStates();
-      for (const [agentName, agentData] of Object.entries(e.agents)) {
-        // Validate agentData structure before using it
-        if (
-          typeof agentData !== "object" ||
-          agentData === null ||
-          typeof agentData.status !== "string"
-        ) {
-          console.warn(`Invalid agentData for ${agentName}, skipping`);
-          continue;
-        }
+      // Load cached states to supplement the snapshot for agents whose
+      // execution records haven't been committed to the DB yet.
+      const cached = loadCachedAgentStates(caseId);
 
-        // Resolve compound agent IDs to their base type
-        const baseType = extractBaseAgentType(agentName);
-        if (!baseType) {
-          console.warn(
-            `Unrecognized agent key in snapshot: ${agentName}, skipping`,
-          );
-          continue;
-        }
-
-        const freshState = next.get(baseType);
-        if (freshState) {
-          const frontendStatus = mapSnapshotStatus(agentData.status);
-          // Safely extract metadata with type checks
-          const meta = agentData.metadata;
-          const validatedMetadata =
-            meta && typeof meta === "object"
-              ? {
-                  inputTokens:
-                    typeof meta.inputTokens === "number"
-                      ? meta.inputTokens
-                      : undefined,
-                  outputTokens:
-                    typeof meta.outputTokens === "number"
-                      ? meta.outputTokens
-                      : undefined,
-                  durationMs:
-                    typeof meta.durationMs === "number"
-                      ? meta.durationMs
-                      : undefined,
-                  startedAt:
-                    typeof meta.startedAt === "string"
-                      ? meta.startedAt
-                      : undefined,
-                  completedAt:
-                    typeof meta.completedAt === "string"
-                      ? meta.completedAt
-                      : undefined,
-                  model:
-                    typeof meta.model === "string" ? meta.model : undefined,
-                  thinkingTraces:
-                    typeof meta.thinkingTraces === "string"
-                      ? meta.thinkingTraces
-                      : undefined,
-                }
-              : undefined;
-
-          // Build the snapshot lastResult, always injecting validatedMetadata
-          // so thinking traces from the execution-level metadata are never lost.
-          const snapshotResult: AgentResult = agentData.lastResult
-            ? {
-                ...(agentData.lastResult as AgentResult),
-                metadata: {
-                  ...(agentData.lastResult as AgentResult).metadata,
-                  ...validatedMetadata,
-                },
-              }
-            : {
-                taskId: "",
-                agentType: baseType,
-                outputs: [],
-                metadata: validatedMetadata,
-              };
-
-          // Synthesize a currentTask for processing agents so the sidebar
-          // shows task info and subsequent agent-complete events can produce
-          // proper processingHistory entries (avoids the currentTask guard).
-          const syntheticTask =
-            frontendStatus === "processing"
-              ? {
-                  taskId: "",
-                  fileId: "",
-                  fileName: agentName,
-                  startedAt:
-                    typeof meta?.startedAt === "string"
-                      ? new Date(meta.startedAt)
-                      : new Date(),
-                  status: "processing" as const,
-                }
-              : undefined;
-
-          // Track compound agent IDs for processing agents so that
-          // subsequent agent-complete events resolve compound tracking.
-          if (frontendStatus === "processing") {
-            const tracking = activeCompoundAgentsRef.current;
-            if (!tracking.has(baseType)) tracking.set(baseType, new Set());
-            tracking.get(baseType)!.add(agentName);
+      setAgentStates((prev) => {
+        // Start from fresh initial states so agents NOT present in the
+        // snapshot revert to idle (authoritative). Previous approach of
+        // cloning `prev` caused stale processing states to persist.
+        const next = createInitialStates();
+        for (const [agentName, agentData] of Object.entries(e.agents)) {
+          // Validate agentData structure before using it
+          if (
+            typeof agentData !== "object" ||
+            agentData === null ||
+            typeof agentData.status !== "string"
+          ) {
+            console.warn(`Invalid agentData for ${agentName}, skipping`);
+            continue;
           }
 
-          // Preserve processingHistory and lastResult from previous state
-          // while taking status and result authoritatively from server.
-          const prevState = prev.get(baseType);
-          next.set(baseType, {
-            ...freshState,
-            status: frontendStatus,
-            currentTask: syntheticTask,
-            processingHistory: prevState?.processingHistory ?? [],
-            lastResult: mergeAgentResult(snapshotResult, prevState?.lastResult),
-          });
+          // Resolve compound agent IDs to their base type
+          const baseType = extractBaseAgentType(agentName);
+          if (!baseType) {
+            console.warn(
+              `Unrecognized agent key in snapshot: ${agentName}, skipping`,
+            );
+            continue;
+          }
+
+          const freshState = next.get(baseType);
+          if (freshState) {
+            const frontendStatus = mapSnapshotStatus(agentData.status);
+            // Safely extract metadata with type checks
+            const meta = agentData.metadata;
+            const validatedMetadata =
+              meta && typeof meta === "object"
+                ? {
+                    inputTokens:
+                      typeof meta.inputTokens === "number"
+                        ? meta.inputTokens
+                        : undefined,
+                    outputTokens:
+                      typeof meta.outputTokens === "number"
+                        ? meta.outputTokens
+                        : undefined,
+                    durationMs:
+                      typeof meta.durationMs === "number"
+                        ? meta.durationMs
+                        : undefined,
+                    startedAt:
+                      typeof meta.startedAt === "string"
+                        ? meta.startedAt
+                        : undefined,
+                    completedAt:
+                      typeof meta.completedAt === "string"
+                        ? meta.completedAt
+                        : undefined,
+                    model:
+                      typeof meta.model === "string" ? meta.model : undefined,
+                    thinkingTraces:
+                      typeof meta.thinkingTraces === "string"
+                        ? meta.thinkingTraces
+                        : undefined,
+                  }
+                : undefined;
+
+            // Build the snapshot lastResult, always injecting validatedMetadata
+            // so thinking traces from the execution-level metadata are never lost.
+            const snapshotResult: AgentResult = agentData.lastResult
+              ? {
+                  ...(agentData.lastResult as AgentResult),
+                  metadata: {
+                    ...(agentData.lastResult as AgentResult).metadata,
+                    ...validatedMetadata,
+                  },
+                }
+              : {
+                  taskId: "",
+                  agentType: baseType,
+                  outputs: [],
+                  metadata: validatedMetadata,
+                };
+
+            // Synthesize a currentTask for processing agents so the sidebar
+            // shows task info and subsequent agent-complete events can produce
+            // proper processingHistory entries (avoids the currentTask guard).
+            const syntheticTask =
+              frontendStatus === "processing"
+                ? {
+                    taskId: "",
+                    fileId: "",
+                    fileName: agentName,
+                    startedAt:
+                      typeof meta?.startedAt === "string"
+                        ? new Date(meta.startedAt)
+                        : new Date(),
+                    status: "processing" as const,
+                  }
+                : undefined;
+
+            // Track compound agent IDs for processing agents so that
+            // subsequent agent-complete events resolve compound tracking.
+            if (frontendStatus === "processing") {
+              const tracking = activeCompoundAgentsRef.current;
+              if (!tracking.has(baseType)) tracking.set(baseType, new Set());
+              tracking.get(baseType)!.add(agentName);
+            }
+
+            // Preserve processingHistory and lastResult from previous state
+            // while taking status and result authoritatively from server.
+            const prevState = prev.get(baseType);
+            next.set(baseType, {
+              ...freshState,
+              status: frontendStatus,
+              currentTask: syntheticTask,
+              processingHistory: prevState?.processingHistory ?? [],
+              lastResult: mergeAgentResult(
+                snapshotResult,
+                prevState?.lastResult,
+              ),
+            });
+          }
         }
-      }
-      return next;
-    });
-  }, []);
+
+        // Supplement snapshot with cached processing states for agents whose
+        // execution records haven't been committed yet (the visibility gap).
+        // Only agents NOT mentioned in the snapshot are eligible.
+        if (cached) {
+          const snapshotBaseTypes = new Set<string>();
+          for (const agentName of Object.keys(e.agents)) {
+            const resolved = extractBaseAgentType(agentName);
+            if (resolved) snapshotBaseTypes.add(resolved);
+          }
+
+          for (const [agentKey, entry] of Object.entries(cached.agents)) {
+            if (entry.status !== "processing") continue;
+            if (snapshotBaseTypes.has(agentKey)) continue;
+
+            const baseType = agentKey as AgentType;
+            const currentState = next.get(baseType);
+            if (currentState && currentState.status === "idle") {
+              next.set(baseType, {
+                ...currentState,
+                status: "processing",
+                currentTask: entry.currentTask
+                  ? deserializeCachedTask(entry.currentTask)
+                  : undefined,
+              });
+            }
+          }
+
+          // Restore compound tracking for cached processing agents
+          for (const [baseType, compoundIds] of Object.entries(
+            cached.compoundTracking,
+          )) {
+            if (!snapshotBaseTypes.has(baseType) && compoundIds.length > 0) {
+              const agentType = baseType as AgentType;
+              const state = next.get(agentType);
+              if (state?.status === "processing") {
+                const tracking = activeCompoundAgentsRef.current;
+                if (!tracking.has(agentType))
+                  tracking.set(agentType, new Set());
+                for (const id of compoundIds) {
+                  tracking.get(agentType)!.add(id);
+                }
+              }
+            }
+          }
+        }
+
+        return next;
+      });
+    },
+    [caseId],
+  );
 
   const handleConfirmationRequired = useCallback(
     (event: CommandCenterSSEEvent) => {

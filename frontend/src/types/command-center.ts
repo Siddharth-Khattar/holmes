@@ -36,11 +36,15 @@ export interface RoutingDecision {
 
 export interface AgentResult {
   taskId: string;
-  agentType: AgentType;
+  agentType: string;
   outputs: AgentOutput[];
   routingDecisions?: RoutingDecision[];
   toolsCalled?: string[];
   metadata?: Record<string, unknown>;
+  /** Resolved base agent type (e.g. "financial" from "financial_grp_0") */
+  baseAgentType?: string;
+  /** Descriptive label for the compound agent group */
+  groupLabel?: string;
 }
 
 export interface AgentState {
@@ -64,9 +68,12 @@ export interface AgentConnection {
 }
 
 // SSE Event Types
+// Lifecycle events use `string` for agentType because the backend sends
+// compound agent IDs (e.g. "financial_grp_0"). Confirmation events keep
+// `AgentType` since the backend sends base types for those.
 export interface AgentStartedEvent {
   type: "agent-started";
-  agentType: AgentType;
+  agentType: string;
   taskId: string;
   fileId: string;
   fileName: string;
@@ -74,14 +81,14 @@ export interface AgentStartedEvent {
 
 export interface AgentCompleteEvent {
   type: "agent-complete";
-  agentType: AgentType;
+  agentType: string;
   taskId: string;
   result: AgentResult;
 }
 
 export interface AgentErrorEvent {
   type: "agent-error";
-  agentType: AgentType;
+  agentType: string;
   taskId: string;
   error: string;
 }
@@ -99,7 +106,7 @@ export interface ProcessingCompleteEvent {
 
 export interface ThinkingUpdateEvent {
   type: "thinking-update";
-  agentType: AgentType;
+  agentType: string;
   thought: string;
   timestamp?: string; // Optional: present in ADK callback events, may be absent in direct emissions
   tokenDelta?: {
@@ -148,7 +155,7 @@ export interface ConfirmationResolvedEvent {
 
 export interface ToolCalledEvent {
   type: "tool-called";
-  agentType: AgentType;
+  agentType: string;
   toolName: string;
   timestamp: string;
 }

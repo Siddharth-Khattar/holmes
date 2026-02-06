@@ -35,6 +35,32 @@ function isValidAgentType(value: unknown): value is AgentType {
 }
 
 /**
+ * Extracts the base AgentType from a compound agent ID (e.g. "financial_grp_0" → "financial").
+ * Returns the AgentType directly if it is already a base type, or null if unrecognized.
+ */
+export function extractBaseAgentType(agentId: string): AgentType | null {
+  // Direct match first
+  if (VALID_AGENT_TYPES.includes(agentId as AgentType)) {
+    return agentId as AgentType;
+  }
+  // Prefix match: check if agentId starts with "<baseType>_"
+  for (const baseType of VALID_AGENT_TYPES) {
+    if (agentId.startsWith(baseType + "_")) {
+      return baseType;
+    }
+  }
+  return null;
+}
+
+/**
+ * Validates that a value is a valid agent identifier — either a base AgentType
+ * or a compound agent ID that resolves to one (e.g. "financial_grp_0").
+ */
+function isValidAgentId(value: unknown): boolean {
+  return typeof value === "string" && extractBaseAgentType(value) !== null;
+}
+
+/**
  * Validates agent-started event
  */
 function validateAgentStartedEvent(data: unknown): data is AgentStartedEvent {
@@ -44,7 +70,7 @@ function validateAgentStartedEvent(data: unknown): data is AgentStartedEvent {
 
   return (
     event.type === "agent-started" &&
-    isValidAgentType(event.agentType) &&
+    isValidAgentId(event.agentType) &&
     typeof event.taskId === "string" &&
     typeof event.fileId === "string" &&
     typeof event.fileName === "string"
@@ -61,7 +87,7 @@ function validateAgentCompleteEvent(data: unknown): data is AgentCompleteEvent {
 
   if (
     event.type !== "agent-complete" ||
-    !isValidAgentType(event.agentType) ||
+    !isValidAgentId(event.agentType) ||
     typeof event.taskId !== "string"
   ) {
     return false;
@@ -73,7 +99,7 @@ function validateAgentCompleteEvent(data: unknown): data is AgentCompleteEvent {
 
   if (
     typeof result.taskId !== "string" ||
-    !isValidAgentType(result.agentType) ||
+    !isValidAgentId(result.agentType) ||
     !Array.isArray(result.outputs)
   ) {
     return false;
@@ -141,7 +167,7 @@ function validateAgentErrorEvent(data: unknown): data is AgentErrorEvent {
 
   return (
     event.type === "agent-error" &&
-    isValidAgentType(event.agentType) &&
+    isValidAgentId(event.agentType) &&
     typeof event.taskId === "string" &&
     typeof event.error === "string"
   );
@@ -200,7 +226,7 @@ function validateThinkingUpdateEvent(
   // timestamp is optional (present in ADK callbacks, may be absent in direct emissions)
   if (
     event.type !== "thinking-update" ||
-    !isValidAgentType(event.agentType) ||
+    !isValidAgentId(event.agentType) ||
     typeof event.thought !== "string"
   ) {
     return false;
@@ -358,7 +384,7 @@ function validateToolCalledEvent(data: unknown): data is ToolCalledEvent {
 
   return (
     event.type === "tool-called" &&
-    isValidAgentType(event.agentType) &&
+    isValidAgentId(event.agentType) &&
     typeof event.toolName === "string" &&
     typeof event.timestamp === "string"
   );

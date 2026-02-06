@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 
 import { useCommandCenterSSE } from "@/hooks/useCommandCenterSSE";
 import { AGENT_CONFIGS } from "@/lib/command-center-config";
+import { extractBaseAgentType } from "@/lib/command-center-validation";
 import { createDemoAgentStates } from "@/lib/mock-command-center-data";
 import type {
   AgentState,
@@ -86,15 +87,27 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     ConfirmationRequiredEvent[]
   >([]);
 
+  // Tracks active compound agent IDs per base type (e.g. "financial" → {"financial_grp_0", "financial_grp_1"}).
+  // Prevents premature status transitions when multiple compound agents share a base type.
+  const activeCompoundAgentsRef = useRef(new Map<AgentType, Set<string>>());
+
   // ------- SSE event handlers -------
 
   const handleAgentStarted = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as AgentStartedEvent;
+    const baseType = extractBaseAgentType(e.agentType);
+    if (!baseType) return;
+
+    // Track compound agent ID
+    const tracking = activeCompoundAgentsRef.current;
+    if (!tracking.has(baseType)) tracking.set(baseType, new Set());
+    tracking.get(baseType)!.add(e.agentType);
+
     setAgentStates((prev) => {
       const next = new Map(prev);
-      const state = next.get(e.agentType);
+      const state = next.get(baseType);
       if (state) {
-        next.set(e.agentType, {
+        next.set(baseType, {
           ...state,
           status: "processing",
           currentTask: {
@@ -112,19 +125,28 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
 
   const handleAgentComplete = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as AgentCompleteEvent;
+    const baseType = extractBaseAgentType(e.agentType);
+    if (!baseType) return;
+
+    // Remove compound ID from tracking
+    const tracking = activeCompoundAgentsRef.current;
+    tracking.get(baseType)?.delete(e.agentType);
+    const hasRemainingActive = (tracking.get(baseType)?.size ?? 0) > 0;
+
     setAgentStates((prev) => {
       const next = new Map(prev);
-      const state = next.get(e.agentType);
+      const state = next.get(baseType);
       if (state?.currentTask) {
         const completedTask = {
           ...state.currentTask,
           completedAt: new Date(),
           status: "complete" as const,
         };
-        next.set(e.agentType, {
+        next.set(baseType, {
           ...state,
-          status: "idle",
-          currentTask: undefined,
+          // Only transition to idle if no remaining active compound agents for this base type
+          status: hasRemainingActive ? "processing" : "idle",
+          currentTask: hasRemainingActive ? state.currentTask : undefined,
           lastResult: e.result,
           processingHistory: [completedTask, ...state.processingHistory].slice(
             0,
@@ -138,9 +160,17 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
 
   const handleAgentError = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as AgentErrorEvent;
+    const baseType = extractBaseAgentType(e.agentType);
+    if (!baseType) return;
+
+    // Remove compound ID from tracking
+    const tracking = activeCompoundAgentsRef.current;
+    tracking.get(baseType)?.delete(e.agentType);
+    const hasRemainingActive = (tracking.get(baseType)?.size ?? 0) > 0;
+
     setAgentStates((prev) => {
       const next = new Map(prev);
-      const state = next.get(e.agentType);
+      const state = next.get(baseType);
       if (state?.currentTask) {
         const errorTask = {
           ...state.currentTask,
@@ -148,10 +178,11 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
           status: "error" as const,
           error: e.error,
         };
-        next.set(e.agentType, {
+        next.set(baseType, {
           ...state,
-          status: "error",
-          currentTask: undefined,
+          // Only transition to error if no remaining active compound agents
+          status: hasRemainingActive ? "processing" : "error",
+          currentTask: hasRemainingActive ? state.currentTask : undefined,
           processingHistory: [errorTask, ...state.processingHistory].slice(
             0,
             5,
@@ -180,10 +211,12 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
 
   const handleThinkingUpdate = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as ThinkingUpdateEvent;
-    const agentType = e.agentType;
+    const baseType = extractBaseAgentType(e.agentType);
+    if (!baseType) return;
+
     setAgentStates((prev) => {
       const next = new Map(prev);
-      const state = next.get(agentType);
+      const state = next.get(baseType);
       if (state) {
         // Validate existing traces is actually a string before concatenation
         const rawTraces = state.lastResult?.metadata?.thinkingTraces;
@@ -196,12 +229,12 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
         if (updatedTraces.length > MAX_TRACES_LENGTH) {
           updatedTraces = updatedTraces.slice(-MAX_TRACES_LENGTH);
         }
-        next.set(agentType, {
+        next.set(baseType, {
           ...state,
           lastResult: {
             ...(state.lastResult || {
               taskId: "",
-              agentType,
+              agentType: baseType,
               outputs: [],
             }),
             metadata: {
@@ -230,8 +263,16 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
           continue;
         }
 
-        const agentType = agentName as AgentType;
-        const existingState = next.get(agentType);
+        // Resolve compound agent IDs to their base type
+        const baseType = extractBaseAgentType(agentName);
+        if (!baseType) {
+          console.warn(
+            `Unrecognized agent key in snapshot: ${agentName}, skipping`,
+          );
+          continue;
+        }
+
+        const existingState = next.get(baseType);
         if (existingState) {
           const frontendStatus = mapSnapshotStatus(agentData.status);
           // Safely extract metadata with type checks
@@ -268,12 +309,12 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
                 }
               : undefined;
 
-          next.set(agentType, {
+          next.set(baseType, {
             ...existingState,
             status: frontendStatus,
             lastResult: agentData.lastResult || {
               taskId: "",
-              agentType,
+              agentType: baseType,
               outputs: [],
               metadata: validatedMetadata,
             },
@@ -304,10 +345,12 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
 
   const handleToolCalled = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as ToolCalledEvent;
-    const agentType = e.agentType;
+    const baseType = extractBaseAgentType(e.agentType);
+    if (!baseType) return;
+
     setAgentStates((prev) => {
       const next = new Map(prev);
-      const state = next.get(agentType);
+      const state = next.get(baseType);
       if (state) {
         // Add tool to the list of tools called for this agent
         const existingTools = state.lastResult?.toolsCalled || [];
@@ -317,12 +360,12 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
           ? existingTools
           : [...existingTools, e.toolName].slice(-MAX_TOOLS_TRACKED);
 
-        next.set(agentType, {
+        next.set(baseType, {
           ...state,
           lastResult: {
             ...(state.lastResult || {
               taskId: "",
-              agentType,
+              agentType: baseType,
               outputs: [],
             }),
             toolsCalled: updatedTools,

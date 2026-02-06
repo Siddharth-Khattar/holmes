@@ -21,6 +21,8 @@ import type {
   StateSnapshotEvent,
   ConfirmationRequiredEvent,
   ConfirmationResolvedEvent,
+  ConfirmationBatchRequiredEvent,
+  ConfirmationBatchResolvedEvent,
   ToolCalledEvent,
 } from "@/types/command-center";
 
@@ -63,6 +65,9 @@ export interface UseAgentStatesReturn {
   agentStates: Map<AgentType, AgentState>;
   lastProcessingSummary: ProcessingSummary | null;
   pendingConfirmations: ConfirmationRequiredEvent[];
+  pendingBatchConfirmations: ConfirmationBatchRequiredEvent[];
+  removePendingConfirmation: (taskId: string) => void;
+  removePendingBatchConfirmation: (batchId: string) => void;
   isConnected: boolean;
   isReconnecting: boolean;
 }
@@ -85,6 +90,9 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     useState<ProcessingSummary | null>(null);
   const [pendingConfirmations, setPendingConfirmations] = useState<
     ConfirmationRequiredEvent[]
+  >([]);
+  const [pendingBatchConfirmations, setPendingBatchConfirmations] = useState<
+    ConfirmationBatchRequiredEvent[]
   >([]);
 
   // Tracks active compound agent IDs per base type (e.g. "financial" → {"financial_grp_0", "financial_grp_1"}).
@@ -343,6 +351,35 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     [],
   );
 
+  const handleConfirmationBatchRequired = useCallback(
+    (event: CommandCenterSSEEvent) => {
+      const e = event as ConfirmationBatchRequiredEvent;
+      setPendingBatchConfirmations((prev) => [...prev, e]);
+    },
+    [],
+  );
+
+  const handleConfirmationBatchResolved = useCallback(
+    (event: CommandCenterSSEEvent) => {
+      const e = event as ConfirmationBatchResolvedEvent;
+      setPendingBatchConfirmations((prev) =>
+        prev.filter((c) => c.batchId !== e.batchId),
+      );
+    },
+    [],
+  );
+
+  // Optimistic removal functions for immediate UI feedback before SSE round-trip
+  const removePendingConfirmation = useCallback((taskId: string) => {
+    setPendingConfirmations((prev) => prev.filter((c) => c.taskId !== taskId));
+  }, []);
+
+  const removePendingBatchConfirmation = useCallback((batchId: string) => {
+    setPendingBatchConfirmations((prev) =>
+      prev.filter((c) => c.batchId !== batchId),
+    );
+  }, []);
+
   const handleToolCalled = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as ToolCalledEvent;
     const baseType = extractBaseAgentType(e.agentType);
@@ -388,6 +425,8 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     onStateSnapshot: handleStateSnapshot,
     onConfirmationRequired: handleConfirmationRequired,
     onConfirmationResolved: handleConfirmationResolved,
+    onConfirmationBatchRequired: handleConfirmationBatchRequired,
+    onConfirmationBatchResolved: handleConfirmationBatchResolved,
     onToolCalled: handleToolCalled,
   });
 
@@ -417,6 +456,9 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     agentStates,
     lastProcessingSummary,
     pendingConfirmations,
+    pendingBatchConfirmations,
+    removePendingConfirmation,
+    removePendingBatchConfirmation,
     isConnected,
     isReconnecting,
   };

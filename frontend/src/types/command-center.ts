@@ -160,6 +160,28 @@ export interface ToolCalledEvent {
   timestamp: string;
 }
 
+export interface ConfirmationBatchItem {
+  item_id: string;
+  action_description: string;
+  affected_items?: string[];
+  context?: Record<string, unknown>;
+}
+
+export interface ConfirmationBatchRequiredEvent {
+  type: "confirmation-batch-required";
+  agentType: AgentType;
+  batchId: string;
+  items: ConfirmationBatchItem[];
+  context?: Record<string, unknown>;
+}
+
+export interface ConfirmationBatchResolvedEvent {
+  type: "confirmation-batch-resolved";
+  batchId: string;
+  agentType: AgentType;
+  resolvedCount: number;
+}
+
 export type CommandCenterSSEEvent =
   | AgentStartedEvent
   | AgentCompleteEvent
@@ -169,6 +191,8 @@ export type CommandCenterSSEEvent =
   | StateSnapshotEvent
   | ConfirmationRequiredEvent
   | ConfirmationResolvedEvent
+  | ConfirmationBatchRequiredEvent
+  | ConfirmationBatchResolvedEvent
   | ToolCalledEvent;
 
 // Agent Configuration

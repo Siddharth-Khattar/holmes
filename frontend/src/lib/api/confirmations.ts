@@ -8,6 +8,17 @@ export interface ConfirmationResponse {
   approved: boolean;
 }
 
+export interface BatchDecision {
+  item_id: string;
+  approved: boolean;
+  reason?: string;
+}
+
+export interface BatchConfirmationResponse {
+  status: string;
+  resolved_count: number;
+}
+
 /**
  * Send a confirmation response (approve or reject) for a pending agent action.
  * Unblocks the backend pipeline waiting on user decision.
@@ -41,6 +52,43 @@ export async function respondToConfirmation(
   }
 
   // Safely parse JSON response
+  try {
+    return await res.json();
+  } catch {
+    throw new Error("Invalid response from server");
+  }
+}
+
+/**
+ * Send batch confirmation decisions for a set of pending agent actions.
+ * Each item in the batch can be individually approved or rejected.
+ */
+export async function respondToBatchConfirmation(
+  caseId: string,
+  batchId: string,
+  decisions: BatchDecision[],
+): Promise<BatchConfirmationResponse> {
+  const res = await fetch(
+    `${API_URL}/api/cases/${caseId}/confirmations/batch/${batchId}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decisions }),
+    },
+  );
+  if (!res.ok) {
+    let errorDetail = `HTTP ${res.status}`;
+    try {
+      const errorBody = await res.json();
+      if (errorBody.detail) {
+        errorDetail = errorBody.detail;
+      }
+    } catch {
+      // Ignore JSON parse errors on error response
+    }
+    throw new Error(`Batch confirmation failed: ${errorDetail}`);
+  }
+
   try {
     return await res.json();
   } catch {

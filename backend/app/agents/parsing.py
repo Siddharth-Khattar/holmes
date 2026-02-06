@@ -94,6 +94,84 @@ def extract_thinking_traces(events: list[Event]) -> list[dict[str, object]]:
     return traces
 
 
+def format_thinking_traces(traces: list[object] | None) -> str:
+    """Join thinking trace entries into a display-friendly string.
+
+    Handles both dict entries (from extract_thinking_traces) and raw values.
+    Normalizes JSON-structured thoughts to readable text — Gemini models
+    with thinking enabled sometimes produce JSON-formatted deliberation
+    (especially with multimodal inputs) rather than natural language.
+
+    Args:
+        traces: List of thinking trace dicts or raw values from DB.
+
+    Returns:
+        Joined thinking text, empty string if no traces.
+    """
+    if not traces:
+        return ""
+
+    parts: list[str] = []
+    for trace in traces:
+        thought = trace.get("thought", "") if isinstance(trace, dict) else str(trace)
+        if not thought:
+            continue
+        parts.append(_normalize_thought_text(thought))
+
+    return "\n".join(parts)
+
+
+def _normalize_thought_text(text: str) -> str:
+    """Normalize a single thought string for readable display.
+
+    If the text is a JSON object (common with multimodal thinking),
+    extracts string values with key labels for readability.
+    Non-JSON text is returned unchanged.
+    """
+    stripped = text.strip()
+    if not stripped.startswith("{"):
+        return text
+    try:
+        parsed = json.loads(stripped)
+        if isinstance(parsed, dict):
+            extracted = _flatten_json_to_text(parsed)
+            if extracted:
+                return extracted
+    except (json.JSONDecodeError, ValueError):
+        pass
+    return text
+
+
+def _flatten_json_to_text(data: object) -> str:
+    """Recursively extract readable text from a JSON structure.
+
+    Dict string values get key labels (e.g., "title: Some Title").
+    Nested dicts are flattened. Lists get bullet prefixes.
+    """
+    if isinstance(data, str):
+        return data
+    if isinstance(data, dict):
+        parts: list[str] = []
+        for key, value in data.items():
+            extracted = _flatten_json_to_text(value)
+            if not extracted:
+                continue
+            # Label leaf string values with their key for context
+            if isinstance(value, str):
+                parts.append(f"{key}: {extracted}")
+            else:
+                parts.append(extracted)
+        return "\n".join(parts)
+    if isinstance(data, list):
+        parts = []
+        for item in data:
+            extracted = _flatten_json_to_text(item)
+            if extracted:
+                parts.append(f"- {extracted}")
+        return "\n".join(parts)
+    return ""
+
+
 def extract_response_texts(events: list[Event]) -> list[str]:
     """Extract non-thought text parts from the final response event.
 

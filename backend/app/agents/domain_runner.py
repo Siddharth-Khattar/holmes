@@ -79,14 +79,19 @@ def compute_agent_tasks(
     """
     file_lookup: dict[str, CaseFile] = {str(f.id): f for f in files}
     tasks: list[AgentTask] = []
-    grouped_file_ids: set[str] = set()
+
+    # Track which (file_id, agent_type) pairs are already covered by
+    # file_groups. Per-file routing_decisions create tasks only for
+    # UNCOVERED pairs — this ensures per-file routing to additional agents
+    # (e.g., case-report.pdf → legal) is not silently dropped when the
+    # file also belongs to a group routed to a different agent (e.g., evidence).
+    covered_pairs: set[tuple[str, str]] = set()
 
     # Explicit file_groups from orchestrator
     for grp_idx, group in enumerate(routing.file_groups):
         group_files = [file_lookup[fid] for fid in group.file_ids if fid in file_lookup]
         if not group_files:
             continue
-        grouped_file_ids.update(group.file_ids)
         for agent_type in group.target_agents:
             if agent_type in _DOMAIN_AGENT_TYPES:
                 tasks.append(
@@ -98,17 +103,21 @@ def compute_agent_tasks(
                         group_label=f"grp_{grp_idx}",
                     )
                 )
+                for fid in group.file_ids:
+                    covered_pairs.add((fid, agent_type))
 
-    # Ungrouped files become implicit single-file groups
+    # Per-file routing decisions for UNCOVERED (file_id, agent_type) pairs
     ungrouped_idx = 0
     for decision in routing.routing_decisions:
-        if decision.file_id in grouped_file_ids:
-            continue
         file = file_lookup.get(decision.file_id)
         if not file:
             continue
+        has_uncovered = False
         for agent_type in decision.target_agents:
-            if agent_type in _DOMAIN_AGENT_TYPES:
+            if (
+                agent_type in _DOMAIN_AGENT_TYPES
+                and (decision.file_id, agent_type) not in covered_pairs
+            ):
                 tasks.append(
                     AgentTask(
                         agent_type=agent_type,
@@ -118,7 +127,9 @@ def compute_agent_tasks(
                         group_label=f"ungrouped_{ungrouped_idx}",
                     )
                 )
-        ungrouped_idx += 1
+                has_uncovered = True
+        if has_uncovered:
+            ungrouped_idx += 1
 
     return tasks
 

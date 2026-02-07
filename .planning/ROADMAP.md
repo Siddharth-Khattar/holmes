@@ -572,14 +572,15 @@ Plans:
 
 **Status:** ⏳ NOT_STARTED
 
-**Plans:** 5 plans in 3 waves
+**Plans:** 6 plans in 3 waves
 
 Plans:
 - [ ] 07-01-PLAN.md — DB schema: 9 new tables (KG, findings, synthesis) + Alembic migration + tsvector search
 - [ ] 07-02-PLAN.md — Pydantic schemas for KG/findings APIs + domain agent findings_text enrichment
 - [ ] 07-03-PLAN.md — KG Builder service (entity extraction, relationships, deduplication) + findings service (storage, full-text search)
 - [ ] 07-04-PLAN.md — Domain agent prompt enrichment (exhaustive citations, findings_text instructions)
-- [ ] 07-05-PLAN.md — API endpoints (KG + findings), SSE events, pipeline wiring
+- [ ] 07-05-PLAN.md — API endpoints (KG + findings) + router registration
+- [ ] 07-06-PLAN.md — SSE events + pipeline wiring (findings storage, KG Builder, entity backfill)
 
 ### Frontend Available (Yatharth, 2026-02-02)
 - ✅ D3.js Knowledge Graph visualization (to be replaced by vis-network in Phase 7.1)
@@ -1308,4 +1309,4 @@ For 2 developers working simultaneously:
 *Phase 6 planned: 2026-02-05 (5 plans in 3 waves)*
 *Phase 6 complete: 2026-02-06 (5 plans + 21 post-plan commits = 35 total, 10/10 verified + hardening)*
 *Architecture redesign: 2026-02-07 (Phases 7-9 restructured: KG-as-Memory, hybrid storage, programmatic KG Builder, vis-network, tool-based Chat)*
-*Phase 7 planned: 2026-02-07 (5 plans in 3 waves)
+*Phase 7 planned: 2026-02-07 (6 plans in 3 waves — revised from 5 after checker feedback)

@@ -8,17 +8,17 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
-from pydantic import BaseModel
 from sqlalchemy import func, literal_column, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.findings import CaseFinding
+from app.schemas.agent import DomainAgentOutput
 
 logger = logging.getLogger(__name__)
 
 
 async def save_findings_from_output(
-    output: BaseModel,
+    output: DomainAgentOutput,
     agent_type: str,
     execution_id: UUID | None,
     case_id: UUID,
@@ -28,12 +28,12 @@ async def save_findings_from_output(
 ) -> list[CaseFinding]:
     """Save findings from a domain agent output to the case_findings table.
 
-    Receives the already-parsed Pydantic BaseModel object directly from
-    domain_results. Each finding in output.findings becomes a CaseFinding row
-    with citations stored as JSONB.
+    Receives a DomainAgentOutput-conforming object directly from domain_results.
+    Each finding in output.findings becomes a CaseFinding row with citations
+    stored as JSONB.
 
     Args:
-        output: Parsed domain agent output (e.g., FinancialOutput, LegalOutput).
+        output: Parsed domain agent output satisfying DomainAgentOutput protocol.
         agent_type: Domain agent type (financial, legal, evidence, strategy).
         execution_id: AgentExecution record ID for traceability.
         case_id: Case UUID.
@@ -44,7 +44,7 @@ async def save_findings_from_output(
     Returns:
         List of created CaseFinding ORM objects.
     """
-    if not hasattr(output, "findings") or not output.findings:
+    if not output.findings:
         logger.info(
             "No findings to save from %s output (case=%s, execution=%s)",
             agent_type,
@@ -56,12 +56,7 @@ async def save_findings_from_output(
     created_findings: list[CaseFinding] = []
 
     for finding in output.findings:
-        # Build finding text: use description as base
         finding_text = finding.description
-
-        # If output has findings_text and it's populated, append for richer searchable text
-        if hasattr(output, "findings_text") and output.findings_text is not None:
-            finding_text = f"{finding.description}\n\n{output.findings_text}"
 
         # Serialize citations to JSONB-compatible dicts
         citations_json: list[dict[str, object]] | None = None

@@ -72,12 +72,11 @@ export const DEFAULT_CONNECTIONS: Array<{
   { source: "triage", target: "orchestrator" },
   { source: "orchestrator", target: "financial" },
   { source: "orchestrator", target: "legal" },
-  { source: "orchestrator", target: "strategy" },
   { source: "orchestrator", target: "evidence" },
-  { source: "financial", target: "knowledge-graph" },
-  { source: "legal", target: "knowledge-graph" },
+  { source: "financial", target: "strategy" },
+  { source: "legal", target: "strategy" },
+  { source: "evidence", target: "strategy" },
   { source: "strategy", target: "knowledge-graph" },
-  { source: "evidence", target: "knowledge-graph" },
 ];
 
 // Per-agent color variable pair: tint (subtle background) and accent (bright text/glow)

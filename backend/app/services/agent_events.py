@@ -1,12 +1,17 @@
 # ABOUTME: Agent event publishing service for SSE Command Center updates.
-# ABOUTME: Manages pub/sub subscriptions and emits typed agent lifecycle events to connected clients.
+# ABOUTME: Manages pub/sub subscriptions, typed agent lifecycle events, and shared result serialization.
+
+from __future__ import annotations
 
 import asyncio
 import json
 import logging
-from collections import defaultdict
+from collections import defaultdict, deque
 from enum import Enum
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
+
+if TYPE_CHECKING:
+    from app.models.agent_execution import AgentExecution
 
 logger = logging.getLogger(__name__)
 
@@ -41,27 +46,13 @@ class AgentEventType(str, Enum):
 # Maps case_id -> list of subscriber queues
 _agent_subscribers: dict[str, list[asyncio.Queue[SSEEvent]]] = defaultdict(list)
 
-
-def subscribe_to_agent_events(case_id: str) -> asyncio.Queue[SSEEvent]:
-    """Subscribe to agent events for a case.
-
-    Returns an asyncio.Queue that will receive events as they are published.
-    The caller is responsible for calling unsubscribe_from_agent_events when done.
-
-    Args:
-        case_id: UUID string of the case to subscribe to.
-
-    Returns:
-        Queue that receives SSEEvent dicts with 'event' and 'data' keys.
-    """
-    queue: asyncio.Queue[SSEEvent] = asyncio.Queue(maxsize=100)
-    _agent_subscribers[case_id].append(queue)
-    logger.debug(
-        "Agent event subscriber added for case=%s (total=%d)",
-        case_id,
-        len(_agent_subscribers[case_id]),
-    )
-    return queue
+# Per-case event replay buffer. Stores recent events so late-joining
+# SSE subscribers can receive events emitted before they connected.
+# Bounded to 50 events per case to limit memory usage.
+_EVENT_BUFFER_MAX = 50
+_event_buffer: dict[str, deque[SSEEvent]] = defaultdict(
+    lambda: deque(maxlen=_EVENT_BUFFER_MAX)
+)
 
 
 def unsubscribe_from_agent_events(case_id: str, queue: asyncio.Queue[SSEEvent]) -> None:
@@ -71,7 +62,7 @@ def unsubscribe_from_agent_events(case_id: str, queue: asyncio.Queue[SSEEvent]) 
 
     Args:
         case_id: UUID string of the case.
-        queue: The queue returned by subscribe_to_agent_events.
+        queue: The queue returned by subscribe_with_replay.
     """
     try:
         _agent_subscribers[case_id].remove(queue)
@@ -81,6 +72,63 @@ def unsubscribe_from_agent_events(case_id: str, queue: asyncio.Queue[SSEEvent]) 
     if not _agent_subscribers[case_id]:
         del _agent_subscribers[case_id]
     logger.debug("Agent event subscriber removed for case=%s", case_id)
+
+
+def subscribe_with_replay(
+    case_id: str,
+    exclude_agents: set[str],
+) -> asyncio.Queue[SSEEvent]:
+    """Subscribe to agent events with replay of buffered events.
+
+    Late-joining subscribers receive events emitted before they connected,
+    filtered to exclude agents already represented in the state snapshot.
+    The subscribe and buffer drain are synchronous (no await) so no events
+    can be published between the buffer read and the subscription.
+
+    Args:
+        case_id: UUID string of the case.
+        exclude_agents: Agent IDs already in the snapshot (skip their events).
+
+    Returns:
+        Queue pre-populated with buffered events, then receiving live events.
+    """
+    queue: asyncio.Queue[SSEEvent] = asyncio.Queue(maxsize=100)
+
+    # Replay buffered events for agents NOT covered by the snapshot.
+    # Events fall into two categories:
+    #   - Agent-scoped (have agentType): skip if that agent is in the snapshot
+    #   - Case-scoped (no agentType, e.g. processing-complete): always replay
+    for event in _event_buffer.get(case_id, []):
+        try:
+            data = json.loads(event["data"])
+        except (json.JSONDecodeError, KeyError):
+            continue
+        agent_id = data.get("agentType", "")
+        if agent_id in exclude_agents:
+            continue
+        try:
+            queue.put_nowait(event)
+        except asyncio.QueueFull:
+            break
+
+    # Subscribe to live events (after buffer drain, atomically)
+    _agent_subscribers[case_id].append(queue)
+    logger.debug(
+        "Agent event subscriber added with replay for case=%s (buffered=%d, excluded=%d, total=%d)",
+        case_id,
+        len(_event_buffer.get(case_id, [])),
+        len(exclude_agents),
+        len(_agent_subscribers[case_id]),
+    )
+    return queue
+
+
+def clear_event_buffer(case_id: str) -> None:
+    """Clear the event replay buffer for a case.
+
+    Called at pipeline start (new workflow) and pipeline end (processing-complete).
+    """
+    _event_buffer.pop(case_id, None)
 
 
 # ---------------------------------------------------------------------------
@@ -114,6 +162,7 @@ async def publish_agent_event(
         data_to_send["type"] = event_type.value
 
     event: SSEEvent = {"event": event_type.value, "data": json.dumps(data_to_send)}
+    _event_buffer[case_id].append(event)
     subscribers = _agent_subscribers.get(case_id, [])
     for queue in subscribers:
         try:
@@ -454,3 +503,166 @@ async def emit_confirmation_batch_resolved(
             "decisions": decisions,
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Shared AgentResult builder
+# ---------------------------------------------------------------------------
+
+
+def build_execution_metadata(
+    execution: AgentExecution,
+    model_name: str,
+) -> dict[str, Any]:
+    """Build enriched metadata dict from an AgentExecution record.
+
+    Single source of truth for execution metadata used by both live SSE
+    events (pipeline emission) and snapshot reconstruction (sse.py).
+
+    Args:
+        execution: The completed AgentExecution database record.
+        model_name: Gemini model ID used for this agent.
+
+    Returns:
+        Dict with inputTokens, outputTokens, durationMs, startedAt,
+        completedAt, model, and thinkingTraces.
+    """
+    from app.agents.parsing import format_thinking_traces
+
+    duration_ms: int | None = None
+    if execution.started_at and execution.completed_at:
+        delta = execution.completed_at - execution.started_at
+        duration_ms = int(delta.total_seconds() * 1000)
+
+    return {
+        "inputTokens": execution.input_tokens or 0,
+        "outputTokens": execution.output_tokens or 0,
+        "durationMs": duration_ms or 0,
+        "startedAt": execution.started_at.isoformat() if execution.started_at else None,
+        "completedAt": (
+            execution.completed_at.isoformat() if execution.completed_at else None
+        ),
+        "model": model_name,
+        "thinkingTraces": format_thinking_traces(execution.thinking_traces),
+    }
+
+
+def build_agent_result(
+    execution: AgentExecution,
+    metadata_dict: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Construct a frontend-compatible AgentResult dict from an execution record.
+
+    Single source of truth for AgentResult serialization used by both live
+    SSE events (pipeline emission) and snapshot reconstruction (sse.py).
+
+    Args:
+        execution: AgentExecution record with output_data populated.
+        metadata_dict: Pre-built metadata dict (tokens, duration, model, etc.).
+
+    Returns:
+        AgentResult-compatible dict, or None if no output_data exists.
+    """
+    output = execution.output_data
+    if not output or not isinstance(output, dict):
+        return None
+
+    agent_name = execution.agent_name
+    result: dict[str, Any] = {
+        "taskId": "",
+        "agentType": agent_name,
+        "outputs": [],
+        "metadata": metadata_dict,
+    }
+
+    if agent_name == "triage":
+        file_results = output.get("file_results", [])
+        groupings = output.get("suggested_groupings", [])
+        result["outputs"] = [
+            {
+                "type": "triage-results",
+                "data": {
+                    "fileCount": len(file_results)
+                    if isinstance(file_results, list)
+                    else 0,
+                    "groupings": len(groupings) if isinstance(groupings, list) else 0,
+                },
+            }
+        ]
+
+    elif agent_name == "orchestrator":
+        decisions = output.get("routing_decisions", [])
+        result["outputs"] = [
+            {
+                "type": "routing-decisions",
+                "data": {
+                    "routingCount": len(decisions)
+                    if isinstance(decisions, list)
+                    else 0,
+                    "parallelAgents": output.get("parallel_agents", []),
+                    "researchTriggered": (output.get("research_trigger") or {}).get(
+                        "should_trigger", False
+                    ),
+                },
+            }
+        ]
+        # Convert snake_case routing decisions to camelCase for frontend.
+        # Flatten to one card per (file, agent) pair with domain-specific scores.
+        if isinstance(decisions, list):
+            routing_decisions_camel: list[dict[str, Any]] = []
+            for rd in decisions:
+                if not isinstance(rd, dict):
+                    continue
+                target_agents = rd.get("target_agents", [])
+                domain_scores = rd.get("domain_scores", {})
+                for agent in target_agents:
+                    score = domain_scores.get(agent, 0)
+                    if not isinstance(score, (int, float)):
+                        score = 0
+                    routing_decisions_camel.append(
+                        {
+                            "fileId": rd.get("file_id", ""),
+                            "targetAgent": agent,
+                            "reason": rd.get("reasoning", ""),
+                            "domainScore": score,
+                        }
+                    )
+            result["routingDecisions"] = routing_decisions_camel
+
+    elif agent_name == "strategy":
+        findings = output.get("findings", [])
+        result["outputs"] = [
+            {
+                "type": "strategy-findings",
+                "data": {
+                    "findingCount": len(findings) if isinstance(findings, list) else 0,
+                },
+            }
+        ]
+
+    else:
+        # Domain agents (financial, legal, evidence)
+        findings = output.get("findings", [])
+        entities = output.get("entities", [])
+        # Extract group label from input_data stage_suffix
+        group_label = "default"
+        if execution.input_data and isinstance(execution.input_data, dict):
+            raw_suffix = execution.input_data.get("stage_suffix", "")
+            group_label = (
+                raw_suffix.lstrip("_") if isinstance(raw_suffix, str) else "default"
+            ) or "default"
+
+        result["baseAgentType"] = agent_name
+        result["groupLabel"] = group_label
+        result["outputs"] = [
+            {
+                "type": f"{agent_name}-findings",
+                "data": {
+                    "findingCount": len(findings) if isinstance(findings, list) else 0,
+                    "entityCount": len(entities) if isinstance(entities, list) else 0,
+                    "groupLabel": group_label,
+                },
+            }
+        ]
+
+    return result

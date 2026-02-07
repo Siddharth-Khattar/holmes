@@ -28,6 +28,8 @@ import {
   FileResponse,
 } from "@/lib/api/files";
 import { useFileUpload, FileUploadProgress } from "@/hooks/useFileUpload";
+import { useFileUrlCache } from "@/hooks/useFileUrlCache";
+import { emitCaseDataChanged } from "@/lib/case-events";
 import { RedactModal } from "./RedactModal";
 import {
   EvidencePreviewModal,
@@ -150,6 +152,9 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
   const [previewModalFile, setPreviewModalFile] = useState<LibraryFile | null>(
     null,
   );
+  const [preloadedUrls, setPreloadedUrls] = useState<Map<string, string>>(
+    new Map(),
+  );
 
   // File upload hook
   const {
@@ -160,6 +165,9 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
     clearError,
     clearCompleted,
   } = useFileUpload(caseId);
+
+  // URL cache hook
+  const { getCachedUrl, setCachedUrl, clearCacheForFile } = useFileUrlCache();
 
   // Fetch files on mount
   useEffect(() => {
@@ -282,69 +290,100 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
     [upload, refreshFiles, clearError],
   );
 
-  // Helper function to get mock file URLs for demonstration
-  const getMockFileUrl = useCallback((fileType: SupportedFileType): string => {
-    switch (fileType) {
-      case "image":
-        return "https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=800&h=600&fit=crop";
-      case "video":
-        return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
-      case "pdf":
-        return "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
-      case "audio":
-        return "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-      default:
-        return "";
-    }
-  }, []);
-
   const handleRedactFile = useCallback(
     async (file: LibraryFile) => {
-      // For demonstration, use mock URLs
-      // In production, this would fetch the actual file URL from the backend
+      // Check cache — if hit, open with URL immediately
+      const cachedUrl = getCachedUrl(caseId, file.id);
+      if (cachedUrl) {
+        setRedactModalFile({ ...file, url: cachedUrl });
+        return;
+      }
 
-      // Use mock URL directly for now to avoid API errors during demo
-      const mockUrl = getMockFileUrl(file.type);
-      setRedactModalFile({ ...file, url: mockUrl });
+      // Open modal immediately with empty URL (modal shows loading state)
+      setRedactModalFile({ ...file, url: "" });
 
-      // TODO: Uncomment when backend is ready
-      // try {
-      //   const url = await getDownloadUrl(caseId, file.id);
-      //   setRedactModalFile({ ...file, url });
-      // } catch (err) {
-      //   console.error("Failed to get file URL:", err);
-      //   const mockUrl = getMockFileUrl(file.type);
-      //   setRedactModalFile({ ...file, url: mockUrl });
-      // }
+      try {
+        const response = await getDownloadUrl(caseId, file.id, true);
+        setCachedUrl(
+          caseId,
+          file.id,
+          response.download_url,
+          response.expires_in,
+        );
+        setRedactModalFile({ ...file, url: response.download_url });
+      } catch (err) {
+        console.error("Failed to get file URL:", err);
+        setRedactModalFile(null);
+        alert("Failed to load file for redaction. Please try again.");
+      }
     },
-    [getMockFileUrl],
+    [caseId, getCachedUrl, setCachedUrl],
   );
 
   const handlePreviewFile = useCallback(
     async (file: LibraryFile) => {
-      // For demonstration, use mock URLs
-      // In production, this would fetch the actual file URL from the backend
-      const mockUrl = getMockFileUrl(file.type);
-      setPreviewModalFile({ ...file, url: mockUrl });
+      // Check cache or preloaded URLs — if hit, open immediately
+      const cachedUrl =
+        getCachedUrl(caseId, file.id) || preloadedUrls.get(file.id) || null;
+      if (cachedUrl) {
+        setPreviewModalFile({ ...file, url: cachedUrl });
+        return;
+      }
 
-      // TODO: Uncomment when backend is ready
-      // try {
-      //   const url = await getDownloadUrl(caseId, file.id);
-      //   setPreviewModalFile({ ...file, url });
-      // } catch (err) {
-      //   console.error("Failed to get file URL:", err);
-      //   const mockUrl = getMockFileUrl(file.type);
-      //   setPreviewModalFile({ ...file, url: mockUrl });
-      // }
+      // Open modal immediately with empty URL (modal shows loading state)
+      setPreviewModalFile({ ...file, url: "" });
+
+      try {
+        const response = await getDownloadUrl(caseId, file.id, true);
+        setCachedUrl(
+          caseId,
+          file.id,
+          response.download_url,
+          response.expires_in,
+        );
+        setPreviewModalFile({ ...file, url: response.download_url });
+      } catch (err) {
+        console.error("Failed to get file URL:", err);
+        setPreviewModalFile(null);
+        alert("Failed to load file preview. Please try again.");
+      }
     },
-    [getMockFileUrl],
+    [caseId, getCachedUrl, setCachedUrl, preloadedUrls],
+  );
+
+  // Preload URL on hover
+  const handlePreloadFile = useCallback(
+    async (file: LibraryFile) => {
+      // Don't preload if already cached or preloaded
+      if (getCachedUrl(caseId, file.id) || preloadedUrls.has(file.id)) {
+        return;
+      }
+
+      try {
+        const response = await getDownloadUrl(caseId, file.id, true);
+        setCachedUrl(
+          caseId,
+          file.id,
+          response.download_url,
+          response.expires_in,
+        );
+        setPreloadedUrls((prev) =>
+          new Map(prev).set(file.id, response.download_url),
+        );
+      } catch (err) {
+        // Silent fail for preloading
+        console.debug("Preload failed:", err);
+      }
+    },
+    [caseId, getCachedUrl, setCachedUrl, preloadedUrls],
   );
 
   const handleDownloadFile = useCallback(
     async (file: LibraryFile) => {
       try {
-        const url = await getDownloadUrl(caseId, file.id);
-        window.open(url, "_blank");
+        // Fetch download URL with inline=false to force download
+        const response = await getDownloadUrl(caseId, file.id, false);
+        window.open(response.download_url, "_blank");
       } catch (err) {
         console.error("Failed to get download URL:", err);
         alert("Failed to download file. Please try again.");
@@ -363,12 +402,15 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
         await deleteFile(caseId, file.id);
         // Remove from local state
         setFiles((prev) => prev.filter((f) => f.id !== file.id));
+        emitCaseDataChanged();
+        // Clear from cache
+        clearCacheForFile(caseId, file.id);
       } catch (err) {
         console.error("Failed to delete file:", err);
         alert("Failed to delete file. Please try again.");
       }
     },
-    [caseId],
+    [caseId, clearCacheForFile],
   );
 
   // Conflict resolution handlers
@@ -438,6 +480,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
           try {
             await deleteFile(caseId, file.id);
             setFiles((prev) => prev.filter((f) => f.id !== file.id));
+            emitCaseDataChanged();
           } catch (err) {
             console.error("Failed to remove duplicate:", err);
             alert("Failed to remove duplicate. Please try again.");
@@ -507,6 +550,10 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
         alert(
           `Deleted ${result.deleted_count} files. ${result.failed_ids.length} files failed to delete.`,
         );
+      }
+
+      if (result.deleted_count > 0) {
+        emitCaseDataChanged();
       }
     } catch (err) {
       console.error("Bulk delete failed:", err);
@@ -958,6 +1005,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                       <div className="flex items-center justify-center space-x-2">
                         <button
                           onClick={() => handlePreviewFile(file)}
+                          onMouseEnter={() => handlePreloadFile(file)}
                           className="p-1.5 rounded hover:bg-warm-gray/12 dark:hover:bg-stone/15 transition-colors"
                           title="Preview file"
                         >
@@ -965,6 +1013,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                         </button>
                         <button
                           onClick={() => handleRedactFile(file)}
+                          onMouseEnter={() => handlePreloadFile(file)}
                           className="p-1.5 rounded hover:bg-warm-gray/12 dark:hover:bg-stone/15 transition-colors"
                           title="Redact & Download"
                         >

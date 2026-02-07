@@ -7,20 +7,18 @@ import asyncio
 import json
 import logging
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from app.models.agent_execution import AgentExecution
+from typing import Any
 
 from fastapi import APIRouter
 from sqlalchemy import select
 from sse_starlette import EventSourceResponse
 
-from app.agents.parsing import format_thinking_traces
 from app.config import get_settings
 from app.services.agent_events import (
     AgentEventType,
-    subscribe_to_agent_events,
+    build_agent_result,
+    build_execution_metadata,
+    subscribe_with_replay,
     unsubscribe_from_agent_events,
 )
 
@@ -133,133 +131,12 @@ async def file_status_stream(case_id: str):
 # ---------------------------------------------------------------------------
 
 
-def _build_snapshot_last_result(
-    execution: AgentExecution,
-    metadata_dict: dict[str, Any],
-) -> dict[str, Any] | None:
-    """Construct a frontend-compatible AgentResult dict from DB output_data.
-
-    Mirrors the live SSE agent-complete payload structure so that the frontend
-    `handleStateSnapshot` receives the same shape as live events.
-
-    Args:
-        execution: AgentExecution record with output_data populated.
-        metadata_dict: Pre-built metadata dict (tokens, duration, model, etc.).
-
-    Returns:
-        AgentResult-compatible dict, or None if no output_data exists.
-    """
-    output = execution.output_data
-    if not output or not isinstance(output, dict):
-        return None
-
-    agent_name = execution.agent_name
-    result: dict[str, Any] = {
-        "taskId": "",
-        "agentType": agent_name,
-        "outputs": [],
-        "metadata": metadata_dict,
-    }
-
-    if agent_name == "triage":
-        file_results = output.get("file_results", [])
-        groupings = output.get("suggested_groupings", [])
-        result["outputs"] = [
-            {
-                "type": "triage-results",
-                "data": {
-                    "fileCount": len(file_results)
-                    if isinstance(file_results, list)
-                    else 0,
-                    "groupings": len(groupings) if isinstance(groupings, list) else 0,
-                },
-            }
-        ]
-
-    elif agent_name == "orchestrator":
-        decisions = output.get("routing_decisions", [])
-        result["outputs"] = [
-            {
-                "type": "routing-decisions",
-                "data": {
-                    "routingCount": len(decisions)
-                    if isinstance(decisions, list)
-                    else 0,
-                    "parallelAgents": output.get("parallel_agents", []),
-                    "researchTriggered": (output.get("research_trigger") or {}).get(
-                        "should_trigger", False
-                    ),
-                },
-            }
-        ]
-        # Convert snake_case routing decisions to camelCase for frontend.
-        # Flatten to one card per (file, agent) pair with domain-specific scores.
-        if isinstance(decisions, list):
-            routing_decisions_camel: list[dict[str, Any]] = []
-            for rd in decisions:
-                if not isinstance(rd, dict):
-                    continue
-                target_agents = rd.get("target_agents", [])
-                domain_scores = rd.get("domain_scores", {})
-                for agent in target_agents:
-                    score = domain_scores.get(agent, 0)
-                    if not isinstance(score, (int, float)):
-                        score = 0
-                    routing_decisions_camel.append(
-                        {
-                            "fileId": rd.get("file_id", ""),
-                            "targetAgent": agent,
-                            "reason": rd.get("reasoning", ""),
-                            "domainScore": score,
-                        }
-                    )
-            result["routingDecisions"] = routing_decisions_camel
-
-    elif agent_name == "strategy":
-        findings = output.get("findings", [])
-        result["outputs"] = [
-            {
-                "type": "strategy-findings",
-                "data": {
-                    "findingCount": len(findings) if isinstance(findings, list) else 0,
-                },
-            }
-        ]
-
-    else:
-        # Domain agents (financial, legal, evidence)
-        findings = output.get("findings", [])
-        entities = output.get("entities", [])
-        # Extract group label from input_data stage_suffix
-        group_label = "default"
-        if execution.input_data and isinstance(execution.input_data, dict):
-            raw_suffix = execution.input_data.get("stage_suffix", "")
-            group_label = (
-                raw_suffix.lstrip("_") if isinstance(raw_suffix, str) else "default"
-            ) or "default"
-
-        result["baseAgentType"] = agent_name
-        result["groupLabel"] = group_label
-        result["outputs"] = [
-            {
-                "type": f"{agent_name}-findings",
-                "data": {
-                    "findingCount": len(findings) if isinstance(findings, list) else 0,
-                    "entityCount": len(entities) if isinstance(entities, list) else 0,
-                    "groupLabel": group_label,
-                },
-            }
-        ]
-
-    return result
-
-
 async def build_state_snapshot(case_id: str) -> dict[str, Any]:
     """Build a state snapshot of all agent executions for reconnection.
 
-    Queries the most recent workflow for this case and returns each agent's
-    current status, metadata (tokens, duration, thinking traces), and
-    lastResult for refresh resilience.
+    Queries executions for the case's latest_workflow_id (authoritative source)
+    and returns each agent's current status, metadata (tokens, duration,
+    thinking traces), and lastResult for refresh resilience.
 
     Args:
         case_id: UUID string of the case.
@@ -270,67 +147,63 @@ async def build_state_snapshot(case_id: str) -> dict[str, Any]:
     """
     from app.database import _get_sessionmaker
     from app.models.agent_execution import AgentExecution
+    from app.models.case import Case
 
     session_factory = _get_sessionmaker()
     agents: dict[str, Any] = {}
 
     try:
         async with session_factory() as db:
-            # Find the most recent workflow for this case
             from uuid import UUID as PyUUID
 
-            latest_result = await db.execute(
-                select(AgentExecution)
-                .where(AgentExecution.case_id == PyUUID(case_id))
-                .order_by(AgentExecution.created_at.desc())
-                .limit(1)
+            # Use Case.latest_workflow_id as authoritative source (Bug 6 fix).
+            # Avoids the two-step query that could select the wrong workflow
+            # if execution records from different workflows overlap.
+            case_result = await db.execute(
+                select(Case.latest_workflow_id).where(Case.id == PyUUID(case_id))
             )
-            latest = latest_result.scalar_one_or_none()
-            if latest is None:
+            latest_workflow_id = case_result.scalar_one_or_none()
+            if latest_workflow_id is None:
                 return {"agents": agents}
 
-            # Get all executions for this workflow
+            # Get all executions for the authoritative workflow
             workflow_result = await db.execute(
                 select(AgentExecution)
-                .where(AgentExecution.workflow_id == latest.workflow_id)
+                .where(AgentExecution.workflow_id == latest_workflow_id)
                 .order_by(AgentExecution.created_at.asc())
             )
             executions = list(workflow_result.scalars().all())
 
             for execution in executions:
-                duration_ms: int | None = None
-                if execution.started_at and execution.completed_at:
-                    delta = execution.completed_at - execution.started_at
-                    duration_ms = int(delta.total_seconds() * 1000)
-
-                metadata_dict: dict[str, Any] = {
-                    "inputTokens": execution.input_tokens or 0,
-                    "outputTokens": execution.output_tokens or 0,
-                    "durationMs": duration_ms or 0,
-                    "startedAt": (
-                        execution.started_at.isoformat()
-                        if execution.started_at
-                        else None
-                    ),
-                    "completedAt": (
-                        execution.completed_at.isoformat()
-                        if execution.completed_at
-                        else None
-                    ),
-                    "model": execution.model_name,
-                    "thinkingTraces": format_thinking_traces(execution.thinking_traces),
-                }
+                metadata_dict = build_execution_metadata(
+                    execution, execution.model_name
+                )
 
                 agent_entry: dict[str, Any] = {
                     "status": execution.status.value.lower(),
                     "metadata": metadata_dict,
                 }
 
-                last_result = _build_snapshot_last_result(execution, metadata_dict)
+                last_result = build_agent_result(execution, metadata_dict)
                 if last_result is not None:
                     agent_entry["lastResult"] = last_result
 
-                agents[execution.agent_name] = agent_entry
+                # Build compound snapshot key from agent_name + stage_suffix
+                # so multiple instances (e.g. financial_grp_0, financial_grp_1)
+                # don't overwrite each other under the same base-type key.
+                raw_suffix = ""
+                if execution.input_data and isinstance(execution.input_data, dict):
+                    raw_suffix = execution.input_data.get("stage_suffix", "")
+                    if not isinstance(raw_suffix, str):
+                        raw_suffix = ""
+
+                group_label = raw_suffix.lstrip("_") if raw_suffix else ""
+                if group_label:
+                    snapshot_key = f"{execution.agent_name}_{group_label}"
+                else:
+                    snapshot_key = execution.agent_name
+
+                agents[snapshot_key] = agent_entry
 
     except Exception:
         logger.exception("Failed to build state snapshot for case=%s", case_id)
@@ -358,13 +231,17 @@ async def command_center_generator(case_id: str):
     # Send state snapshot immediately on connect.
     # Include `type` so the frontend validation switch dispatches correctly.
     snapshot = await build_state_snapshot(case_id)
+    snapshot_agent_ids = set(snapshot.get("agents", {}).keys())
     snapshot["type"] = AgentEventType.STATE_SNAPSHOT.value
     yield {
         "event": AgentEventType.STATE_SNAPSHOT.value,
         "data": json.dumps(snapshot),
     }
 
-    queue = subscribe_to_agent_events(case_id)
+    # Subscribe with replay of buffered events for agents not in the snapshot.
+    # This bridges the gap when events fire before the subscriber connects
+    # (e.g. triage agent-started emitted before SSE connection established).
+    queue = subscribe_with_replay(case_id, exclude_agents=snapshot_agent_ids)
 
     try:
         while True:

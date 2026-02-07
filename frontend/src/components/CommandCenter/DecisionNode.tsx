@@ -4,7 +4,7 @@
 "use client";
 
 import { memo, useRef, useState, useCallback } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { createPortal } from "react-dom";
 import { motion, type Easing } from "motion/react";
 import { Loader2, AlertTriangle, Clock } from "lucide-react";
@@ -21,8 +21,39 @@ export interface DecisionNodeData {
   agentState: AgentState;
   isChosen: boolean;
   isSelected: boolean;
-  onNodeClick: (agentType: AgentType) => void;
   [key: string]: unknown; // ReactFlow requires index signature on node data
+}
+
+export type DecisionNodeType = Node<DecisionNodeData, "decision">;
+
+// -----------------------------------------------------------------------
+// Instance label helper — derives a human-readable subtitle for compound
+// agent IDs (e.g. "financial_grp_0" → "Group 1", "financial_ungrouped_2" → "File 3")
+// Returns null for singleton agents where instanceId === baseType.
+// -----------------------------------------------------------------------
+function formatInstanceLabel(
+  instanceId: string,
+  baseType: string,
+): string | null {
+  if (instanceId === baseType) return null;
+
+  // Remove the base type prefix + underscore
+  const suffix = instanceId.slice(baseType.length + 1);
+
+  // Match "grp_N" pattern
+  const grpMatch = suffix.match(/^grp_(\d+)$/);
+  if (grpMatch) {
+    return `Group ${Number(grpMatch[1]) + 1}`;
+  }
+
+  // Match "ungrouped_N" pattern
+  const ungroupedMatch = suffix.match(/^ungrouped_(\d+)$/);
+  if (ungroupedMatch) {
+    return `File ${Number(ungroupedMatch[1]) + 1}`;
+  }
+
+  // Fallback: humanize the suffix
+  return suffix.replace(/_/g, " ");
 }
 
 // -----------------------------------------------------------------------
@@ -81,9 +112,8 @@ function getBadgeText(agentState: AgentState): string | null {
 // -----------------------------------------------------------------------
 // DecisionNode Component
 // -----------------------------------------------------------------------
-function DecisionNodeInner({ data }: NodeProps) {
-  const { agentType, agentState, isChosen, isSelected, onNodeClick } =
-    data as unknown as DecisionNodeData;
+function DecisionNodeInner({ data }: NodeProps<DecisionNodeType>) {
+  const { agentType, agentState, isChosen, isSelected } = data;
 
   const nodeRef = useRef<HTMLDivElement>(null);
   const [tooltipPos, setTooltipPos] = useState<{
@@ -109,6 +139,7 @@ function DecisionNodeInner({ data }: NodeProps) {
   const durationMs = agentState.lastResult?.metadata?.durationMs as
     | number
     | undefined;
+  const instanceLabel = formatInstanceLabel(agentState.id, agentType);
 
   // ------- Tooltip handlers -------
   const handleMouseEnter = useCallback(() => {
@@ -124,10 +155,6 @@ function DecisionNodeInner({ data }: NodeProps) {
   const handleMouseLeave = useCallback(() => {
     setTooltipPos(null);
   }, []);
-
-  const handleClick = useCallback(() => {
-    onNodeClick(agentType);
-  }, [onNodeClick, agentType]);
 
   // ------- Computed styles -------
   const chosenBackground = `linear-gradient(135deg, hsl(${tint} / 0.75) 0%, hsl(${tint} / 0.35) 100%)`;
@@ -191,7 +218,6 @@ function DecisionNodeInner({ data }: NodeProps) {
             boxShadow: `0 0 30px hsl(${accent} / 0.5), 0 0 12px hsl(${accent} / 0.3)${selectedShadow ? `, ${selectedShadow}` : ""}`,
           }}
           whileTap={{ scale: 0.98 }}
-          onClick={handleClick}
         >
           {/* Processing pulse glow overlay */}
           {isProcessing && (
@@ -245,6 +271,20 @@ function DecisionNodeInner({ data }: NodeProps) {
                 />
               )}
             </div>
+
+            {/* Instance label for compound agents (e.g. "Group 1") */}
+            {instanceLabel && (
+              <span
+                className="text-xs font-medium"
+                style={{
+                  color: isActive
+                    ? `hsl(${accent} / 0.7)`
+                    : "hsl(0 0% 50% / 0.4)",
+                }}
+              >
+                {instanceLabel}
+              </span>
+            )}
 
             {/* Badge row: file count / output count / warning badge */}
             <div className="flex items-center gap-2">

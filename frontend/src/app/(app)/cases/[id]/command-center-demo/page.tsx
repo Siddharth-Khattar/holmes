@@ -8,14 +8,14 @@ import { CommandCenter } from "@/components/CommandCenter";
 import { NodeDetailsSidebar } from "@/components/CommandCenter/NodeDetailsSidebar";
 import { useAgentStates } from "@/hooks/useAgentStates";
 import { simulateProcessingFlow } from "@/lib/mock-command-center-data";
-import type { AgentType } from "@/types/command-center";
+import { extractBaseAgentType } from "@/lib/command-center-validation";
 
 export default function CommandCenterDemoPage() {
   const params = useParams();
   const caseId = params.id as string;
   const [isSimulating, setIsSimulating] = useState(false);
   const [simulationKey, setSimulationKey] = useState(0);
-  const [selectedAgent, setSelectedAgent] = useState<AgentType | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
 
   const { agentStates, lastProcessingSummary, isConnected, isReconnecting } =
     useAgentStates(caseId);
@@ -34,6 +34,13 @@ export default function CommandCenterDemoPage() {
     setIsSimulating(false);
     setSimulationKey((prev) => prev + 1);
   };
+
+  const selectedState = selectedAgent
+    ? agentStates.get(selectedAgent)
+    : undefined;
+  const selectedBaseType = selectedAgent
+    ? (selectedState?.type ?? extractBaseAgentType(selectedAgent))
+    : null;
 
   return (
     <div
@@ -97,7 +104,7 @@ export default function CommandCenterDemoPage() {
           />
         </div>
         <AnimatePresence>
-          {selectedAgent && (
+          {selectedAgent && selectedBaseType && (
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: "30%" }}
@@ -110,8 +117,8 @@ export default function CommandCenterDemoPage() {
               }}
             >
               <NodeDetailsSidebar
-                agentType={selectedAgent}
-                agentState={agentStates.get(selectedAgent) ?? null}
+                agentType={selectedBaseType}
+                agentState={selectedState ?? null}
               />
             </motion.div>
           )}

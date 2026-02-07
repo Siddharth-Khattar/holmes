@@ -94,10 +94,12 @@ export async function uploadFile(
 export async function getDownloadUrl(
   caseId: string,
   fileId: string,
-): Promise<string> {
+  inline: boolean = false,
+): Promise<DownloadUrlResponse> {
   const headers = await getAuthHeaders();
+  const inlineParam = inline ? "?inline=true" : "";
   const res = await fetch(
-    `${API_URL}/api/cases/${caseId}/files/${fileId}/download`,
+    `${API_URL}/api/cases/${caseId}/files/${fileId}/download${inlineParam}`,
     { headers },
   );
   if (!res.ok) {
@@ -107,7 +109,7 @@ export async function getDownloadUrl(
     throw new Error(error.detail || "Failed to get download URL");
   }
   const data: DownloadUrlResponse = await res.json();
-  return data.download_url;
+  return data; // Return full response with expires_in
 }
 
 export async function deleteFile(

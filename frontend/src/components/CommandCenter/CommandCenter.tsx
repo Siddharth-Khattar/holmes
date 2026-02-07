@@ -3,27 +3,22 @@
 
 "use client";
 
-import { useCallback } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { Activity, AlertCircle } from "lucide-react";
 import { AgentFlowCanvas } from "./AgentFlowCanvas";
 import { useAgentFlowGraph } from "@/hooks/useAgentFlowGraph";
-import type {
-  AgentType,
-  AgentState,
-  ProcessingSummary,
-} from "@/types/command-center";
+import type { AgentState, ProcessingSummary } from "@/types/command-center";
 
 // -----------------------------------------------------------------------
 // Props — state is owned by the parent page, not this component
 // -----------------------------------------------------------------------
 export interface CommandCenterProps {
-  agentStates: Map<AgentType, AgentState>;
+  agentStates: Map<string, AgentState>;
   lastProcessingSummary: ProcessingSummary | null;
   isConnected: boolean;
   isReconnecting: boolean;
-  selectedAgent: AgentType | null;
-  onSelectAgent: (agent: AgentType | null) => void;
+  selectedAgent: string | null;
+  onSelectAgent: (agent: string | null) => void;
   className?: string;
 }
 
@@ -74,15 +69,9 @@ function CommandCenterInner({
   className,
 }: CommandCenterProps) {
   // Graph derivation: agent states → laid-out ReactFlow nodes/edges
-  const handleNodeClick = useCallback(
-    (agentType: AgentType) => onSelectAgent(agentType),
-    [onSelectAgent],
-  );
-
   const { nodes, edges, isProcessing } = useAgentFlowGraph({
     agentStates,
     selectedAgent,
-    onNodeClick: handleNodeClick,
   });
 
   return (
@@ -114,7 +103,7 @@ function CommandCenterInner({
           edges={edges}
           onNodeClick={(nodeId) => {
             if (!nodeId.startsWith("file-group-")) {
-              onSelectAgent(nodeId as AgentType);
+              onSelectAgent(nodeId);
             }
           }}
           selectedNodeId={selectedAgent}
@@ -138,7 +127,11 @@ function CommandCenterInner({
           ) : (
             <div className="text-stone">Idle</div>
           )}
-          <div className="text-stone/60">{new Date().toLocaleTimeString()}</div>
+          {lastProcessingSummary && !isProcessing && (
+            <div className="text-stone/60">
+              {lastProcessingSummary.completedAt.toLocaleTimeString()}
+            </div>
+          )}
         </div>
       </div>
     </div>

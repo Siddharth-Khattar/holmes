@@ -5,12 +5,11 @@ import { useMemo } from "react";
 import type { Node, Edge } from "@xyflow/react";
 
 import { buildAgentFlowGraph } from "@/lib/command-center-graph";
-import type { AgentState, AgentType } from "@/types/command-center";
+import type { AgentState } from "@/types/command-center";
 
 interface UseAgentFlowGraphOptions {
-  agentStates: Map<AgentType, AgentState>;
-  selectedAgent: AgentType | null;
-  onNodeClick: (agentType: AgentType) => void;
+  agentStates: Map<string, AgentState>;
+  selectedAgent: string | null;
 }
 
 interface UseAgentFlowGraphReturn {
@@ -29,11 +28,10 @@ interface UseAgentFlowGraphReturn {
 export function useAgentFlowGraph({
   agentStates,
   selectedAgent,
-  onNodeClick,
 }: UseAgentFlowGraphOptions): UseAgentFlowGraphReturn {
   const { nodes, edges } = useMemo(
-    () => buildAgentFlowGraph({ agentStates, selectedAgent, onNodeClick }),
-    [agentStates, selectedAgent, onNodeClick],
+    () => buildAgentFlowGraph({ agentStates, selectedAgent }),
+    [agentStates, selectedAgent],
   );
 
   const isProcessing = useMemo(

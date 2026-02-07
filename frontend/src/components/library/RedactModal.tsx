@@ -1,8 +1,31 @@
+// ABOUTME: Modal component for PDF redaction with AI-powered content identification.
+// ABOUTME: Integrates with backend redaction API to apply black box redactions.
+
 "use client";
 
-import { useState } from "react";
-import { X, Download, Sparkles, Loader2 } from "lucide-react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import Image from "next/image";
+import {
+  X,
+  Download,
+  Sparkles,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  FileText,
+  Image as ImageIcon,
+} from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import {
+  redactPdf,
+  redactImage,
+  base64ToDataUrl,
+  base64ToImageDataUrl,
+  downloadBlob,
+  type RedactionResponse,
+  type ImageRedactionResponse,
+  type RedactionTarget,
+} from "@/lib/api/redaction";
 
 interface RedactModalProps {
   isOpen: boolean;
@@ -15,49 +38,261 @@ interface RedactModalProps {
   };
 }
 
+type RedactionStatus = "idle" | "processing" | "success" | "error";
+type RedactionMethod = "blur" | "pixelate";
+
+// Particle positions for the scan overlay: [left%, delay, duration]
+const SCAN_PARTICLES: [number, string, string][] = [
+  [12, "0s", "2.8s"],
+  [30, "0.5s", "3.2s"],
+  [50, "1.0s", "2.6s"],
+  [70, "0.3s", "3.0s"],
+  [88, "1.2s", "2.9s"],
+];
+
+/**
+ * GPU-composited scanning overlay shown on the original file during
+ * redaction processing. All animations use transform/opacity only
+ * (no layout-triggering properties) for smooth 60fps rendering.
+ */
+function ScanOverlay({
+  containerRef,
+}: {
+  containerRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  // Read container height on mount via effect (refs cannot be accessed during render)
+  const [height, setHeight] = useState(600);
+  useEffect(() => {
+    if (containerRef.current) {
+      setHeight(containerRef.current.offsetHeight);
+    }
+  }, [containerRef]);
+
+  return (
+    <div
+      className="absolute inset-0 pointer-events-none z-10"
+      style={{ "--scan-height": `${height}px` } as React.CSSProperties}
+    >
+      {/* Subtle dark tint */}
+      <div className="absolute inset-0 bg-black/10" />
+
+      {/* Shimmer sweep - single GPU layer */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div
+          className="absolute inset-0 will-change-transform opacity-[0.06]"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 30%, rgba(168,85,247,0.5) 50%, transparent 70%)",
+            animation: "scan-shimmer 2.5s ease-in-out infinite",
+          }}
+        />
+      </div>
+
+      {/* Scanning line - uses translateY instead of top */}
+      <div
+        className="absolute top-0 left-0 right-0 will-change-transform"
+        style={{ animation: "scan-sweep 3s ease-in-out infinite" }}
+      >
+        {/* Glow trail */}
+        <div className="h-16 bg-linear-to-t from-purple-500/15 to-transparent" />
+        {/* Core line */}
+        <div className="h-0.5 bg-purple-500 shadow-[0_0_12px_3px_rgba(168,85,247,0.4)]" />
+      </div>
+
+      {/* Floating particles - 5 elements, transform-only animation */}
+      {SCAN_PARTICLES.map(([left, delay, duration], i) => (
+        <div
+          key={i}
+          className="absolute w-1 h-1 rounded-full bg-purple-400/80 will-change-transform"
+          style={{
+            left: `${left}%`,
+            top: "50%",
+            boxShadow: "0 0 4px 1px rgba(192,132,252,0.5)",
+            animation: `scan-particle ${duration} ${delay} ease-out infinite`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
+  const originalPanelRef = useRef<HTMLDivElement>(null);
   const [showRedactionInput, setShowRedactionInput] = useState(false);
-  const [redactionDescription, setRedactionDescription] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [hasRedacted, setHasRedacted] = useState(false);
-  const [redactedContent, setRedactedContent] = useState<string | null>(null);
+  const [redactionPrompt, setRedactionPrompt] = useState("");
+  const [redactionMethod, setRedactionMethod] =
+    useState<RedactionMethod>("blur");
+  const [status, setStatus] = useState<RedactionStatus>("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [redactionResult, setRedactionResult] =
+    useState<RedactionResponse | null>(null);
+  const [imageRedactionResult, setImageRedactionResult] =
+    useState<ImageRedactionResponse | null>(null);
+  const [redactedPdfUrl, setRedactedPdfUrl] = useState<string | null>(null);
+  const [redactedImageUrl, setRedactedImageUrl] = useState<string | null>(null);
+  // Visualization image is available but not currently displayed in the UI
+  // const [visualizationImageUrl, setVisualizationImageUrl] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  const handleRedactionSubmit = async () => {
-    if (!redactionDescription.trim()) return;
+  const isPdf = file.type === "pdf";
+  const isImage = file.type === "image";
 
-    setIsProcessing(true);
+  const handleRedactionSubmit = useCallback(async () => {
+    if (!redactionPrompt.trim()) return;
 
-    // Simulate processing delay based on file type
-    const processingTime =
-      {
-        image: 1500,
-        video: 3000,
-        pdf: 2000,
-        audio: 2500,
-      }[file.type] || 2000;
+    setStatus("processing");
+    setErrorMessage(null);
 
-    await new Promise((resolve) => setTimeout(resolve, processingTime));
+    try {
+      if (isPdf) {
+        // PDF redaction
+        const result = await redactPdf(
+          file.url,
+          redactionPrompt,
+          file.name,
+          false, // visual covering, not permanent
+        );
 
-    // Generate dummy redacted content based on file type
-    setRedactedContent(generateRedactedContent(file.type, file.url));
-    setHasRedacted(true);
-    setIsProcessing(false);
-  };
+        setRedactionResult(result);
+        setRedactedPdfUrl(base64ToDataUrl(result.redacted_pdf));
+        setStatus("success");
+      } else if (isImage) {
+        // Image redaction
+        const result = await redactImage(
+          file.url,
+          redactionPrompt,
+          file.name,
+          redactionMethod,
+        );
 
-  const handleDownloadRedacted = () => {
-    // In a real implementation, this would download the redacted file
-    alert(`Downloading redacted version of ${file.name}`);
-  };
+        setImageRedactionResult(result);
+        setRedactedImageUrl(base64ToImageDataUrl(result.censored_image));
+        // Visualization image available but not currently displayed
+        // setVisualizationImageUrl(base64ToImageDataUrl(result.visualization_image));
+        setStatus("success");
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred during redaction";
+      setStatus("error");
+      setErrorMessage(message);
+    }
+  }, [file.url, file.name, redactionPrompt, redactionMethod, isPdf, isImage]);
 
-  const handleClose = () => {
+  const handleDownloadRedacted = useCallback(async () => {
+    if (!redactionResult && !imageRedactionResult) return;
+
+    setIsDownloading(true);
+    try {
+      if (isPdf && redactionResult) {
+        // Download PDF
+        const base64Data = redactionResult.redacted_pdf;
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: "application/pdf" });
+        const outputName = file.name.replace(".pdf", "_redacted.pdf");
+        downloadBlob(blob, outputName);
+      } else if (isImage && imageRedactionResult) {
+        // Download Image
+        const base64Data = imageRedactionResult.censored_image;
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: "image/jpeg" });
+
+        // Generate output filename
+        const nameParts = file.name.split(".");
+        const ext = nameParts.length > 1 ? nameParts.pop() : "jpg";
+        const baseName = nameParts.join(".");
+        const outputName = `${baseName}_censored.${ext}`;
+
+        downloadBlob(blob, outputName);
+      }
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Failed to download the redacted file. Please try again.");
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [redactionResult, imageRedactionResult, file.name, isPdf, isImage]);
+
+  const handleClose = useCallback(() => {
     // Reset state when closing
     setShowRedactionInput(false);
-    setRedactionDescription("");
-    setIsProcessing(false);
-    setHasRedacted(false);
-    setRedactedContent(null);
+    setRedactionPrompt("");
+    setRedactionMethod("blur");
+    setStatus("idle");
+    setErrorMessage(null);
+    setRedactionResult(null);
+    setImageRedactionResult(null);
+    setRedactedPdfUrl(null);
+    setRedactedImageUrl(null);
+    // setVisualizationImageUrl(null);
     onClose();
-  };
+  }, [onClose]);
+
+  const handleRetry = useCallback(() => {
+    setStatus("idle");
+    setErrorMessage(null);
+    setRedactionResult(null);
+    setImageRedactionResult(null);
+    setRedactedPdfUrl(null);
+    setRedactedImageUrl(null);
+    // setVisualizationImageUrl(null);
+  }, []);
+
+  // Only PDFs and images are supported
+  if (!isPdf && !isImage) {
+    return (
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleClose}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            >
+              <div
+                className="bg-background border border-warm-gray/15 dark:border-stone/15 rounded-xl shadow-2xl p-8 max-w-md text-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+                <h2 className="text-lg font-semibold text-foreground mb-2">
+                  Redaction Not Available
+                </h2>
+                <p className="text-muted-foreground mb-6">
+                  Redaction is currently only supported for PDF and image files.
+                  {file.type === "video" && " Video redaction coming soon."}
+                  {file.type === "audio" && " Audio redaction coming soon."}
+                </p>
+                <button
+                  onClick={handleClose}
+                  className="px-6 py-2 rounded-lg bg-warm-gray/10 hover:bg-warm-gray/20 dark:bg-stone/10 dark:hover:bg-stone/20 text-foreground transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    );
+  }
 
   return (
     <AnimatePresence>
@@ -108,124 +343,318 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
 
               {/* Content */}
               <div className="flex flex-col h-[calc(100%-73px)]">
-                {/* Titles Row - Above Images */}
+                {/* Titles Row */}
                 <div className="flex-none flex border-b border-warm-gray/15 dark:border-stone/15">
-                  {/* Left Title */}
                   <div className="flex-1 px-4 py-2 border-r border-warm-gray/15 dark:border-stone/15 bg-warm-gray/5 dark:bg-stone/5">
                     <h3 className="text-sm font-medium text-foreground">
-                      Original File
+                      Original {isPdf ? "File" : "Image"}
                     </h3>
                   </div>
-
-                  {/* Right Title */}
                   <div className="flex-1 px-4 py-2 bg-warm-gray/5 dark:bg-stone/5">
                     <h3 className="text-sm font-medium text-foreground">
-                      {hasRedacted ? "Redacted Preview" : "Redaction Controls"}
+                      {status === "success"
+                        ? `${isPdf ? "Redacted" : "Censored"} Preview`
+                        : "Redaction Controls"}
                     </h3>
                   </div>
                 </div>
 
-                {/* Images Row - Side by Side */}
-                <div className="flex flex-1 overflow-hidden gap-2">
-                  {/* Left Half - Original File */}
-                  <div className="flex-1 overflow-hidden">
-                    <FilePreview file={file} />
+                {/* Main Content Area */}
+                <div className="flex flex-1 overflow-hidden">
+                  {/* Left Half - Original File/Image */}
+                  <div
+                    ref={originalPanelRef}
+                    className="flex-1 border-r border-warm-gray/15 dark:border-stone/15 overflow-hidden relative"
+                  >
+                    {!file.url ? (
+                      /* URL still loading — show skeleton */
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-warm-gray/5 dark:bg-stone/5">
+                        <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+                        <span className="text-sm text-muted-foreground">
+                          Loading {isPdf ? "document" : "image"}...
+                        </span>
+                      </div>
+                    ) : isPdf ? (
+                      <iframe
+                        src={file.url}
+                        className="w-full h-full"
+                        title={`Original: ${file.name}`}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-warm-gray/5 dark:bg-stone/5 p-4 relative">
+                        <Image
+                          src={file.url}
+                          alt={`Original: ${file.name}`}
+                          fill
+                          className="object-contain"
+                          unoptimized
+                        />
+                      </div>
+                    )}
+
+                    {/* Scanning overlay while processing - GPU-composited CSS animations */}
+                    {status === "processing" && (
+                      <ScanOverlay containerRef={originalPanelRef} />
+                    )}
                   </div>
 
-                  {/* Right Half - Redacted Preview or Controls */}
-                  <div className="flex-1 overflow-hidden">
-                    {hasRedacted && redactedContent ? (
-                      <FilePreview
-                        file={{ ...file, url: redactedContent }}
-                        isRedacted
-                      />
+                  {/* Right Half - Redaction Controls or Preview */}
+                  <div className="flex-1 overflow-hidden flex flex-col">
+                    {status === "success" &&
+                    (redactedPdfUrl || redactedImageUrl) ? (
+                      /* Redacted Preview */
+                      <div className="flex-1 relative">
+                        {isPdf && redactedPdfUrl ? (
+                          <iframe
+                            src={redactedPdfUrl}
+                            className="w-full h-full"
+                            title={`Redacted: ${file.name}`}
+                          />
+                        ) : isImage && redactedImageUrl ? (
+                          <div className="w-full h-full flex items-center justify-center bg-warm-gray/5 dark:bg-stone/5 p-4 relative">
+                            <Image
+                              src={redactedImageUrl}
+                              alt={`Censored: ${file.name}`}
+                              fill
+                              className="object-contain"
+                              unoptimized
+                            />
+                          </div>
+                        ) : null}
+                        <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-purple-600 text-white text-xs font-medium flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" />
+                          {isPdf ? "Redacted" : "Censored"}
+                        </div>
+                      </div>
+                    ) : status === "error" ? (
+                      /* Error State */
+                      <div className="flex-1 flex items-center justify-center p-8">
+                        <div className="text-center max-w-md">
+                          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold text-foreground mb-2">
+                            Redaction Failed
+                          </h3>
+                          <p className="text-sm text-muted-foreground mb-6">
+                            {errorMessage}
+                          </p>
+                          <button
+                            onClick={handleRetry}
+                            className="px-6 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-colors"
+                          >
+                            Try Again
+                          </button>
+                        </div>
+                      </div>
+                    ) : status === "processing" ? (
+                      /* Processing State */
+                      <div className="flex-1 flex items-center justify-center p-8">
+                        <div className="text-center max-w-md">
+                          <div className="relative mb-6">
+                            <Loader2 className="w-12 h-12 text-purple-500 animate-spin mx-auto" />
+                            {isPdf ? (
+                              <FileText className="w-5 h-5 text-purple-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                            ) : (
+                              <ImageIcon className="w-5 h-5 text-purple-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                            )}
+                          </div>
+                          <h3 className="text-lg font-semibold text-foreground mb-2">
+                            Processing {isPdf ? "Redaction" : "Censorship"}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {isPdf
+                              ? "Analyzing document and applying redactions..."
+                              : "Analyzing image and applying censorship..."}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-4">
+                            This may take 10-30 seconds depending on{" "}
+                            {isPdf ? "document" : "image"} size
+                          </p>
+                        </div>
+                      </div>
                     ) : !showRedactionInput ? (
-                      <div className="flex-1 flex items-center justify-center h-full">
+                      /* Initial State - Start Button */
+                      <div className="flex-1 flex items-center justify-center">
                         <button
                           onClick={() => setShowRedactionInput(true)}
                           className="flex items-center space-x-3 px-6 py-4 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border-2 border-purple-500/30 hover:border-purple-500/50 transition-all"
                         >
                           <Sparkles className="w-6 h-6 text-purple-600 dark:text-purple-400" />
                           <span className="text-lg font-medium text-purple-700 dark:text-purple-300">
-                            Start Redaction
+                            Start {isPdf ? "Redaction" : "Censorship"}
                           </span>
                         </button>
                       </div>
                     ) : (
-                      <div className="flex-1 flex items-center justify-center h-full p-4">
-                        <div className="w-full max-w-md space-y-3">
-                          <div className="text-center text-muted-foreground mb-4">
-                            <Sparkles className="w-10 h-10 mx-auto mb-2 text-purple-500" />
-                            <p className="text-sm">
-                              Redacted preview will appear above
+                      /* Input State - Prompt Form */
+                      <div className="flex-1 flex items-center justify-center p-6">
+                        <div className="w-full max-w-md space-y-4">
+                          <div className="text-center mb-6">
+                            <Sparkles className="w-10 h-10 mx-auto mb-3 text-purple-500" />
+                            <h3 className="text-lg font-semibold text-foreground mb-1">
+                              What should we {isPdf ? "redact" : "censor"}?
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              Describe the information to{" "}
+                              {isPdf ? "redact" : "censor"} in plain language
                             </p>
                           </div>
+
                           <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">
-                              Describe what to redact
-                            </label>
                             <textarea
-                              value={redactionDescription}
+                              value={redactionPrompt}
                               onChange={(e) =>
-                                setRedactionDescription(e.target.value)
+                                setRedactionPrompt(e.target.value)
                               }
-                              placeholder="E.g., 'Blur all faces and license plates'"
-                              className="w-full h-20 px-3 py-2 rounded-lg border border-warm-gray/15 dark:border-stone/15 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/30 resize-none text-sm"
-                              disabled={isProcessing}
+                              placeholder={
+                                isPdf
+                                  ? "E.g., 'Redact all personal names, phone numbers, and email addresses' or 'Redact the word Agentic Marketplace'"
+                                  : "E.g., 'Blur all faces' or 'Blur the whole body of the woman with the shortest hair'"
+                              }
+                              className="w-full h-28 px-4 py-3 rounded-lg border border-warm-gray/15 dark:border-stone/15 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/30 resize-none text-sm"
+                              autoFocus
                             />
                           </div>
-                          <button
-                            onClick={handleRedactionSubmit}
-                            disabled={
-                              !redactionDescription.trim() || isProcessing
-                            }
-                            className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 disabled:cursor-not-allowed text-white font-medium transition-colors text-sm"
-                          >
-                            {isProcessing ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                <span>Processing...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles className="w-4 h-4" />
-                                <span>Apply Redaction</span>
-                              </>
-                            )}
-                          </button>
-                          {isProcessing && (
-                            <div className="text-center">
-                              <p className="text-xs text-muted-foreground mb-2">
-                                Analyzing and applying redactions...
-                              </p>
-                              <div className="w-full bg-warm-gray/20 dark:bg-stone/20 rounded-full h-1.5">
-                                <motion.div
-                                  initial={{ width: "0%" }}
-                                  animate={{ width: "100%" }}
-                                  transition={{ duration: 2 }}
-                                  className="bg-purple-600 h-1.5 rounded-full"
-                                />
+
+                          {/* Method selection for images */}
+                          {isImage && (
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-foreground">
+                                Censorship Method
+                              </label>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setRedactionMethod("blur")}
+                                  className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
+                                    redactionMethod === "blur"
+                                      ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
+                                      : "border-warm-gray/15 dark:border-stone/15 text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10"
+                                  }`}
+                                >
+                                  Blur
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setRedactionMethod("pixelate")}
+                                  className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
+                                    redactionMethod === "pixelate"
+                                      ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
+                                      : "border-warm-gray/15 dark:border-stone/15 text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10"
+                                  }`}
+                                >
+                                  Pixelate
+                                </button>
                               </div>
                             </div>
                           )}
+
+                          <div className="space-y-2">
+                            <button
+                              onClick={handleRedactionSubmit}
+                              disabled={!redactionPrompt.trim()}
+                              className="w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 disabled:cursor-not-allowed text-white font-medium transition-colors"
+                            >
+                              <Sparkles className="w-4 h-4" />
+                              <span>
+                                Apply {isPdf ? "Redaction" : "Censorship"}
+                              </span>
+                            </button>
+                            <button
+                              onClick={() => setShowRedactionInput(false)}
+                              className="w-full px-4 py-2 rounded-lg text-sm text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+
+                          <div className="pt-4 border-t border-warm-gray/15 dark:border-stone/15">
+                            <p className="text-xs text-muted-foreground">
+                              <strong>How it works:</strong>{" "}
+                              {isPdf
+                                ? "Our AI analyzes the document to find matching content, then draws black boxes over the text to censor it while preserving the document structure."
+                                : "Our AI analyzes the image to find matching content, then applies blur or pixelation to censor it while preserving the image structure."}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Download Button Row - Centered Below Images */}
-                {hasRedacted && redactedContent && (
-                  <div className="flex-none flex justify-center border-t border-warm-gray/15 dark:border-stone/15 px-6 py-3">
-                    <button
-                      onClick={handleDownloadRedacted}
-                      className="w-full max-w-md flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors"
-                    >
-                      <Download className="w-4 h-4" />
-                      <span>Download Redacted File</span>
-                    </button>
-                  </div>
-                )}
+                {/* Bottom Bar - Download Button */}
+                {status === "success" &&
+                  (redactionResult || imageRedactionResult) && (
+                    <div className="flex-none border-t border-warm-gray/15 dark:border-stone/15 px-6 py-4 bg-warm-gray/5 dark:bg-stone/5">
+                      <div className="flex items-center justify-between max-w-4xl mx-auto">
+                        <div className="text-sm">
+                          {isPdf && redactionResult ? (
+                            <>
+                              <span className="text-muted-foreground">
+                                Redacted{" "}
+                                <span className="font-semibold text-foreground">
+                                  {redactionResult.redaction_count}
+                                </span>{" "}
+                                {redactionResult.redaction_count === 1
+                                  ? "item"
+                                  : "items"}
+                              </span>
+                              {redactionResult.targets.length > 0 && (
+                                <span className="text-muted-foreground ml-2">
+                                  on{" "}
+                                  {
+                                    new Set(
+                                      redactionResult.targets.map(
+                                        (t: RedactionTarget) => t.page,
+                                      ),
+                                    ).size
+                                  }{" "}
+                                  page(s)
+                                </span>
+                              )}
+                            </>
+                          ) : isImage && imageRedactionResult ? (
+                            <>
+                              <span className="text-muted-foreground">
+                                Censored{" "}
+                                <span className="font-semibold text-foreground">
+                                  {imageRedactionResult.segments_censored}
+                                </span>{" "}
+                                {imageRedactionResult.segments_censored === 1
+                                  ? "segment"
+                                  : "segments"}
+                              </span>
+                              <span className="text-muted-foreground ml-2">
+                                ({imageRedactionResult.segments_found} found)
+                              </span>
+                              {imageRedactionResult.categories_selected.length >
+                                0 && (
+                                <span className="text-muted-foreground ml-2">
+                                  •{" "}
+                                  {imageRedactionResult.categories_selected.join(
+                                    ", ",
+                                  )}
+                                </span>
+                              )}
+                            </>
+                          ) : null}
+                        </div>
+                        <button
+                          onClick={handleDownloadRedacted}
+                          disabled={isDownloading}
+                          className="flex items-center space-x-2 px-6 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white font-medium transition-colors"
+                        >
+                          {isDownloading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Download className="w-4 h-4" />
+                          )}
+                          <span>
+                            Download {isPdf ? "Redacted PDF" : "Censored Image"}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
               </div>
             </div>
           </motion.div>
@@ -233,127 +662,4 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
       )}
     </AnimatePresence>
   );
-}
-
-// File Preview Component
-function FilePreview({
-  file,
-  isRedacted = false,
-}: {
-  file: { type: string; url: string; name: string };
-  isRedacted?: boolean;
-}) {
-  switch (file.type) {
-    case "image":
-      return (
-        <div className="relative w-full h-full">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={file.url}
-            alt={file.name}
-            className="w-full h-full object-contain"
-            style={{ display: "block" }}
-          />
-          {isRedacted && (
-            <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-purple-600 text-white text-xs font-medium">
-              Redacted
-            </div>
-          )}
-        </div>
-      );
-
-    case "video":
-      return (
-        <div className="relative w-full h-full">
-          <video
-            src={file.url}
-            controls
-            className="w-full h-full object-contain"
-          />
-          {isRedacted && (
-            <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-purple-600 text-white text-xs font-medium">
-              Redacted
-            </div>
-          )}
-        </div>
-      );
-
-    case "pdf":
-      return (
-        <div className="relative w-full h-full">
-          <iframe src={file.url} className="w-full h-full" title={file.name} />
-          {isRedacted && (
-            <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-purple-600 text-white text-xs font-medium">
-              Redacted
-            </div>
-          )}
-        </div>
-      );
-
-    case "audio":
-      return (
-        <div className="flex flex-col items-center justify-center h-full space-y-4 p-4">
-          <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center">
-            <svg
-              className="w-8 h-8 text-purple-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-              />
-            </svg>
-          </div>
-          <audio src={file.url} controls className="w-full max-w-md" />
-          {isRedacted && (
-            <div className="px-2 py-1 rounded-full bg-purple-600 text-white text-xs font-medium">
-              Audio Redacted
-            </div>
-          )}
-        </div>
-      );
-
-    default:
-      return (
-        <div className="flex items-center justify-center h-full text-muted-foreground">
-          <p>Preview not available for this file type</p>
-        </div>
-      );
-  }
-}
-
-// Generate dummy redacted content
-function generateRedactedContent(
-  fileType: string,
-  originalUrl: string,
-): string {
-  // In a real implementation, this would return the actual redacted file URL
-  // For now, we'll use modified versions or placeholders to simulate redaction
-  switch (fileType) {
-    case "image":
-      // Add blur effect to simulate redaction
-      if (originalUrl.includes("unsplash")) {
-        return originalUrl + "&blur=50";
-      }
-      return "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800&h=600&fit=crop&blur=30";
-
-    case "video":
-      // Use a different video to simulate redacted version
-      return "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4";
-
-    case "pdf":
-      // Return a simple PDF with "REDACTED" text
-      return "data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PgplbmRvYmoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PgplbmRvYmoKMyAwIG9iago8PC9UeXBlL1BhZ2UvTWVkaWFCb3hbMCAwIDYxMiA3OTJdL1BhcmVudCAyIDAgUi9SZXNvdXJjZXM8PC9Gb250PDwvRjEgNCAwIFI+Pj4+L0NvbnRlbnRzIDUgMCBSPj4KZW5kb2JqCjQgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhLUJvbGQ+PgplbmRvYmoKNSAwIG9iago8PC9MZW5ndGggMTIwPj4Kc3RyZWFtCkJUCi9GMSA0OCBUZgoxMDAgNzAwIFRkCihSRURBQ1RFRCkgVGoKMCAtNTAgVGQKL0YxIDI0IFRmCihTZW5zaXRpdmUgaW5mb3JtYXRpb24gaGFzIGJlZW4gcmVtb3ZlZCkgVGoKRVQKZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDA2NiAwMDAwMCBuIAowMDAwMDAwMTI1IDAwMDAwIG4gCjAwMDAwMDAyNDQgMDAwMDAgbiAKMDAwMDAwMDMyNSAwMDAwMCBuIAp0cmFpbGVyCjw8L1NpemUgNi9Sb290IDEgMCBSPj4Kc3RhcnR4cmVmCjQ5NAolJUVPRgo=";
-
-    case "audio":
-      // Use a different audio file to simulate redacted version
-      return "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3";
-
-    default:
-      return originalUrl;
-  }
 }

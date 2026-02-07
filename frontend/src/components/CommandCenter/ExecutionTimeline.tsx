@@ -5,20 +5,20 @@
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
 import { formatDuration } from "@/lib/formatting";
-import type { AgentType, AgentState } from "@/types/command-center";
+import type { AgentState } from "@/types/command-center";
 
 // -----------------------------------------------------------------------
 // Props
 // -----------------------------------------------------------------------
 interface ExecutionTimelineProps {
-  agentStates: Map<AgentType, AgentState>;
+  agentStates: Map<string, AgentState>;
 }
 
 // -----------------------------------------------------------------------
 // Timing data extracted from agent metadata
 // -----------------------------------------------------------------------
 interface AgentTimingEntry {
-  agentType: AgentType;
+  instanceId: string;
   name: string;
   startMs: number;
   durationMs: number;
@@ -32,7 +32,7 @@ export function ExecutionTimeline({ agentStates }: ExecutionTimelineProps) {
   // Extract timing entries from agent states
   const entries: AgentTimingEntry[] = [];
 
-  for (const [agentType, state] of agentStates) {
+  for (const [instanceId, state] of agentStates) {
     const metadata = state.lastResult?.metadata;
     if (!metadata) continue;
 
@@ -44,12 +44,12 @@ export function ExecutionTimeline({ agentStates }: ExecutionTimelineProps) {
     const startTime = new Date(startedAt).getTime();
     if (isNaN(startTime)) continue;
 
-    const config = AGENT_CONFIGS[agentType];
-    const { accent } = getAgentColors(agentType);
+    const config = AGENT_CONFIGS[state.type];
+    const { accent } = getAgentColors(state.type);
 
     entries.push({
-      agentType,
-      name: config?.name ?? agentType,
+      instanceId,
+      name: config?.name ?? instanceId,
       startMs: startTime,
       durationMs,
       tintColor: `hsl(${accent})`,
@@ -98,7 +98,7 @@ export function ExecutionTimeline({ agentStates }: ExecutionTimelineProps) {
 
           return (
             <div
-              key={entry.agentType}
+              key={entry.instanceId}
               className="flex items-center gap-2"
               role="listitem"
               aria-label={`${entry.name}: ${formatDuration(entry.durationMs)}`}

@@ -1,9 +1,17 @@
 // ABOUTME: Custom hook managing agent state lifecycle for the Command Center.
-// ABOUTME: Handles SSE event processing, state transitions, and compound agent tracking.
+// ABOUTME: Handles SSE event processing, state transitions, and instance-keyed agent tracking.
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 import { useCommandCenterSSE } from "@/hooks/useCommandCenterSSE";
+import {
+  clearCachedAgentStates,
+  deserializeCachedTask,
+  isValidCachedEntry,
+  loadCachedAgentStates,
+  persistAgentStates,
+} from "@/lib/agent-state-cache";
+import { onAnalysisReset } from "@/lib/case-events";
 import { AGENT_CONFIGS } from "@/lib/command-center-config";
 import { extractBaseAgentType } from "@/lib/command-center-validation";
 import type {
@@ -26,6 +34,25 @@ import type {
   ToolCalledEvent,
 } from "@/types/command-center";
 
+/** Maximum number of completed tasks retained in processingHistory per agent instance. */
+const MAX_PROCESSING_HISTORY = 5;
+
+/**
+ * Resolves the map key for an instance ID. For singletons (instanceId === baseType),
+ * falls back to baseType if instanceId is not found. For compound instances, only
+ * matches by exact instanceId to prevent cross-instance state corruption.
+ */
+function resolveInstanceKey(
+  map: Map<string, AgentState>,
+  instanceId: string,
+  baseType: string,
+): string | null {
+  if (map.has(instanceId)) return instanceId;
+  // Only fall back to baseType for singletons
+  if (instanceId === baseType && map.has(baseType)) return baseType;
+  return null;
+}
+
 /**
  * Maps backend execution status strings to frontend AgentStatus values.
  * Backend sends lowercased enum values: pending, running, completed, failed.
@@ -44,8 +71,13 @@ function mapSnapshotStatus(backendStatus: string): AgentStatus {
   }
 }
 
-function createInitialStates(): Map<AgentType, AgentState> {
-  const states = new Map<AgentType, AgentState>();
+/**
+ * Creates skeleton agent states keyed by base type.
+ * These are placeholders for progressive reveal; compound instances
+ * replace their base-type skeleton when they start.
+ */
+function createInitialStates(): Map<string, AgentState> {
+  const states = new Map<string, AgentState>();
   for (const type of Object.keys(AGENT_CONFIGS)) {
     const agentType = type as AgentType;
     states.set(agentType, {
@@ -85,7 +117,7 @@ function mergeAgentResult(
 }
 
 export interface UseAgentStatesReturn {
-  agentStates: Map<AgentType, AgentState>;
+  agentStates: Map<string, AgentState>;
   lastProcessingSummary: ProcessingSummary | null;
   pendingConfirmations: ConfirmationRequiredEvent[];
   pendingBatchConfirmations: ConfirmationBatchRequiredEvent[];
@@ -96,17 +128,17 @@ export interface UseAgentStatesReturn {
 }
 
 /**
- * Manages the full agent state lifecycle:
- * - Initializes idle state for all configured agent types
+ * Manages the full agent state lifecycle with instance-level granularity:
+ * - Initializes idle skeletons for all configured agent types
  * - Processes SSE events (started, complete, error, processing-complete)
  * - Handles thinking-update events by appending traces to agent state
  * - Handles state-snapshot events for reconnection state restoration
- * - Tracks concurrent compound agents (e.g. "financial_grp_0") per base type
+ * - Each agent instance (e.g. "financial_grp_0") gets its own state entry
  * - Tracks pending HITL confirmation requests (single and batch)
  */
 export function useAgentStates(caseId: string): UseAgentStatesReturn {
   const [agentStates, setAgentStates] =
-    useState<Map<AgentType, AgentState>>(createInitialStates);
+    useState<Map<string, AgentState>>(createInitialStates);
   const [lastProcessingSummary, setLastProcessingSummary] =
     useState<ProcessingSummary | null>(null);
   const [pendingConfirmations, setPendingConfirmations] = useState<
@@ -116,28 +148,64 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     ConfirmationBatchRequiredEvent[]
   >([]);
 
-  // Tracks active compound agent IDs per base type (e.g. "financial" → {"financial_grp_0", "financial_grp_1"}).
-  // Prevents premature status transitions when multiple compound agents share a base type.
-  const activeCompoundAgentsRef = useRef(new Map<AgentType, Set<string>>());
+  // Persist agent states to sessionStorage on every state change.
+  // Bridges the gap for agents whose execution records haven't been
+  // committed to the DB yet — the cache supplements the backend snapshot.
+  useEffect(() => {
+    persistAgentStates(caseId, agentStates);
+  }, [caseId, agentStates]);
+
+  // Clears all accumulated state back to initial values. Called when a new
+  // analysis workflow starts so previous results don't bleed into the new run.
+  const resetState = useCallback(() => {
+    clearCachedAgentStates(caseId);
+    setAgentStates(createInitialStates());
+    setLastProcessingSummary(null);
+    setPendingConfirmations([]);
+    setPendingBatchConfirmations([]);
+  }, [caseId]);
+
+  // Listen for analysis-reset events from the AnalysisTrigger component
+  useEffect(() => {
+    return onAnalysisReset(resetState);
+  }, [resetState]);
 
   // ------- SSE event handlers -------
 
   const handleAgentStarted = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as AgentStartedEvent;
-    const baseType = extractBaseAgentType(e.agentType);
+    const instanceId = e.agentType;
+    const baseType = extractBaseAgentType(instanceId);
     if (!baseType) return;
-
-    // Track compound agent ID
-    const tracking = activeCompoundAgentsRef.current;
-    if (!tracking.has(baseType)) tracking.set(baseType, new Set());
-    tracking.get(baseType)!.add(e.agentType);
 
     setAgentStates((prev) => {
       const next = new Map(prev);
-      const state = next.get(baseType);
-      if (state) {
-        next.set(baseType, {
-          ...state,
+
+      if (instanceId === baseType) {
+        // Singleton: update existing skeleton in place
+        const state = next.get(baseType);
+        if (state) {
+          next.set(baseType, {
+            ...state,
+            status: "processing",
+            currentTask: {
+              taskId: e.taskId,
+              fileId: e.fileId,
+              fileName: e.fileName,
+              startedAt: new Date(),
+              status: "processing",
+            },
+          });
+        }
+      } else {
+        // Compound instance: remove idle skeleton for baseType, add instance entry
+        const skeleton = next.get(baseType);
+        if (skeleton && skeleton.status === "idle" && !skeleton.lastResult) {
+          next.delete(baseType);
+        }
+        next.set(instanceId, {
+          id: instanceId,
+          type: baseType,
           status: "processing",
           currentTask: {
             taskId: e.taskId,
@@ -146,82 +214,88 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
             startedAt: new Date(),
             status: "processing",
           },
+          processingHistory: [],
         });
       }
+
       return next;
     });
   }, []);
 
   const handleAgentComplete = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as AgentCompleteEvent;
-    const baseType = extractBaseAgentType(e.agentType);
+    const instanceId = e.agentType;
+    const baseType = extractBaseAgentType(instanceId);
     if (!baseType) return;
-
-    // Remove compound ID from tracking; clean up empty sets to prevent stale accumulation
-    const tracking = activeCompoundAgentsRef.current;
-    tracking.get(baseType)?.delete(e.agentType);
-    const remainingSet = tracking.get(baseType);
-    const hasRemainingActive = (remainingSet?.size ?? 0) > 0;
-    if (!hasRemainingActive) tracking.delete(baseType);
 
     setAgentStates((prev) => {
       const next = new Map(prev);
-      const state = next.get(baseType);
-      if (state?.currentTask) {
-        const completedTask = {
-          ...state.currentTask,
-          completedAt: new Date(),
-          status: "complete" as const,
-        };
-        next.set(baseType, {
-          ...state,
-          // Only transition to idle if no remaining active compound agents for this base type
-          status: hasRemainingActive ? "processing" : "idle",
-          currentTask: hasRemainingActive ? state.currentTask : undefined,
-          lastResult: mergeAgentResult(e.result, state.lastResult),
-          processingHistory: [completedTask, ...state.processingHistory].slice(
+      const resolvedKey = resolveInstanceKey(next, instanceId, baseType);
+      if (!resolvedKey) return prev; // Unknown instance — silently ignore
+      const state = next.get(resolvedKey)!;
+
+      // Build completedTask for processingHistory only when currentTask
+      // is available (may be absent after snapshot restoration).
+      const completedTask = state.currentTask
+        ? {
+            ...state.currentTask,
+            completedAt: new Date(),
+            status: "complete" as const,
+          }
+        : null;
+      const updatedHistory = completedTask
+        ? [completedTask, ...state.processingHistory].slice(
             0,
-            5,
-          ),
-        });
-      }
+            MAX_PROCESSING_HISTORY,
+          )
+        : state.processingHistory;
+
+      next.set(resolvedKey, {
+        ...state,
+        status: "idle",
+        currentTask: undefined,
+        lastResult: mergeAgentResult(e.result, state.lastResult),
+        processingHistory: updatedHistory,
+      });
       return next;
     });
   }, []);
 
   const handleAgentError = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as AgentErrorEvent;
-    const baseType = extractBaseAgentType(e.agentType);
+    const instanceId = e.agentType;
+    const baseType = extractBaseAgentType(instanceId);
     if (!baseType) return;
-
-    // Remove compound ID from tracking; clean up empty sets to prevent stale accumulation
-    const tracking = activeCompoundAgentsRef.current;
-    tracking.get(baseType)?.delete(e.agentType);
-    const remainingSet = tracking.get(baseType);
-    const hasRemainingActive = (remainingSet?.size ?? 0) > 0;
-    if (!hasRemainingActive) tracking.delete(baseType);
 
     setAgentStates((prev) => {
       const next = new Map(prev);
-      const state = next.get(baseType);
-      if (state?.currentTask) {
-        const errorTask = {
-          ...state.currentTask,
-          completedAt: new Date(),
-          status: "error" as const,
-          error: e.error,
-        };
-        next.set(baseType, {
-          ...state,
-          // Only transition to error if no remaining active compound agents
-          status: hasRemainingActive ? "processing" : "error",
-          currentTask: hasRemainingActive ? state.currentTask : undefined,
-          processingHistory: [errorTask, ...state.processingHistory].slice(
+      const resolvedKey = resolveInstanceKey(next, instanceId, baseType);
+      if (!resolvedKey) return prev; // Unknown instance — silently ignore
+      const state = next.get(resolvedKey)!;
+
+      // Build errorTask for processingHistory only when currentTask
+      // is available (may be absent after snapshot restoration).
+      const errorTask = state.currentTask
+        ? {
+            ...state.currentTask,
+            completedAt: new Date(),
+            status: "error" as const,
+            error: e.error,
+          }
+        : null;
+      const updatedHistory = errorTask
+        ? [errorTask, ...state.processingHistory].slice(
             0,
-            5,
-          ),
-        });
-      }
+            MAX_PROCESSING_HISTORY,
+          )
+        : state.processingHistory;
+
+      next.set(resolvedKey, {
+        ...state,
+        status: "error",
+        currentTask: undefined,
+        processingHistory: updatedHistory,
+      });
       return next;
     });
   }, []);
@@ -238,78 +312,113 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
         totalInputTokens: e.totalInputTokens,
         totalOutputTokens: e.totalOutputTokens,
       });
+
+      // Pipeline is done — clear cached states
+      clearCachedAgentStates(caseId);
+
+      // Transition any agents still stuck in "processing" to "idle".
+      // This handles cases where an agent-complete/agent-error event was
+      // lost or never emitted (e.g., BaseException in domain_runner).
+      setAgentStates((prev) => {
+        const next = new Map(prev);
+        for (const [key, state] of next) {
+          if (state.status === "processing") {
+            next.set(key, {
+              ...state,
+              status: "idle",
+              currentTask: undefined,
+            });
+          }
+        }
+        return next;
+      });
     },
-    [],
+    [caseId],
   );
 
   const handleThinkingUpdate = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as ThinkingUpdateEvent;
-    const baseType = extractBaseAgentType(e.agentType);
+    const instanceId = e.agentType;
+    const baseType = extractBaseAgentType(instanceId);
     if (!baseType) return;
 
     setAgentStates((prev) => {
       const next = new Map(prev);
-      const state = next.get(baseType);
-      if (state) {
-        // Validate existing traces is actually a string before concatenation
-        const rawTraces = state.lastResult?.metadata?.thinkingTraces;
-        const existingTraces = typeof rawTraces === "string" ? rawTraces : "";
-        let updatedTraces = existingTraces
-          ? existingTraces + "\n" + e.thought
-          : e.thought;
-        // Limit trace length to prevent unbounded memory growth (100KB max)
-        const MAX_TRACES_LENGTH = 100_000;
-        if (updatedTraces.length > MAX_TRACES_LENGTH) {
-          updatedTraces = updatedTraces.slice(-MAX_TRACES_LENGTH);
-        }
-        next.set(baseType, {
-          ...state,
-          lastResult: {
-            ...(state.lastResult || {
-              taskId: "",
-              agentType: baseType,
-              outputs: [],
-            }),
-            metadata: {
-              ...(state.lastResult?.metadata || {}),
-              thinkingTraces: updatedTraces,
-            },
-          },
-        });
+      const resolvedKey = resolveInstanceKey(next, instanceId, baseType);
+      if (!resolvedKey) return prev;
+      const state = next.get(resolvedKey)!;
+
+      // Validate existing traces is actually a string before concatenation
+      const rawTraces = state.lastResult?.metadata?.thinkingTraces;
+      const existingTraces = typeof rawTraces === "string" ? rawTraces : "";
+      let updatedTraces = existingTraces
+        ? existingTraces + "\n" + e.thought
+        : e.thought;
+      // Limit trace length to prevent unbounded memory growth (100KB max)
+      const MAX_TRACES_LENGTH = 100_000;
+      if (updatedTraces.length > MAX_TRACES_LENGTH) {
+        updatedTraces = updatedTraces.slice(-MAX_TRACES_LENGTH);
       }
+      next.set(resolvedKey, {
+        ...state,
+        lastResult: {
+          ...(state.lastResult || {
+            taskId: "",
+            agentType: baseType,
+            outputs: [],
+          }),
+          metadata: {
+            ...(state.lastResult?.metadata || {}),
+            thinkingTraces: updatedTraces,
+          },
+        },
+      });
       return next;
     });
   }, []);
 
-  const handleStateSnapshot = useCallback((event: CommandCenterSSEEvent) => {
-    const e = event as StateSnapshotEvent;
-    // Snapshot is authoritative server state — reset compound tracking to avoid stale entries
-    activeCompoundAgentsRef.current.clear();
+  const handleStateSnapshot = useCallback(
+    (event: CommandCenterSSEEvent) => {
+      const e = event as StateSnapshotEvent;
 
-    setAgentStates((prev) => {
-      const next = new Map(prev);
-      for (const [agentName, agentData] of Object.entries(e.agents)) {
-        // Validate agentData structure before using it
-        if (
-          typeof agentData !== "object" ||
-          agentData === null ||
-          typeof agentData.status !== "string"
-        ) {
-          console.warn(`Invalid agentData for ${agentName}, skipping`);
-          continue;
-        }
+      // Load cached states to supplement the snapshot for agents whose
+      // execution records haven't been committed to the DB yet.
+      const cached = loadCachedAgentStates(caseId);
 
-        // Resolve compound agent IDs to their base type
-        const baseType = extractBaseAgentType(agentName);
-        if (!baseType) {
-          console.warn(
-            `Unrecognized agent key in snapshot: ${agentName}, skipping`,
-          );
-          continue;
-        }
+      setAgentStates((prev) => {
+        // Start from fresh initial states so agents NOT present in the
+        // snapshot revert to idle (authoritative).
+        const next = createInitialStates();
 
-        const existingState = next.get(baseType);
-        if (existingState) {
+        // Track which base types have compound instances so we can remove
+        // their skeletons after processing all snapshot entries.
+        const baseTypesWithCompoundInstances = new Set<string>();
+
+        for (const [agentName, agentData] of Object.entries(e.agents)) {
+          // Validate agentData structure before using it
+          if (
+            typeof agentData !== "object" ||
+            agentData === null ||
+            typeof agentData.status !== "string"
+          ) {
+            console.warn(`Invalid agentData for ${agentName}, skipping`);
+            continue;
+          }
+
+          // Resolve compound agent IDs to their base type
+          const baseType = extractBaseAgentType(agentName);
+          if (!baseType) {
+            console.warn(
+              `Unrecognized agent key in snapshot: ${agentName}, skipping`,
+            );
+            continue;
+          }
+
+          const isCompound = agentName !== baseType;
+          if (isCompound) {
+            baseTypesWithCompoundInstances.add(baseType);
+          }
+
           const frontendStatus = mapSnapshotStatus(agentData.status);
           // Safely extract metadata with type checks
           const meta = agentData.metadata;
@@ -362,21 +471,132 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
                 metadata: validatedMetadata,
               };
 
-          // Merge with existing accumulated state (e.g. live thinking traces
-          // from thinking-update events received before this snapshot)
-          next.set(baseType, {
-            ...existingState,
-            status: frontendStatus,
-            lastResult: mergeAgentResult(
-              snapshotResult,
-              existingState.lastResult,
-            ),
-          });
+          // Synthesize a currentTask for processing agents so the sidebar
+          // shows task info and subsequent agent-complete events can produce
+          // proper processingHistory entries (avoids the currentTask guard).
+          const syntheticTask =
+            frontendStatus === "processing"
+              ? {
+                  taskId: "",
+                  fileId: "",
+                  fileName: agentName,
+                  startedAt:
+                    typeof meta?.startedAt === "string"
+                      ? new Date(meta.startedAt)
+                      : new Date(),
+                  status: "processing" as const,
+                }
+              : undefined;
+
+          // Preserve processingHistory and lastResult from the same instance's
+          // previous state. For compound instances, only match by exact ID to
+          // avoid grafting history from a different instance or skeleton.
+          const prevState = isCompound
+            ? prev.get(agentName)
+            : (prev.get(baseType) ?? prev.get(agentName));
+
+          if (isCompound) {
+            // Compound instance: add as its own entry
+            next.set(agentName, {
+              id: agentName,
+              type: baseType,
+              status: frontendStatus,
+              currentTask: syntheticTask,
+              processingHistory: prevState?.processingHistory ?? [],
+              lastResult: mergeAgentResult(
+                snapshotResult,
+                prevState?.lastResult,
+              ),
+            });
+          } else {
+            // Singleton: update the skeleton in place
+            const freshState = next.get(baseType);
+            if (freshState) {
+              next.set(baseType, {
+                ...freshState,
+                status: frontendStatus,
+                currentTask: syntheticTask,
+                processingHistory: prevState?.processingHistory ?? [],
+                lastResult: mergeAgentResult(
+                  snapshotResult,
+                  prevState?.lastResult,
+                ),
+              });
+            }
+          }
         }
-      }
-      return next;
-    });
-  }, []);
+
+        // Remove skeletons for base types that have compound instances
+        for (const baseType of baseTypesWithCompoundInstances) {
+          const skeleton = next.get(baseType);
+          if (skeleton && skeleton.status === "idle" && !skeleton.lastResult) {
+            next.delete(baseType);
+          }
+        }
+
+        // Supplement snapshot with cached processing states for agents whose
+        // execution records haven't been committed yet (the visibility gap).
+        // Only instance IDs NOT already in the map are eligible.
+        if (cached) {
+          // Collect all instance IDs present in the snapshot
+          const snapshotInstanceIds = new Set<string>();
+          for (const agentName of Object.keys(e.agents)) {
+            snapshotInstanceIds.add(agentName);
+          }
+
+          for (const [instanceId, entry] of Object.entries(cached.agents)) {
+            // Validate entry shape to guard against corrupted sessionStorage
+            if (!isValidCachedEntry(entry)) continue;
+            if (entry.status !== "processing") continue;
+            if (snapshotInstanceIds.has(instanceId)) continue;
+            // Skip if this instance already exists in next (from snapshot)
+            if (next.has(instanceId)) continue;
+
+            const baseType = extractBaseAgentType(instanceId);
+            if (!baseType) continue;
+
+            if (instanceId === baseType) {
+              // Singleton cached entry: update skeleton if still idle
+              const currentState = next.get(baseType);
+              if (currentState && currentState.status === "idle") {
+                next.set(baseType, {
+                  ...currentState,
+                  status: "processing",
+                  currentTask: entry.currentTask
+                    ? deserializeCachedTask(entry.currentTask)
+                    : undefined,
+                });
+              }
+            } else {
+              // Compound cached entry: add as its own instance
+              baseTypesWithCompoundInstances.add(baseType);
+              next.set(instanceId, {
+                id: instanceId,
+                type: baseType,
+                status: "processing",
+                currentTask: entry.currentTask
+                  ? deserializeCachedTask(entry.currentTask)
+                  : undefined,
+                processingHistory: [],
+              });
+              // Remove skeleton for this base type if it's still idle
+              const skeleton = next.get(baseType);
+              if (
+                skeleton &&
+                skeleton.status === "idle" &&
+                !skeleton.lastResult
+              ) {
+                next.delete(baseType);
+              }
+            }
+          }
+        }
+
+        return next;
+      });
+    },
+    [caseId],
+  );
 
   const handleConfirmationRequired = useCallback(
     (event: CommandCenterSSEEvent) => {
@@ -427,33 +647,35 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
 
   const handleToolCalled = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as ToolCalledEvent;
-    const baseType = extractBaseAgentType(e.agentType);
+    const instanceId = e.agentType;
+    const baseType = extractBaseAgentType(instanceId);
     if (!baseType) return;
 
     setAgentStates((prev) => {
       const next = new Map(prev);
-      const state = next.get(baseType);
-      if (state) {
-        // Add tool to the list of tools called for this agent
-        const existingTools = state.lastResult?.toolsCalled || [];
-        // Avoid duplicates and limit to 20 most recent tools
-        const MAX_TOOLS_TRACKED = 20;
-        const updatedTools = existingTools.includes(e.toolName)
-          ? existingTools
-          : [...existingTools, e.toolName].slice(-MAX_TOOLS_TRACKED);
+      const resolvedKey = resolveInstanceKey(next, instanceId, baseType);
+      if (!resolvedKey) return prev;
+      const state = next.get(resolvedKey)!;
 
-        next.set(baseType, {
-          ...state,
-          lastResult: {
-            ...(state.lastResult || {
-              taskId: "",
-              agentType: baseType,
-              outputs: [],
-            }),
-            toolsCalled: updatedTools,
-          },
-        });
-      }
+      // Add tool to the list of tools called for this agent
+      const existingTools = state.lastResult?.toolsCalled || [];
+      // Avoid duplicates and limit to 20 most recent tools
+      const MAX_TOOLS_TRACKED = 20;
+      const updatedTools = existingTools.includes(e.toolName)
+        ? existingTools
+        : [...existingTools, e.toolName].slice(-MAX_TOOLS_TRACKED);
+
+      next.set(resolvedKey, {
+        ...state,
+        lastResult: {
+          ...(state.lastResult || {
+            taskId: "",
+            agentType: baseType,
+            outputs: [],
+          }),
+          toolsCalled: updatedTools,
+        },
+      });
       return next;
     });
   }, []);

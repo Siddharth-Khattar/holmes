@@ -9,7 +9,7 @@ from google.adk.agents import LlmAgent
 from google.genai import types
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.base import MODEL_PRO, PublishFn
+from app.agents.base import PublishFn
 from app.agents.domain_agent_runner import DomainAgentRunner
 from app.agents.factory import AgentFactory
 from app.models.file import CaseFile
@@ -19,42 +19,12 @@ from app.services.adk_service import build_domain_agent_content
 logger = logging.getLogger(__name__)
 
 
-class StrategyAgent:
-    """Legal Strategy Agent for case approach planning and investigation priorities.
-
-    Wraps ADK LlmAgent creation with case-specific configuration.
-    Each instance is intended for a single workflow execution.
-
-    Unlike other domain agents (Financial, Legal, Evidence) which analyze
-    raw evidence files in parallel, the Strategy agent runs SEQUENTIALLY
-    after them and consumes their text summaries alongside its own files.
-    """
-
-    def __init__(
-        self,
-        case_id: str,
-        model: str = MODEL_PRO,
-        publish_fn: PublishFn | None = None,
-    ) -> None:
-        self.case_id = case_id
-        self._agent = AgentFactory.create_strategy_agent(
-            case_id=case_id,
-            model=model,
-            publish_fn=publish_fn,
-        )
-
-    @property
-    def agent(self) -> LlmAgent:
-        """Access the underlying ADK LlmAgent."""
-        return self._agent
-
-
 class StrategyAgentRunner(DomainAgentRunner[StrategyOutput]):
     """Strategy domain agent runner with domain-summary-aware content preparation.
 
-    Differs from other runners in that it also accepts domain_summaries
-    (text from Financial/Legal/Evidence agents) and can run with
-    summaries alone (no files).
+    Differs from standard config-driven runners in that it also accepts
+    domain_summaries (text from Financial/Legal/Evidence agents) and can
+    run with summaries alone (no files).
     """
 
     def get_agent_name(self) -> str:
@@ -69,7 +39,9 @@ class StrategyAgentRunner(DomainAgentRunner[StrategyOutput]):
         model: str,
         publish_fn: PublishFn | None,
     ) -> LlmAgent:
-        return StrategyAgent(case_id=case_id, model=model, publish_fn=publish_fn).agent
+        return AgentFactory.create_strategy_agent(
+            case_id, model=model, publish_fn=publish_fn
+        )
 
     async def _prepare_content(
         self,
@@ -125,7 +97,7 @@ async def run_strategy(
 ) -> StrategyOutput | None:
     """Run legal strategy analysis on files and domain agent summaries.
 
-    Backward-compatible public function delegating to StrategyAgentRunner.
+    Public function delegating to StrategyAgentRunner.
     """
     # Edge case: no files AND no domain summaries -- nothing to analyze
     if not files and not domain_summaries:

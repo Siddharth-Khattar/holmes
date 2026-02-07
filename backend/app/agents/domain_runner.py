@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from contextlib import AbstractAsyncContextManager as AsyncContextManager
 from dataclasses import dataclass
 from uuid import UUID
@@ -19,6 +19,10 @@ from app.agents.financial import run_financial
 from app.agents.legal import run_legal
 from app.models.file import CaseFile
 from app.schemas.agent import EvidenceOutput, OrchestratorOutput
+
+# Type alias for domain agent run functions (run_financial, run_legal, run_evidence).
+# Each accepts a fixed set of keyword args and returns a BaseModel subclass or None.
+DomainRunFn = Callable[..., Awaitable[BaseModel | None]]
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +144,7 @@ def compute_agent_tasks(
 
 # Maps agent type names to their async run functions.
 # Each run function has an identical signature (see financial.py, legal.py, evidence.py).
-RUN_FNS: dict[str, Callable[..., object]] = {
+RUN_FNS: dict[str, DomainRunFn] = {
     "financial": run_financial,
     "legal": run_legal,
     "evidence": run_evidence,
@@ -199,7 +203,7 @@ async def run_domain_agents_parallel(
         return {}
 
     # Log what we're about to execute
-    task_summary = {}
+    task_summary: dict[str, list[str]] = {}
     for t in tasks:
         task_summary.setdefault(t.agent_type, []).append(t.group_label)
     logger.info(
@@ -255,7 +259,7 @@ async def run_domain_agents_parallel(
     failures = 0
 
     for item in results:
-        if isinstance(item, Exception):
+        if isinstance(item, BaseException):
             logger.error("Domain agent task failed with exception: %s", item)
             failures += 1
             continue

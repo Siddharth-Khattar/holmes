@@ -305,7 +305,7 @@ async def list_files(
 @router.get(
     "/{file_id}/download",
     response_model=DownloadUrlResponse,
-    summary="Get a signed URL to download a file",
+    summary="Get a signed URL to download or view a file",
     responses={
         401: {"model": ErrorResponse, "description": "Unauthorized"},
         404: {"model": ErrorResponse, "description": "File not found"},
@@ -317,12 +317,17 @@ async def get_download_url(
     file_id: UUID,
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
+    inline: Annotated[bool, Query()] = False,
 ) -> DownloadUrlResponse:
     """
-    Generate a signed URL for downloading a file.
+    Generate a signed URL for downloading or viewing a file.
 
     The URL is valid for 24 hours and includes the original filename
-    in the Content-Disposition header for proper download naming.
+    in the Content-Disposition header.
+
+    Query Parameters:
+    - inline: If true, returns URL with 'inline' disposition for browser preview.
+              If false (default), returns URL with 'attachment' disposition to force download.
     """
     # Validate file ownership
     case_file = await get_user_file(db, case_id, file_id, current_user.id)
@@ -339,6 +344,7 @@ async def get_download_url(
             storage_path=case_file.storage_path,
             original_filename=case_file.original_filename,
             expiration_seconds=expiration_seconds,
+            inline=inline,
         )
     except Exception as e:
         logger.error("Failed to generate signed URL: %s", e)

@@ -48,7 +48,12 @@ export interface AgentResult {
 }
 
 export interface AgentState {
+  /**
+   * Instance identifier. Equals the base `AgentType` for singletons (e.g. "triage"),
+   * or a compound ID for multi-instance agents (e.g. "financial_grp_0").
+   */
   id: string;
+  /** Base agent type — always a valid `AgentType`. Used for color/config lookups and topology resolution. */
   type: AgentType;
   status: AgentStatus;
   currentTask?: AgentTask;

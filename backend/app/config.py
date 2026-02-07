@@ -71,6 +71,13 @@ class Settings(BaseSettings):
     file_api_max_poll_interval: float = 15.0
     file_api_poll_backoff_multiplier: float = 1.5
 
+    # --- Pipeline stage timeouts (seconds) ---
+    pipeline_timeout_triage: int = 600
+    pipeline_timeout_orchestrator: int = 300
+    pipeline_timeout_domain_agents: int = 900
+    pipeline_timeout_strategy: int = 300
+    pipeline_timeout_overall: int = 1800  # 30 minutes
+
     # --- SSE / Real-time configuration ---
     # Heartbeat interval for SSE connections to keep alive on Cloud Run (per REQ-INF-004)
     sse_heartbeat_interval_seconds: float = 15.0

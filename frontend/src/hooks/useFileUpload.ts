@@ -5,6 +5,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { uploadFile, FileResponse } from "@/lib/api/files";
+import { emitCaseDataChanged } from "@/lib/case-events";
 
 export type FileUploadStatus = "pending" | "uploading" | "completed" | "error";
 
@@ -119,6 +120,12 @@ export function useFileUpload(caseId: string): UseFileUploadReturn {
       }));
 
       uploadInProgress.current = false;
+
+      // Notify parent layout that case data changed (file_count updated)
+      if (results.length > 0) {
+        emitCaseDataChanged();
+      }
+
       return results;
     },
     [caseId],

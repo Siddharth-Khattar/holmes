@@ -60,7 +60,8 @@ async def _ensure_case_not_stuck(
             current = result.scalar_one_or_none()
             if current == CaseStatus.PROCESSING:
                 logger.warning(
-                    "Safety net: forcing case %s from PROCESSING to ERROR", case_id
+                    "Safety net: forcing case %s from PROCESSING to ERROR",
+                    case_id,
                 )
                 await db.execute(
                     update(Case)
@@ -312,7 +313,7 @@ async def run_analysis_workflow(
                 triage_output=triage_output,
                 db_session=db,
                 publish_event=publish_fn,
-                parent_execution_id=triage_execution.id if triage_execution else None,
+                parent_execution_id=(triage_execution.id if triage_execution else None),
             )
 
             orch_execution: AgentExecution | None = None
@@ -370,6 +371,8 @@ async def run_analysis_workflow(
                                 "targetAgent": agent,
                                 "reason": rd.reasoning,
                                 "domainScore": getattr(rd.domain_scores, agent, 0),
+                                "priority": rd.priority,
+                                "routingConfidence": rd.routing_confidence,
                             }
                             for rd in orchestrator_output.routing_decisions
                             for agent in rd.target_agents
@@ -458,7 +461,10 @@ async def run_analysis_workflow(
                             threshold = settings.get_routing_hitl_threshold(agent_type)
                             if rd.routing_confidence < threshold:
                                 item_id = str(uuid4())
-                                item_mapping[item_id] = (rd.file_id, agent_type)
+                                item_mapping[item_id] = (
+                                    rd.file_id,
+                                    agent_type,
+                                )
                                 batch_items.append(
                                     BatchConfirmationItem(
                                         item_id=item_id,
@@ -563,9 +569,9 @@ async def run_analysis_workflow(
                     hypotheses=[],  # Empty until hypothesis system exists (Phase 7)
                     db_session_factory=session_factory,
                     publish_event=publish_fn,
-                    orchestrator_execution_id=orch_execution.id
-                    if orch_execution
-                    else None,
+                    orchestrator_execution_id=(
+                        orch_execution.id if orch_execution else None
+                    ),
                 )
 
                 # Emit agent-complete/error for each agent instance
@@ -774,7 +780,7 @@ async def run_analysis_workflow(
                     hypotheses=[],
                     db_session=db,
                     publish_event=publish_fn,
-                    parent_execution_id=orch_execution.id if orch_execution else None,
+                    parent_execution_id=(orch_execution.id if orch_execution else None),
                     context_injection=strategy_context_injection,
                 )
 

@@ -161,7 +161,10 @@ async def publish_agent_event(
     if "type" not in data_to_send:
         data_to_send["type"] = event_type.value
 
-    event: SSEEvent = {"event": event_type.value, "data": json.dumps(data_to_send)}
+    event: SSEEvent = {
+        "event": event_type.value,
+        "data": json.dumps(data_to_send),
+    }
     _event_buffer[case_id].append(event)
     subscribers = _agent_subscribers.get(case_id, [])
     for queue in subscribers:
@@ -539,7 +542,9 @@ def build_execution_metadata(
         "inputTokens": execution.input_tokens or 0,
         "outputTokens": execution.output_tokens or 0,
         "durationMs": duration_ms or 0,
-        "startedAt": execution.started_at.isoformat() if execution.started_at else None,
+        "startedAt": (
+            execution.started_at.isoformat() if execution.started_at else None
+        ),
         "completedAt": (
             execution.completed_at.isoformat() if execution.completed_at else None
         ),
@@ -583,10 +588,10 @@ def build_agent_result(
             {
                 "type": "triage-results",
                 "data": {
-                    "fileCount": len(file_results)
-                    if isinstance(file_results, list)
-                    else 0,
-                    "groupings": len(groupings) if isinstance(groupings, list) else 0,
+                    "fileCount": (
+                        len(file_results) if isinstance(file_results, list) else 0
+                    ),
+                    "groupings": (len(groupings) if isinstance(groupings, list) else 0),
                 },
             }
         ]
@@ -597,9 +602,9 @@ def build_agent_result(
             {
                 "type": "routing-decisions",
                 "data": {
-                    "routingCount": len(decisions)
-                    if isinstance(decisions, list)
-                    else 0,
+                    "routingCount": (
+                        len(decisions) if isinstance(decisions, list) else 0
+                    ),
                     "parallelAgents": output.get("parallel_agents", []),
                     "researchTriggered": (output.get("research_trigger") or {}).get(
                         "should_trigger", False
@@ -627,6 +632,8 @@ def build_agent_result(
                             "targetAgent": agent,
                             "reason": rd.get("reasoning", ""),
                             "domainScore": score,
+                            "priority": rd.get("priority", "medium"),
+                            "routingConfidence": rd.get("routing_confidence"),
                         }
                     )
             result["routingDecisions"] = routing_decisions_camel
@@ -637,7 +644,9 @@ def build_agent_result(
             {
                 "type": "strategy-findings",
                 "data": {
-                    "findingCount": len(findings) if isinstance(findings, list) else 0,
+                    "findingCount": (
+                        len(findings) if isinstance(findings, list) else 0
+                    ),
                 },
             }
         ]
@@ -665,8 +674,10 @@ def build_agent_result(
             {
                 "type": f"{agent_name}-findings",
                 "data": {
-                    "findingCount": len(findings) if isinstance(findings, list) else 0,
-                    "entityCount": len(entities) if isinstance(entities, list) else 0,
+                    "findingCount": (
+                        len(findings) if isinstance(findings, list) else 0
+                    ),
+                    "entityCount": (len(entities) if isinstance(entities, list) else 0),
                     "groupLabel": group_label,
                 },
             }

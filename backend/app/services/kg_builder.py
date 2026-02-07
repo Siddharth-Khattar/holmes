@@ -7,10 +7,12 @@ import logging
 import string
 from uuid import UUID
 
-from pydantic import BaseModel
 from rapidfuzz import fuzz
 from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.agents.domain_runner import DomainRunResult
+from app.schemas.agent import DomainAgentOutput
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +27,7 @@ def normalize_entity_name(name: str) -> str:
 
 
 async def extract_entities_from_output(
-    output: BaseModel,
+    output: DomainAgentOutput,
     agent_type: str,
     execution_id: UUID | None,
     case_id: UUID,
@@ -77,14 +79,14 @@ async def extract_entities_from_output(
         )
 
     # Extract from top-level entities list
-    if hasattr(output, "entities") and output.entities:
+    if output.entities:
         for entity in output.entities:
             entities_to_create.append(_build_kg_entity(entity, None))
 
     # Extract from per-finding entities lists
-    if hasattr(output, "findings") and output.findings:
+    if output.findings:
         for finding_idx, finding in enumerate(output.findings):
-            if hasattr(finding, "entities") and finding.entities:
+            if finding.entities:
                 for entity in finding.entities:
                     entities_to_create.append(_build_kg_entity(entity, finding_idx))
 
@@ -104,7 +106,7 @@ async def extract_entities_from_output(
 
 
 async def build_relationships_from_findings(
-    output: BaseModel,
+    output: DomainAgentOutput,
     agent_type: str,
     execution_id: UUID | None,
     case_id: UUID,
@@ -130,7 +132,7 @@ async def build_relationships_from_findings(
     """
     from app.models.knowledge_graph import KgRelationship
 
-    if not hasattr(output, "findings") or not output.findings:
+    if not output.findings:
         return []
 
     # Track cumulative strength for each entity pair (ordered tuple of UUIDs)
@@ -138,7 +140,7 @@ async def build_relationships_from_findings(
     pair_category: dict[tuple[UUID, UUID], str] = {}
 
     for finding in output.findings:
-        if not hasattr(finding, "entities") or not finding.entities:
+        if not finding.entities:
             continue
 
         # Collect entity IDs referenced in this finding
@@ -164,10 +166,7 @@ async def build_relationships_from_findings(
                 current_strength = pair_strength.get(pair, 0)
                 pair_strength[pair] = min(current_strength + 20, 100)
                 if pair not in pair_category:
-                    category = (
-                        finding.category if hasattr(finding, "category") else "unknown"
-                    )
-                    pair_category[pair] = category
+                    pair_category[pair] = finding.category
 
     # Create KgRelationship rows
     relationships: list[KgRelationship] = []
@@ -356,7 +355,7 @@ async def compute_entity_degrees(
 async def build_knowledge_graph(
     case_id: str,
     workflow_id: str,
-    domain_results: dict[str, list[tuple[BaseModel | None, str]]],
+    domain_results: dict[str, list[DomainRunResult]],
     db: AsyncSession,
 ) -> tuple[int, int, int]:
     """Top-level orchestrator that builds the knowledge graph from domain agent outputs.
@@ -364,48 +363,33 @@ async def build_knowledge_graph(
     Iterates over all domain agent results, extracts entities, infers
     relationships from co-occurrence, deduplicates, and computes degrees.
 
-    The caller (pipeline.py) is responsible for adding strategy_result into
+    The caller (pipeline.py) is responsible for adding strategy output into
     domain_results before calling this function.
 
     Args:
         case_id: Case UUID string.
         workflow_id: Analysis workflow UUID string.
-        domain_results: Maps agent_type to list of (parsed_output, group_label) tuples.
-            parsed_output is a Pydantic BaseModel (e.g., FinancialOutput) or None.
+        domain_results: Maps agent_type to list of DomainRunResult objects.
+            Each DomainRunResult carries the parsed output alongside execution_id.
         db: Async database session.
 
     Returns:
         Tuple of (entities_created, relationships_created, exact_merges).
     """
-    from app.models.agent_execution import AgentExecution
-
     case_uuid = UUID(case_id)
     total_entities = 0
     total_relationships = 0
 
     for agent_type, results in domain_results.items():
-        for domain_output, _grp_label in results:
-            if domain_output is None:
+        for run_result in results:
+            if run_result.output is None:
                 continue
-
-            # Look up the execution record for this agent
-            exec_result = await db.execute(
-                select(AgentExecution)
-                .where(
-                    AgentExecution.workflow_id == UUID(workflow_id),
-                    AgentExecution.agent_name == agent_type,
-                )
-                .order_by(AgentExecution.created_at.desc())
-                .limit(1)
-            )
-            agent_exec = exec_result.scalar_one_or_none()
-            execution_id = agent_exec.id if agent_exec else None
 
             # Extract entities
             kg_entities = await extract_entities_from_output(
-                output=domain_output,
+                output=run_result.output,
                 agent_type=agent_type,
-                execution_id=execution_id,
+                execution_id=run_result.execution_id,
                 case_id=case_uuid,
                 db=db,
             )
@@ -418,9 +402,9 @@ async def build_knowledge_graph(
 
             # Build relationships from co-occurrence
             relationships = await build_relationships_from_findings(
-                output=domain_output,
+                output=run_result.output,
                 agent_type=agent_type,
-                execution_id=execution_id,
+                execution_id=run_result.execution_id,
                 case_id=case_uuid,
                 entity_map=entity_map,
                 db=db,

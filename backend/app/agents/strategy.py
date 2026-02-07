@@ -94,10 +94,13 @@ async def run_strategy(
     parent_execution_id: UUID | None = None,
     context_injection: str | None = None,
     stage_suffix: str = "",
-) -> StrategyOutput | None:
+) -> tuple[StrategyOutput | None, UUID | None]:
     """Run legal strategy analysis on files and domain agent summaries.
 
     Public function delegating to StrategyAgentRunner.
+
+    Returns:
+        Tuple of (parsed_output_or_None, execution_id_or_None).
     """
     # Edge case: no files AND no domain summaries -- nothing to analyze
     if not files and not domain_summaries:
@@ -105,7 +108,7 @@ async def run_strategy(
             "Strategy agent skipped for case=%s: no files and no domain summaries",
             case_id,
         )
-        return None
+        return (None, None)
 
     return await StrategyAgentRunner().run(
         case_id=case_id,

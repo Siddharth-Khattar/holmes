@@ -5,7 +5,6 @@ import logging
 import time
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -149,6 +148,7 @@ async def run_analysis_workflow(
     # Import here to avoid circular dependency (agents -> services -> agents)
     from app.agents.base import create_sse_publish_fn
     from app.agents.domain_runner import (
+        DomainRunResult,
         build_strategy_context,
         compute_agent_tasks,
         run_domain_agents_parallel,
@@ -397,9 +397,9 @@ async def run_analysis_workflow(
                 await db.commit()
 
             # ---- Stage 3: Domain Agents (File-Group-Based Parallel) ----
-            # domain_results type: dict[str, list[tuple[BaseModel | None, str]]]
-            # where key=agent_type, value=list of (result, group_label) tuples
-            domain_results: dict[str, list[tuple[BaseModel | None, str]]] = {}
+            # domain_results type: dict[str, list[DomainRunResult]]
+            # where key=agent_type, value=list of DomainRunResult per group
+            domain_results: dict[str, list[DomainRunResult]] = {}
 
             if orchestrator_output:
                 logger.info(
@@ -587,40 +587,27 @@ async def run_analysis_workflow(
 
                 # Emit agent-complete/error for each agent instance
                 for domain_agent, domain_run_list in domain_results.items():
-                    for domain_output, grp_label in domain_run_list:
-                        compound_id = f"{domain_agent}_{grp_label}"
+                    for run_result in domain_run_list:
+                        compound_id = f"{domain_agent}_{run_result.group_label}"
                         task_id = domain_task_ids.get(compound_id, str(uuid4()))
 
-                        if domain_output is not None:
-                            finding_count = (
-                                len(domain_output.findings)
-                                if hasattr(domain_output, "findings")
-                                else 0
-                            )
-                            entity_count = (
-                                len(domain_output.entities)
-                                if hasattr(domain_output, "entities")
-                                else 0
-                            )
+                        if run_result.output is not None:
+                            finding_count = len(run_result.output.findings)
+                            entity_count = len(run_result.output.entities)
 
-                            # Query execution record for metadata
-                            exec_result = await db.execute(
-                                select(AgentExecution)
-                                .where(
-                                    AgentExecution.workflow_id == UUID(workflow_id),
-                                    AgentExecution.agent_name == domain_agent,
+                            # Look up execution record for SSE metadata
+                            agent_metadata: dict[str, object] = {}
+                            if run_result.execution_id is not None:
+                                exec_result = await db.execute(
+                                    select(AgentExecution).where(
+                                        AgentExecution.id == run_result.execution_id,
+                                    )
                                 )
-                                .order_by(AgentExecution.created_at.desc())
-                                .limit(1)
-                            )
-                            agent_exec = exec_result.scalar_one_or_none()
-                            agent_metadata = (
-                                build_execution_metadata(
-                                    agent_exec, settings.gemini_pro_model
-                                )
-                                if agent_exec
-                                else {}
-                            )
+                                agent_exec = exec_result.scalar_one_or_none()
+                                if agent_exec:
+                                    agent_metadata = build_execution_metadata(
+                                        agent_exec, settings.gemini_pro_model
+                                    )
 
                             await emit_agent_complete(
                                 case_id=case_id,
@@ -630,7 +617,7 @@ async def run_analysis_workflow(
                                     "taskId": task_id,
                                     "agentType": compound_id,
                                     "baseAgentType": domain_agent,
-                                    "groupLabel": grp_label,
+                                    "groupLabel": run_result.group_label,
                                     "fileNames": domain_file_names.get(compound_id, []),
                                     "outputs": [
                                         {
@@ -638,7 +625,7 @@ async def run_analysis_workflow(
                                             "data": {
                                                 "findingCount": finding_count,
                                                 "entityCount": entity_count,
-                                                "groupLabel": grp_label,
+                                                "groupLabel": run_result.group_label,
                                             },
                                         }
                                     ],
@@ -650,7 +637,7 @@ async def run_analysis_workflow(
                                 case_id=case_id,
                                 agent_type=compound_id,
                                 task_id=task_id,
-                                error=f"{domain_agent} agent ({grp_label}) failed to produce output",
+                                error=f"{domain_agent} agent ({run_result.group_label}) failed to produce output",
                             )
 
                 # Bug fix: emit agent-error for expected tasks that have no results.
@@ -658,8 +645,10 @@ async def run_analysis_workflow(
                 # compound IDs with no agent-complete/agent-error event.
                 covered_compound_ids: set[str] = set()
                 for domain_agent, domain_run_list in domain_results.items():
-                    for _, grp_label in domain_run_list:
-                        covered_compound_ids.add(f"{domain_agent}_{grp_label}")
+                    for run_result in domain_run_list:
+                        covered_compound_ids.add(
+                            f"{domain_agent}_{run_result.group_label}"
+                        )
 
                 for compound_id, task_id in domain_task_ids.items():
                     if compound_id not in covered_compound_ids:
@@ -671,9 +660,10 @@ async def run_analysis_workflow(
                         )
 
             # ---- Stage 4: Legal Strategy Agent (Sequential, after domain agents) ----
-            strategy_result = None
+            strategy_output = None
+            strategy_execution_id: UUID | None = None
             any_domain_ran = any(
-                any(r is not None for r, _ in run_list)
+                any(rr.output is not None for rr in run_list)
                 for run_list in domain_results.values()
             )
 
@@ -782,7 +772,7 @@ async def run_analysis_workflow(
                     file_name="strategy-analysis",
                 )
 
-                strategy_result = await run_strategy(
+                strategy_output, strategy_execution_id = await run_strategy(
                     case_id=case_id,
                     workflow_id=workflow_id,
                     user_id=user_id,
@@ -795,23 +785,20 @@ async def run_analysis_workflow(
                     context_injection=strategy_context_injection,
                 )
 
-                if strategy_result:
-                    # Query strategy execution for metadata
-                    strat_exec_result = await db.execute(
-                        select(AgentExecution)
-                        .where(
-                            AgentExecution.workflow_id == UUID(workflow_id),
-                            AgentExecution.agent_name == "strategy",
+                if strategy_output:
+                    # Look up strategy execution record for SSE metadata
+                    strat_metadata: dict[str, object] = {}
+                    if strategy_execution_id is not None:
+                        strat_exec_result = await db.execute(
+                            select(AgentExecution).where(
+                                AgentExecution.id == strategy_execution_id,
+                            )
                         )
-                        .order_by(AgentExecution.created_at.desc())
-                        .limit(1)
-                    )
-                    strat_exec = strat_exec_result.scalar_one_or_none()
-                    strat_metadata = (
-                        build_execution_metadata(strat_exec, settings.gemini_pro_model)
-                        if strat_exec
-                        else {}
-                    )
+                        strat_exec = strat_exec_result.scalar_one_or_none()
+                        if strat_exec:
+                            strat_metadata = build_execution_metadata(
+                                strat_exec, settings.gemini_pro_model
+                            )
 
                     await emit_agent_complete(
                         case_id=case_id,
@@ -824,7 +811,7 @@ async def run_analysis_workflow(
                                 {
                                     "type": "strategy-findings",
                                     "data": {
-                                        "findingCount": len(strategy_result.findings),
+                                        "findingCount": len(strategy_output.findings),
                                     },
                                 }
                             ],
@@ -846,18 +833,16 @@ async def run_analysis_workflow(
             # ---- Stage 5: HITL for Low-Confidence Findings ----
             if domain_results:
                 for domain_agent, domain_run_list in domain_results.items():
-                    for domain_output, grp_label in domain_run_list:
-                        if domain_output is None or not hasattr(
-                            domain_output, "findings"
-                        ):
+                    for run_result in domain_run_list:
+                        if run_result.output is None:
                             continue
-                        for finding in domain_output.findings:
+                        for finding in run_result.output.findings:
                             if finding.confidence < settings.confidence_threshold:
                                 logger.info(
                                     "Low-confidence finding from %s (%s): %s "
                                     "(confidence=%s), requesting HITL",
                                     domain_agent,
-                                    grp_label,
+                                    run_result.group_label,
                                     finding.title,
                                     finding.confidence,
                                 )
@@ -879,7 +864,7 @@ async def run_analysis_workflow(
                                         ],
                                         "confidence": finding.confidence,
                                         "agent": domain_agent,
-                                        "group_label": grp_label,
+                                        "group_label": run_result.group_label,
                                     },
                                 )
                                 if not confirmation_result.approved:
@@ -888,15 +873,15 @@ async def run_analysis_workflow(
                                         "(reason: %s)",
                                         finding.title,
                                         domain_agent,
-                                        grp_label,
+                                        run_result.group_label,
                                         confirmation_result.reason,
                                     )
                                     # Mark finding as rejected (for audit trail)
                                     # Finding remains in output but excluded from KG in Phase 7
 
             # Also check strategy results for HITL
-            if strategy_result and hasattr(strategy_result, "findings"):
-                for finding in strategy_result.findings:
+            if strategy_output:
+                for finding in strategy_output.findings:
                     if finding.confidence < settings.confidence_threshold:
                         logger.info(
                             "Low-confidence finding from strategy: %s "
@@ -936,29 +921,17 @@ async def run_analysis_workflow(
             )
             all_saved_findings: list[CaseFinding] = []
             for domain_agent, domain_run_list in domain_results.items():
-                for domain_output, grp_label in domain_run_list:
-                    if domain_output is None:
+                for run_result in domain_run_list:
+                    if run_result.output is None:
                         continue
-                    # Query execution record for this agent+group
-                    exec_result = await db.execute(
-                        select(AgentExecution)
-                        .where(
-                            AgentExecution.workflow_id == UUID(workflow_id),
-                            AgentExecution.agent_name == domain_agent,
-                        )
-                        .order_by(AgentExecution.created_at.desc())
-                        .limit(1)
-                    )
-                    agent_exec = exec_result.scalar_one_or_none()
-                    execution_id = agent_exec.id if agent_exec else None
 
                     saved = await save_findings_from_output(
-                        output=domain_output,
+                        output=run_result.output,
                         agent_type=domain_agent,
-                        execution_id=execution_id,
+                        execution_id=run_result.execution_id,
                         case_id=UUID(case_id),
                         workflow_id=UUID(workflow_id),
-                        file_group_label=grp_label,
+                        file_group_label=run_result.group_label,
                         db=db,
                     )
                     all_saved_findings.extend(saved)
@@ -971,21 +944,11 @@ async def run_analysis_workflow(
                         )
 
             # Also save strategy findings if available
-            if strategy_result:
-                strat_exec_result2 = await db.execute(
-                    select(AgentExecution)
-                    .where(
-                        AgentExecution.workflow_id == UUID(workflow_id),
-                        AgentExecution.agent_name == "strategy",
-                    )
-                    .order_by(AgentExecution.created_at.desc())
-                    .limit(1)
-                )
-                strat_exec2 = strat_exec_result2.scalar_one_or_none()
+            if strategy_output:
                 strat_saved = await save_findings_from_output(
-                    output=strategy_result,
+                    output=strategy_output,
                     agent_type="strategy",
-                    execution_id=strat_exec2.id if strat_exec2 else None,
+                    execution_id=strategy_execution_id,
                     case_id=UUID(case_id),
                     workflow_id=UUID(workflow_id),
                     file_group_label="strategy",
@@ -1009,9 +972,14 @@ async def run_analysis_workflow(
                 workflow_id,
             )
             # Add strategy to domain_results so KG Builder processes strategy entities too
-            if strategy_result:
+            if strategy_output:
                 domain_results.setdefault("strategy", []).append(
-                    (strategy_result, "strategy")
+                    DomainRunResult(
+                        agent_type="strategy",
+                        output=strategy_output,
+                        group_label="strategy",
+                        execution_id=strategy_execution_id,
+                    )
                 )
 
             (
@@ -1069,15 +1037,13 @@ async def run_analysis_workflow(
             total_findings = 0
             total_domain_entities = 0
             for _, domain_run_list in domain_results.items():
-                for domain_output, _ in domain_run_list:
-                    if domain_output is not None and hasattr(domain_output, "findings"):
-                        total_findings += len(domain_output.findings)
-                    if domain_output is not None and hasattr(domain_output, "entities"):
-                        total_domain_entities += len(domain_output.entities)
+                for run_result in domain_run_list:
+                    if run_result.output is not None:
+                        total_findings += len(run_result.output.findings)
+                        total_domain_entities += len(run_result.output.entities)
 
-            # Also count strategy findings
-            if strategy_result and hasattr(strategy_result, "findings"):
-                total_findings += len(strategy_result.findings)
+            # Also count strategy findings (already included in domain_results if present)
+            # Strategy findings are counted in the loop above when strategy was added to domain_results
 
             total_entities = sum(len(fr.entities) for fr in triage_output.file_results)
             total_duration_s = time.monotonic() - pipeline_start

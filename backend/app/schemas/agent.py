@@ -3,7 +3,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Literal
+from typing import Literal, Protocol, runtime_checkable
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -411,6 +411,24 @@ class HypothesisEvaluation(BaseModel):
         default_factory=list,
         description="Citations supporting this evaluation",
     )
+
+
+# --- Common domain output protocol ---
+
+
+@runtime_checkable
+class DomainAgentOutput(Protocol):
+    """Structural interface shared by all domain agent output models.
+
+    FinancialOutput, LegalOutput, EvidenceOutput, and StrategyOutput all
+    satisfy this protocol. Using it instead of bare BaseModel gives pyright
+    full attribute visibility while keeping the concrete models independent.
+    """
+
+    findings: list[Finding]
+    findings_text: str | None
+    entities: list[DomainEntity]
+    no_findings_explanation: str | None
 
 
 # --- Per-domain output models ---

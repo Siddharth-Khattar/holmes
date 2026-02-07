@@ -10,7 +10,6 @@ from contextlib import AbstractAsyncContextManager as AsyncContextManager
 from dataclasses import dataclass
 from uuid import UUID
 
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.base import PublishFn
@@ -18,11 +17,11 @@ from app.agents.evidence import run_evidence
 from app.agents.financial import run_financial
 from app.agents.legal import run_legal
 from app.models.file import CaseFile
-from app.schemas.agent import EvidenceOutput, OrchestratorOutput
+from app.schemas.agent import DomainAgentOutput, EvidenceOutput, OrchestratorOutput
 
 # Type alias for domain agent run functions (run_financial, run_legal, run_evidence).
-# Each accepts a fixed set of keyword args and returns a BaseModel subclass or None.
-DomainRunFn = Callable[..., Awaitable[BaseModel | None]]
+# Each accepts a fixed set of keyword args and returns (output_or_None, execution_id_or_None).
+DomainRunFn = Callable[..., Awaitable[tuple[DomainAgentOutput | None, UUID | None]]]
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +52,25 @@ class AgentTask:
 # ---------------------------------------------------------------------------
 
 _DOMAIN_AGENT_TYPES = frozenset({"financial", "legal", "evidence"})
+
+
+# ---------------------------------------------------------------------------
+# Domain run result (carries execution provenance alongside output)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class DomainRunResult:
+    """Result of a single domain agent execution within the parallel runner.
+
+    Carries the parsed output alongside execution provenance, eliminating
+    the need for downstream consumers to re-query the database for execution_id.
+    """
+
+    agent_type: str
+    output: DomainAgentOutput | None
+    group_label: str
+    execution_id: UUID | None
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +184,7 @@ async def run_domain_agents_parallel(
     db_session_factory: Callable[..., AsyncContextManager[AsyncSession]],
     publish_event: PublishFn | None = None,
     orchestrator_execution_id: UUID | None = None,
-) -> dict[str, list[tuple[BaseModel | None, str]]]:
+) -> dict[str, list[DomainRunResult]]:
     """Run domain agents in parallel based on orchestrator routing.
 
     Spawns one agent instance per (file_group, agent_type) pair. Multiple
@@ -188,9 +206,9 @@ async def run_domain_agents_parallel(
         orchestrator_execution_id: Optional orchestrator execution ID for audit chain.
 
     Returns:
-        Dict mapping agent type to list of (result, group_label) tuples.
+        Dict mapping agent type to list of DomainRunResult objects.
         Key: agent type name (e.g., "financial", "legal", "evidence").
-        Value: list of (result_or_None, group_label) for each group that ran.
+        Value: list of DomainRunResult for each group that ran.
     """
     tasks = compute_agent_tasks(routing, files)
 
@@ -215,18 +233,18 @@ async def run_domain_agents_parallel(
 
     async def _run_agent_with_session(
         task: AgentTask,
-    ) -> tuple[str, BaseModel | None, str]:
+    ) -> tuple[str, DomainAgentOutput | None, str, UUID | None]:
         """Execute a single agent task with its own database session.
 
-        Returns (agent_type, result, group_label). Catches exceptions internally
-        so the result always appears in the output dict — this ensures agents.py
-        emits agent-error SSE events for failed agents instead of silently
-        dropping them from the gather results.
+        Returns (agent_type, result, group_label, execution_id). Catches
+        exceptions internally so the result always appears in the output dict
+        — this ensures agents.py emits agent-error SSE events for failed
+        agents instead of silently dropping them from the gather results.
         """
         try:
             run_fn = RUN_FNS[task.agent_type]
             async with db_session_factory() as db:
-                result = await run_fn(
+                result, execution_id = await run_fn(
                     case_id=case_id,
                     workflow_id=workflow_id,
                     user_id=user_id,
@@ -239,7 +257,7 @@ async def run_domain_agents_parallel(
                     stage_suffix=task.stage_suffix,
                 )
                 await db.commit()
-                return task.agent_type, result, task.group_label
+                return task.agent_type, result, task.group_label, execution_id
         except Exception as exc:
             logger.error(
                 "Domain agent %s (%s) failed with exception: %s",
@@ -247,14 +265,14 @@ async def run_domain_agents_parallel(
                 task.group_label,
                 exc,
             )
-            return task.agent_type, None, task.group_label
+            return task.agent_type, None, task.group_label, None
 
     # Launch ALL tasks concurrently
     coros = [_run_agent_with_session(t) for t in tasks]
     results = await asyncio.gather(*coros, return_exceptions=True)
 
     # Map results back, grouped by agent type
-    output: dict[str, list[tuple[BaseModel | None, str]]] = {}
+    output: dict[str, list[DomainRunResult]] = {}
     successes = 0
     failures = 0
 
@@ -263,10 +281,17 @@ async def run_domain_agents_parallel(
             logger.error("Domain agent task failed with exception: %s", item)
             failures += 1
             continue
-        agent_type, result, group_label = item
+        agent_type, result, group_label, execution_id = item
         if agent_type not in output:
             output[agent_type] = []
-        output[agent_type].append((result, group_label))
+        output[agent_type].append(
+            DomainRunResult(
+                agent_type=agent_type,
+                output=result,
+                group_label=group_label,
+                execution_id=execution_id,
+            )
+        )
         if result is not None:
             successes += 1
         else:
@@ -291,7 +316,7 @@ async def run_domain_agents_parallel(
 
 
 def build_strategy_context(
-    domain_results: dict[str, list[tuple[BaseModel | None, str]]],
+    domain_results: dict[str, list[DomainRunResult]],
 ) -> str:
     """Build text summaries of domain agent findings for the Strategy agent.
 
@@ -299,10 +324,10 @@ def build_strategy_context(
     domain agents, per CONTEXT.md decision and RESEARCH.md Pitfall 4.
 
     Handles the multi-result-per-agent structure: iterates over all
-    (result, group_label) pairs for each agent type.
+    DomainRunResult objects for each agent type.
 
     Args:
-        domain_results: Dict mapping agent type to list of (result, group_label) tuples.
+        domain_results: Dict mapping agent type to list of DomainRunResult objects.
 
     Returns:
         Formatted text summary of all domain agent findings.
@@ -313,19 +338,21 @@ def build_strategy_context(
 
     sections: list[str] = []
 
-    for agent_type, result_pairs in domain_results.items():
+    for agent_type, run_results in domain_results.items():
         agent_display = agent_type.capitalize()
 
-        for result, group_label in result_pairs:
-            if result is None:
+        for run_result in run_results:
+            if run_result.output is None:
                 sections.append(
-                    f"--- {agent_display} Agent ({group_label}) ---\n"
+                    f"--- {agent_display} Agent ({run_result.group_label}) ---\n"
                     "Agent execution failed or produced no output.\n"
                 )
                 continue
 
-            # Extract findings from the result model (all domain outputs have .findings)
-            findings = result.findings if hasattr(result, "findings") else []
+            result = run_result.output
+            group_label = run_result.group_label
+
+            findings = result.findings
             finding_count = len(findings)
 
             section_lines: list[str] = [
@@ -333,14 +360,10 @@ def build_strategy_context(
             ]
 
             if not findings:
-                # All domain outputs have .no_findings_explanation
-                no_findings = (
-                    result.no_findings_explanation
-                    if hasattr(result, "no_findings_explanation")
-                    else None
-                )
-                if no_findings:
-                    section_lines.append(f"No findings: {no_findings}")
+                if result.no_findings_explanation:
+                    section_lines.append(
+                        f"No findings: {result.no_findings_explanation}"
+                    )
                 else:
                     section_lines.append("No findings extracted.")
             else:

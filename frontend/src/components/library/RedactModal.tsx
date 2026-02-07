@@ -200,19 +200,21 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
         setStatus("success");
       } else if (isAudio) {
         // Audio redaction
-        const result = await redactAudio(
-          file.url,
-          redactionPrompt,
-          file.name,
-        );
+        const result = await redactAudio(file.url, redactionPrompt, file.name);
 
         setAudioRedactionResult(result);
         // Determine MIME type from output format
-        const mimeType = result.output_format === "wav" ? "audio/wav"
-          : result.output_format === "ogg" ? "audio/ogg"
-          : result.output_format === "flac" ? "audio/flac"
-          : "audio/mpeg";
-        setRedactedAudioUrl(base64ToAudioDataUrl(result.censored_audio, mimeType));
+        const mimeType =
+          result.output_format === "wav"
+            ? "audio/wav"
+            : result.output_format === "ogg"
+              ? "audio/ogg"
+              : result.output_format === "flac"
+                ? "audio/flac"
+                : "audio/mpeg";
+        setRedactedAudioUrl(
+          base64ToAudioDataUrl(result.censored_audio, mimeType),
+        );
         setStatus("success");
       }
     } catch (error) {
@@ -223,10 +225,25 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
       setStatus("error");
       setErrorMessage(message);
     }
-  }, [file.url, file.name, redactionPrompt, redactionMethod, isPdf, isImage, isVideo, isAudio]);
+  }, [
+    file.url,
+    file.name,
+    redactionPrompt,
+    redactionMethod,
+    isPdf,
+    isImage,
+    isVideo,
+    isAudio,
+  ]);
 
   const handleDownloadRedacted = useCallback(async () => {
-    if (!redactionResult && !imageRedactionResult && !videoRedactionResult && !audioRedactionResult) return;
+    if (
+      !redactionResult &&
+      !imageRedactionResult &&
+      !videoRedactionResult &&
+      !audioRedactionResult
+    )
+      return;
 
     setIsDownloading(true);
     try {
@@ -284,18 +301,23 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
         }
 
         // Determine MIME type
-        const mimeType = audioRedactionResult.output_format === "wav" ? "audio/wav"
-          : audioRedactionResult.output_format === "ogg" ? "audio/ogg"
-          : audioRedactionResult.output_format === "flac" ? "audio/flac"
-          : "audio/mpeg";
+        const mimeType =
+          audioRedactionResult.output_format === "wav"
+            ? "audio/wav"
+            : audioRedactionResult.output_format === "ogg"
+              ? "audio/ogg"
+              : audioRedactionResult.output_format === "flac"
+                ? "audio/flac"
+                : "audio/mpeg";
         const blob = new Blob([bytes], { type: mimeType });
 
         // Generate output filename
         const nameParts = file.name.split(".");
-        const ext = audioRedactionResult.output_format || (nameParts.length > 1 ? nameParts.pop() : "mp3");
+        const ext =
+          audioRedactionResult.output_format ||
+          (nameParts.length > 1 ? nameParts.pop() : "mp3");
         const baseName = nameParts.join(".");
         const outputName = `${baseName}_censored.${ext}`;
-
 
         downloadBlob(blob, outputName);
       }
@@ -305,7 +327,17 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
     } finally {
       setIsDownloading(false);
     }
-  }, [redactionResult, imageRedactionResult, videoRedactionResult, audioRedactionResult, file.name, isPdf, isImage, isVideo, isAudio]);
+  }, [
+    redactionResult,
+    imageRedactionResult,
+    videoRedactionResult,
+    audioRedactionResult,
+    file.name,
+    isPdf,
+    isImage,
+    isVideo,
+    isAudio,
+  ]);
 
   const handleClose = useCallback(() => {
     // Reset state when closing
@@ -368,7 +400,8 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                   Redaction Not Available
                 </h2>
                 <p className="text-muted-foreground mb-6">
-                  Redaction is currently only supported for PDF, image, and video files.
+                  Redaction is currently only supported for PDF, image, and
+                  video files.
                   {file.type === "audio" && " Audio redaction coming soon."}
                 </p>
                 <button
@@ -438,7 +471,14 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                 <div className="flex-none flex border-b border-warm-gray/15 dark:border-stone/15">
                   <div className="flex-1 px-4 py-2 border-r border-warm-gray/15 dark:border-stone/15 bg-warm-gray/5 dark:bg-stone/5">
                     <h3 className="text-sm font-medium text-foreground">
-                      Original {isPdf ? "File" : isVideo ? "Video" : isAudio ? "Audio" : "Image"}
+                      Original{" "}
+                      {isPdf
+                        ? "File"
+                        : isVideo
+                          ? "Video"
+                          : isAudio
+                            ? "Audio"
+                            : "Image"}
                     </h3>
                   </div>
                   <div className="flex-1 px-4 py-2 bg-warm-gray/5 dark:bg-stone/5">
@@ -451,11 +491,11 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                 </div>
 
                 {/* Main Content Area */}
-                <div className="flex flex-1 overflow-hidden">
+                <div className="flex flex-1 overflow-hidden min-h-0">
                   {/* Left Half - Original File/Image */}
                   <div
                     ref={originalPanelRef}
-                    className="flex-1 border-r border-warm-gray/15 dark:border-stone/15 overflow-hidden relative"
+                    className="flex-1 border-r border-warm-gray/15 dark:border-stone/15 overflow-hidden relative min-h-0"
                   >
                     {!file.url ? (
                       /* URL still loading — show skeleton */
@@ -472,11 +512,11 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                         title={`Original: ${file.name}`}
                       />
                     ) : isVideo ? (
-                      <div className="w-full h-full flex items-center justify-center bg-warm-gray/5 dark:bg-stone/5 p-4">
+                      <div className="w-full h-full flex items-center justify-center bg-warm-gray/5 dark:bg-stone/5 p-4 overflow-hidden">
                         <video
                           src={file.url}
                           controls
-                          className="max-w-full max-h-full"
+                          className="max-w-full max-h-full object-contain"
                           title={`Original: ${file.name}`}
                         />
                       </div>
@@ -485,7 +525,9 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                         <div className="w-24 h-24 rounded-full bg-purple-500/10 flex items-center justify-center mb-6">
                           <Music className="w-12 h-12 text-purple-500" />
                         </div>
-                        <p className="text-sm text-muted-foreground mb-4">{file.name}</p>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {file.name}
+                        </p>
                         <audio
                           src={file.url}
                           controls
@@ -512,11 +554,14 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                   </div>
 
                   {/* Right Half - Redaction Controls or Preview */}
-                  <div className="flex-1 overflow-hidden flex flex-col">
+                  <div className="flex-1 overflow-hidden flex flex-col min-h-0">
                     {status === "success" &&
-                    (redactedPdfUrl || redactedImageUrl || redactedVideoUrl || redactedAudioUrl) ? (
+                    (redactedPdfUrl ||
+                      redactedImageUrl ||
+                      redactedVideoUrl ||
+                      redactedAudioUrl) ? (
                       /* Redacted Preview */
-                      <div className="flex-1 relative">
+                      <div className="flex-1 relative min-h-0 overflow-hidden">
                         {isPdf && redactedPdfUrl ? (
                           <iframe
                             src={redactedPdfUrl}
@@ -524,13 +569,13 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                             title={`Redacted: ${file.name}`}
                           />
                         ) : isVideo && redactedVideoUrl ? (
-                          <div className="w-full h-full flex items-center justify-center bg-warm-gray/5 dark:bg-stone/5 p-4">
+                          <div className="w-full h-full flex items-center justify-center bg-warm-gray/5 dark:bg-stone/5 p-4 overflow-hidden">
                             <video
                               src={redactedVideoUrl}
                               controls
                               autoPlay
                               loop
-                              className="max-w-full max-h-full"
+                              className="max-w-full max-h-full object-contain"
                               title={`Censored: ${file.name}`}
                             />
                           </div>
@@ -539,7 +584,9 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                             <div className="w-24 h-24 rounded-full bg-green-500/10 flex items-center justify-center mb-6">
                               <Music className="w-12 h-12 text-green-500" />
                             </div>
-                            <p className="text-sm text-muted-foreground mb-4">Censored Audio</p>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              Censored Audio
+                            </p>
                             <audio
                               src={redactedAudioUrl}
                               controls
@@ -548,7 +595,9 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                             />
                             {audioRedactionResult?.transcript && (
                               <div className="mt-6 w-full max-w-md">
-                                <p className="text-xs font-medium text-muted-foreground mb-2">Transcript:</p>
+                                <p className="text-xs font-medium text-muted-foreground mb-2">
+                                  Transcript:
+                                </p>
                                 <div className="max-h-32 overflow-y-auto text-xs text-muted-foreground bg-background/50 rounded-lg p-3 border border-warm-gray/10">
                                   {audioRedactionResult.transcript}
                                 </div>
@@ -613,10 +662,10 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                             {isPdf
                               ? "Analyzing document and applying redactions..."
                               : isVideo
-                              ? "Analyzing video and applying censorship... This may take 2-10 minutes."
-                              : isAudio
-                              ? "Transcribing audio and applying beep censorship..."
-                              : "Analyzing image and applying censorship..."}
+                                ? "Analyzing video and applying censorship... This may take 2-10 minutes."
+                                : isAudio
+                                  ? "Transcribing audio and applying beep censorship..."
+                                  : "Analyzing image and applying censorship..."}
                           </p>
                           {!isVideo && (
                             <p className="text-xs text-muted-foreground mt-4">
@@ -664,8 +713,8 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                                 isPdf
                                   ? "E.g., 'Redact all personal names, phone numbers, and email addresses' or 'Redact the word Agentic Marketplace'"
                                   : isAudio
-                                  ? "E.g., 'Censor all mentions of names and addresses' or 'Beep out any profanity or offensive language'"
-                                  : "E.g., 'Blur all faces' or 'Blur the whole body of the woman with the shortest hair'"
+                                    ? "E.g., 'Censor all mentions of names and addresses' or 'Beep out any profanity or offensive language'"
+                                    : "E.g., 'Blur all faces' or 'Blur the whole body of the woman with the shortest hair'"
                               }
                               className="w-full h-28 px-4 py-3 rounded-lg border border-warm-gray/15 dark:border-stone/15 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/30 resize-none text-sm"
                               autoFocus
@@ -704,7 +753,9 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                                 {isVideo && (
                                   <button
                                     type="button"
-                                    onClick={() => setRedactionMethod("blackbox")}
+                                    onClick={() =>
+                                      setRedactionMethod("blackbox")
+                                    }
                                     className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
                                       redactionMethod === "blackbox"
                                         ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
@@ -743,10 +794,10 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                               {isPdf
                                 ? "Our AI analyzes the document to find matching content, then draws black boxes over the text to censor it while preserving the document structure."
                                 : isVideo
-                                ? "Our AI analyzes the video frame-by-frame to find matching content, then applies blur, pixelation, or black boxes to censor it throughout the video."
-                                : isAudio
-                                ? "Our AI transcribes the audio to find matching content, then replaces those segments with a beep sound while preserving the rest of the audio."
-                                : "Our AI analyzes the image to find matching content, then applies blur or pixelation to censor it while preserving the image structure."}
+                                  ? "Our AI analyzes the video frame-by-frame to find matching content, then applies blur, pixelation, or black boxes to censor it throughout the video."
+                                  : isAudio
+                                    ? "Our AI transcribes the audio to find matching content, then replaces those segments with a beep sound while preserving the rest of the audio."
+                                    : "Our AI analyzes the image to find matching content, then applies blur or pixelation to censor it while preserving the image structure."}
                             </p>
                           </div>
                         </div>
@@ -757,7 +808,10 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
 
                 {/* Bottom Bar - Download Button */}
                 {status === "success" &&
-                  (redactionResult || imageRedactionResult || videoRedactionResult || audioRedactionResult) && (
+                  (redactionResult ||
+                    imageRedactionResult ||
+                    videoRedactionResult ||
+                    audioRedactionResult) && (
                     <div className="flex-none border-t border-warm-gray/15 dark:border-stone/15 px-6 py-4 bg-warm-gray/5 dark:bg-stone/5">
                       <div className="flex items-center justify-between max-w-4xl mx-auto">
                         <div className="text-sm">
@@ -853,7 +907,14 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                             <Download className="w-4 h-4" />
                           )}
                           <span>
-                            Download {isPdf ? "Redacted PDF" : isVideo ? "Censored Video" : isAudio ? "Censored Audio" : "Censored Image"}
+                            Download{" "}
+                            {isPdf
+                              ? "Redacted PDF"
+                              : isVideo
+                                ? "Censored Video"
+                                : isAudio
+                                  ? "Censored Audio"
+                                  : "Censored Image"}
                           </span>
                         </button>
                       </div>

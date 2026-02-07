@@ -431,7 +431,7 @@ function VideoViewer({
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Video Element */}
-      <div className="flex-1 relative bg-black flex items-center justify-center">
+      <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden min-h-0">
         {isLoading && <LoadingOverlay fileName={fileName} />}
         <video
           ref={videoRef}

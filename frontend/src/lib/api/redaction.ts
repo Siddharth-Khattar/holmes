@@ -359,7 +359,6 @@ export function base64ToImageDataUrl(
   return `data:${mimeType};base64,${base64}`;
 }
 
-
 /**
  * Fetch video content from a URL and return as a Blob
  */
@@ -407,7 +406,8 @@ export async function redactVideo(
       videoBlob = await fetchVideoBlob(videoUrl);
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error fetching video";
+    const message =
+      err instanceof Error ? err.message : "Unknown error fetching video";
     throw new Error(`Failed to fetch video: ${message}`);
   }
 
@@ -427,7 +427,9 @@ export async function redactVideo(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Network error";
-    throw new Error(`Network error: ${message}. Is the backend running at ${API_URL}?`);
+    throw new Error(
+      `Network error: ${message}. Is the backend running at ${API_URL}?`,
+    );
   }
 
   if (!response.ok) {
@@ -495,10 +497,12 @@ export async function downloadRedactedVideo(
 /**
  * Convert a base64 string to a data URL for video display
  */
-export function base64ToVideoDataUrl(base64: string, mimeType: string = "video/mp4"): string {
+export function base64ToVideoDataUrl(
+  base64: string,
+  mimeType: string = "video/mp4",
+): string {
   return `data:${mimeType};base64,${base64}`;
 }
-
 
 /**
  * Fetch audio content from a URL and return as a Blob
@@ -545,7 +549,8 @@ export async function redactAudio(
       audioBlob = await fetchAudioBlob(audioUrl);
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error fetching audio";
+    const message =
+      err instanceof Error ? err.message : "Unknown error fetching audio";
     throw new Error(`Failed to fetch audio: ${message}`);
   }
 
@@ -563,7 +568,9 @@ export async function redactAudio(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Network error";
-    throw new Error(`Network error: ${message}. Is the backend running at ${API_URL}?`);
+    throw new Error(
+      `Network error: ${message}. Is the backend running at ${API_URL}?`,
+    );
   }
 
   if (!response.ok) {
@@ -629,6 +636,9 @@ export async function downloadRedactedAudio(
 /**
  * Convert a base64 string to a data URL for audio display
  */
-export function base64ToAudioDataUrl(base64: string, mimeType: string = "audio/mpeg"): string {
+export function base64ToAudioDataUrl(
+  base64: string,
+  mimeType: string = "audio/mpeg",
+): string {
   return `data:${mimeType};base64,${base64}`;
 }

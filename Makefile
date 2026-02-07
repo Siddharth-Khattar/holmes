@@ -1,7 +1,7 @@
 # Holmes Development Makefile
 # Cross-language orchestration for the monorepo
 
-.PHONY: install hooks dev-db stop-db adminer generate-types lint format migrate migrate-auth dev-backend dev-frontend
+.PHONY: install hooks dev-db stop-db adminer generate-types lint format migrate migrate-auth dev-backend dev-frontend check compliance
 
 # Install all dependencies
 install:
@@ -49,6 +49,24 @@ lint:
 format:
 	bun run format:frontend || true
 	cd backend && uv run ruff format .
+
+# Run comprehensive compliance checks (lint, format check, type generation)
+check: compliance
+
+compliance:
+	@echo "Running compliance checks..."
+	@echo "\n==> Checking backend formatting..."
+	cd backend && uv run ruff format --check .
+	@echo "\n==> Checking backend linting..."
+	cd backend && uv run ruff check .
+	@echo "\n==> Checking type generation..."
+	@$(MAKE) generate-types
+	@if [ -n "$$(git status --porcelain packages/types/)" ]; then \
+		echo "\n❌ Type generation produced changes. Run 'make generate-types' and commit."; \
+		git diff -- packages/types/; \
+		exit 1; \
+	fi
+	@echo "\n✅ All compliance checks passed!"
 
 # Run Better Auth migrations (creates auth tables)
 migrate-auth:

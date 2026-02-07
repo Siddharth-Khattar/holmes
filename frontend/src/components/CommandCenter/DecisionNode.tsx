@@ -3,14 +3,14 @@
 
 "use client";
 
-import { memo, useRef, useState, useCallback } from "react";
+import { memo } from "react";
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { createPortal } from "react-dom";
 import { motion, type Easing } from "motion/react";
 import { Loader2, AlertTriangle, Clock } from "lucide-react";
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
-import { formatDuration } from "@/lib/formatting";
+import { formatDuration, formatInstanceLabel } from "@/lib/formatting";
+import { Tooltip } from "@/components/ui/tooltip";
 import type { AgentType, AgentState } from "@/types/command-center";
 
 // -----------------------------------------------------------------------
@@ -25,36 +25,6 @@ export interface DecisionNodeData {
 }
 
 export type DecisionNodeType = Node<DecisionNodeData, "decision">;
-
-// -----------------------------------------------------------------------
-// Instance label helper — derives a human-readable subtitle for compound
-// agent IDs (e.g. "financial_grp_0" → "Group 1", "financial_ungrouped_2" → "File 3")
-// Returns null for singleton agents where instanceId === baseType.
-// -----------------------------------------------------------------------
-function formatInstanceLabel(
-  instanceId: string,
-  baseType: string,
-): string | null {
-  if (instanceId === baseType) return null;
-
-  // Remove the base type prefix + underscore
-  const suffix = instanceId.slice(baseType.length + 1);
-
-  // Match "grp_N" pattern
-  const grpMatch = suffix.match(/^grp_(\d+)$/);
-  if (grpMatch) {
-    return `Group ${Number(grpMatch[1]) + 1}`;
-  }
-
-  // Match "ungrouped_N" pattern
-  const ungroupedMatch = suffix.match(/^ungrouped_(\d+)$/);
-  if (ungroupedMatch) {
-    return `File ${Number(ungroupedMatch[1]) + 1}`;
-  }
-
-  // Fallback: humanize the suffix
-  return suffix.replace(/_/g, " ");
-}
 
 // -----------------------------------------------------------------------
 // Typed easing constants to satisfy motion's Easing type
@@ -115,12 +85,6 @@ function getBadgeText(agentState: AgentState): string | null {
 function DecisionNodeInner({ data }: NodeProps<DecisionNodeType>) {
   const { agentType, agentState, isChosen, isSelected } = data;
 
-  const nodeRef = useRef<HTMLDivElement>(null);
-  const [tooltipPos, setTooltipPos] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
-
   const config = AGENT_CONFIGS[agentType];
   const { tint, accent } = getAgentColors(agentType);
   const isProcessing = agentState.status === "processing";
@@ -140,21 +104,6 @@ function DecisionNodeInner({ data }: NodeProps<DecisionNodeType>) {
     | number
     | undefined;
   const instanceLabel = formatInstanceLabel(agentState.id, agentType);
-
-  // ------- Tooltip handlers -------
-  const handleMouseEnter = useCallback(() => {
-    if (nodeRef.current) {
-      const rect = nodeRef.current.getBoundingClientRect();
-      setTooltipPos({
-        x: rect.left + rect.width / 2,
-        y: rect.top - 50,
-      });
-    }
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    setTooltipPos(null);
-  }, []);
 
   // ------- Computed styles -------
   const chosenBackground = `linear-gradient(135deg, hsl(${tint} / 0.75) 0%, hsl(${tint} / 0.35) 100%)`;
@@ -196,191 +145,149 @@ function DecisionNodeInner({ data }: NodeProps<DecisionNodeType>) {
       <Handle type="source" position={Position.Bottom} style={handleStyle} />
 
       {/* Outer container: fixed dimensions for layout engine */}
-      <div
-        ref={nodeRef}
-        className="w-75 h-25"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
-        {/* Inner motion.div: entrance, hover, tap animations */}
-        <motion.div
-          className="relative w-full h-full rounded-lg overflow-hidden cursor-pointer"
-          style={{
-            background: isActive ? chosenBackground : unchosenBackground,
-            border: "none",
-            boxShadow,
-          }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, ease: EASE_OUT }}
-          whileHover={{
-            scale: 1.04,
-            boxShadow: `0 0 30px hsl(${accent} / 0.5), 0 0 12px hsl(${accent} / 0.3)${selectedShadow ? `, ${selectedShadow}` : ""}`,
-          }}
-          whileTap={{ scale: 0.98 }}
-        >
-          {/* Processing pulse glow overlay */}
-          {isProcessing && (
-            <motion.div
-              className="absolute inset-0 rounded-lg pointer-events-none"
-              animate={{
-                boxShadow: [
-                  `0 0 10px hsl(${accent} / 0.15), inset 0 0 8px hsl(${accent} / 0.06)`,
-                  `0 0 20px hsl(${accent} / 0.3), inset 0 0 12px hsl(${accent} / 0.1)`,
-                  `0 0 10px hsl(${accent} / 0.15), inset 0 0 8px hsl(${accent} / 0.06)`,
-                ],
-              }}
-              transition={{
-                duration: 2.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
-          )}
-
-          {/* Node content */}
-          <div className="flex flex-col items-center justify-center h-full px-4 py-2 gap-1">
-            {/* Agent name with optional text glow */}
-            <div className="flex items-center gap-2">
-              {/* Status dot */}
-              <span
-                style={{
-                  ...statusDotStyle(agentState.status, isActive, accent),
-                  ...(isProcessing
-                    ? { animation: "pulse 1.5s ease-in-out infinite" }
-                    : {}),
+      <Tooltip content="Click for more details" position="top" delay={200}>
+        <div className="w-75 h-25">
+          {/* Inner motion.div: entrance, hover, tap animations */}
+          <motion.div
+            className="relative w-full h-full rounded-lg overflow-hidden cursor-pointer"
+            style={{
+              background: isActive ? chosenBackground : unchosenBackground,
+              border: "none",
+              boxShadow,
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, ease: EASE_OUT }}
+            whileHover={{
+              scale: 1.04,
+              boxShadow: `0 0 30px hsl(${accent} / 0.5), 0 0 12px hsl(${accent} / 0.3)${selectedShadow ? `, ${selectedShadow}` : ""}`,
+            }}
+            whileTap={{ scale: 0.98 }}
+          >
+            {/* Processing pulse glow overlay */}
+            {isProcessing && (
+              <motion.div
+                className="absolute inset-0 rounded-lg pointer-events-none"
+                animate={{
+                  boxShadow: [
+                    `0 0 10px hsl(${accent} / 0.15), inset 0 0 8px hsl(${accent} / 0.06)`,
+                    `0 0 20px hsl(${accent} / 0.3), inset 0 0 12px hsl(${accent} / 0.1)`,
+                    `0 0 10px hsl(${accent} / 0.15), inset 0 0 8px hsl(${accent} / 0.06)`,
+                  ],
+                }}
+                transition={{
+                  duration: 2.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
                 }}
               />
-
-              <span
-                className="text-lg font-bold truncate max-w-55"
-                style={{
-                  color: isActive ? `hsl(${accent})` : "hsl(0 0% 50% / 0.6)",
-                }}
-              >
-                {config.name}
-              </span>
-
-              {/* Spinner when processing */}
-              {isProcessing && (
-                <Loader2
-                  className="w-4 h-4 animate-spin shrink-0"
-                  style={{ color: `hsl(${accent})` }}
-                  aria-label="Processing"
-                  role="status"
-                />
-              )}
-            </div>
-
-            {/* Instance label for compound agents (e.g. "Group 1") */}
-            {instanceLabel && (
-              <span
-                className="text-xs font-medium"
-                style={{
-                  color: isActive
-                    ? `hsl(${accent} / 0.7)`
-                    : "hsl(0 0% 50% / 0.4)",
-                }}
-              >
-                {instanceLabel}
-              </span>
             )}
 
-            {/* Badge row: file count / output count / warning badge */}
-            <div className="flex items-center gap-2">
-              {badgeText && (
+            {/* Node content */}
+            <div className="flex flex-col items-center justify-center h-full px-4 py-2 gap-1">
+              {/* Agent name with optional text glow */}
+              <div className="flex items-center gap-2">
+                {/* Status dot */}
                 <span
-                  className="text-xs px-2 py-0.5 rounded-full truncate max-w-45"
                   style={{
-                    background: isActive
-                      ? `hsl(${accent} / 0.15)`
-                      : "hsl(0 0% 50% / 0.1)",
-                    color: isActive ? `hsl(${accent})` : "hsl(0 0% 50% / 0.5)",
+                    ...statusDotStyle(agentState.status, isActive, accent),
+                    ...(isProcessing
+                      ? { animation: "pulse 1.5s ease-in-out infinite" }
+                      : {}),
+                  }}
+                />
+
+                <span
+                  className="text-lg font-bold truncate max-w-55"
+                  style={{
+                    color: isActive ? `hsl(${accent})` : "hsl(0 0% 50% / 0.6)",
                   }}
                 >
-                  {badgeText}
+                  {config.name}
+                </span>
+
+                {/* Spinner when processing */}
+                {isProcessing && (
+                  <Loader2
+                    className="w-4 h-4 animate-spin shrink-0"
+                    style={{ color: `hsl(${accent})` }}
+                    aria-label="Processing"
+                    role="status"
+                  />
+                )}
+              </div>
+
+              {/* Instance label for compound agents (e.g. "Group 1") */}
+              {instanceLabel && (
+                <span
+                  className="text-xs font-medium"
+                  style={{
+                    color: isActive
+                      ? `hsl(${accent} / 0.7)`
+                      : "hsl(0 0% 50% / 0.4)",
+                  }}
+                >
+                  {instanceLabel}
                 </span>
               )}
 
-              {/* Warning badge for orchestrator */}
-              {warningCount > 0 && (
-                <span
-                  className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full"
-                  style={{
-                    background: "hsl(45 100% 50% / 0.15)",
-                    color: "hsl(45 100% 60%)",
-                  }}
-                  role="status"
-                  aria-label={`${warningCount} warning${warningCount > 1 ? "s" : ""}`}
-                >
-                  <AlertTriangle className="w-3 h-3" aria-hidden="true" />
-                  {warningCount}
-                </span>
-              )}
+              {/* Badge row: file count / output count / warning badge */}
+              <div className="flex items-center gap-2">
+                {badgeText && (
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full truncate max-w-45"
+                    style={{
+                      background: isActive
+                        ? `hsl(${accent} / 0.15)`
+                        : "hsl(0 0% 50% / 0.1)",
+                      color: isActive
+                        ? `hsl(${accent})`
+                        : "hsl(0 0% 50% / 0.5)",
+                    }}
+                  >
+                    {badgeText}
+                  </span>
+                )}
 
-              {/* Duration badge for completed agents */}
-              {durationMs !== undefined && durationMs > 0 && (
-                <span
-                  className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full"
-                  style={{
-                    background: isActive
-                      ? `hsl(${accent} / 0.15)`
-                      : "hsl(0 0% 50% / 0.1)",
-                    color: isActive ? `hsl(${accent})` : "hsl(0 0% 50% / 0.5)",
-                  }}
-                  aria-label={`Duration: ${formatDuration(durationMs)}`}
-                >
-                  <Clock className="w-3 h-3" aria-hidden="true" />
-                  {formatDuration(durationMs)}
-                </span>
-              )}
+                {/* Warning badge for orchestrator */}
+                {warningCount > 0 && (
+                  <span
+                    className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full"
+                    style={{
+                      background: "hsl(45 100% 50% / 0.15)",
+                      color: "hsl(45 100% 60%)",
+                    }}
+                    role="status"
+                    aria-label={`${warningCount} warning${warningCount > 1 ? "s" : ""}`}
+                  >
+                    <AlertTriangle className="w-3 h-3" aria-hidden="true" />
+                    {warningCount}
+                  </span>
+                )}
+
+                {/* Duration badge for completed agents */}
+                {durationMs !== undefined && durationMs > 0 && (
+                  <span
+                    className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full"
+                    style={{
+                      background: isActive
+                        ? `hsl(${accent} / 0.15)`
+                        : "hsl(0 0% 50% / 0.1)",
+                      color: isActive
+                        ? `hsl(${accent})`
+                        : "hsl(0 0% 50% / 0.5)",
+                    }}
+                    aria-label={`Duration: ${formatDuration(durationMs)}`}
+                  >
+                    <Clock className="w-3 h-3" aria-hidden="true" />
+                    {formatDuration(durationMs)}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Portal tooltip */}
-      {tooltipPos &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <div
-            style={{
-              position: "fixed",
-              left: tooltipPos.x,
-              top: tooltipPos.y,
-              transform: "translateX(-50%)",
-              pointerEvents: "none",
-              zIndex: 1000,
-            }}
-          >
-            <div
-              className="text-sm rounded-lg shadow-2xl px-3 py-1.5"
-              style={{
-                background: "hsl(0 0% 9% / 0.95)",
-                backdropFilter: "blur(8px)",
-                color: "hsl(0 0% 80%)",
-                border: "1px solid hsl(0 0% 18% / 0.5)",
-              }}
-            >
-              Click for more details
-              {/* CSS triangle arrow pointing down */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: "50%",
-                  bottom: -6,
-                  transform: "translateX(-50%)",
-                  width: 0,
-                  height: 0,
-                  borderLeft: "6px solid transparent",
-                  borderRight: "6px solid transparent",
-                  borderTop: "6px solid hsl(0 0% 18% / 0.5)",
-                }}
-              />
-            </div>
-          </div>,
-          document.body,
-        )}
+          </motion.div>
+        </div>
+      </Tooltip>
     </>
   );
 }

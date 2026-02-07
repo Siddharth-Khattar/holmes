@@ -32,7 +32,25 @@ from app.schemas.file import (
     FileResponse,
     FileStatusUpdate,
 )
+from app.schemas.findings import (
+    FindingCitation,
+    FindingListResponse,
+    FindingResponse,
+    FindingSearchRequest,
+    FindingSearchResponse,
+    FindingSearchResult,
+)
 from app.schemas.health import HealthResponse
+from app.schemas.knowledge_graph import (
+    EntityCreateRequest,
+    EntityListResponse,
+    EntityResponse,
+    EntityUpdateRequest,
+    GraphResponse,
+    RelationshipCreateRequest,
+    RelationshipListResponse,
+    RelationshipResponse,
+)
 
 __all__ = [
     "AgentExecutionCreate",
@@ -46,6 +64,10 @@ __all__ = [
     "ComplexityAssessment",
     "DomainScore",
     "DownloadUrlResponse",
+    "EntityCreateRequest",
+    "EntityListResponse",
+    "EntityResponse",
+    "EntityUpdateRequest",
     "ErrorResponse",
     "ExtractedEntity",
     "FileCreate",
@@ -55,8 +77,18 @@ __all__ = [
     "FileResponse",
     "FileStatusUpdate",
     "FileSummary",
+    "FindingCitation",
+    "FindingListResponse",
+    "FindingResponse",
+    "FindingSearchRequest",
+    "FindingSearchResponse",
+    "FindingSearchResult",
+    "GraphResponse",
     "HealthResponse",
     "OrchestratorOutput",
+    "RelationshipCreateRequest",
+    "RelationshipListResponse",
+    "RelationshipResponse",
     "ResearchTrigger",
     "RoutingDecision",
     "TimestampMixin",

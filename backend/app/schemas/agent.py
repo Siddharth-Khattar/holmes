@@ -304,7 +304,9 @@ class Citation(BaseModel):
     excerpt: str | None = Field(
         default=None,
         max_length=500,
-        description="Relevant text excerpt from the cited location",
+        description="Exact character-for-character excerpt from the source material. "
+        "Must be preserved in original format for PDF.js search highlighting. "
+        "Required for all new findings (enforced via agent prompts).",
     )
 
 
@@ -430,6 +432,13 @@ class FinancialOutput(BaseModel):
         default_factory=list,
         description="Financial findings extracted from analyzed files",
     )
+    findings_text: str | None = Field(
+        default=None,
+        description="Rich markdown analysis text with inline source references. "
+        "Contains the agent's full narrative analysis organized by category, "
+        "with every factual claim citing the exact source excerpt. "
+        "Populated by enriched domain agent prompts (Phase 7+).",
+    )
     hypothesis_evaluations: list[HypothesisEvaluation] = Field(
         default_factory=list,
         description="Evaluations of existing hypotheses against financial findings",
@@ -465,6 +474,13 @@ class LegalOutput(BaseModel):
     findings: list[Finding] = Field(
         default_factory=list,
         description="Legal findings extracted from analyzed files",
+    )
+    findings_text: str | None = Field(
+        default=None,
+        description="Rich markdown analysis text with inline source references. "
+        "Contains the agent's full narrative analysis organized by category, "
+        "with every factual claim citing the exact source excerpt. "
+        "Populated by enriched domain agent prompts (Phase 7+).",
     )
     hypothesis_evaluations: list[HypothesisEvaluation] = Field(
         default_factory=list,
@@ -538,6 +554,13 @@ class EvidenceOutput(BaseModel):
         default_factory=list,
         description="Evidence findings extracted from analyzed files",
     )
+    findings_text: str | None = Field(
+        default=None,
+        description="Rich markdown analysis text with inline source references. "
+        "Contains the agent's full narrative analysis organized by category, "
+        "with every factual claim citing the exact source excerpt. "
+        "Populated by enriched domain agent prompts (Phase 7+).",
+    )
     hypothesis_evaluations: list[HypothesisEvaluation] = Field(
         default_factory=list,
         description="Evaluations of existing hypotheses against evidence findings",
@@ -580,6 +603,13 @@ class StrategyOutput(BaseModel):
     findings: list[Finding] = Field(
         default_factory=list,
         description="Strategic findings extracted from analyzed files",
+    )
+    findings_text: str | None = Field(
+        default=None,
+        description="Rich markdown analysis text with inline source references. "
+        "Contains the agent's full narrative analysis organized by category, "
+        "with every factual claim citing the exact source excerpt. "
+        "Populated by enriched domain agent prompts (Phase 7+).",
     )
     hypothesis_evaluations: list[HypothesisEvaluation] = Field(
         default_factory=list,

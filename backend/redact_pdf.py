@@ -79,7 +79,10 @@ Examples:
         sys.exit(1)
 
     if not input_path.suffix.lower() == ".pdf":
-        print(f"Error: Input must be a PDF file: {args.pdf_file}", file=sys.stderr)
+        print(
+            f"Error: Input must be a PDF file: {args.pdf_file}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     try:
@@ -98,7 +101,7 @@ Examples:
             permanent=args.permanent,
         )
 
-        print(f"✓ Redaction complete!")
+        print("✓ Redaction complete!")
         print(f"  Output: {output_file}")
         print(f"  Redacted items: {info['redaction_count']}")
 

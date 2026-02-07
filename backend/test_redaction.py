@@ -24,7 +24,7 @@ def test_redaction():
     try:
         output_file, response = agent.redact_pdf(pdf_path, redaction_prompt)
 
-        print(f"✓ Success!")
+        print("✓ Success!")
         print(f"  Output: {output_file}")
         print(f"  Redacted: {len(response.targets)} items")
         print(f"  Reasoning: {response.reasoning}\n")

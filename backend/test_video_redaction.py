@@ -67,7 +67,7 @@ def test_video_redaction():
     }
 
     print("\nSending request to API...")
-    print(f"⏳ Processing... (this may take 2-10 minutes)")
+    print("⏳ Processing... (this may take 2-10 minutes)")
     print(f"Started at: {datetime.now().strftime('%H:%M:%S')}")
     print()
 
@@ -122,7 +122,7 @@ def test_video_redaction():
         if result.get("logs"):
             log_path = f"{stem}_logs_{timestamp}.txt"
             with open(log_path, "w") as f:
-                f.write(f"Video Censorship Pipeline Logs\n")
+                f.write("Video Censorship Pipeline Logs\n")
                 f.write(f"Generated: {datetime.now().isoformat()}\n")
                 f.write(f"Video: {video_path}\n")
                 f.write(f"Prompt: {prompt}\n")
@@ -133,7 +133,7 @@ def test_video_redaction():
             print(f"📝 Logs saved: {log_path}")
 
             # Print last 20 logs
-            print(f"\n📋 Pipeline Logs (last 20 entries):")
+            print("\n📋 Pipeline Logs (last 20 entries):")
             for log in result["logs"][-20:]:
                 if "[ERROR]" in log:
                     print(f"  ❌ {log}")
@@ -143,7 +143,7 @@ def test_video_redaction():
                     print(f"  ℹ️  {log}")
 
     except requests.Timeout:
-        print(f"❌ Request timed out after 15 minutes")
+        print("❌ Request timed out after 15 minutes")
         print("   Video may be too long or complex")
     except requests.RequestException as e:
         print(f"❌ Request failed: {e}")

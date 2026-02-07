@@ -46,6 +46,8 @@ export interface AgentResult {
   baseAgentType?: string;
   /** Descriptive label for the compound agent group */
   groupLabel?: string;
+  /** Original filenames processed by this agent instance */
+  fileNames?: string[];
 }
 
 export interface AgentState {

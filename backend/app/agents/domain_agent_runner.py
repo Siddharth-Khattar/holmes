@@ -219,6 +219,7 @@ class DomainAgentRunner[OutputT: BaseModel]:
         input_data: dict[str, object] = {
             "file_ids": file_ids,
             "file_count": len(files),
+            "file_names": [f.original_filename for f in files],
         }
         if stage_suffix:
             input_data["stage_suffix"] = stage_suffix

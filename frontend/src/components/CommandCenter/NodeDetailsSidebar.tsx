@@ -758,6 +758,14 @@ export function NodeDetailsSidebar({
           <h3 className="text-lg font-semibold text-smoke truncate">
             {config.name}
           </h3>
+          {result?.fileNames && result.fileNames.length > 0 && (
+            <p
+              className="text-xs text-[hsl(var(--cc-accent))] mt-0.5 truncate"
+              title={result.fileNames.join(", ")}
+            >
+              {result.fileNames.join(", ")}
+            </p>
+          )}
           <p className="text-xs text-stone mt-0.5 leading-relaxed">
             {config.description}
           </p>

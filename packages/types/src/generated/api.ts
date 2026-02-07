@@ -929,6 +929,34 @@ export interface components {
              */
             reason?: string | null;
         };
+        /** Body_redact_audio_direct_api_redact_audio_post */
+        Body_redact_audio_direct_api_redact_audio_post: {
+            /**
+             * File
+             * Format: binary
+             * @description Audio file to redact
+             */
+            file: string;
+            /**
+             * Prompt
+             * @description Natural language redaction instructions
+             */
+            prompt: string;
+        };
+        /** Body_redact_audio_download_api_redact_audio_download_post */
+        Body_redact_audio_download_api_redact_audio_download_post: {
+            /**
+             * File
+             * Format: binary
+             * @description Audio file to redact
+             */
+            file: string;
+            /**
+             * Prompt
+             * @description Natural language redaction instructions
+             */
+            prompt: string;
+        };
         /** Body_redact_case_file_api_cases__case_id__files__file_id__redact_post */
         Body_redact_case_file_api_cases__case_id__files__file_id__redact_post: {
             /**
@@ -1989,34 +2017,6 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
-        };
-        /** Body_redact_audio_direct_api_redact_audio_post */
-        fastapi___compat__v2__Body_redact_audio_direct_api_redact_audio_post: {
-            /**
-             * File
-             * Format: binary
-             * @description Audio file to redact
-             */
-            file: string;
-            /**
-             * Prompt
-             * @description Natural language redaction instructions
-             */
-            prompt: string;
-        };
-        /** Body_redact_audio_download_api_redact_audio_download_post */
-        fastapi___compat__v2__Body_redact_audio_download_api_redact_audio_download_post: {
-            /**
-             * File
-             * Format: binary
-             * @description Audio file to redact
-             */
-            file: string;
-            /**
-             * Prompt
-             * @description Natural language redaction instructions
-             */
-            prompt: string;
         };
     };
     responses: never;
@@ -3377,7 +3377,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["fastapi___compat__v2__Body_redact_audio_direct_api_redact_audio_post"];
+                "multipart/form-data": components["schemas"]["Body_redact_audio_direct_api_redact_audio_post"];
             };
         };
         responses: {
@@ -3410,7 +3410,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["fastapi___compat__v2__Body_redact_audio_download_api_redact_audio_download_post"];
+                "multipart/form-data": components["schemas"]["Body_redact_audio_download_api_redact_audio_download_post"];
             };
         };
         responses: {

@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-07
 **Current Phase:** 7 of 12 (Knowledge Storage & Domain Agent Enrichment) — IN PROGRESS
-**Current Plan:** 07-04 of ?? (Domain Agent Prompt Enrichment) — COMPLETE
+**Current Plan:** 07-05 of ?? (KG and Findings API Endpoints) — COMPLETE
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -17,7 +17,7 @@
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
-| 7 | Knowledge Storage & Domain Agent Enrichment | IN_PROGRESS | 2026-02-07 | - | Plan 01 (2 commits): 9 DB models + migration. Plan 02 (2 commits): KG/findings Pydantic schemas + findings_text on domain outputs. Plan 03 (2 commits): KG Builder + Findings service. Plan 04 (1 commit): Citation enrichment + findings_text instructions in all 4 domain agent prompts |
+| 7 | Knowledge Storage & Domain Agent Enrichment | IN_PROGRESS | 2026-02-07 | - | Plan 01 (2 commits): 9 DB models + migration. Plan 02 (2 commits): KG/findings Pydantic schemas + findings_text on domain outputs. Plan 03 (2 commits): KG Builder + Findings service. Plan 04 (1 commit): Citation enrichment + findings_text instructions in all 4 domain agent prompts. Plan 05 (2 commits): KG API (7 endpoints) + Findings API (3 endpoints) + router registration |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -31,15 +31,14 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 7, Plan 04 Complete** (2026-02-07): Domain Agent Prompt Enrichment — 1 commit
-  - Added "CITATION AND FINDINGS TEXT REQUIREMENTS" section to all 4 domain agent prompts (financial, legal, evidence, strategy)
-  - Character-for-character exact excerpt requirement for all citations
-  - ts:MM:SS locator format for video/audio timestamps
-  - findings_text rich markdown narrative field instructions with inline [Source: ...] notation
-  - Domain-specific citation guidance per agent type
+- **Phase 7, Plan 05 Complete** (2026-02-07): KG and Findings API Endpoints — 2 commits
+  - 7 KG endpoints: GET /graph, GET/POST entities, PATCH/DELETE entities/{id}, GET/POST relationships
+  - 3 findings endpoints: GET / (paginated list), GET /search (tsvector full-text), GET /{id} (detail)
+  - Both routers registered in main.py; TypeScript API types auto-generated
+  - Case ownership verification on all endpoints
 
 **What's next:**
-- Phase 7, Plan 05+: API endpoints, pipeline wiring (call KG Builder + Findings service after domain agents), SSE events
+- Phase 7, Plan 06+: Pipeline wiring (call KG Builder + Findings service after domain agents), SSE events
 
 ---
 
@@ -100,11 +99,14 @@
 | Mock data | `frontend/src/lib/mock-graph-data.ts` |
 | Types | `frontend/src/types/knowledge-graph.ts` |
 
-**Backend APIs Needed:**
-- `GET /api/cases/:caseId/graph`
-- `POST /api/cases/:caseId/entities`
-- `POST /api/cases/:caseId/relationships`
-- `PATCH/DELETE /api/cases/:caseId/entities/:entityId`
+**Backend APIs:** All complete
+- `GET /api/cases/:caseId/graph` - Full graph visualization data
+- `GET /api/cases/:caseId/entities` - List entities with filters
+- `POST /api/cases/:caseId/entities` - Create entity
+- `PATCH /api/cases/:caseId/entities/:entityId` - Update entity
+- `DELETE /api/cases/:caseId/entities/:entityId` - Delete entity
+- `GET /api/cases/:caseId/relationships` - List relationships with filters
+- `POST /api/cases/:caseId/relationships` - Create relationship
 
 ---
 
@@ -182,9 +184,12 @@ All frontend features need these backend endpoints:
 | File Download | `/api/cases/:caseId/files/:fileId/download` | GET | HIGH | DONE |
 | File SSE | `/sse/cases/:caseId/files` | SSE | HIGH | DONE |
 | Chat | `/api/chat` | POST | HIGH | TODO |
-| Knowledge Graph | `/api/cases/:caseId/graph` | GET | HIGH | TODO |
-| KG Entities | `/api/cases/:caseId/entities` | POST, PATCH, DELETE | MEDIUM | TODO |
-| KG Relationships | `/api/cases/:caseId/relationships` | POST | MEDIUM | TODO |
+| Knowledge Graph | `/api/cases/:caseId/graph` | GET | HIGH | DONE |
+| KG Entities | `/api/cases/:caseId/entities` | GET, POST, PATCH, DELETE | MEDIUM | DONE |
+| KG Relationships | `/api/cases/:caseId/relationships` | GET, POST | MEDIUM | DONE |
+| Findings | `/api/cases/:caseId/findings` | GET | HIGH | DONE |
+| Findings Search | `/api/cases/:caseId/findings/search` | GET | HIGH | DONE |
+| Finding Detail | `/api/cases/:caseId/findings/:findingId` | GET | HIGH | DONE |
 | Timeline Events | `/api/cases/:caseId/timeline/events` | GET, POST, PATCH, DELETE | MEDIUM | TODO |
 | Timeline SSE | `/api/cases/:caseId/timeline/stream` | SSE | MEDIUM | TODO |
 | Command Center SSE | `/sse/cases/:caseId/command-center/stream` | SSE | HIGH | DONE |
@@ -339,6 +344,9 @@ All frontend features need these backend endpoints:
 | Entity dedup scope | Per-domain vs Cross-domain | Cross-domain (grouped by entity_type only) | Per CONTEXT.md decision; allows merging same entity found by different agents |
 | Fuzzy match handling | Auto-merge vs Flag for LLM | Flag for LLM (>=85% ratio) | Avoids incorrect merges; deferred to Phase 8 LLM resolution |
 | Findings text enrichment | Description only vs Description + findings_text | Append findings_text when available | Richer searchable text without losing original description |
+| Findings search route ordering | Before /{finding_id} vs After | Before /{finding_id} | Prevents FastAPI treating "search" as UUID path param |
+| KG API data access | Direct model queries vs Service layer | Direct model queries | Simple CRUD doesn't need service abstraction; findings uses service for complex search |
+| EntityCreateRequest metadata mapping | Direct field vs Renamed | metadata -> properties | Schema field "metadata" maps to DB column "properties" (SQLAlchemy reserved attribute) |
 
 ---
 
@@ -351,7 +359,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 07-04-PLAN.md (Domain Agent Prompt Enrichment)
+Stopped at: Completed 07-05-PLAN.md (KG and Findings API Endpoints)
 Resume file: None
 
 ---

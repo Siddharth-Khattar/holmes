@@ -255,7 +255,7 @@ export function buildAgentFlowGraph({
           sharedContext: group.sharedContext,
           targetAgents: group.targetAgents,
           isActive,
-          onNodeClick: () => onNodeClick(null as unknown as string),
+          onNodeClick: () => {}, // File group nodes are non-selectable
         },
       });
     });

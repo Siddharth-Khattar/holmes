@@ -29,3 +29,31 @@ export function formatTime(isoString: string): string {
   if (isNaN(date.getTime())) return isoString;
   return date.toLocaleTimeString();
 }
+
+/** Known Gemini model ID → friendly display name mappings. */
+const MODEL_DISPLAY_NAMES: Record<string, string> = {
+  "gemini-3-pro-preview": "Gemini 3 Pro",
+  "gemini-3-flash-preview": "Gemini 3 Flash",
+  "gemini-2.5-pro-preview-05-06": "Gemini 2.5 Pro",
+  "gemini-2.5-flash-preview-05-20": "Gemini 2.5 Flash",
+  "gemini-2.0-flash": "Gemini 2.0 Flash",
+};
+
+/**
+ * Format a raw model ID into a human-friendly display name.
+ * Returns a known mapping if available, otherwise strips "-preview"
+ * suffixes and title-cases the remaining segments.
+ */
+export function formatModelName(modelId: string): string {
+  if (!modelId) return "Unknown Model";
+
+  const known = MODEL_DISPLAY_NAMES[modelId];
+  if (known) return known;
+
+  // Fallback: strip trailing "-preview" variants and title-case
+  const cleaned = modelId.replace(/-preview.*$/, "");
+  return cleaned
+    .split("-")
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+}

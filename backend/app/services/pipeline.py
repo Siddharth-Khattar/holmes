@@ -366,6 +366,7 @@ async def run_analysis_workflow(
                         "routingDecisions": [
                             {
                                 "fileId": rd.file_id,
+                                "fileName": rd.file_name or "",
                                 "targetAgent": agent,
                                 "reason": rd.reasoning,
                                 "domainScore": getattr(rd.domain_scores, agent, 0),
@@ -530,6 +531,12 @@ async def run_analysis_workflow(
                 ]
                 expected_tasks = compute_agent_tasks(orchestrator_output, files)
 
+                # Build lookup: compound_id -> list of original filenames
+                domain_file_names: dict[str, list[str]] = {}
+                for task in expected_tasks:
+                    cid = f"{task.agent_type}_{task.group_label}"
+                    domain_file_names[cid] = [f.original_filename for f in task.files]
+
                 # Emit agent-started for each expected (agent_type, group_label) pair
                 # Use compound identifier: "{agent_type}_{group_label}"
                 domain_task_ids: dict[str, str] = {}  # compound_id -> task_id
@@ -607,6 +614,7 @@ async def run_analysis_workflow(
                                     "agentType": compound_id,
                                     "baseAgentType": domain_agent,
                                     "groupLabel": grp_label,
+                                    "fileNames": domain_file_names.get(compound_id, []),
                                     "outputs": [
                                         {
                                             "type": f"{domain_agent}-findings",

@@ -29,6 +29,7 @@ export interface AgentOutput {
 
 export interface RoutingDecision {
   fileId: string;
+  fileName?: string;
   targetAgent: AgentType;
   reason: string;
   domainScore: number; // Confidence score 0-100 (percentage)
@@ -45,6 +46,8 @@ export interface AgentResult {
   baseAgentType?: string;
   /** Descriptive label for the compound agent group */
   groupLabel?: string;
+  /** Original filenames processed by this agent instance */
+  fileNames?: string[];
 }
 
 export interface AgentState {
@@ -207,7 +210,6 @@ export interface AgentConfig {
   description: string;
   color: string;
   position: { x: number; y: number };
-  model?: string;
 }
 
 export interface ProcessingSummary {

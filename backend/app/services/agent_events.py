@@ -535,6 +535,7 @@ def build_execution_metadata(
         duration_ms = int(delta.total_seconds() * 1000)
 
     return {
+        "executionId": str(execution.id),
         "inputTokens": execution.input_tokens or 0,
         "outputTokens": execution.output_tokens or 0,
         "durationMs": duration_ms or 0,
@@ -622,6 +623,7 @@ def build_agent_result(
                     routing_decisions_camel.append(
                         {
                             "fileId": rd.get("file_id", ""),
+                            "fileName": rd.get("file_name", ""),
                             "targetAgent": agent,
                             "reason": rd.get("reasoning", ""),
                             "domainScore": score,
@@ -644,16 +646,21 @@ def build_agent_result(
         # Domain agents (financial, legal, evidence)
         findings = output.get("findings", [])
         entities = output.get("entities", [])
-        # Extract group label from input_data stage_suffix
+        # Extract group label and file names from input_data
         group_label = "default"
+        file_names: list[str] = []
         if execution.input_data and isinstance(execution.input_data, dict):
             raw_suffix = execution.input_data.get("stage_suffix", "")
             group_label = (
                 raw_suffix.lstrip("_") if isinstance(raw_suffix, str) else "default"
             ) or "default"
+            raw_names = execution.input_data.get("file_names", [])
+            if isinstance(raw_names, list):
+                file_names = [str(n) for n in raw_names]
 
         result["baseAgentType"] = agent_name
         result["groupLabel"] = group_label
+        result["fileNames"] = file_names
         result["outputs"] = [
             {
                 "type": f"{agent_name}-findings",

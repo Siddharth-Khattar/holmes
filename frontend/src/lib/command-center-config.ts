@@ -12,7 +12,6 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
     description: "Analyzes files and makes routing decisions",
     color: "",
     position: { x: 0, y: 0 },
-    model: "Gemini 3 Pro",
   },
   orchestrator: {
     type: "orchestrator",
@@ -20,7 +19,6 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
     description: "Coordinates parallel processing across domain agents",
     color: "",
     position: { x: 0, y: 0 },
-    model: "Gemini 3 Pro",
   },
   financial: {
     type: "financial",
@@ -28,7 +26,6 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
     description: "Processes financial documents and transactions",
     color: "",
     position: { x: 0, y: 0 },
-    model: "Gemini 3 Pro",
   },
   legal: {
     type: "legal",
@@ -36,7 +33,6 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
     description: "Extracts legal entities and relationships",
     color: "",
     position: { x: 0, y: 0 },
-    model: "Gemini 3 Pro",
   },
   strategy: {
     type: "strategy",
@@ -44,7 +40,6 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
     description: "Identifies patterns and strategic insights",
     color: "",
     position: { x: 0, y: 0 },
-    model: "Gemini 3 Pro",
   },
   evidence: {
     type: "evidence",
@@ -52,7 +47,6 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
     description: "Analyzes evidence authenticity and chain of custody",
     color: "",
     position: { x: 0, y: 0 },
-    model: "Gemini 3 Pro",
   },
   "knowledge-graph": {
     type: "knowledge-graph",
@@ -60,7 +54,6 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
     description: "Builds unified knowledge graph from all agents",
     color: "",
     position: { x: 0, y: 0 },
-    model: "Gemini 3 Pro",
   },
 };
 

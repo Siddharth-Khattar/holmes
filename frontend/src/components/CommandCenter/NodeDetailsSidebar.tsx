@@ -21,7 +21,12 @@ import {
 } from "lucide-react";
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
-import { formatDuration, formatNumber, formatTime } from "@/lib/formatting";
+import {
+  formatDuration,
+  formatModelName,
+  formatNumber,
+  formatTime,
+} from "@/lib/formatting";
 import { ExecutionTimeline } from "@/components/CommandCenter/ExecutionTimeline";
 import type {
   AgentType,
@@ -770,9 +775,17 @@ export function NodeDetailsSidebar({
               {statusLabel(agentState.status)}
             </span>
           </div>
-          {config.model && (
-            <span className="text-[11px] text-stone/70">{config.model}</span>
-          )}
+          {(() => {
+            const modelId = result?.metadata?.model as string | undefined;
+            const displayModel = modelId
+              ? formatModelName(modelId)
+              : config.model;
+            return displayModel ? (
+              <span className="text-[11px] text-stone/70" title={modelId}>
+                {displayModel}
+              </span>
+            ) : null;
+          })()}
           {isActiveState && (
             <div
               className="px-2.5 py-1 rounded-full text-xs font-medium"
@@ -874,8 +887,11 @@ export function NodeDetailsSidebar({
                 {model && (
                   <>
                     <span className="text-stone text-xs">Model</span>
-                    <span className="text-smoke text-xs font-medium text-right truncate">
-                      {model}
+                    <span
+                      className="text-smoke text-xs font-medium text-right truncate"
+                      title={model}
+                    >
+                      {formatModelName(model)}
                     </span>
                   </>
                 )}

@@ -717,6 +717,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/redact/audio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redact Audio Direct
+         * @description Redact/censor sensitive information from an audio file.
+         *
+         *     This endpoint:
+         *     1. Accepts an audio file upload and redaction prompt
+         *     2. Uses Gemini to transcribe and identify content to censor
+         *     3. Replaces identified segments with beep sounds
+         *     4. Returns the censored audio as base64 encoded data
+         *
+         *     Args:
+         *         file: Audio file to redact (MP3, WAV, OGG, M4A, FLAC, AAC, WebM)
+         *         prompt: Natural language description of what to censor
+         *
+         *     Returns:
+         *         JSON with:
+         *         - censored_audio: base64 encoded censored audio
+         *         - segments_censored: number of segments censored
+         *         - total_censored_duration: total duration censored in seconds
+         *         - transcript: full transcript of the audio
+         *         - reasoning: explanation of censorship decisions
+         *         - targets: list of censored segments with timestamps
+         */
+        post: operations["redact_audio_direct_api_redact_audio_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/redact/audio/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redact Audio Download
+         * @description Redact an audio file and return it as a downloadable file.
+         *
+         *     Same as /redact/audio but returns the audio directly for download
+         *     instead of base64 encoded JSON.
+         */
+        post: operations["redact_audio_download_api_redact_audio_download_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -866,6 +928,34 @@ export interface components {
              * @description Optional reason
              */
             reason?: string | null;
+        };
+        /** Body_redact_audio_direct_api_redact_audio_post */
+        Body_redact_audio_direct_api_redact_audio_post: {
+            /**
+             * File
+             * Format: binary
+             * @description Audio file to redact
+             */
+            file: string;
+            /**
+             * Prompt
+             * @description Natural language redaction instructions
+             */
+            prompt: string;
+        };
+        /** Body_redact_audio_download_api_redact_audio_download_post */
+        Body_redact_audio_download_api_redact_audio_download_post: {
+            /**
+             * File
+             * Format: binary
+             * @description Audio file to redact
+             */
+            file: string;
+            /**
+             * Prompt
+             * @description Natural language redaction instructions
+             */
+            prompt: string;
         };
         /** Body_redact_case_file_api_cases__case_id__files__file_id__redact_post */
         Body_redact_case_file_api_cases__case_id__files__file_id__redact_post: {
@@ -3255,6 +3345,72 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_redact_video_download_api_redact_video_download_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redact_audio_direct_api_redact_audio_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_redact_audio_direct_api_redact_audio_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redact_audio_download_api_redact_audio_download_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_redact_audio_download_api_redact_audio_download_post"];
             };
         };
         responses: {

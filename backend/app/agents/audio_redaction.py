@@ -5,11 +5,7 @@ import base64
 import io
 import json
 import logging
-import math
 import os
-import tempfile
-from pathlib import Path
-from typing import Literal
 
 from google import genai
 from google.genai import types
@@ -26,7 +22,9 @@ class AudioCensorTarget(BaseModel):
     start_time: float = Field(description="Start time in seconds")
     end_time: float = Field(description="End time in seconds")
     text: str = Field(description="The transcribed text being censored")
-    reason: str | None = Field(default=None, description="Why this segment should be censored")
+    reason: str | None = Field(
+        default=None, description="Why this segment should be censored"
+    )
 
 
 class AudioCensorResponse(BaseModel):
@@ -35,9 +33,7 @@ class AudioCensorResponse(BaseModel):
     targets: list[AudioCensorTarget] = Field(
         description="List of audio segments to censor with timestamps"
     )
-    full_transcript: str = Field(
-        default="", description="Full transcript of the audio"
-    )
+    full_transcript: str = Field(default="", description="Full transcript of the audio")
     reasoning: str | None = Field(
         default=None, description="Explanation of censorship decisions"
     )
@@ -49,12 +45,22 @@ class AudioRedactionResponse(BaseModel):
     censored_audio: str = Field(description="Base64 encoded censored audio")
     segments_censored: int = Field(default=0, description="Number of segments censored")
     segments_found: int = Field(default=0, description="Number of segments found")
-    total_censored_duration: float = Field(default=0.0, description="Total duration censored in seconds")
-    audio_duration_seconds: float = Field(default=0.0, description="Audio duration in seconds")
-    processing_time_seconds: float = Field(default=0.0, description="Processing time in seconds")
+    total_censored_duration: float = Field(
+        default=0.0, description="Total duration censored in seconds"
+    )
+    audio_duration_seconds: float = Field(
+        default=0.0, description="Audio duration in seconds"
+    )
+    processing_time_seconds: float = Field(
+        default=0.0, description="Processing time in seconds"
+    )
     transcript: str = Field(default="", description="Full transcript of the audio")
-    reasoning: str | None = Field(default=None, description="AI reasoning for censorship")
-    targets: list[AudioCensorTarget] = Field(default_factory=list, description="Censored segments")
+    reasoning: str | None = Field(
+        default=None, description="AI reasoning for censorship"
+    )
+    targets: list[AudioCensorTarget] = Field(
+        default_factory=list, description="Censored segments"
+    )
 
 
 class AudioRedactionAgent:
@@ -79,7 +85,11 @@ class AudioRedactionAgent:
             model: Gemini model to use (default: gemini-2.0-flash)
             beep_frequency: Frequency of the beep sound in Hz (default: 1000)
         """
-        self.api_key = api_key or os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+        self.api_key = (
+            api_key
+            or os.environ.get("GOOGLE_API_KEY")
+            or os.environ.get("GEMINI_API_KEY")
+        )
         if not self.api_key:
             raise ValueError(
                 "GOOGLE_API_KEY or GEMINI_API_KEY must be provided or set in environment"
@@ -135,10 +145,9 @@ class AudioRedactionAgent:
             AudioCensorResponse with transcript and censor targets
         """
         import time
+
         start_time = time.time()
 
-        # Encode audio to base64
-        audio_base64 = base64.b64encode(audio_data).decode("utf-8")
         mime_type = self._get_audio_mime_type(file_ext)
 
         system_instruction = """You are a precise audio transcription and censorship assistant. Your task is to:
@@ -232,7 +241,7 @@ Listen to the audio carefully, transcribe it, and identify the exact timestamps 
             return AudioCensorResponse(
                 targets=[],
                 full_transcript="",
-                reasoning=f"Failed to parse response: {str(e)}"
+                reasoning=f"Failed to parse response: {str(e)}",
             )
 
     def apply_censorship(
@@ -272,13 +281,15 @@ Listen to the audio carefully, transcribe it, and identify the exact timestamps 
             raise ValueError(
                 "ffmpeg is required for audio processing but was not found. "
                 "Please install ffmpeg: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"
-            )
+            ) from e
         except Exception as e:
             logger.error(f"Failed to load audio: {e}")
-            raise ValueError(f"Could not load audio file: {e}")
+            raise ValueError(f"Could not load audio file: {e}") from e
 
         audio_duration_ms = len(audio)
-        logger.info(f"Audio loaded: {audio_duration_ms / 1000:.1f}s, {audio.channels} channels, {audio.frame_rate}Hz")
+        logger.info(
+            f"Audio loaded: {audio_duration_ms / 1000:.1f}s, {audio.channels} channels, {audio.frame_rate}Hz"
+        )
 
         # Sort targets by start time
         sorted_targets = sorted(targets, key=lambda t: t.start_time)
@@ -295,7 +306,9 @@ Listen to the audio carefully, transcribe it, and identify the exact timestamps 
             if end_ms > audio_duration_ms:
                 end_ms = audio_duration_ms
             if start_ms >= end_ms:
-                logger.warning(f"Invalid target timestamps: {target.start_time} - {target.end_time}")
+                logger.warning(
+                    f"Invalid target timestamps: {target.start_time} - {target.end_time}"
+                )
                 continue
 
             duration_ms = end_ms - start_ms
@@ -313,7 +326,9 @@ Listen to the audio carefully, transcribe it, and identify the exact timestamps 
             # Overlay beep (replace segment with beep)
             audio = audio[:start_ms] + beep + audio[end_ms:]
 
-            logger.info(f"Censored: {target.start_time:.1f}s - {target.end_time:.1f}s ({target.text[:30]}...)")
+            logger.info(
+                f"Censored: {target.start_time:.1f}s - {target.end_time:.1f}s ({target.text[:30]}...)"
+            )
 
         # Export to bytes
         output_buffer = io.BytesIO()
@@ -341,9 +356,10 @@ Listen to the audio carefully, transcribe it, and identify the exact timestamps 
             AudioRedactionResponse with censored audio and metadata
         """
         import time
+
         start_time = time.time()
 
-        logger.info(f"Starting audio redaction")
+        logger.info("Starting audio redaction")
         logger.info(f"Prompt: {prompt}")
         logger.info(f"Audio size: {len(audio_data) / 1024:.1f} KB")
 

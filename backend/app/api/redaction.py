@@ -730,17 +730,14 @@ async def redact_audio_direct(
     """
     # Validate file type
     if not file.filename:
-        raise HTTPException(
-            status_code=400,
-            detail="Filename is required"
-        )
+        raise HTTPException(status_code=400, detail="Filename is required")
 
     # Check file extension
     file_ext = file.filename.lower().split(".")[-1]
     if file_ext not in {"mp3", "wav", "ogg", "m4a", "flac", "aac", "webm"}:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type: .{file_ext}. Supported: mp3, wav, ogg, m4a, flac, aac, webm"
+            detail=f"Unsupported file type: .{file_ext}. Supported: mp3, wav, ogg, m4a, flac, aac, webm",
         )
 
     # Validate content type if provided
@@ -752,7 +749,7 @@ async def redact_audio_direct(
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="Audio redaction service unavailable: GOOGLE_API_KEY or GEMINI_API_KEY not configured"
+            detail="Audio redaction service unavailable: GOOGLE_API_KEY or GEMINI_API_KEY not configured",
         )
 
     try:
@@ -780,7 +777,9 @@ async def redact_audio_direct(
             output_format=output_format,
         )
 
-        logger.info(f"Audio redaction complete: {response.segments_censored} segments censored")
+        logger.info(
+            f"Audio redaction complete: {response.segments_censored} segments censored"
+        )
 
         return {
             "censored_audio": response.censored_audio,
@@ -807,19 +806,15 @@ async def redact_audio_direct(
         logger.error(f"Missing dependency: {e}")
         raise HTTPException(
             status_code=503,
-            detail=f"Audio redaction service unavailable: missing dependency ({str(e)}). Make sure pydub and ffmpeg are installed."
+            detail=f"Audio redaction service unavailable: missing dependency ({str(e)}). Make sure pydub and ffmpeg are installed.",
         ) from e
     except ValueError as e:
         logger.error(f"Audio redaction failed: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Audio redaction failed: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Audio redaction failed: {str(e)}"
+            status_code=500, detail=f"Audio redaction failed: {str(e)}"
         ) from e
 
 
@@ -835,16 +830,12 @@ async def redact_audio_download(
     """
     # Validate file type
     if not file.filename:
-        raise HTTPException(
-            status_code=400,
-            detail="Filename is required"
-        )
+        raise HTTPException(status_code=400, detail="Filename is required")
 
     file_ext = file.filename.lower().split(".")[-1]
     if file_ext not in {"mp3", "wav", "ogg", "m4a", "flac", "aac", "webm"}:
         raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: .{file_ext}"
+            status_code=400, detail=f"Unsupported file type: .{file_ext}"
         )
 
     # Check for API key
@@ -852,7 +843,7 @@ async def redact_audio_download(
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="Audio redaction service unavailable: GOOGLE_API_KEY or GEMINI_API_KEY not configured"
+            detail="Audio redaction service unavailable: GOOGLE_API_KEY or GEMINI_API_KEY not configured",
         )
 
     try:
@@ -902,24 +893,18 @@ async def redact_audio_download(
         return Response(
             content=censored_audio_bytes,
             media_type=content_type,
-            headers={
-                "Content-Disposition": f'attachment; filename="{output_name}"'
-            }
+            headers={"Content-Disposition": f'attachment; filename="{output_name}"'},
         )
 
     except ImportError as e:
         raise HTTPException(
             status_code=503,
-            detail=f"Audio redaction service unavailable: missing dependency ({str(e)})"
+            detail=f"Audio redaction service unavailable: missing dependency ({str(e)})",
         ) from e
     except ValueError as e:
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         logger.error(f"Audio redaction failed: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Audio redaction failed: {str(e)}"
+            status_code=500, detail=f"Audio redaction failed: {str(e)}"
         ) from e

@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-07
 **Current Phase:** 7 of 12 (Knowledge Storage & Domain Agent Enrichment) — IN PROGRESS
-**Current Plan:** 07-01 of ?? (Knowledge Layer Database Schema) — COMPLETE
+**Current Plan:** 07-02 of ?? (KG & Findings API Schemas) — COMPLETE
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -17,7 +17,7 @@
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
-| 7 | Knowledge Storage & Domain Agent Enrichment | IN_PROGRESS | 2026-02-07 | - | Plan 01 complete (2 commits): 9 DB models + migration |
+| 7 | Knowledge Storage & Domain Agent Enrichment | IN_PROGRESS | 2026-02-07 | - | Plan 01 (2 commits): 9 DB models + migration. Plan 02 (2 commits): KG/findings Pydantic schemas + findings_text on domain outputs |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -31,15 +31,15 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 7, Plan 01 Complete** (2026-02-07): Knowledge Layer Database Schema — 2 commits
-  - 9 new SQLAlchemy models across 3 files (knowledge_graph.py, findings.py, synthesis.py)
-  - Single Alembic migration (c7a1f8d23e51) creating all 9 tables with 15 indexes
-  - tsvector generated columns + GIN indexes on case_findings and kg_entities for full-text search
-  - Soft-merge dedup infrastructure on KgEntity (merged_into_id, merge_count)
-  - Deviation: Renamed `metadata` to `properties` on KgEntity/KgRelationship (SQLAlchemy reserves `metadata`)
+- **Phase 7, Plan 02 Complete** (2026-02-07): KG & Findings API Schemas — 2 commits
+  - 9 Pydantic schemas for KG API (Entity/Relationship CRUD, GraphResponse, list responses)
+  - 6 Pydantic schemas for findings API (FindingResponse, search request/result/response, citations)
+  - Optional findings_text field added to all 4 domain output models (backward compatible)
+  - Citation.excerpt description updated for character-for-character preservation requirement
+  - All 15 new schemas exported from schemas/__init__.py
 
 **What's next:**
-- Phase 7, Plan 02+: KG Builder service, Findings service, API endpoints, pipeline wiring, SSE events, domain agent enrichment
+- Phase 7, Plan 03+: KG Builder service, Findings service, API endpoints, pipeline wiring, SSE events, domain agent enrichment
 
 ---
 
@@ -333,6 +333,8 @@ All frontend features need these backend endpoints:
 | Pipeline failure scope | All failures fatal vs Pipeline-level only | Pipeline-level only (triage/orchestrator/pipeline) | Partial domain agent failures are expected and non-fatal |
 | KG entity/relationship metadata column | `metadata` vs `properties` | `properties` | SQLAlchemy reserves `metadata` attribute on DeclarativeBase; renamed to `properties` for JSONB column |
 | tsvector mapping | SQLAlchemy column vs Raw SQL generated column | Raw SQL in migration | Avoids Alembic autogenerate phantom diffs (Pitfall 6); queries use func.to_tsvector() directly |
+| findings_text backward compat | Required vs Optional (default=None) | Optional (default=None) | Existing agent_executions.output_data records lack this field; optional avoids breaking deserialization |
+| Citation excerpt enforcement | Schema-required vs Prompt-enforced | Prompt-enforced (schema stays optional) | Field type stays str|None for backward compat; description documents char-for-char requirement |
 
 ---
 
@@ -345,7 +347,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 07-01-PLAN.md (Knowledge Layer Database Schema)
+Stopped at: Completed 07-02-PLAN.md (KG & Findings API Schemas)
 Resume file: None
 
 ---

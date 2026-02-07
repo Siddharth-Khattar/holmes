@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
+import { MarkdownContent } from "@/components/ui/markdown-content";
 import {
   formatDuration,
   formatModelName,
@@ -173,18 +174,16 @@ function TriageSections({ agentState }: AgentSectionsProps) {
         color="hsl(37 90% 68%)"
         icon={<FileText className="w-3.5 h-3.5" />}
       >
-        {summary && (
-          <p className="text-sm text-smoke leading-relaxed">{summary}</p>
-        )}
+        {summary && <MarkdownContent content={summary} />}
         {detailedSummary && (
           <div
-            className="p-3 rounded-lg text-xs text-stone leading-relaxed"
+            className="p-3 rounded-lg text-xs leading-relaxed"
             style={{
               background: "hsl(37 90% 68% / 0.05)",
               border: "1px solid hsl(37 90% 68% / 0.15)",
             }}
           >
-            {detailedSummary}
+            <MarkdownContent content={detailedSummary} />
           </div>
         )}
         {!summary && !detailedSummary && (
@@ -270,9 +269,7 @@ function OrchestratorSections({ agentState }: AgentSectionsProps) {
         icon={<Route className="w-3.5 h-3.5" />}
       >
         {routingReasoning ? (
-          <p className="text-sm text-smoke leading-relaxed">
-            {routingReasoning}
-          </p>
+          <MarkdownContent content={routingReasoning} />
         ) : (
           <p className="text-xs text-stone/50 italic">
             No routing reasoning available
@@ -451,9 +448,7 @@ function DomainAgentSections({ agentState }: AgentSectionsProps) {
         icon={<FileText className="w-3.5 h-3.5" />}
       >
         {findingsSummary ? (
-          <p className="text-sm text-smoke leading-relaxed">
-            {findingsSummary}
-          </p>
+          <MarkdownContent content={findingsSummary} />
         ) : (
           <p className="text-xs text-stone/50 italic">
             No findings summary available
@@ -537,7 +532,7 @@ function KnowledgeGraphSections({ agentState }: AgentSectionsProps) {
         icon={<Network className="w-3.5 h-3.5" />}
       >
         {graphSummary ? (
-          <p className="text-sm text-smoke leading-relaxed">{graphSummary}</p>
+          <MarkdownContent content={graphSummary} />
         ) : (
           <p className="text-xs text-stone/50 italic">
             No graph summary available
@@ -837,14 +832,13 @@ export function NodeDetailsSidebar({
         >
           {thinkingTraces ? (
             <div
-              className="p-3 rounded-lg font-mono text-sm leading-relaxed whitespace-pre-wrap break-words"
+              className="p-3 rounded-lg text-sm leading-relaxed break-words"
               style={{
                 background: "hsl(var(--cc-accent) / 0.05)",
                 borderLeft: "3px solid hsl(var(--cc-accent) / 0.3)",
-                color: "hsl(0 0% 78%)",
               }}
             >
-              {thinkingTraces}
+              <MarkdownContent content={thinkingTraces} />
             </div>
           ) : (
             <p className="text-xs text-stone/50 italic">

@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-06
-**Current Phase:** 6 of 12 (Domain Agents) — COMPLETE
-**Next Phase:** 7 (Synthesis & Knowledge Graph)
+**Last Updated:** 2026-02-07
+**Current Phase:** 7 of 12 (Knowledge Storage & Domain Agent Enrichment) — IN PROGRESS
+**Current Plan:** 07-01 of ?? (Knowledge Layer Database Schema) — COMPLETE
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -17,7 +17,7 @@
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
-| 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
+| 7 | Knowledge Storage & Domain Agent Enrichment | IN_PROGRESS | 2026-02-07 | - | Plan 01 complete (2 commits): 9 DB models + migration |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -31,43 +31,15 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 6 Complete** (2026-02-06): Domain Agents — 5 plans (14 commits) + 21 post-plan commits (35 total)
-  - **Plans 01-05** (initial implementation):
-    - Plan 01: Domain output schemas (8 Pydantic models), factory methods, CONFIDENCE_THRESHOLD, video-aware content builder
-    - Plan 02: 4 domain agent system prompts (8-11K chars) with entity taxonomies, hypothesis evaluation
-    - Plan 03: Financial, Legal, Evidence agent modules + file-group parallel runner with compute_agent_tasks
-    - Plan 04: Strategy agent with dual-input content prep (own files + domain summaries)
-    - Plan 05: Pipeline wiring (Triage → Orchestrator → Domain → Strategy → HITL → Complete), compound SSE identifiers
-  - **Post-plan refactoring** (commits c21343e → 9daa3e9):
-    - DomainAgentRunner Template Method base class extracted; all 4 domain agents migrated to it
-    - `extract_structured_json` generic parser added to parsing.py (replaces per-agent parse functions)
-    - `_build_standard_content()` extracted into DomainAgentRunner for shared content prep
-    - Magic numbers consolidated into Settings config
-    - asyncio fire-and-forget, exception narrowing, type safety improvements
-  - **Per-agent routing HITL** (commits 37dca4b → c591422):
-    - Routing confidence scoring with per-agent-type HITL thresholds
-    - Per-agent rejection (reject one agent, keep others) via batch confirmation modal
-    - Atomic batch confirmation with asyncio.gather for parallel HITL requests
-    - Strategy agent standalone execution with HITL support
-    - Orchestrator routing bias and confidence guidance strengthened in prompt
-  - **Production hardening** (commits b8bd937 → 603875a):
-    - Orchestrator execution committed to DB before domain agent launch (avoids FK issues)
-    - Exception catching in domain agent runner for SSE error emission
-    - lastResult included in state snapshot for refresh resilience
-    - lastResult merge in handleAgentComplete and handleStateSnapshot to preserve accumulated data
-    - DomainEntity.metadata changed to dict[str, str] for Gemini structured output compliance
-    - Dedicated thinking traces section added to AgentDetailsPanel
-  - **Pipeline bugfixes from live testing** (commits b4d8160 → bce0258):
-    - compute_agent_tasks: covered_pairs tracking (file_id, agent_type) instead of grouped_file_ids to dispatch per-file routing to additional agents
-    - Strategy agent gated on orchestrator routing decision (no longer runs unconditionally)
-    - Thinking-text parts excluded from JSON parsing (skip part.thought=True in extract_structured_json)
-    - Triage parser consolidated into extract_structured_json (DRY)
-    - DomainEntity.metadata changed to list[MetadataEntry] for structured output compliance
-    - Routing decisions flattened to one card per (file, agent) pair in both live SSE and state snapshots
-    - JSON thinking traces normalized to readable text via format_thinking_traces()
+- **Phase 7, Plan 01 Complete** (2026-02-07): Knowledge Layer Database Schema — 2 commits
+  - 9 new SQLAlchemy models across 3 files (knowledge_graph.py, findings.py, synthesis.py)
+  - Single Alembic migration (c7a1f8d23e51) creating all 9 tables with 15 indexes
+  - tsvector generated columns + GIN indexes on case_findings and kg_entities for full-text search
+  - Soft-merge dedup infrastructure on KgEntity (merged_into_id, merge_count)
+  - Deviation: Renamed `metadata` to `properties` on KgEntity/KgRelationship (SQLAlchemy reserves `metadata`)
 
 **What's next:**
-- Phase 7: Synthesis & Knowledge Graph (Synthesis Agent, KG Agent, hypothesis system, entity resolution, connect to existing frontend)
+- Phase 7, Plan 02+: KG Builder service, Findings service, API endpoints, pipeline wiring, SSE events, domain agent enrichment
 
 ---
 
@@ -359,6 +331,8 @@ All frontend features need these backend endpoints:
 | SSE pre-emission source | Inline file-group iteration vs compute_agent_tasks | compute_agent_tasks from domain_runner | Single source of truth; SSE events always match actual execution tasks |
 | Pipeline terminal stage | Orchestrator vs Strategy | Strategy completion | Strategy runs after parallel domain agents; marks pipeline as "complete" |
 | Pipeline failure scope | All failures fatal vs Pipeline-level only | Pipeline-level only (triage/orchestrator/pipeline) | Partial domain agent failures are expected and non-fatal |
+| KG entity/relationship metadata column | `metadata` vs `properties` | `properties` | SQLAlchemy reserves `metadata` attribute on DeclarativeBase; renamed to `properties` for JSONB column |
+| tsvector mapping | SQLAlchemy column vs Raw SQL generated column | Raw SQL in migration | Avoids Alembic autogenerate phantom diffs (Pitfall 6); queries use func.to_tsvector() directly |
 
 ---
 
@@ -370,8 +344,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-06
-Stopped at: Phase 6 complete (35 commits, verified 10/10 + 21 post-plan hardening/bugfix commits); ready to begin Phase 7 (Synthesis & Knowledge Graph)
+Last session: 2026-02-07
+Stopped at: Completed 07-01-PLAN.md (Knowledge Layer Database Schema)
 Resume file: None
 
 ---

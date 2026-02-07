@@ -14,7 +14,7 @@ export interface CommandCenterAgentContent {
   props: {
     agentType: AgentType;
     agentState: AgentState | null;
-    allAgentStates: Map<AgentType, AgentState>;
+    allAgentStates: Map<string, AgentState>;
   };
 }
 

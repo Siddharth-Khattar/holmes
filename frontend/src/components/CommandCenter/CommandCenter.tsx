@@ -8,22 +8,18 @@ import { ReactFlowProvider } from "@xyflow/react";
 import { Activity, AlertCircle } from "lucide-react";
 import { AgentFlowCanvas } from "./AgentFlowCanvas";
 import { useAgentFlowGraph } from "@/hooks/useAgentFlowGraph";
-import type {
-  AgentType,
-  AgentState,
-  ProcessingSummary,
-} from "@/types/command-center";
+import type { AgentState, ProcessingSummary } from "@/types/command-center";
 
 // -----------------------------------------------------------------------
 // Props — state is owned by the parent page, not this component
 // -----------------------------------------------------------------------
 export interface CommandCenterProps {
-  agentStates: Map<AgentType, AgentState>;
+  agentStates: Map<string, AgentState>;
   lastProcessingSummary: ProcessingSummary | null;
   isConnected: boolean;
   isReconnecting: boolean;
-  selectedAgent: AgentType | null;
-  onSelectAgent: (agent: AgentType | null) => void;
+  selectedAgent: string | null;
+  onSelectAgent: (agent: string | null) => void;
   className?: string;
 }
 
@@ -75,7 +71,7 @@ function CommandCenterInner({
 }: CommandCenterProps) {
   // Graph derivation: agent states → laid-out ReactFlow nodes/edges
   const handleNodeClick = useCallback(
-    (agentType: AgentType) => onSelectAgent(agentType),
+    (instanceId: string) => onSelectAgent(instanceId),
     [onSelectAgent],
   );
 
@@ -114,7 +110,7 @@ function CommandCenterInner({
           edges={edges}
           onNodeClick={(nodeId) => {
             if (!nodeId.startsWith("file-group-")) {
-              onSelectAgent(nodeId as AgentType);
+              onSelectAgent(nodeId);
             }
           }}
           selectedNodeId={selectedAgent}

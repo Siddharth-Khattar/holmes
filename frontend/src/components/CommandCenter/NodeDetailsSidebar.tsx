@@ -36,7 +36,7 @@ import type {
 interface NodeDetailsSidebarProps {
   agentType: AgentType | null;
   agentState: AgentState | null;
-  allAgentStates?: Map<AgentType, AgentState>;
+  allAgentStates?: Map<string, AgentState>;
 }
 
 // -----------------------------------------------------------------------

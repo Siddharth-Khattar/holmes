@@ -7,12 +7,13 @@ import { ConfirmationModal } from "@/components/CommandCenter/ConfirmationModal"
 import { BatchConfirmationModal } from "@/components/CommandCenter/BatchConfirmationModal";
 import { useAgentStates } from "@/hooks/useAgentStates";
 import { useDetailSidebarDispatch } from "@/hooks";
+import { extractBaseAgentType } from "@/lib/command-center-validation";
 import type { AgentType } from "@/types/command-center";
 
 export default function CommandCenterPage() {
   const params = useParams();
   const caseId = params.id as string;
-  const [selectedAgent, setSelectedAgent] = useState<AgentType | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
 
   const {
     agentStates,
@@ -31,7 +32,7 @@ export default function CommandCenterPage() {
   // This is separate from the sync effect (which handles passive SSE updates
   // without forcing the sidebar open if the user collapsed it).
   const handleSelectAgent = useCallback(
-    (agent: AgentType | null) => {
+    (agent: string | null) => {
       setSelectedAgent(agent);
       if (agent) {
         setCollapsed(false);
@@ -40,17 +41,24 @@ export default function CommandCenterPage() {
     [setCollapsed],
   );
 
-  // Sync selectedAgent + agentStates into the app-wide detail sidebar
+  // Sync selectedAgent + agentStates into the app-wide detail sidebar.
+  // Derive the base AgentType from the instance's state for the content descriptor.
   useEffect(() => {
     if (selectedAgent) {
-      setContent({
-        type: "command-center-agent",
-        props: {
-          agentType: selectedAgent,
-          agentState: agentStates.get(selectedAgent) ?? null,
-          allAgentStates: agentStates,
-        },
-      });
+      const state = agentStates.get(selectedAgent);
+      const baseType =
+        state?.type ??
+        (extractBaseAgentType(selectedAgent) as AgentType | null);
+      if (baseType) {
+        setContent({
+          type: "command-center-agent",
+          props: {
+            agentType: baseType,
+            agentState: state ?? null,
+            allAgentStates: agentStates,
+          },
+        });
+      }
     } else {
       clearContent();
     }

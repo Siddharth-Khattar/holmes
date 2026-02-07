@@ -21,8 +21,39 @@ export interface DecisionNodeData {
   agentState: AgentState;
   isChosen: boolean;
   isSelected: boolean;
-  onNodeClick: (agentType: AgentType) => void;
+  /** Closure created by graph builder — no args needed, captures instanceId. */
+  onNodeClick: () => void;
   [key: string]: unknown; // ReactFlow requires index signature on node data
+}
+
+// -----------------------------------------------------------------------
+// Instance label helper — derives a human-readable subtitle for compound
+// agent IDs (e.g. "financial_grp_0" → "Group 1", "financial_ungrouped_2" → "File 3")
+// Returns null for singleton agents where instanceId === baseType.
+// -----------------------------------------------------------------------
+function formatInstanceLabel(
+  instanceId: string,
+  baseType: string,
+): string | null {
+  if (instanceId === baseType) return null;
+
+  // Remove the base type prefix + underscore
+  const suffix = instanceId.slice(baseType.length + 1);
+
+  // Match "grp_N" pattern
+  const grpMatch = suffix.match(/^grp_(\d+)$/);
+  if (grpMatch) {
+    return `Group ${Number(grpMatch[1]) + 1}`;
+  }
+
+  // Match "ungrouped_N" pattern
+  const ungroupedMatch = suffix.match(/^ungrouped_(\d+)$/);
+  if (ungroupedMatch) {
+    return `File ${Number(ungroupedMatch[1]) + 1}`;
+  }
+
+  // Fallback: humanize the suffix
+  return suffix.replace(/_/g, " ");
 }
 
 // -----------------------------------------------------------------------
@@ -109,6 +140,7 @@ function DecisionNodeInner({ data }: NodeProps) {
   const durationMs = agentState.lastResult?.metadata?.durationMs as
     | number
     | undefined;
+  const instanceLabel = formatInstanceLabel(agentState.id, agentType);
 
   // ------- Tooltip handlers -------
   const handleMouseEnter = useCallback(() => {
@@ -126,8 +158,8 @@ function DecisionNodeInner({ data }: NodeProps) {
   }, []);
 
   const handleClick = useCallback(() => {
-    onNodeClick(agentType);
-  }, [onNodeClick, agentType]);
+    onNodeClick();
+  }, [onNodeClick]);
 
   // ------- Computed styles -------
   const chosenBackground = `linear-gradient(135deg, hsl(${tint} / 0.75) 0%, hsl(${tint} / 0.35) 100%)`;
@@ -245,6 +277,20 @@ function DecisionNodeInner({ data }: NodeProps) {
                 />
               )}
             </div>
+
+            {/* Instance label for compound agents (e.g. "Group 1") */}
+            {instanceLabel && (
+              <span
+                className="text-xs font-medium"
+                style={{
+                  color: isActive
+                    ? `hsl(${accent} / 0.7)`
+                    : "hsl(0 0% 50% / 0.4)",
+                }}
+              >
+                {instanceLabel}
+              </span>
+            )}
 
             {/* Badge row: file count / output count / warning badge */}
             <div className="flex items-center gap-2">

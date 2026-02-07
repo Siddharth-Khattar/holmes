@@ -37,6 +37,9 @@ class AgentEventType(str, Enum):
     CONFIRMATION_RESOLVED = "confirmation-resolved"
     CONFIRMATION_BATCH_REQUIRED = "confirmation-batch-required"
     CONFIRMATION_BATCH_RESOLVED = "confirmation-batch-resolved"
+    FINDING_COMMITTED = "finding-committed"
+    KG_ENTITY_ADDED = "kg-entity-added"
+    KG_RELATIONSHIP_ADDED = "kg-relationship-added"
 
 
 # ---------------------------------------------------------------------------
@@ -504,6 +507,96 @@ async def emit_confirmation_batch_resolved(
             "agentType": agent_type,
             "batchId": batch_id,
             "decisions": decisions,
+        },
+    )
+
+
+async def emit_finding_committed(
+    case_id: str,
+    finding_id: str,
+    agent_type: str,
+    title: str,
+) -> None:
+    """Emit a finding-committed event when a CaseFinding is persisted.
+
+    Fires after each finding is saved to case_findings, enabling the
+    frontend to show real-time finding accumulation during pipeline execution.
+
+    Args:
+        case_id: UUID string of the case.
+        finding_id: UUID string of the saved CaseFinding.
+        agent_type: Domain agent type that produced the finding.
+        title: Finding title for display.
+    """
+    await publish_agent_event(
+        case_id,
+        AgentEventType.FINDING_COMMITTED,
+        {
+            "type": AgentEventType.FINDING_COMMITTED.value,
+            "findingId": finding_id,
+            "agentType": agent_type,
+            "title": title,
+        },
+    )
+
+
+async def emit_kg_entity_added(
+    case_id: str,
+    entity_id: str,
+    entity_name: str,
+    entity_type: str,
+) -> None:
+    """Emit a kg-entity-added event when a KgEntity is created.
+
+    Fires after each entity is persisted to the knowledge graph,
+    enabling real-time graph visualization updates.
+
+    Args:
+        case_id: UUID string of the case.
+        entity_id: UUID string of the created KgEntity.
+        entity_name: Display name of the entity.
+        entity_type: Domain-specific entity type.
+    """
+    await publish_agent_event(
+        case_id,
+        AgentEventType.KG_ENTITY_ADDED,
+        {
+            "type": AgentEventType.KG_ENTITY_ADDED.value,
+            "entityId": entity_id,
+            "entityName": entity_name,
+            "entityType": entity_type,
+        },
+    )
+
+
+async def emit_kg_relationship_added(
+    case_id: str,
+    relationship_id: str,
+    source_entity_name: str,
+    target_entity_name: str,
+    relationship_type: str,
+) -> None:
+    """Emit a kg-relationship-added event when a KgRelationship is created.
+
+    Fires after each relationship is persisted, enabling the frontend
+    to animate new edges on the knowledge graph in real-time.
+
+    Args:
+        case_id: UUID string of the case.
+        relationship_id: UUID string of the created KgRelationship.
+        source_entity_name: Display name of the source entity.
+        target_entity_name: Display name of the target entity.
+        relationship_type: Type of the relationship edge.
+    """
+    await publish_agent_event(
+        case_id,
+        AgentEventType.KG_RELATIONSHIP_ADDED,
+        {
+            "type": AgentEventType.KG_RELATIONSHIP_ADDED.value,
+            "relationshipId": relationship_id,
+            "sourceEntityName": source_entity_name,
+            "targetEntityName": target_entity_name,
+            "relationshipType": relationship_type,
         },
     )
 

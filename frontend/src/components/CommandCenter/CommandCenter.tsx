@@ -127,7 +127,11 @@ function CommandCenterInner({
           ) : (
             <div className="text-stone">Idle</div>
           )}
-          <div className="text-stone/60">{new Date().toLocaleTimeString()}</div>
+          {lastProcessingSummary && !isProcessing && (
+            <div className="text-stone/60">
+              {lastProcessingSummary.completedAt.toLocaleTimeString()}
+            </div>
+          )}
         </div>
       </div>
     </div>

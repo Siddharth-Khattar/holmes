@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-07
 **Current Phase:** 7 of 12 (Knowledge Storage & Domain Agent Enrichment) — IN PROGRESS
-**Current Plan:** 07-05 of ?? (KG and Findings API Endpoints) — COMPLETE
+**Current Plan:** 07-06 of ?? (Pipeline Wiring: KG Builder + Findings Storage) — COMPLETE
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -17,7 +17,7 @@
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
-| 7 | Knowledge Storage & Domain Agent Enrichment | IN_PROGRESS | 2026-02-07 | - | Plan 01 (2 commits): 9 DB models + migration. Plan 02 (2 commits): KG/findings Pydantic schemas + findings_text on domain outputs. Plan 03 (2 commits): KG Builder + Findings service. Plan 04 (1 commit): Citation enrichment + findings_text instructions in all 4 domain agent prompts. Plan 05 (2 commits): KG API (7 endpoints) + Findings API (3 endpoints) + router registration |
+| 7 | Knowledge Storage & Domain Agent Enrichment | IN_PROGRESS | 2026-02-07 | - | Plan 01 (2 commits): 9 DB models + migration. Plan 02 (2 commits): KG/findings Pydantic schemas + findings_text on domain outputs. Plan 03 (2 commits): KG Builder + Findings service. Plan 04 (1 commit): Citation enrichment + findings_text instructions in all 4 domain agent prompts. Plan 05 (2 commits): KG API (7 endpoints) + Findings API (3 endpoints) + router registration. Plan 06 (2 commits): Pipeline wiring — 3 new stages (Save Findings, Build KG, Backfill Entity IDs) + SSE events |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -31,14 +31,16 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 7, Plan 05 Complete** (2026-02-07): KG and Findings API Endpoints — 2 commits
-  - 7 KG endpoints: GET /graph, GET/POST entities, PATCH/DELETE entities/{id}, GET/POST relationships
-  - 3 findings endpoints: GET / (paginated list), GET /search (tsvector full-text), GET /{id} (detail)
-  - Both routers registered in main.py; TypeScript API types auto-generated
-  - Case ownership verification on all endpoints
+- **Phase 7, Plan 06 Complete** (2026-02-07): Pipeline Wiring: KG Builder + Findings Storage — 2 commits
+  - 3 new SSE event types: FINDING_COMMITTED, KG_ENTITY_ADDED, KG_RELATIONSHIP_ADDED
+  - Pipeline Stage 6: Save findings from domain agents + strategy to case_findings
+  - Pipeline Stage 7: Build knowledge graph with strategy injected into domain_results
+  - Pipeline Stage 7b: Backfill finding-to-entity links via source_execution_id
+  - Processing-complete event now includes actual KG entity/relationship counts
+  - Full pipeline: Triage -> Orchestrator -> Domain -> Strategy -> HITL -> Save Findings -> Build KG -> Backfill Entity IDs -> Final
 
 **What's next:**
-- Phase 7, Plan 06+: Pipeline wiring (call KG Builder + Findings service after domain agents), SSE events
+- Phase 7, Plan 07+: Remaining Phase 7 plans (if any), then Phase 8 (Intelligence Layer & Geospatial)
 
 ---
 
@@ -359,7 +361,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 07-05-PLAN.md (KG and Findings API Endpoints)
+Stopped at: Completed 07-06-PLAN.md (Pipeline Wiring: KG Builder + Findings Storage)
 Resume file: None
 
 ---

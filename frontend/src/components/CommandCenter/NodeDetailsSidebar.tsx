@@ -769,10 +769,17 @@ function getFirstFileResult(
   let entities: Array<{ name: string; type: string }> | undefined;
   const rawEntities = fr.entities;
   if (Array.isArray(rawEntities)) {
-    entities = rawEntities.map((e) => {
-      const entity = e as { type: string; value: string };
-      return { name: entity.value, type: entity.type };
-    });
+    entities = rawEntities
+      .filter(
+        (e): e is { type: string; value: string } =>
+          e != null &&
+          typeof e === "object" &&
+          "type" in e &&
+          "value" in e &&
+          typeof (e as Record<string, unknown>).type === "string" &&
+          typeof (e as Record<string, unknown>).value === "string",
+      )
+      .map((e) => ({ name: e.value, type: e.type }));
   }
 
   // Complexity tier
@@ -836,7 +843,8 @@ export function NodeDetailsSidebar({
   const isDomainAgent =
     agentType === "financial" ||
     agentType === "legal" ||
-    agentType === "strategy";
+    agentType === "strategy" ||
+    agentType === "evidence";
 
   const outputData = executionDetail?.output_data ?? null;
 

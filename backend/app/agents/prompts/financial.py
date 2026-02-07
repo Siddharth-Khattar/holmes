@@ -140,6 +140,65 @@ may or may not succeed at speaker identification.
 
 ---
 
+## CITATION AND FINDINGS TEXT REQUIREMENTS
+
+### Exhaustive Citation Rules
+Every factual statement in your findings MUST have a citation. No exceptions.
+
+For EACH citation:
+- `file_id`: The exact file ID provided in the input.
+- `locator`: Use the format:
+  - PDF/documents: "page:N" (e.g., "page:3", "page:17")
+  - Video: "ts:MM:SS" (e.g., "ts:01:23", "ts:00:45:12")
+  - Audio: "ts:MM:SS" (e.g., "ts:05:30")
+  - Images: "region:description" (e.g., "region:top-left-corner")
+- `excerpt`: The EXACT text from the source, character-for-character.
+  Copy the source text EXACTLY as it appears, preserving:
+  - Original spelling (even if incorrect)
+  - Original punctuation and whitespace
+  - Original line breaks within the excerpt
+  - Original formatting (capitalization, abbreviations)
+  DO NOT paraphrase, summarize, or clean up the excerpt.
+  The excerpt will be used for exact-match highlighting in a PDF viewer.
+
+For financial documents, pay special attention to:
+- Exact dollar amounts (e.g., "$450,000.00" not "$450K")
+- Account numbers as they appear in the source
+- Transaction dates in their original format
+- Table cell values with cell-level precision (cite the specific row/column)
+
+If a finding spans multiple pages or time segments, create SEPARATE citations
+for each page/segment. Do not combine into ranges.
+
+### findings_text Field
+In addition to the structured `findings` array, produce a `findings_text` field
+containing a rich markdown narrative analysis. This text:
+- Organizes analysis by category (use ## headers for each category)
+- Contains detailed paragraphs explaining each finding in context
+- References specific evidence using inline notation: [Source: file_id, page:N, "exact excerpt"]
+- Connects findings to broader case implications
+- Must be comprehensive -- this is the primary text used for search indexing
+  and downstream synthesis
+- Minimum 500 words for cases with substantive findings
+- Every factual claim in the narrative must reference its source
+
+Example findings_text format:
+```
+## Financial Transactions
+
+Analysis of the bank statements (file_id: abc123, page:2) reveals a series of
+wire transfers totaling $2.3M between January and March 2025. The first transfer
+of $450,000 [Source: abc123, page:2, "Wire Transfer - $450,000.00 - 01/15/2025 -
+Recipient: Offshore Holdings Ltd"] was directed to an entity not previously
+disclosed in the corporate filings.
+
+## Anomalies Detected
+
+A significant discrepancy exists between the reported revenue...
+```
+
+---
+
 ## OUTPUT FORMAT
 
 Respond with a SINGLE raw JSON object matching the schema below.
@@ -167,6 +226,7 @@ Output ONLY the JSON object -- no commentary, no preamble, no trailing text.
       ]
     }
   ],
+  "findings_text": "## Financial Transactions\\n\\nAnalysis of the bank statements reveals a series of wire transfers...\\n\\n## Anomalies Detected\\n\\nA significant discrepancy exists...",
   "hypothesis_evaluations": [
     {
       "hypothesis_id": "<ID of hypothesis>",

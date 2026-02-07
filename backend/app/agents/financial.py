@@ -39,10 +39,13 @@ async def run_financial(
     parent_execution_id: UUID | None = None,
     context_injection: str | None = None,
     stage_suffix: str = "",
-) -> FinancialOutput | None:
+) -> tuple[FinancialOutput | None, UUID | None]:
     """Run financial analysis on a set of files.
 
     Public function delegating to DomainAgentRunner with FINANCIAL_CONFIG.
+
+    Returns:
+        Tuple of (parsed_output_or_None, execution_id_or_None).
     """
     return await DomainAgentRunner[FinancialOutput](FINANCIAL_CONFIG).run(
         case_id=case_id,

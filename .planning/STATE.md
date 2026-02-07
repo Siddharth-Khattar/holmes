@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-06
-**Current Phase:** 6 of 12 (Domain Agents) — COMPLETE
-**Next Phase:** 7 (Synthesis & Knowledge Graph)
+**Last Updated:** 2026-02-07
+**Current Phase:** 7 of 12 (Knowledge Storage & Domain Agent Enrichment) — COMPLETE
+**Next Phase:** 7.1 (Knowledge Graph Frontend) or 8 (Synthesis & Intelligence Layer)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -17,7 +17,7 @@
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
-| 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
+| 7 | Knowledge Storage & Domain Agent Enrichment | COMPLETE | 2026-02-07 | 2026-02-07 | 6 plans (11 commits), 8/8 verified: 9 DB models + migration, KG/findings schemas, KG Builder + findings service, prompt enrichment, 10 API endpoints, pipeline wiring |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -31,43 +31,18 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 6 Complete** (2026-02-06): Domain Agents — 5 plans (14 commits) + 21 post-plan commits (35 total)
-  - **Plans 01-05** (initial implementation):
-    - Plan 01: Domain output schemas (8 Pydantic models), factory methods, CONFIDENCE_THRESHOLD, video-aware content builder
-    - Plan 02: 4 domain agent system prompts (8-11K chars) with entity taxonomies, hypothesis evaluation
-    - Plan 03: Financial, Legal, Evidence agent modules + file-group parallel runner with compute_agent_tasks
-    - Plan 04: Strategy agent with dual-input content prep (own files + domain summaries)
-    - Plan 05: Pipeline wiring (Triage → Orchestrator → Domain → Strategy → HITL → Complete), compound SSE identifiers
-  - **Post-plan refactoring** (commits c21343e → 9daa3e9):
-    - DomainAgentRunner Template Method base class extracted; all 4 domain agents migrated to it
-    - `extract_structured_json` generic parser added to parsing.py (replaces per-agent parse functions)
-    - `_build_standard_content()` extracted into DomainAgentRunner for shared content prep
-    - Magic numbers consolidated into Settings config
-    - asyncio fire-and-forget, exception narrowing, type safety improvements
-  - **Per-agent routing HITL** (commits 37dca4b → c591422):
-    - Routing confidence scoring with per-agent-type HITL thresholds
-    - Per-agent rejection (reject one agent, keep others) via batch confirmation modal
-    - Atomic batch confirmation with asyncio.gather for parallel HITL requests
-    - Strategy agent standalone execution with HITL support
-    - Orchestrator routing bias and confidence guidance strengthened in prompt
-  - **Production hardening** (commits b8bd937 → 603875a):
-    - Orchestrator execution committed to DB before domain agent launch (avoids FK issues)
-    - Exception catching in domain agent runner for SSE error emission
-    - lastResult included in state snapshot for refresh resilience
-    - lastResult merge in handleAgentComplete and handleStateSnapshot to preserve accumulated data
-    - DomainEntity.metadata changed to dict[str, str] for Gemini structured output compliance
-    - Dedicated thinking traces section added to AgentDetailsPanel
-  - **Pipeline bugfixes from live testing** (commits b4d8160 → bce0258):
-    - compute_agent_tasks: covered_pairs tracking (file_id, agent_type) instead of grouped_file_ids to dispatch per-file routing to additional agents
-    - Strategy agent gated on orchestrator routing decision (no longer runs unconditionally)
-    - Thinking-text parts excluded from JSON parsing (skip part.thought=True in extract_structured_json)
-    - Triage parser consolidated into extract_structured_json (DRY)
-    - DomainEntity.metadata changed to list[MetadataEntry] for structured output compliance
-    - Routing decisions flattened to one card per (file, agent) pair in both live SSE and state snapshots
-    - JSON thinking traces normalized to readable text via format_thinking_traces()
+- **Phase 7 Complete** (2026-02-07): Knowledge Storage & Domain Agent Enrichment — 6 plans, 11 commits, 8/8 verified
+  - Plan 01: 9 SQLAlchemy models (KgEntity, KgRelationship, CaseFinding, CaseHypothesis, CaseContradiction, CaseGap, CaseSynthesis, TimelineEvent, Location) + Alembic migration with tsvector GIN indexes
+  - Plan 02: 15 Pydantic API schemas (KG + findings) + findings_text added to all 4 domain output models
+  - Plan 03: KG Builder service (entity extraction, co-occurrence relationships, exact+fuzzy dedup, degree computation) + Findings service (storage, tsvector search, pagination)
+  - Plan 04: Citation enrichment in all 4 domain agent prompts (exact excerpts, timestamp locators, findings_text narrative)
+  - Plan 05: 10 API endpoints (7 KG CRUD + 3 findings) registered in main.py
+  - Plan 06: 3 SSE event types + pipeline wiring (Save Findings → Build KG → Backfill Entity IDs)
+  - Full pipeline: Triage → Orchestrator → Domain → Strategy → HITL → Save Findings → Build KG → Backfill Entity IDs → Final
 
 **What's next:**
-- Phase 7: Synthesis & Knowledge Graph (Synthesis Agent, KG Agent, hypothesis system, entity resolution, connect to existing frontend)
+- Phase 7.1: Knowledge Graph Frontend (vis-network) — replace D3.js with vis-network, connect to real KG API
+- Phase 8: Synthesis Agent & Intelligence Layer — cross-referencing, hypotheses, contradictions, gaps, timeline
 
 ---
 
@@ -128,11 +103,14 @@
 | Mock data | `frontend/src/lib/mock-graph-data.ts` |
 | Types | `frontend/src/types/knowledge-graph.ts` |
 
-**Backend APIs Needed:**
-- `GET /api/cases/:caseId/graph`
-- `POST /api/cases/:caseId/entities`
-- `POST /api/cases/:caseId/relationships`
-- `PATCH/DELETE /api/cases/:caseId/entities/:entityId`
+**Backend APIs:** All complete
+- `GET /api/cases/:caseId/graph` - Full graph visualization data
+- `GET /api/cases/:caseId/entities` - List entities with filters
+- `POST /api/cases/:caseId/entities` - Create entity
+- `PATCH /api/cases/:caseId/entities/:entityId` - Update entity
+- `DELETE /api/cases/:caseId/entities/:entityId` - Delete entity
+- `GET /api/cases/:caseId/relationships` - List relationships with filters
+- `POST /api/cases/:caseId/relationships` - Create relationship
 
 ---
 
@@ -210,9 +188,12 @@ All frontend features need these backend endpoints:
 | File Download | `/api/cases/:caseId/files/:fileId/download` | GET | HIGH | DONE |
 | File SSE | `/sse/cases/:caseId/files` | SSE | HIGH | DONE |
 | Chat | `/api/chat` | POST | HIGH | TODO |
-| Knowledge Graph | `/api/cases/:caseId/graph` | GET | HIGH | TODO |
-| KG Entities | `/api/cases/:caseId/entities` | POST, PATCH, DELETE | MEDIUM | TODO |
-| KG Relationships | `/api/cases/:caseId/relationships` | POST | MEDIUM | TODO |
+| Knowledge Graph | `/api/cases/:caseId/graph` | GET | HIGH | DONE |
+| KG Entities | `/api/cases/:caseId/entities` | GET, POST, PATCH, DELETE | MEDIUM | DONE |
+| KG Relationships | `/api/cases/:caseId/relationships` | GET, POST | MEDIUM | DONE |
+| Findings | `/api/cases/:caseId/findings` | GET | HIGH | DONE |
+| Findings Search | `/api/cases/:caseId/findings/search` | GET | HIGH | DONE |
+| Finding Detail | `/api/cases/:caseId/findings/:findingId` | GET | HIGH | DONE |
 | Timeline Events | `/api/cases/:caseId/timeline/events` | GET, POST, PATCH, DELETE | MEDIUM | TODO |
 | Timeline SSE | `/api/cases/:caseId/timeline/stream` | SSE | MEDIUM | TODO |
 | Command Center SSE | `/sse/cases/:caseId/command-center/stream` | SSE | HIGH | DONE |
@@ -359,6 +340,17 @@ All frontend features need these backend endpoints:
 | SSE pre-emission source | Inline file-group iteration vs compute_agent_tasks | compute_agent_tasks from domain_runner | Single source of truth; SSE events always match actual execution tasks |
 | Pipeline terminal stage | Orchestrator vs Strategy | Strategy completion | Strategy runs after parallel domain agents; marks pipeline as "complete" |
 | Pipeline failure scope | All failures fatal vs Pipeline-level only | Pipeline-level only (triage/orchestrator/pipeline) | Partial domain agent failures are expected and non-fatal |
+| KG entity/relationship metadata column | `metadata` vs `properties` | `properties` | SQLAlchemy reserves `metadata` attribute on DeclarativeBase; renamed to `properties` for JSONB column |
+| tsvector mapping | SQLAlchemy column vs Raw SQL generated column | Raw SQL in migration | Avoids Alembic autogenerate phantom diffs (Pitfall 6); queries use func.to_tsvector() directly |
+| findings_text backward compat | Required vs Optional (default=None) | Optional (default=None) | Existing agent_executions.output_data records lack this field; optional avoids breaking deserialization |
+| Citation excerpt enforcement | Schema-required vs Prompt-enforced | Prompt-enforced (schema stays optional) | Field type stays str|None for backward compat; description documents char-for-char requirement |
+| v1 search implementation | PG tsvector vs Vertex AI vector search | PG tsvector | v1 uses built-in PG full-text search; Vertex AI vector search deferred to Phase 9 |
+| Entity dedup scope | Per-domain vs Cross-domain | Cross-domain (grouped by entity_type only) | Per CONTEXT.md decision; allows merging same entity found by different agents |
+| Fuzzy match handling | Auto-merge vs Flag for LLM | Flag for LLM (>=85% ratio) | Avoids incorrect merges; deferred to Phase 8 LLM resolution |
+| Findings text enrichment | Description only vs Description + findings_text | Append findings_text when available | Richer searchable text without losing original description |
+| Findings search route ordering | Before /{finding_id} vs After | Before /{finding_id} | Prevents FastAPI treating "search" as UUID path param |
+| KG API data access | Direct model queries vs Service layer | Direct model queries | Simple CRUD doesn't need service abstraction; findings uses service for complex search |
+| EntityCreateRequest metadata mapping | Direct field vs Renamed | metadata -> properties | Schema field "metadata" maps to DB column "properties" (SQLAlchemy reserved attribute) |
 
 ---
 
@@ -370,8 +362,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-06
-Stopped at: Phase 6 complete (35 commits, verified 10/10 + 21 post-plan hardening/bugfix commits); ready to begin Phase 7 (Synthesis & Knowledge Graph)
+Last session: 2026-02-07
+Stopped at: Phase 7 complete (6 plans, 11 commits, 8/8 verified); ready to begin Phase 7.1 or Phase 8
 Resume file: None
 
 ---

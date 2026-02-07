@@ -29,7 +29,7 @@
 | 4.1 | Agent Decision Tree Revamp (INSERTED) | Replace D3 Command Center with @xyflow/react + dagre decision tree | REQ-VIS-001 (visual quality) | ✅ COMPLETE |
 | 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 | ✅ COMPLETE |
 | 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ✅ COMPLETE |
-| 7 | Knowledge Storage & Domain Agent Enrichment | DB schema, enriched citations, KG Builder, findings storage, KG API | REQ-AGENT-009, REQ-STORE-001/002, REQ-AGENT-003-006 (enrichment) | ⏳ NOT_STARTED |
+| 7 | Knowledge Storage & Domain Agent Enrichment | DB schema, enriched citations, KG Builder, findings storage, KG API | REQ-AGENT-009, REQ-STORE-001/002, REQ-AGENT-003-006 (enrichment) | ✅ COMPLETE |
 | 7.1 | Knowledge Graph Frontend (vis-network) | Premium graph visualization with clustering, physics, relationship-based layout | REQ-VIS-003 | ⏳ NOT_STARTED |
 | 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ⏳ NOT_STARTED |
 | 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ⏳ NOT_STARTED |
@@ -570,9 +570,19 @@ Plans:
 
 **Depends on:** Phase 6 (Domain Agents)
 
-**Status:** ⏳ NOT_STARTED
+**Status:** ✅ COMPLETE (2026-02-07) — 6 plans, 11 commits
 
-Plans: TBD (via /gsd:plan-phase)
+**Verification:** `.planning/phases/07-knowledge-storage--and--domain-agent-enrichment/07-VERIFICATION.md` — 8/8 must-haves verified
+
+**Plans:** 6 plans in 3 waves
+
+Plans:
+- [x] 07-01-PLAN.md — DB schema: 9 new tables (KG, findings, synthesis) + Alembic migration + tsvector search
+- [x] 07-02-PLAN.md — Pydantic schemas for KG/findings APIs + domain agent findings_text enrichment
+- [x] 07-03-PLAN.md — KG Builder service (entity extraction, relationships, deduplication) + findings service (storage, full-text search)
+- [x] 07-04-PLAN.md — Domain agent prompt enrichment (exhaustive citations, findings_text instructions)
+- [x] 07-05-PLAN.md — API endpoints (KG + findings) + router registration
+- [x] 07-06-PLAN.md — SSE events + pipeline wiring (findings storage, KG Builder, entity backfill)
 
 ### Frontend Available (Yatharth, 2026-02-02)
 - ✅ D3.js Knowledge Graph visualization (to be replaced by vis-network in Phase 7.1)
@@ -671,7 +681,14 @@ Plans: TBD (via /gsd:plan-phase)
 
 **Status:** ⏳ NOT_STARTED
 
-Plans: TBD (via /gsd:plan-phase)
+**Plans:** 5 plans in 3 waves
+
+Plans:
+- [ ] 07-01-PLAN.md — DB schema: 9 new tables (KG, findings, synthesis) + Alembic migration + tsvector search
+- [ ] 07-02-PLAN.md — Pydantic schemas for KG/findings APIs + domain agent findings_text enrichment
+- [ ] 07-03-PLAN.md — KG Builder service (entity extraction, relationships, deduplication) + findings service (storage, full-text search)
+- [ ] 07-04-PLAN.md — Domain agent prompt enrichment (exhaustive citations, findings_text instructions)
+- [ ] 07-05-PLAN.md — API endpoints (KG + findings), SSE events, pipeline wiring
 
 **Deliverables:**
 - Replace D3.js force-directed graph with vis-network (direct integration via `useRef`/`useEffect` for full control and TypeScript safety — not via stale React wrapper packages)
@@ -748,7 +765,14 @@ Plans: TBD (via /gsd:plan-phase)
 
 **Status:** ⏳ NOT_STARTED
 
-Plans: TBD (via /gsd:plan-phase)
+**Plans:** 5 plans in 3 waves
+
+Plans:
+- [ ] 07-01-PLAN.md — DB schema: 9 new tables (KG, findings, synthesis) + Alembic migration + tsvector search
+- [ ] 07-02-PLAN.md — Pydantic schemas for KG/findings APIs + domain agent findings_text enrichment
+- [ ] 07-03-PLAN.md — KG Builder service (entity extraction, relationships, deduplication) + findings service (storage, full-text search)
+- [ ] 07-04-PLAN.md — Domain agent prompt enrichment (exhaustive citations, findings_text instructions)
+- [ ] 07-05-PLAN.md — API endpoints (KG + findings), SSE events, pipeline wiring
 
 ### Frontend Available (Yatharth, 2026-02-02)
 - ✅ Timeline view with day/week/month/year zoom, layer filtering, event cards, search (`Timeline/`)
@@ -849,7 +873,14 @@ Plans: TBD (via /gsd:plan-phase)
 
 **Status:** ⏳ NOT_STARTED
 
-Plans: TBD (via /gsd:plan-phase)
+**Plans:** 5 plans in 3 waves
+
+Plans:
+- [ ] 07-01-PLAN.md — DB schema: 9 new tables (KG, findings, synthesis) + Alembic migration + tsvector search
+- [ ] 07-02-PLAN.md — Pydantic schemas for KG/findings APIs + domain agent findings_text enrichment
+- [ ] 07-03-PLAN.md — KG Builder service (entity extraction, relationships, deduplication) + findings service (storage, full-text search)
+- [ ] 07-04-PLAN.md — Domain agent prompt enrichment (exhaustive citations, findings_text instructions)
+- [ ] 07-05-PLAN.md — API endpoints (KG + findings), SSE events, pipeline wiring
 
 **Deliverables:**
 - Geospatial Agent implementation (LLM with tools):
@@ -1261,8 +1292,8 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 3.0*
-*Updated: 2026-02-06 (Phase 6 complete — 35 commits including post-plan hardening)*
+*Roadmap Version: 3.1*
+*Updated: 2026-02-07 (Phase 7 complete — 6 plans, 11 commits, 8/8 verified)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
@@ -1280,3 +1311,5 @@ For 2 developers working simultaneously:
 *Phase 6 planned: 2026-02-05 (5 plans in 3 waves)*
 *Phase 6 complete: 2026-02-06 (5 plans + 21 post-plan commits = 35 total, 10/10 verified + hardening)*
 *Architecture redesign: 2026-02-07 (Phases 7-9 restructured: KG-as-Memory, hybrid storage, programmatic KG Builder, vis-network, tool-based Chat)*
+*Phase 7 planned: 2026-02-07 (6 plans in 3 waves — revised from 5 after checker feedback)
+*Phase 7 complete: 2026-02-07 (6 plans, 11 commits, 8/8 must-haves verified)

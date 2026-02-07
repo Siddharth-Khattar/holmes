@@ -214,14 +214,17 @@ def _get_signing_credentials() -> tuple[Credentials, str | None]:
         - If IAM signing needed, service_account_email is the account to sign as
     """
     credentials, _ = default()
-    auth_request = google_auth_requests.Request()
-    credentials.refresh(auth_request)
 
     # Case 1: Credentials can sign directly (service account key)
+    # Service account credentials don't need refresh for signing - they use the private key
     sign_bytes_method = getattr(credentials, "sign_bytes", None)
     if sign_bytes_method is not None and callable(sign_bytes_method):
         logger.debug("Using direct signing with service account key")
         return credentials, None
+
+    # For other credential types, we need to refresh to get an access token
+    auth_request = google_auth_requests.Request()
+    credentials.refresh(auth_request)
 
     # Case 2: Workload identity (compute engine, Cloud Run)
     # These credentials have service_account_email attribute
@@ -259,9 +262,10 @@ def generate_signed_url(
     storage_path: str,
     original_filename: str,
     expiration_seconds: int = 86400,
+    inline: bool = False,
 ) -> str:
     """
-    Generate a signed URL for downloading a file from GCS.
+    Generate a signed URL for downloading or viewing a file from GCS.
 
     This function handles different credential types:
     - Service account keys: Sign directly with the private key
@@ -272,6 +276,8 @@ def generate_signed_url(
         storage_path: The GCS path of the file
         original_filename: The original filename for Content-Disposition header
         expiration_seconds: URL validity period in seconds (default 24 hours)
+        inline: If True, use 'inline' disposition for browser preview.
+                If False, use 'attachment' to force download.
 
     Returns:
         Signed URL string
@@ -283,7 +289,8 @@ def generate_signed_url(
     # RFC 5987 encoding for Content-Disposition filename
     # This handles non-ASCII characters in filenames
     encoded_filename = quote(original_filename, safe="")
-    content_disposition = f"attachment; filename*=UTF-8''{encoded_filename}"
+    disposition_type = "inline" if inline else "attachment"
+    content_disposition = f"{disposition_type}; filename*=UTF-8''{encoded_filename}"
 
     # Get credentials that can sign
     credentials, service_account_email = _get_signing_credentials()
@@ -309,9 +316,10 @@ def generate_signed_url(
     url = blob.generate_signed_url(**sign_kwargs)
 
     logger.info(
-        "Generated signed URL: path=%s, expires_in=%ds",
+        "Generated signed URL: path=%s, expires_in=%ds, inline=%s",
         storage_path,
         expiration_seconds,
+        inline,
     )
 
     return url

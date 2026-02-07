@@ -14,6 +14,8 @@ type SSEEventType =
   | "state-snapshot"
   | "confirmation-required"
   | "confirmation-resolved"
+  | "confirmation-batch-required"
+  | "confirmation-batch-resolved"
   | "tool-called";
 
 interface UseCommandCenterSSEOptions {
@@ -26,6 +28,8 @@ interface UseCommandCenterSSEOptions {
   onStateSnapshot?: (event: CommandCenterSSEEvent) => void;
   onConfirmationRequired?: (event: CommandCenterSSEEvent) => void;
   onConfirmationResolved?: (event: CommandCenterSSEEvent) => void;
+  onConfirmationBatchRequired?: (event: CommandCenterSSEEvent) => void;
+  onConfirmationBatchResolved?: (event: CommandCenterSSEEvent) => void;
   onToolCalled?: (event: CommandCenterSSEEvent) => void;
 }
 
@@ -43,6 +47,8 @@ export function useCommandCenterSSE(
     onStateSnapshot,
     onConfirmationRequired,
     onConfirmationResolved,
+    onConfirmationBatchRequired,
+    onConfirmationBatchResolved,
     onToolCalled,
   } = options;
 
@@ -68,6 +74,8 @@ export function useCommandCenterSSE(
         "state-snapshot": onStateSnapshot,
         "confirmation-required": onConfirmationRequired,
         "confirmation-resolved": onConfirmationResolved,
+        "confirmation-batch-required": onConfirmationBatchRequired,
+        "confirmation-batch-resolved": onConfirmationBatchResolved,
         "tool-called": onToolCalled,
       }) as Record<
         SSEEventType,
@@ -82,6 +90,8 @@ export function useCommandCenterSSE(
       onStateSnapshot,
       onConfirmationRequired,
       onConfirmationResolved,
+      onConfirmationBatchRequired,
+      onConfirmationBatchResolved,
       onToolCalled,
     ],
   );

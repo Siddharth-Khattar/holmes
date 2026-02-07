@@ -11,6 +11,7 @@ export interface Case {
   type: CaseType;
   status: CaseStatus;
   file_count: number;
+  latest_workflow_id: string | null;
   created_at: string;
   updated_at: string;
 }

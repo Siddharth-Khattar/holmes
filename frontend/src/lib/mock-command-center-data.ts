@@ -192,8 +192,8 @@ export class MockCommandCenterEventGenerator {
  *
  * TODO: Remove when backend SSE is fully integrated
  */
-export function createDemoAgentStates(): Map<AgentType, AgentState> {
-  const states = new Map<AgentType, AgentState>();
+export function createDemoAgentStates(): Map<string, AgentState> {
+  const states = new Map<string, AgentState>();
 
   states.set("triage", {
     id: "triage",

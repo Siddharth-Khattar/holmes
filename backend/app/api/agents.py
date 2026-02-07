@@ -1,31 +1,31 @@
 # ABOUTME: Agent execution API endpoints for starting and tracking analysis workflows.
-# ABOUTME: Provides POST to start analysis, GET for status, and background task orchestration.
+# ABOUTME: Provides POST to start analysis, GET for status. Pipeline logic lives in services/pipeline.py.
 
 import logging
-import time
 from datetime import datetime
 from typing import Annotated, Literal
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import CurrentUser
-from app.config import get_settings
 from app.database import get_db
 from app.models import Case, CaseFile
 from app.models.agent_execution import AgentExecution, AgentExecutionStatus
+from app.models.case import CaseStatus
 from app.models.file import FileStatus
-from app.schemas.agent import OrchestratorOutput, TriageOutput
-from app.schemas.common import ErrorResponse
-from app.services.agent_events import (
-    emit_agent_complete,
-    emit_agent_error,
-    emit_agent_started,
-    emit_processing_complete,
+from app.schemas.agent import (
+    AnalysisMode,
+    AnalysisStartRequest,
+    ExecutionDetailResponse,
+    OrchestratorOutput,
+    TriageOutput,
 )
+from app.schemas.common import ErrorResponse
+from app.services.pipeline import run_analysis_workflow
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +65,14 @@ class AnalysisStatusResponse(BaseModel):
         default=None, description="When the workflow completed"
     )
     error: str | None = Field(default=None, description="Error message if failed")
+    domain_results_summary: dict[str, list[dict[str, object]]] | None = Field(
+        default=None,
+        description=(
+            "Summary of domain agent findings per agent type. "
+            "Each agent type maps to a list of execution summaries (one per file group). "
+            "Each summary contains: group_label, finding_count, status."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -89,383 +97,6 @@ async def _get_user_case(
 
 
 # ---------------------------------------------------------------------------
-# Metadata helpers
-# ---------------------------------------------------------------------------
-
-
-def _build_execution_metadata(
-    execution: AgentExecution,
-    model_name: str,
-) -> dict[str, object]:
-    """Build enriched metadata dict from an AgentExecution record.
-
-    Includes token counts, timing, model identification, and thinking traces
-    for inclusion in agent-complete SSE events.
-
-    Args:
-        execution: The completed AgentExecution database record.
-        model_name: Gemini model ID used for this agent.
-
-    Returns:
-        Dict with inputTokens, outputTokens, durationMs, startedAt,
-        completedAt, model, and thinkingTraces.
-    """
-    duration_ms: int | None = None
-    if execution.started_at and execution.completed_at:
-        delta = execution.completed_at - execution.started_at
-        duration_ms = int(delta.total_seconds() * 1000)
-
-    # Join thinking traces into a single string for the frontend sidebar
-    thinking_text = ""
-    if execution.thinking_traces:
-        thinking_text = "\n".join(
-            trace.get("thought", "") if isinstance(trace, dict) else str(trace)
-            for trace in execution.thinking_traces
-        )
-
-    return {
-        "inputTokens": execution.input_tokens or 0,
-        "outputTokens": execution.output_tokens or 0,
-        "durationMs": duration_ms or 0,
-        "startedAt": execution.started_at.isoformat() if execution.started_at else None,
-        "completedAt": (
-            execution.completed_at.isoformat() if execution.completed_at else None
-        ),
-        "model": model_name,
-        "thinkingTraces": thinking_text,
-    }
-
-
-# ---------------------------------------------------------------------------
-# Background analysis task
-# ---------------------------------------------------------------------------
-
-
-async def run_analysis_workflow(
-    case_id: str,
-    workflow_id: str,
-    user_id: str,
-    file_ids: list[str],
-) -> None:
-    """Background task that orchestrates the stage-isolated analysis pipeline.
-
-    Each stage gets a FRESH ADK session to prevent context window bloat
-    from multimodal file content. Inter-stage data flows via database.
-
-    Steps:
-    1. Update file statuses to QUEUED
-    2. Stage 1: Run Triage Agent (fresh session, multimodal files)
-        -> Store TriageOutput in agent_executions table
-    3. Stage 2: Run Orchestrator Agent (fresh session, text-only input)
-        -> Store RoutingDecisions in agent_executions table
-    4. (Future) Stage 3: Run Domain Agents (parallel fresh sessions)
-    5. (Future) Stage 4: Run Synthesis Agent (fresh session)
-    6. Update file statuses to ANALYZED
-    7. Emit processing-complete event
-
-    SSE events emitted at each stage transition:
-    - agent-started: When an agent within a stage starts
-    - agent-complete: When an agent finishes
-    - agent-error: When an agent encounters an error
-    - processing-complete: When entire pipeline is done
-    """
-    # Import here to avoid circular dependency (agents -> services -> agents)
-    from app.agents.base import create_sse_publish_fn
-    from app.agents.orchestrator import run_orchestrator
-    from app.agents.triage import run_triage
-    from app.database import _get_sessionmaker
-
-    settings = get_settings()
-    session_factory = _get_sessionmaker()
-    pipeline_start = time.monotonic()
-
-    # Create a bound SSE publish function for real-time THINKING_UPDATE events
-    publish_fn = create_sse_publish_fn(case_id)
-
-    async with session_factory() as db:
-        try:
-            # ---- Step 1: Update file statuses to QUEUED ----
-            await db.execute(
-                update(CaseFile)
-                .where(CaseFile.id.in_([UUID(fid) for fid in file_ids]))
-                .values(status=FileStatus.QUEUED)
-            )
-            await db.commit()
-
-            # ---- Step 2: Load files for triage ----
-            result = await db.execute(
-                select(CaseFile).where(CaseFile.id.in_([UUID(fid) for fid in file_ids]))
-            )
-            files = list(result.scalars().all())
-
-            if not files:
-                logger.error(
-                    "No files found for workflow=%s case=%s",
-                    workflow_id,
-                    case_id,
-                )
-                return
-
-            # Update files to PROCESSING
-            await db.execute(
-                update(CaseFile)
-                .where(CaseFile.id.in_([UUID(fid) for fid in file_ids]))
-                .values(status=FileStatus.PROCESSING)
-            )
-            await db.commit()
-
-            # ---- Stage 1: Triage ----
-            logger.info(
-                "Pipeline starting stage=triage case=%s workflow=%s files=%d",
-                case_id,
-                workflow_id,
-                len(files),
-            )
-            triage_start = time.monotonic()
-            triage_task_id = str(uuid4())
-
-            # Emit started event for first file (representing the batch)
-            first_file = files[0]
-            await emit_agent_started(
-                case_id=case_id,
-                agent_type="triage",
-                task_id=triage_task_id,
-                file_id=str(first_file.id),
-                file_name=first_file.original_filename,
-            )
-
-            triage_output = await run_triage(
-                case_id=case_id,
-                workflow_id=workflow_id,
-                user_id=user_id,
-                files=files,
-                db_session=db,
-                publish_event=publish_fn,
-            )
-
-            if triage_output is None:
-                await emit_agent_error(
-                    case_id=case_id,
-                    agent_type="triage",
-                    task_id=triage_task_id,
-                    error="Triage failed to produce structured output",
-                )
-                # Update file statuses to ERROR
-                await db.execute(
-                    update(CaseFile)
-                    .where(CaseFile.id.in_([UUID(fid) for fid in file_ids]))
-                    .values(status=FileStatus.ERROR)
-                )
-                await db.commit()
-                return
-
-            # Query triage execution record for metadata and parent chain
-            triage_exec_result = await db.execute(
-                select(AgentExecution)
-                .where(
-                    AgentExecution.workflow_id == UUID(workflow_id),
-                    AgentExecution.agent_name == "triage",
-                )
-                .order_by(AgentExecution.created_at.desc())
-                .limit(1)
-            )
-            triage_execution = triage_exec_result.scalar_one_or_none()
-
-            # Build enriched metadata for triage completion event
-            triage_metadata = (
-                _build_execution_metadata(triage_execution, settings.gemini_flash_model)
-                if triage_execution
-                else {}
-            )
-
-            await emit_agent_complete(
-                case_id=case_id,
-                agent_type="triage",
-                task_id=triage_task_id,
-                result={
-                    "taskId": triage_task_id,
-                    "agentType": "triage",
-                    "outputs": [
-                        {
-                            "type": "triage-results",
-                            "data": {
-                                "fileCount": len(triage_output.file_results),
-                                "groupings": len(triage_output.suggested_groupings),
-                            },
-                        }
-                    ],
-                    "metadata": triage_metadata,
-                },
-            )
-
-            # ---- Stage 2: Orchestrator ----
-            triage_duration_s = time.monotonic() - triage_start
-            logger.info(
-                "Pipeline starting stage=orchestrator case=%s workflow=%s triage_duration_s=%.2f",
-                case_id,
-                workflow_id,
-                triage_duration_s,
-            )
-
-            orchestrator_task_id = str(uuid4())
-            await emit_agent_started(
-                case_id=case_id,
-                agent_type="orchestrator",
-                task_id=orchestrator_task_id,
-                file_id=str(first_file.id),
-                file_name="routing-analysis",
-            )
-
-            orchestrator_output = await run_orchestrator(
-                case_id=case_id,
-                workflow_id=workflow_id,
-                user_id=user_id,
-                triage_output=triage_output,
-                db_session=db,
-                publish_event=publish_fn,
-                parent_execution_id=triage_execution.id if triage_execution else None,
-            )
-
-            if orchestrator_output is None:
-                await emit_agent_error(
-                    case_id=case_id,
-                    agent_type="orchestrator",
-                    task_id=orchestrator_task_id,
-                    error="Orchestrator failed to produce routing decisions",
-                )
-                # Files stay in PROCESSING -- partial results preserved
-                await db.commit()
-            else:
-                # Query orchestrator execution record for metadata
-                orch_exec_result = await db.execute(
-                    select(AgentExecution)
-                    .where(
-                        AgentExecution.workflow_id == UUID(workflow_id),
-                        AgentExecution.agent_name == "orchestrator",
-                    )
-                    .order_by(AgentExecution.created_at.desc())
-                    .limit(1)
-                )
-                orch_execution = orch_exec_result.scalar_one_or_none()
-
-                orch_metadata = (
-                    _build_execution_metadata(orch_execution, settings.gemini_pro_model)
-                    if orch_execution
-                    else {}
-                )
-
-                await emit_agent_complete(
-                    case_id=case_id,
-                    agent_type="orchestrator",
-                    task_id=orchestrator_task_id,
-                    result={
-                        "taskId": orchestrator_task_id,
-                        "agentType": "orchestrator",
-                        "outputs": [
-                            {
-                                "type": "routing-decisions",
-                                "data": {
-                                    "routingCount": len(
-                                        orchestrator_output.routing_decisions
-                                    ),
-                                    "parallelAgents": orchestrator_output.parallel_agents,
-                                    "researchTriggered": orchestrator_output.research_trigger.should_trigger,
-                                },
-                            }
-                        ],
-                        "routingDecisions": [
-                            {
-                                "fileId": rd.file_id,
-                                "targetAgent": rd.target_agents[0]
-                                if rd.target_agents
-                                else "unknown",
-                                "reason": rd.reasoning,
-                                "domainScore": max(
-                                    rd.domain_scores.financial,
-                                    rd.domain_scores.legal,
-                                    rd.domain_scores.strategy,
-                                    rd.domain_scores.evidence,
-                                ),
-                            }
-                            for rd in orchestrator_output.routing_decisions
-                        ],
-                        "metadata": orch_metadata,
-                    },
-                )
-
-            # ---- Step 6: Update file statuses to ANALYZED ----
-            await db.execute(
-                update(CaseFile)
-                .where(CaseFile.id.in_([UUID(fid) for fid in file_ids]))
-                .values(status=FileStatus.ANALYZED)
-            )
-            await db.commit()
-
-            # ---- Step 7: Emit processing-complete ----
-            # Count entities from triage output
-            total_entities = sum(len(fr.entities) for fr in triage_output.file_results)
-            total_duration_s = time.monotonic() - pipeline_start
-            total_duration_ms = int(total_duration_s * 1000)
-
-            # Aggregate token usage across all executions in this workflow
-            all_exec_result = await db.execute(
-                select(AgentExecution).where(
-                    AgentExecution.workflow_id == UUID(workflow_id),
-                )
-            )
-            all_executions = list(all_exec_result.scalars().all())
-            total_input_tokens = sum(e.input_tokens or 0 for e in all_executions)
-            total_output_tokens = sum(e.output_tokens or 0 for e in all_executions)
-
-            await emit_processing_complete(
-                case_id=case_id,
-                files_processed=len(files),
-                entities_created=total_entities,
-                relationships_created=0,  # Relationships created by domain agents in Phase 6
-                total_duration_ms=total_duration_ms,
-                total_input_tokens=total_input_tokens,
-                total_output_tokens=total_output_tokens,
-            )
-            logger.info(
-                "Pipeline complete case=%s workflow=%s files=%d "
-                "total_duration_s=%.2f entities=%d",
-                case_id,
-                workflow_id,
-                len(files),
-                total_duration_s,
-                total_entities,
-            )
-
-        except Exception as exc:
-            pipeline_duration_s = time.monotonic() - pipeline_start
-            logger.exception(
-                "Pipeline failed case=%s workflow=%s duration_s=%.2f error=%s",
-                case_id,
-                workflow_id,
-                pipeline_duration_s,
-                exc,
-            )
-            # Update file statuses to ERROR
-            try:
-                await db.execute(
-                    update(CaseFile)
-                    .where(CaseFile.id.in_([UUID(fid) for fid in file_ids]))
-                    .values(status=FileStatus.ERROR)
-                )
-                await db.commit()
-            except Exception:
-                logger.exception("Failed to update file statuses to ERROR")
-
-            # Emit error event
-            await emit_agent_error(
-                case_id=case_id,
-                agent_type="pipeline",
-                task_id=workflow_id,
-                error=str(exc)[:500],
-            )
-
-
-# ---------------------------------------------------------------------------
 # API Endpoints
 # ---------------------------------------------------------------------------
 
@@ -479,6 +110,7 @@ async def run_analysis_workflow(
         400: {"model": ErrorResponse, "description": "No files to analyze"},
         401: {"model": ErrorResponse, "description": "Unauthorized"},
         404: {"model": ErrorResponse, "description": "Case not found"},
+        409: {"model": ErrorResponse, "description": "Analysis already in progress"},
     },
 )
 async def start_analysis(
@@ -486,20 +118,29 @@ async def start_analysis(
     background_tasks: BackgroundTasks,
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
+    request_body: AnalysisStartRequest | None = None,
 ) -> AnalysisStartResponse:
-    """Start agent analysis for all uploaded files in a case.
+    """Start agent analysis for case files.
 
     Per CONTEXT.md: "Batch after uploads -- user explicitly starts analysis"
+
+    Supports two modes via the optional request body:
+    - uploaded_only (default): Process only files with UPLOADED status.
+    - rerun_all: Reset ANALYZED/ERROR files to UPLOADED first, then process all.
 
     This triggers:
     1. Triage Agent on all UPLOADED files
     2. Orchestrator Agent with triage results
-    3. (Future) Domain agents based on routing
-    4. (Future) Synthesis agent for final output
+    3. Domain Agents (Financial, Legal, Evidence) based on routing
+    4. Strategy Agent with domain summaries
+    5. HITL confirmation for low-confidence findings
+    6. (Future) Synthesis agent for final output
 
     Returns workflow_id for tracking progress via the status endpoint
     or the Command Center SSE stream.
     """
+    mode = (request_body or AnalysisStartRequest()).mode
+
     # Validate case ownership
     case = await _get_user_case(db, case_id, current_user.id)
     if not case:
@@ -508,7 +149,26 @@ async def start_analysis(
             detail="Case not found",
         )
 
-    # Find all UPLOADED files in this case
+    # Concurrency guard: reject if analysis is already running
+    if case.status == CaseStatus.PROCESSING:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Analysis already in progress for this case.",
+        )
+
+    # Rerun mode: reset terminal-state files back to UPLOADED
+    if mode == AnalysisMode.RERUN_ALL:
+        await db.execute(
+            update(CaseFile)
+            .where(
+                CaseFile.case_id == case_id,
+                CaseFile.status.in_([FileStatus.ANALYZED, FileStatus.ERROR]),
+            )
+            .values(status=FileStatus.UPLOADED)
+        )
+        await db.commit()
+
+    # Find all UPLOADED files in this case (works for both modes)
     result = await db.execute(
         select(CaseFile).where(
             CaseFile.case_id == case_id,
@@ -518,14 +178,25 @@ async def start_analysis(
     files = list(result.scalars().all())
 
     if not files:
+        detail = (
+            "No uploaded files to analyze. Upload files first."
+            if mode == AnalysisMode.UPLOADED_ONLY
+            else "No files to rerun analysis on."
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No uploaded files to analyze. Upload files first.",
+            detail=detail,
         )
 
-    # Generate workflow ID
+    # Generate workflow ID and persist case state before scheduling
+    from uuid import uuid4
+
     workflow_id = uuid4()
     file_ids = [str(f.id) for f in files]
+
+    case.status = CaseStatus.PROCESSING
+    case.latest_workflow_id = workflow_id
+    await db.commit()
 
     # Schedule background analysis
     background_tasks.add_task(
@@ -537,10 +208,11 @@ async def start_analysis(
     )
 
     logger.info(
-        "Analysis started: case=%s workflow=%s files=%d",
+        "Analysis started: case=%s workflow=%s files=%d mode=%s",
         case_id,
         workflow_id,
         len(files),
+        mode.value,
     )
 
     return AnalysisStartResponse(
@@ -597,13 +269,22 @@ async def get_analysis_status(
         )
 
     # Determine current status from executions
+    domain_agent_names = frozenset({"financial", "legal", "evidence"})
     triage_exec = None
     orchestrator_exec = None
+    domain_execs: dict[str, list[AgentExecution]] = {}
+    strategy_exec: AgentExecution | None = None
     for exec_record in executions:
         if exec_record.agent_name == "triage":
             triage_exec = exec_record
         elif exec_record.agent_name == "orchestrator":
             orchestrator_exec = exec_record
+        elif exec_record.agent_name in domain_agent_names:
+            if exec_record.agent_name not in domain_execs:
+                domain_execs[exec_record.agent_name] = []
+            domain_execs[exec_record.agent_name].append(exec_record)
+        elif exec_record.agent_name == "strategy":
+            strategy_exec = exec_record
 
     # Determine pipeline status
     pipeline_status: Literal[
@@ -612,13 +293,44 @@ async def get_analysis_status(
     error_msg: str | None = None
     completed_at: datetime | None = None
 
-    if any(e.status == AgentExecutionStatus.FAILED for e in executions):
+    # Check for fatal pipeline-level failures (not individual agent failures
+    # which are expected to be partial and non-fatal)
+    pipeline_failed = any(
+        e.status == AgentExecutionStatus.FAILED
+        and e.agent_name in ("triage", "orchestrator", "pipeline")
+        for e in executions
+    )
+
+    if pipeline_failed:
         pipeline_status = "error"
-        failed = [e for e in executions if e.status == AgentExecutionStatus.FAILED]
+        failed = [
+            e
+            for e in executions
+            if e.status == AgentExecutionStatus.FAILED
+            and e.agent_name in ("triage", "orchestrator", "pipeline")
+        ]
         error_msg = failed[0].error_message if failed else "Unknown error"
-    elif (
-        orchestrator_exec and orchestrator_exec.status == AgentExecutionStatus.COMPLETED
+    elif strategy_exec and strategy_exec.status == AgentExecutionStatus.COMPLETED:
+        pipeline_status = "complete"
+        completed_at = strategy_exec.completed_at
+    elif (strategy_exec and strategy_exec.status == AgentExecutionStatus.RUNNING) or (
+        domain_execs
+        and any(
+            e.status == AgentExecutionStatus.RUNNING
+            for exec_list in domain_execs.values()
+            for e in exec_list
+        )
     ):
+        pipeline_status = "domain_analysis"
+    elif domain_execs and not strategy_exec:
+        # All domain agents completed but strategy not started yet
+        pipeline_status = "domain_analysis"
+    elif (
+        orchestrator_exec
+        and orchestrator_exec.status == AgentExecutionStatus.COMPLETED
+        and not domain_execs
+    ):
+        # Backward compat: orchestrator done, no domain agents -> complete
         pipeline_status = "complete"
         completed_at = orchestrator_exec.completed_at
     elif orchestrator_exec and orchestrator_exec.status == AgentExecutionStatus.RUNNING:
@@ -637,9 +349,11 @@ async def get_analysis_status(
     if triage_exec and triage_exec.output_data:
         try:
             triage_result = TriageOutput.model_validate(triage_exec.output_data)
-        except Exception:
+        except (ValueError, ValidationError) as exc:
             logger.warning(
-                "Failed to parse stored triage output for workflow=%s", workflow_id
+                "Failed to parse stored triage output for workflow=%s: %s",
+                workflow_id,
+                exc,
             )
 
     if orchestrator_exec and orchestrator_exec.output_data:
@@ -647,11 +361,43 @@ async def get_analysis_status(
             orchestrator_result = OrchestratorOutput.model_validate(
                 orchestrator_exec.output_data
             )
-        except Exception:
+        except (ValueError, ValidationError) as exc:
             logger.warning(
-                "Failed to parse stored orchestrator output for workflow=%s",
+                "Failed to parse stored orchestrator output for workflow=%s: %s",
                 workflow_id,
+                exc,
             )
+
+    # Build domain results summary (multi-execution-aware)
+    domain_summary: dict[str, list[dict[str, object]]] | None = None
+    if domain_execs:
+        domain_summary = {}
+        for agent_name, exec_list in domain_execs.items():
+            domain_summary[agent_name] = []
+            for exec_record in exec_list:
+                finding_count = 0
+                group_label: str = "unknown"
+                if exec_record.input_data and isinstance(exec_record.input_data, dict):
+                    raw_suffix = exec_record.input_data.get("stage_suffix", "")
+                    group_label = (
+                        raw_suffix.lstrip("_")
+                        if isinstance(raw_suffix, str)
+                        else "default"
+                    ) or "default"
+                if exec_record.output_data and isinstance(
+                    exec_record.output_data, dict
+                ):
+                    findings = exec_record.output_data.get("findings", [])
+                    finding_count = len(findings) if isinstance(findings, list) else 0
+                domain_summary[agent_name].append(
+                    {
+                        "group_label": group_label,
+                        "finding_count": finding_count,
+                        "status": exec_record.status.value
+                        if exec_record.status
+                        else "unknown",
+                    }
+                )
 
     # Find earliest started_at
     started_at = min(e.started_at for e in executions)
@@ -665,4 +411,50 @@ async def get_analysis_status(
         started_at=started_at,
         completed_at=completed_at,
         error=error_msg,
+        domain_results_summary=domain_summary,
     )
+
+
+# ---------------------------------------------------------------------------
+# Execution Detail Endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/api/agents/executions/{execution_id}",
+    response_model=ExecutionDetailResponse,
+    summary="Get detailed agent execution data",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        404: {"model": ErrorResponse, "description": "Execution not found"},
+    },
+)
+async def get_execution_detail(
+    execution_id: UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ExecutionDetailResponse:
+    """Fetch full execution data (output_data, input_data, thinking_traces).
+
+    Verifies case ownership via the execution's case_id.
+    """
+    result = await db.execute(
+        select(AgentExecution).where(AgentExecution.id == execution_id)
+    )
+    execution = result.scalar_one_or_none()
+
+    if not execution:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Execution not found",
+        )
+
+    # Verify ownership via case
+    case = await _get_user_case(db, execution.case_id, current_user.id)
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Execution not found",
+        )
+
+    return ExecutionDetailResponse.model_validate(execution)

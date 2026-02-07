@@ -5,7 +5,6 @@
 
 import { useState, type ReactNode } from "react";
 import {
-  X,
   ChevronDown,
   ChevronUp,
   AlertTriangle,
@@ -22,8 +21,15 @@ import {
 } from "lucide-react";
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
-import { formatDuration, formatNumber, formatTime } from "@/lib/formatting";
+import { MarkdownContent } from "@/components/ui/markdown-content";
+import {
+  formatDuration,
+  formatModelName,
+  formatNumber,
+  formatTime,
+} from "@/lib/formatting";
 import { ExecutionTimeline } from "@/components/CommandCenter/ExecutionTimeline";
+import { useAgentExecutionDetail } from "@/hooks/useAgentExecutionDetail";
 import type {
   AgentType,
   AgentState,
@@ -37,8 +43,7 @@ import type {
 interface NodeDetailsSidebarProps {
   agentType: AgentType | null;
   agentState: AgentState | null;
-  allAgentStates?: Map<AgentType, AgentState>;
-  onClose: () => void;
+  allAgentStates?: Map<string, AgentState>;
 }
 
 // -----------------------------------------------------------------------
@@ -139,28 +144,35 @@ function statusLabel(status: AgentState["status"]): string {
 
 interface AgentSectionsProps {
   agentState: AgentState;
+  outputData?: Record<string, unknown> | null;
 }
 
 /** Triage-specific sections: domain scores, entities, complexity */
-function TriageSections({ agentState }: AgentSectionsProps) {
+function TriageSections({ agentState, outputData }: AgentSectionsProps) {
   const result = agentState.lastResult;
   if (!result) return null;
 
-  // Extract triage-specific data from outputs
-  const domainScores = extractFromOutputs<Record<string, number>>(
-    result.outputs,
-    "domain_scores",
-  );
-  const entities = extractFromOutputs<Array<{ name: string; type: string }>>(
-    result.outputs,
-    "entities",
-  );
-  const complexity = extractFromOutputs<string>(result.outputs, "complexity");
-  const summary = extractFromOutputs<string>(result.outputs, "summary");
-  const detailedSummary = extractFromOutputs<string>(
-    result.outputs,
-    "detailed_summary",
-  );
+  // Prefer rich data from REST execution detail (outputData), fall back to SSE outputs
+  const fileResult = getFirstFileResult(outputData);
+
+  const domainScores =
+    fileResult?.domainScores ??
+    extractFromOutputs<Record<string, number>>(result.outputs, "domain_scores");
+  const entities =
+    fileResult?.entities ??
+    extractFromOutputs<Array<{ name: string; type: string }>>(
+      result.outputs,
+      "entities",
+    );
+  const complexity =
+    fileResult?.complexity ??
+    extractFromOutputs<string>(result.outputs, "complexity");
+  const summary =
+    fileResult?.summary ??
+    extractFromOutputs<string>(result.outputs, "summary");
+  const detailedSummary =
+    fileResult?.detailedSummary ??
+    extractFromOutputs<string>(result.outputs, "detailed_summary");
 
   return (
     <>
@@ -170,18 +182,16 @@ function TriageSections({ agentState }: AgentSectionsProps) {
         color="hsl(37 90% 68%)"
         icon={<FileText className="w-3.5 h-3.5" />}
       >
-        {summary && (
-          <p className="text-sm text-smoke leading-relaxed">{summary}</p>
-        )}
+        {summary && <MarkdownContent content={summary} />}
         {detailedSummary && (
           <div
-            className="p-3 rounded-lg text-xs text-stone leading-relaxed"
+            className="p-3 rounded-lg text-xs leading-relaxed"
             style={{
               background: "hsl(37 90% 68% / 0.05)",
               border: "1px solid hsl(37 90% 68% / 0.15)",
             }}
           >
-            {detailedSummary}
+            <MarkdownContent content={detailedSummary} />
           </div>
         )}
         {!summary && !detailedSummary && (
@@ -240,14 +250,15 @@ function TriageSections({ agentState }: AgentSectionsProps) {
 }
 
 /** Orchestrator-specific sections: routing summary, file routing table, warnings, file groups */
-function OrchestratorSections({ agentState }: AgentSectionsProps) {
+function OrchestratorSections({ agentState, outputData }: AgentSectionsProps) {
   const result = agentState.lastResult;
   if (!result) return null;
 
-  const routingReasoning = extractFromOutputs<string>(
-    result.outputs,
-    "routing_reasoning",
-  );
+  // Try REST output_data first (routing_summary field), fall back to SSE outputs
+  const rawRoutingSummary = outputData?.routing_summary;
+  const routingReasoning =
+    (typeof rawRoutingSummary === "string" ? rawRoutingSummary : undefined) ??
+    extractFromOutputs<string>(result.outputs, "routing_reasoning");
   const warnings = (result.metadata?.warnings as string[] | undefined) ?? [];
   const fileGroups = extractFromOutputs<
     Array<{
@@ -267,9 +278,7 @@ function OrchestratorSections({ agentState }: AgentSectionsProps) {
         icon={<Route className="w-3.5 h-3.5" />}
       >
         {routingReasoning ? (
-          <p className="text-sm text-smoke leading-relaxed">
-            {routingReasoning}
-          </p>
+          <MarkdownContent content={routingReasoning} />
         ) : (
           <p className="text-xs text-stone/50 italic">
             No routing reasoning available
@@ -316,8 +325,11 @@ function OrchestratorSections({ agentState }: AgentSectionsProps) {
                 {result.routingDecisions.map(
                   (decision: RoutingDecision, idx: number) => (
                     <tr key={idx} className="border-b border-stone/5">
-                      <td className="py-2 pr-2 text-smoke truncate max-w-[120px]">
-                        {decision.fileId}
+                      <td
+                        className="py-2 pr-2 text-smoke truncate max-w-[120px]"
+                        title={decision.fileId}
+                      >
+                        {decision.fileName || decision.fileId}
                       </td>
                       <td className="py-2 px-2 text-[hsl(var(--cc-accent))]">
                         {decision.targetAgent}
@@ -420,21 +432,32 @@ function OrchestratorSections({ agentState }: AgentSectionsProps) {
 }
 
 /** Domain agent-specific sections (financial, legal, strategy) */
-function DomainAgentSections({ agentState }: AgentSectionsProps) {
+function DomainAgentSections({ agentState, outputData }: AgentSectionsProps) {
   const result = agentState.lastResult;
   if (!result) return null;
 
-  const findingsSummary = extractFromOutputs<string>(
-    result.outputs,
-    "findings_summary",
-  );
-  const filesProcessed = extractFromOutputs<string[]>(
-    result.outputs,
-    "files_processed",
-  );
-  const keyExtractions = extractFromOutputs<
-    Array<{ label: string; value: string }>
-  >(result.outputs, "key_extractions");
+  // Try REST output_data first, fall back to SSE outputs
+  const rawFindingsSummary = outputData?.findings_summary;
+  const findingsSummary =
+    (typeof rawFindingsSummary === "string" ? rawFindingsSummary : undefined) ??
+    extractFromOutputs<string>(result.outputs, "findings_summary");
+
+  const rawFilesProcessed = outputData?.files_processed;
+  const filesProcessed =
+    (Array.isArray(rawFilesProcessed)
+      ? (rawFilesProcessed as string[])
+      : undefined) ??
+    extractFromOutputs<string[]>(result.outputs, "files_processed");
+
+  const rawKeyExtractions = outputData?.key_extractions;
+  const keyExtractions =
+    (Array.isArray(rawKeyExtractions)
+      ? (rawKeyExtractions as Array<{ label: string; value: string }>)
+      : undefined) ??
+    extractFromOutputs<Array<{ label: string; value: string }>>(
+      result.outputs,
+      "key_extractions",
+    );
 
   return (
     <>
@@ -445,9 +468,7 @@ function DomainAgentSections({ agentState }: AgentSectionsProps) {
         icon={<FileText className="w-3.5 h-3.5" />}
       >
         {findingsSummary ? (
-          <p className="text-sm text-smoke leading-relaxed">
-            {findingsSummary}
-          </p>
+          <MarkdownContent content={findingsSummary} />
         ) : (
           <p className="text-xs text-stone/50 italic">
             No findings summary available
@@ -531,7 +552,7 @@ function KnowledgeGraphSections({ agentState }: AgentSectionsProps) {
         icon={<Network className="w-3.5 h-3.5" />}
       >
         {graphSummary ? (
-          <p className="text-sm text-smoke leading-relaxed">{graphSummary}</p>
+          <MarkdownContent content={graphSummary} />
         ) : (
           <p className="text-xs text-stone/50 italic">
             No graph summary available
@@ -709,6 +730,87 @@ function extractFromOutputs<T>(
 }
 
 // -----------------------------------------------------------------------
+// Helper to extract triage file result from REST output_data
+// -----------------------------------------------------------------------
+interface TriageFileResultData {
+  domainScores: Record<string, number> | undefined;
+  entities: Array<{ name: string; type: string }> | undefined;
+  complexity: string | undefined;
+  summary: string | undefined;
+  detailedSummary: string | undefined;
+}
+
+/**
+ * Extract the first triage file result from REST execution output_data.
+ * The triage agent stores results under `file_results[0]` with nested structures.
+ * Returns undefined if output_data doesn't contain triage data.
+ */
+function getFirstFileResult(
+  outputData: Record<string, unknown> | null | undefined,
+): TriageFileResultData | undefined {
+  if (!outputData) return undefined;
+  const fileResults = outputData.file_results;
+  if (!Array.isArray(fileResults) || fileResults.length === 0) return undefined;
+
+  const fr = fileResults[0] as Record<string, unknown>;
+  if (!fr || typeof fr !== "object") return undefined;
+
+  // Map domain_scores array [{domain, score}] to Record<string, number>
+  let domainScores: Record<string, number> | undefined;
+  const rawScores = fr.domain_scores;
+  if (Array.isArray(rawScores)) {
+    domainScores = {};
+    for (const item of rawScores) {
+      if (
+        item &&
+        typeof item === "object" &&
+        "domain" in item &&
+        "score" in item
+      ) {
+        const entry = item as { domain: string; score: number };
+        domainScores[entry.domain] = entry.score;
+      }
+    }
+  }
+
+  // Map entities array [{type, value}] to [{name, type}]
+  let entities: Array<{ name: string; type: string }> | undefined;
+  const rawEntities = fr.entities;
+  if (Array.isArray(rawEntities)) {
+    entities = rawEntities
+      .filter(
+        (e): e is { type: string; value: string } =>
+          e != null &&
+          typeof e === "object" &&
+          "type" in e &&
+          "value" in e &&
+          typeof (e as Record<string, unknown>).type === "string" &&
+          typeof (e as Record<string, unknown>).value === "string",
+      )
+      .map((e) => ({ name: e.value, type: e.type }));
+  }
+
+  // Complexity tier
+  let complexity: string | undefined;
+  const rawComplexity = fr.complexity;
+  if (rawComplexity && typeof rawComplexity === "object") {
+    complexity = (rawComplexity as { tier?: string }).tier;
+  }
+
+  // Summaries
+  let summary: string | undefined;
+  let detailedSummary: string | undefined;
+  const rawSummary = fr.summary;
+  if (rawSummary && typeof rawSummary === "object") {
+    const summaryObj = rawSummary as { short?: string; detailed?: string };
+    summary = summaryObj.short;
+    detailedSummary = summaryObj.detailed;
+  }
+
+  return { domainScores, entities, complexity, summary, detailedSummary };
+}
+
+// -----------------------------------------------------------------------
 // Source label for the input context section
 // -----------------------------------------------------------------------
 function getSourceLabel(agentType: AgentType): string {
@@ -729,8 +831,14 @@ export function NodeDetailsSidebar({
   agentType,
   agentState,
   allAgentStates,
-  onClose,
 }: NodeDetailsSidebarProps) {
+  // Hook must be called unconditionally (Rules of Hooks)
+  const executionId = agentState?.lastResult?.metadata?.executionId as
+    | string
+    | undefined;
+  const { data: executionDetail, isLoading: isDetailLoading } =
+    useAgentExecutionDetail(executionId);
+
   if (!agentType || !agentState) return null;
 
   const config = AGENT_CONFIGS[agentType];
@@ -743,7 +851,10 @@ export function NodeDetailsSidebar({
   const isDomainAgent =
     agentType === "financial" ||
     agentType === "legal" ||
-    agentType === "strategy";
+    agentType === "strategy" ||
+    agentType === "evidence";
+
+  const outputData = executionDetail?.output_data ?? null;
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
@@ -754,21 +865,21 @@ export function NodeDetailsSidebar({
           background: `linear-gradient(135deg, hsl(${tint} / 0.15) 0%, transparent 100%)`,
         }}
       >
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-smoke truncate">
-              {config.name}
-            </h3>
-            <p className="text-xs text-stone mt-0.5 leading-relaxed">
-              {config.description}
+        <div className="mb-3">
+          <h3 className="text-lg font-semibold text-smoke truncate">
+            {config.name}
+          </h3>
+          {result?.fileNames && result.fileNames.length > 0 && (
+            <p
+              className="text-xs text-[hsl(var(--cc-accent))] mt-0.5 truncate"
+              title={result.fileNames.join(", ")}
+            >
+              {result.fileNames.join(", ")}
             </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-stone/10 transition-colors shrink-0 ml-2"
-          >
-            <X className="w-5 h-5 text-stone" />
-          </button>
+          )}
+          <p className="text-xs text-stone mt-0.5 leading-relaxed">
+            {config.description}
+          </p>
         </div>
 
         {/* Status + Model badges */}
@@ -781,9 +892,15 @@ export function NodeDetailsSidebar({
               {statusLabel(agentState.status)}
             </span>
           </div>
-          {config.model && (
-            <span className="text-[11px] text-stone/70">{config.model}</span>
-          )}
+          {(() => {
+            const modelId = result?.metadata?.model;
+            if (typeof modelId !== "string") return null;
+            return (
+              <span className="text-[11px] text-stone/70" title={modelId}>
+                {formatModelName(modelId)}
+              </span>
+            );
+          })()}
           {isActiveState && (
             <div
               className="px-2.5 py-1 rounded-full text-xs font-medium"
@@ -802,7 +919,7 @@ export function NodeDetailsSidebar({
       {/* ---- Scrollable content ---- */}
       <div
         className="flex-1 overflow-y-auto"
-        style={{ scrollbarWidth: "none" }}
+        style={{ scrollbarWidth: "thin" }}
       >
         {/* Current Task (always visible at top when processing) */}
         {agentState.currentTask && (
@@ -832,14 +949,13 @@ export function NodeDetailsSidebar({
         >
           {thinkingTraces ? (
             <div
-              className="p-3 rounded-lg font-mono text-sm leading-relaxed whitespace-pre-wrap break-words"
+              className="p-3 rounded-lg text-sm leading-relaxed break-words"
               style={{
                 background: "hsl(var(--cc-accent) / 0.05)",
                 borderLeft: "3px solid hsl(var(--cc-accent) / 0.3)",
-                color: "hsl(0 0% 78%)",
               }}
             >
-              {thinkingTraces}
+              <MarkdownContent content={thinkingTraces} />
             </div>
           ) : (
             <p className="text-xs text-stone/50 italic">
@@ -885,8 +1001,11 @@ export function NodeDetailsSidebar({
                 {model && (
                   <>
                     <span className="text-stone text-xs">Model</span>
-                    <span className="text-smoke text-xs font-medium text-right truncate">
-                      {model}
+                    <span
+                      className="text-smoke text-xs font-medium text-right truncate"
+                      title={model}
+                    >
+                      {formatModelName(model)}
                     </span>
                   </>
                 )}
@@ -939,12 +1058,31 @@ export function NodeDetailsSidebar({
           );
         })()}
 
-        {/* Agent-type-specific sections */}
-        {agentType === "triage" && <TriageSections agentState={agentState} />}
-        {agentType === "orchestrator" && (
-          <OrchestratorSections agentState={agentState} />
+        {/* Loading indicator for execution detail fetch */}
+        {isDetailLoading && executionId && (
+          <div className="px-5 py-2">
+            <div className="h-1 w-full rounded-full bg-stone/10 overflow-hidden">
+              <div className="h-full w-1/3 rounded-full bg-[hsl(var(--cc-accent))] animate-pulse" />
+            </div>
+          </div>
         )}
-        {isDomainAgent && <DomainAgentSections agentState={agentState} />}
+
+        {/* Agent-type-specific sections */}
+        {agentType === "triage" && (
+          <TriageSections agentState={agentState} outputData={outputData} />
+        )}
+        {agentType === "orchestrator" && (
+          <OrchestratorSections
+            agentState={agentState}
+            outputData={outputData}
+          />
+        )}
+        {isDomainAgent && (
+          <DomainAgentSections
+            agentState={agentState}
+            outputData={outputData}
+          />
+        )}
         {agentType === "knowledge-graph" && (
           <KnowledgeGraphSections agentState={agentState} />
         )}

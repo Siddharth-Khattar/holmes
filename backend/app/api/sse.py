@@ -1,6 +1,8 @@
 # ABOUTME: Server-Sent Events (SSE) endpoints for real-time streaming.
 # ABOUTME: Includes file status streaming, command center agent events, and heartbeat for Cloud Run connections.
 
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
@@ -14,7 +16,9 @@ from sse_starlette import EventSourceResponse
 from app.config import get_settings
 from app.services.agent_events import (
     AgentEventType,
-    subscribe_to_agent_events,
+    build_agent_result,
+    build_execution_metadata,
+    subscribe_with_replay,
     unsubscribe_from_agent_events,
 )
 
@@ -130,79 +134,76 @@ async def file_status_stream(case_id: str):
 async def build_state_snapshot(case_id: str) -> dict[str, Any]:
     """Build a state snapshot of all agent executions for reconnection.
 
-    Queries the most recent workflow for this case and returns each agent's
-    current status and metadata (tokens, duration, thinking traces).
+    Queries executions for the case's latest_workflow_id (authoritative source)
+    and returns each agent's current status, metadata (tokens, duration,
+    thinking traces), and lastResult for refresh resilience.
 
     Args:
         case_id: UUID string of the case.
 
     Returns:
-        Dict with "agents" key mapping agent names to their status and metadata.
+        Dict with "agents" key mapping agent names to their status, metadata,
+        and lastResult.
     """
     from app.database import _get_sessionmaker
     from app.models.agent_execution import AgentExecution
+    from app.models.case import Case
 
     session_factory = _get_sessionmaker()
     agents: dict[str, Any] = {}
 
     try:
         async with session_factory() as db:
-            # Find the most recent workflow for this case
             from uuid import UUID as PyUUID
 
-            latest_result = await db.execute(
-                select(AgentExecution)
-                .where(AgentExecution.case_id == PyUUID(case_id))
-                .order_by(AgentExecution.created_at.desc())
-                .limit(1)
+            # Use Case.latest_workflow_id as authoritative source (Bug 6 fix).
+            # Avoids the two-step query that could select the wrong workflow
+            # if execution records from different workflows overlap.
+            case_result = await db.execute(
+                select(Case.latest_workflow_id).where(Case.id == PyUUID(case_id))
             )
-            latest = latest_result.scalar_one_or_none()
-            if latest is None:
+            latest_workflow_id = case_result.scalar_one_or_none()
+            if latest_workflow_id is None:
                 return {"agents": agents}
 
-            # Get all executions for this workflow
+            # Get all executions for the authoritative workflow
             workflow_result = await db.execute(
                 select(AgentExecution)
-                .where(AgentExecution.workflow_id == latest.workflow_id)
+                .where(AgentExecution.workflow_id == latest_workflow_id)
                 .order_by(AgentExecution.created_at.asc())
             )
             executions = list(workflow_result.scalars().all())
 
             for execution in executions:
-                duration_ms: int | None = None
-                if execution.started_at and execution.completed_at:
-                    delta = execution.completed_at - execution.started_at
-                    duration_ms = int(delta.total_seconds() * 1000)
+                metadata_dict = build_execution_metadata(
+                    execution, execution.model_name
+                )
 
-                thinking_text = ""
-                if execution.thinking_traces:
-                    thinking_text = "\n".join(
-                        trace.get("thought", "")
-                        if isinstance(trace, dict)
-                        else str(trace)
-                        for trace in execution.thinking_traces
-                    )
-
-                agents[execution.agent_name] = {
+                agent_entry: dict[str, Any] = {
                     "status": execution.status.value.lower(),
-                    "metadata": {
-                        "inputTokens": execution.input_tokens or 0,
-                        "outputTokens": execution.output_tokens or 0,
-                        "durationMs": duration_ms or 0,
-                        "startedAt": (
-                            execution.started_at.isoformat()
-                            if execution.started_at
-                            else None
-                        ),
-                        "completedAt": (
-                            execution.completed_at.isoformat()
-                            if execution.completed_at
-                            else None
-                        ),
-                        "model": execution.model_name,
-                        "thinkingTraces": thinking_text,
-                    },
+                    "metadata": metadata_dict,
                 }
+
+                last_result = build_agent_result(execution, metadata_dict)
+                if last_result is not None:
+                    agent_entry["lastResult"] = last_result
+
+                # Build compound snapshot key from agent_name + stage_suffix
+                # so multiple instances (e.g. financial_grp_0, financial_grp_1)
+                # don't overwrite each other under the same base-type key.
+                raw_suffix = ""
+                if execution.input_data and isinstance(execution.input_data, dict):
+                    raw_suffix = execution.input_data.get("stage_suffix", "")
+                    if not isinstance(raw_suffix, str):
+                        raw_suffix = ""
+
+                group_label = raw_suffix.lstrip("_") if raw_suffix else ""
+                if group_label:
+                    snapshot_key = f"{execution.agent_name}_{group_label}"
+                else:
+                    snapshot_key = execution.agent_name
+
+                agents[snapshot_key] = agent_entry
 
     except Exception:
         logger.exception("Failed to build state snapshot for case=%s", case_id)
@@ -230,13 +231,17 @@ async def command_center_generator(case_id: str):
     # Send state snapshot immediately on connect.
     # Include `type` so the frontend validation switch dispatches correctly.
     snapshot = await build_state_snapshot(case_id)
+    snapshot_agent_ids = set(snapshot.get("agents", {}).keys())
     snapshot["type"] = AgentEventType.STATE_SNAPSHOT.value
     yield {
         "event": AgentEventType.STATE_SNAPSHOT.value,
         "data": json.dumps(snapshot),
     }
 
-    queue = subscribe_to_agent_events(case_id)
+    # Subscribe with replay of buffered events for agents not in the snapshot.
+    # This bridges the gap when events fire before the subscriber connects
+    # (e.g. triage agent-started emitted before SSE connection established).
+    queue = subscribe_with_replay(case_id, exclude_agents=snapshot_agent_ids)
 
     try:
         while True:

@@ -58,6 +58,26 @@ class Settings(BaseSettings):
     # File size (bytes) above which to use Gemini File API instead of inline data
     file_api_threshold: int = 100_000_000
 
+    # --- Agent execution configuration ---
+    max_parse_retries: int = 1
+    confidence_threshold: int = 40
+    routing_confidence_threshold: int = 40
+    routing_hitl_threshold_financial: int = 50
+    routing_hitl_threshold_legal: int = 50
+    routing_hitl_threshold_evidence: int = 20
+    routing_hitl_threshold_strategy: int = 40
+    file_api_timeout_seconds: int = 300
+    file_api_initial_poll_interval: float = 2.0
+    file_api_max_poll_interval: float = 15.0
+    file_api_poll_backoff_multiplier: float = 1.5
+
+    # --- Pipeline stage timeouts (seconds) ---
+    pipeline_timeout_triage: int = 600
+    pipeline_timeout_orchestrator: int = 300
+    pipeline_timeout_domain_agents: int = 900
+    pipeline_timeout_strategy: int = 300
+    pipeline_timeout_overall: int = 1800  # 30 minutes
+
     # --- SSE / Real-time configuration ---
     # Heartbeat interval for SSE connections to keep alive on Cloud Run (per REQ-INF-004)
     sse_heartbeat_interval_seconds: float = 15.0
@@ -118,6 +138,21 @@ class Settings(BaseSettings):
             origins.append(self.frontend_url)
 
         return origins
+
+    def get_routing_hitl_threshold(self, agent_type: str) -> int:
+        """Return the HITL routing confidence threshold for a given agent type.
+
+        Per-agent thresholds allow conservative agents (financial, legal) to
+        require more frequent human review than liberal agents (evidence).
+        Falls back to the global routing_confidence_threshold for unknown types.
+        """
+        _thresholds: dict[str, int] = {
+            "financial": self.routing_hitl_threshold_financial,
+            "legal": self.routing_hitl_threshold_legal,
+            "evidence": self.routing_hitl_threshold_evidence,
+            "strategy": self.routing_hitl_threshold_strategy,
+        }
+        return _thresholds.get(agent_type, self.routing_confidence_threshold)
 
 
 def _ensure_adk_env(s: Settings) -> None:

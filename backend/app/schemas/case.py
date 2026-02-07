@@ -39,6 +39,9 @@ class CaseResponse(BaseModel):
     type: CaseType = Field(..., description="Type of investigation")
     status: CaseStatus = Field(..., description="Current processing status")
     file_count: int = Field(..., description="Number of files in the case")
+    latest_workflow_id: UUID | None = Field(
+        None, description="ID of the most recent analysis workflow"
+    )
     created_at: datetime = Field(..., description="When the case was created")
     updated_at: datetime = Field(..., description="When the case was last updated")
 

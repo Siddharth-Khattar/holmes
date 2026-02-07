@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from google.adk.agents import LlmAgent
 from google.adk.planners import BuiltInPlanner
+from google.genai import types
 
 from app.agents.base import (
     MODEL_FLASH,
@@ -47,11 +48,23 @@ def _create_llm_agent(
     output_schema: type[BaseModel],
     output_key: str,
     callbacks: AgentCallbacks | None,
+    generate_content_config: types.GenerateContentConfig | None = None,
 ) -> LlmAgent:
-    """Create an LlmAgent with optional callbacks.
+    """Create an LlmAgent with optional callbacks and content generation config.
 
     This helper centralizes LlmAgent instantiation to avoid code duplication
     while maintaining type safety for the callbacks TypedDict.
+
+    Args:
+        name: ADK agent name (must be valid Python identifier).
+        model: Gemini model ID.
+        instruction: System prompt for the agent.
+        planner: Thinking planner configuration.
+        output_schema: Pydantic model for structured output.
+        output_key: Key name for the output in session state.
+        callbacks: Optional ADK callback hooks for SSE publishing.
+        generate_content_config: Optional Gemini content generation config
+            (e.g., media_resolution for document/image processing quality).
     """
     # Build base kwargs that all agents share
     base_kwargs: dict[str, Any] = {
@@ -62,6 +75,9 @@ def _create_llm_agent(
         "output_schema": output_schema,
         "output_key": output_key,
     }
+
+    if generate_content_config is not None:
+        base_kwargs["generate_content_config"] = generate_content_config
 
     if callbacks:
         # Merge callbacks into kwargs - TypedDict unpacks correctly here
@@ -141,4 +157,156 @@ class AgentFactory:
             output_schema=OrchestratorOutput,
             output_key="orchestrator_result",
             callbacks=callbacks,
+        )
+
+    @staticmethod
+    def create_financial_agent(
+        case_id: str,
+        *,
+        model: str = MODEL_PRO,
+        publish_fn: PublishFn | None = None,
+    ) -> LlmAgent:
+        """Create a fresh Financial domain agent for a specific case.
+
+        Uses Pro model with HIGH thinking for thorough financial analysis.
+        Media resolution set to HIGH for dense scanned financial documents.
+
+        Args:
+            case_id: Investigation case ID.
+            model: Gemini model ID (default: Pro for complex financial reasoning).
+            publish_fn: Optional SSE publish function for real-time callbacks.
+
+        Returns:
+            A new LlmAgent instance configured for financial analysis.
+        """
+        from app.agents.prompts.financial import FINANCIAL_SYSTEM_PROMPT
+        from app.schemas.agent import FinancialOutput
+
+        callbacks = create_agent_callbacks(case_id, publish_fn) if publish_fn else None
+        return _create_llm_agent(
+            name=_safe_name("financial", case_id),
+            model=model,
+            instruction=FINANCIAL_SYSTEM_PROMPT,
+            planner=create_thinking_planner("high"),
+            output_schema=FinancialOutput,
+            output_key="financial_result",
+            callbacks=callbacks,
+            generate_content_config=types.GenerateContentConfig(
+                media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH,
+            ),
+        )
+
+    @staticmethod
+    def create_legal_agent(
+        case_id: str,
+        *,
+        model: str = MODEL_PRO,
+        publish_fn: PublishFn | None = None,
+    ) -> LlmAgent:
+        """Create a fresh Legal domain agent for a specific case.
+
+        Uses Pro model with HIGH thinking for thorough legal analysis.
+        Media resolution set to HIGH for dense legal documents and contracts.
+
+        Args:
+            case_id: Investigation case ID.
+            model: Gemini model ID (default: Pro for complex legal reasoning).
+            publish_fn: Optional SSE publish function for real-time callbacks.
+
+        Returns:
+            A new LlmAgent instance configured for legal analysis.
+        """
+        from app.agents.prompts.legal import LEGAL_SYSTEM_PROMPT
+        from app.schemas.agent import LegalOutput
+
+        callbacks = create_agent_callbacks(case_id, publish_fn) if publish_fn else None
+        return _create_llm_agent(
+            name=_safe_name("legal", case_id),
+            model=model,
+            instruction=LEGAL_SYSTEM_PROMPT,
+            planner=create_thinking_planner("high"),
+            output_schema=LegalOutput,
+            output_key="legal_result",
+            callbacks=callbacks,
+            generate_content_config=types.GenerateContentConfig(
+                media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH,
+            ),
+        )
+
+    @staticmethod
+    def create_evidence_agent(
+        case_id: str,
+        *,
+        model: str = MODEL_PRO,
+        publish_fn: PublishFn | None = None,
+    ) -> LlmAgent:
+        """Create a fresh Evidence domain agent for a specific case.
+
+        Uses Pro model with HIGH thinking for thorough evidence analysis.
+        Media resolution set to HIGH for forensic-quality image and document analysis.
+
+        Args:
+            case_id: Investigation case ID.
+            model: Gemini model ID (default: Pro for detailed evidence evaluation).
+            publish_fn: Optional SSE publish function for real-time callbacks.
+
+        Returns:
+            A new LlmAgent instance configured for evidence analysis.
+        """
+        from app.agents.prompts.evidence import EVIDENCE_SYSTEM_PROMPT
+        from app.schemas.agent import EvidenceOutput
+
+        callbacks = create_agent_callbacks(case_id, publish_fn) if publish_fn else None
+        return _create_llm_agent(
+            name=_safe_name("evidence", case_id),
+            model=model,
+            instruction=EVIDENCE_SYSTEM_PROMPT,
+            planner=create_thinking_planner("high"),
+            output_schema=EvidenceOutput,
+            output_key="evidence_result",
+            callbacks=callbacks,
+            generate_content_config=types.GenerateContentConfig(
+                media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH,
+            ),
+        )
+
+    @staticmethod
+    def create_strategy_agent(
+        case_id: str,
+        *,
+        model: str = MODEL_PRO,
+        publish_fn: PublishFn | None = None,
+    ) -> LlmAgent:
+        """Create a fresh Legal Strategy domain agent for a specific case.
+
+        Uses Pro model with HIGH thinking for strategic case analysis.
+        Media resolution set to MEDIUM -- strategy processes playbooks and
+        internal docs, not dense scanned content requiring high-res OCR.
+
+        The Strategy agent runs AFTER other domain agents and can incorporate
+        their findings. Inter-agent communication is deferred to Phase 7.
+
+        Args:
+            case_id: Investigation case ID.
+            model: Gemini model ID (default: Pro for strategic reasoning).
+            publish_fn: Optional SSE publish function for real-time callbacks.
+
+        Returns:
+            A new LlmAgent instance configured for legal strategy analysis.
+        """
+        from app.agents.prompts.strategy import STRATEGY_SYSTEM_PROMPT
+        from app.schemas.agent import StrategyOutput
+
+        callbacks = create_agent_callbacks(case_id, publish_fn) if publish_fn else None
+        return _create_llm_agent(
+            name=_safe_name("strategy", case_id),
+            model=model,
+            instruction=STRATEGY_SYSTEM_PROMPT,
+            planner=create_thinking_planner("high"),
+            output_schema=StrategyOutput,
+            output_key="strategy_result",
+            callbacks=callbacks,
+            generate_content_config=types.GenerateContentConfig(
+                media_resolution=types.MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+            ),
         )

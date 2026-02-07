@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import {
-  X,
-  Minimize2,
   FileText,
   Image as ImageIcon,
   Video,
@@ -19,9 +17,6 @@ import type { Evidence, EvidenceType } from "@/types/knowledge-graph";
 
 interface EvidenceSourcePanelProps {
   evidence: Evidence;
-  isMinimized: boolean;
-  onClose: () => void;
-  onToggleMinimize: () => void;
 }
 
 const EVIDENCE_ICONS: Record<
@@ -123,42 +118,10 @@ const getMockEvidenceData = (evidence: Evidence) => {
   }
 };
 
-export function EvidenceSourcePanel({
-  evidence,
-  isMinimized,
-  onClose,
-  onToggleMinimize,
-}: EvidenceSourcePanelProps) {
+export function EvidenceSourcePanel({ evidence }: EvidenceSourcePanelProps) {
   const [zoom, setZoom] = useState(100);
   const mockData = getMockEvidenceData(evidence);
   const IconComponent = EVIDENCE_ICONS[evidence.type];
-
-  if (isMinimized) {
-    return (
-      <div
-        className="h-full flex flex-col items-center justify-center gap-4 p-4 border-r cursor-pointer hover:bg-stone/5 transition-colors"
-        style={{
-          backgroundColor: "var(--color-jet)",
-          borderColor: "rgba(138, 138, 130, 0.15)",
-          width: "60px",
-        }}
-        onClick={onToggleMinimize}
-      >
-        <div className="flex flex-col items-center gap-2">
-          <IconComponent size={24} className="text-stone" />
-          <div
-            className="text-xs text-stone writing-mode-vertical"
-            style={{
-              writingMode: "vertical-rl",
-              textOrientation: "mixed",
-            }}
-          >
-            Source Panel
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -170,30 +133,14 @@ export function EvidenceSourcePanel({
     >
       {/* Header */}
       <div
-        className="flex-none px-4 py-3 border-b flex items-center justify-between"
+        className="flex-none px-4 py-3 border-b"
         style={{ borderColor: "rgba(138, 138, 130, 0.15)" }}
       >
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="flex items-center gap-2">
           <IconComponent size={18} className="text-stone shrink-0" />
           <h3 className="text-sm font-medium text-smoke truncate">
             Source Panel
           </h3>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onToggleMinimize}
-            className="p-1.5 rounded hover:bg-stone/10 transition-colors"
-            title="Minimize"
-          >
-            <Minimize2 className="w-4 h-4 text-stone" />
-          </button>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded hover:bg-stone/10 transition-colors"
-            title="Close"
-          >
-            <X className="w-4 h-4 text-stone" />
-          </button>
         </div>
       </div>
 

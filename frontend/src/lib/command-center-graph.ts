@@ -1,15 +1,11 @@
 // ABOUTME: Pure functions for building the Command Center ReactFlow graph from agent state.
-// ABOUTME: Handles node visibility, edge construction, file group routing, and active-path detection.
+// ABOUTME: Handles instance-based node creation, base-type edge resolution, file group routing, and active-path detection.
 
 import type { Node, Edge } from "@xyflow/react";
 
 import { DEFAULT_CONNECTIONS } from "@/lib/command-center-config";
 import { getLayoutedElements } from "@/lib/command-center-layout";
-import type {
-  AgentState,
-  AgentType,
-  AgentResult,
-} from "@/types/command-center";
+import type { AgentState, AgentResult } from "@/types/command-center";
 
 // -----------------------------------------------------------------------
 // Shared predicate: is an agent on the "chosen" (active/completed) path?
@@ -71,12 +67,24 @@ interface FileRouting {
   target: string;
 }
 
+/**
+ * Extract file routing data from orchestrator state.
+ * Finds the orchestrator by iterating states where state.type === "orchestrator".
+ */
 function extractFileRoutingMap(
-  agentStates: Map<AgentType, AgentState>,
+  agentStates: Map<string, AgentState>,
 ): Map<string, string[]> {
   const routingMap = new Map<string, string[]>();
 
-  const orchState = agentStates.get("orchestrator");
+  // Find orchestrator instance (there should be exactly one)
+  let orchState: AgentState | undefined;
+  for (const state of agentStates.values()) {
+    if (state.type === "orchestrator") {
+      orchState = state;
+      break;
+    }
+  }
+
   const fileRouting =
     (orchState?.lastResult?.metadata?.file_routing as
       | FileRouting[]
@@ -96,35 +104,37 @@ function extractFileRoutingMap(
 //
 // A node is visible if:
 //   1. It has been activated (non-idle, or has results/history), OR
-//   2. ALL of its parents (from DEFAULT_CONNECTIONS) are active/complete
+//   2. ALL of its parent TYPES (from DEFAULT_CONNECTIONS) have at least
+//      one active instance in the state map
 //
 // This handles any pipeline topology — adding new agent types or dynamic
 // subagents only requires adding entries to DEFAULT_CONNECTIONS.
 // -----------------------------------------------------------------------
 
 function determineNodeVisibility(
-  type: AgentType,
-  states: Map<AgentType, AgentState>,
+  _instanceId: string,
+  state: AgentState,
+  allStates: Map<string, AgentState>,
 ): boolean {
-  const state = states.get(type);
-
   // If this agent has ever been active, always show it
-  if (state && state.status !== "idle") return true;
-  if (state?.lastResult !== undefined) return true;
-  if (state && state.processingHistory.length > 0) return true;
+  if (state.status !== "idle") return true;
+  if (state.lastResult !== undefined) return true;
+  if (state.processingHistory.length > 0) return true;
 
-  // Find all parents of this node from the connection topology
+  // Find all parent types of this node's base type from the connection topology
   const parentTypes = DEFAULT_CONNECTIONS.filter(
-    (conn) => conn.target === type,
+    (conn) => conn.target === state.type,
   ).map((conn) => conn.source);
 
   // Root nodes (no parents) are always visible
   if (parentTypes.length === 0) return true;
 
-  // Visible if ALL parents have completed (are active)
+  // Visible if ALL parent types have at least one active instance
   return parentTypes.every((parentType) => {
-    const parentState = states.get(parentType);
-    return isAgentActive(parentState);
+    for (const s of allStates.values()) {
+      if (s.type === parentType && isAgentActive(s)) return true;
+    }
+    return false;
   });
 }
 
@@ -161,18 +171,17 @@ function buildEdge(
 // -----------------------------------------------------------------------
 
 interface BuildGraphOptions {
-  agentStates: Map<AgentType, AgentState>;
-  selectedAgent: AgentType | null;
-  onNodeClick: (agentType: AgentType) => void;
+  agentStates: Map<string, AgentState>;
+  selectedAgent: string | null;
 }
 
 /**
  * Transform agent states into a laid-out ReactFlow graph.
  *
  * Responsibilities:
- * - Determine which agent nodes are visible (progressive tree build)
+ * - One node per visible agent instance (instance ID = node ID)
  * - Create file group intermediate nodes from orchestrator output
- * - Build edges with chosen-path styling and file group routing
+ * - Resolve edges from base-type topology to instance-level connections
  * - Apply hierarchical layout via the topology-driven layout engine
  *
  * Pure function: same inputs always produce the same output.
@@ -180,7 +189,6 @@ interface BuildGraphOptions {
 export function buildAgentFlowGraph({
   agentStates,
   selectedAgent,
-  onNodeClick,
 }: BuildGraphOptions): { nodes: Node[]; edges: Edge[] } {
   const rfNodes: Node[] = [];
   const rfEdges: Edge[] = [];
@@ -188,116 +196,168 @@ export function buildAgentFlowGraph({
   // Extract file routing map for edge file lists
   const fileRoutingMap = extractFileRoutingMap(agentStates);
 
-  // --- AGENT NODES ---
-  agentStates.forEach((state, type) => {
-    if (!determineNodeVisibility(type, agentStates)) return;
+  // --- AGENT NODES (one per visible instance) ---
+  const visibleInstanceIds = new Set<string>();
+
+  agentStates.forEach((state, instanceId) => {
+    if (!determineNodeVisibility(instanceId, state, agentStates)) return;
+
+    visibleInstanceIds.add(instanceId);
 
     rfNodes.push({
-      id: type,
+      id: instanceId,
       type: "decision",
       position: { x: 0, y: 0 }, // layout engine computes final position
       data: {
-        agentType: type,
+        agentType: state.type, // base type for colors/config
         agentState: state,
         isChosen: isAgentActive(state),
-        isSelected: selectedAgent === type,
-        onNodeClick,
+        isSelected: selectedAgent === instanceId,
       },
     });
   });
 
   // --- FILE GROUP NODES ---
-  const orchState = agentStates.get("orchestrator");
+  // Find orchestrator by type
+  let orchState: AgentState | undefined;
+  for (const state of agentStates.values()) {
+    if (state.type === "orchestrator") {
+      orchState = state;
+      break;
+    }
+  }
+
   if (orchState?.lastResult) {
     const fileGroups = extractFileGroups(orchState.lastResult);
 
     fileGroups.forEach((group) => {
-      const isActive = group.targetAgents.some((agentId) =>
-        isAgentActive(agentStates.get(agentId as AgentType)),
-      );
+      const isActive = group.targetAgents.some((agentId) => {
+        // Check if any visible instance has this base type
+        for (const s of agentStates.values()) {
+          if ((s.type === agentId || s.id === agentId) && isAgentActive(s)) {
+            return true;
+          }
+        }
+        return false;
+      });
 
       rfNodes.push({
         id: `file-group-${group.groupId}`,
         type: "fileGroup",
         position: { x: 0, y: 0 }, // layout engine computes final position
         data: {
-          groupId: group.groupId,
           groupName: group.groupName,
           fileCount: group.fileCount,
           sharedContext: group.sharedContext,
           targetAgents: group.targetAgents,
           isActive,
-          onNodeClick: () => onNodeClick(null as unknown as AgentType),
         },
       });
     });
   }
 
-  // --- EDGES ---
+  // --- EDGES (base-type topology → instance-level connections) ---
   const fileGroupNodes = rfNodes.filter((n) => n.type === "fileGroup");
 
+  // Build lookup: baseType → visible instance IDs
+  const baseTypeToInstances = new Map<string, string[]>();
+  for (const instanceId of visibleInstanceIds) {
+    const state = agentStates.get(instanceId);
+    if (!state) continue;
+    const instances = baseTypeToInstances.get(state.type) ?? [];
+    instances.push(instanceId);
+    baseTypeToInstances.set(state.type, instances);
+  }
+
   DEFAULT_CONNECTIONS.forEach((conn) => {
-    const sourceVisible = rfNodes.some((n) => n.id === conn.source);
-    const targetVisible = rfNodes.some((n) => n.id === conn.target);
-    if (!sourceVisible || !targetVisible) return;
+    const sourceInstances = baseTypeToInstances.get(conn.source) ?? [];
+    const targetInstances = baseTypeToInstances.get(conn.target) ?? [];
 
-    const sourceActive = isAgentActive(agentStates.get(conn.source));
-    const targetActive = isAgentActive(agentStates.get(conn.target));
-    const isChosen = sourceActive && targetActive;
-    const isProcessing = agentStates.get(conn.target)?.status === "processing";
-
-    // Resolve files for this connection (triage->orchestrator has no individual names)
-    const edgeFiles: string[] | undefined =
-      conn.source === "orchestrator"
-        ? (fileRoutingMap.get(conn.target) ?? undefined)
-        : undefined;
+    // Skip if either side has no visible instances
+    if (sourceInstances.length === 0 || targetInstances.length === 0) return;
 
     // Route through file group nodes when present (orchestrator -> domain agent)
     if (conn.source === "orchestrator" && fileGroupNodes.length > 0) {
-      const matchingGroups = fileGroupNodes.filter((fgNode) => {
-        const fgData = fgNode.data as { targetAgents: string[] };
-        return fgData.targetAgents.includes(conn.target);
-      });
+      for (const sourceId of sourceInstances) {
+        for (const targetId of targetInstances) {
+          const targetState = agentStates.get(targetId);
+          const matchingGroups = fileGroupNodes.filter((fgNode) => {
+            const fgData = fgNode.data as { targetAgents: string[] };
+            return (
+              fgData.targetAgents.includes(conn.target) ||
+              (targetState && fgData.targetAgents.includes(targetState.type))
+            );
+          });
 
-      if (matchingGroups.length > 0) {
-        matchingGroups.forEach((fgNode) => {
-          // Edge: orchestrator -> file group (deduplicate)
-          if (
-            !rfEdges.some(
-              (e) => e.source === conn.source && e.target === fgNode.id,
-            )
-          ) {
+          if (matchingGroups.length > 0) {
+            matchingGroups.forEach((fgNode) => {
+              // Edge: orchestrator -> file group (deduplicate)
+              if (
+                !rfEdges.some(
+                  (e) => e.source === sourceId && e.target === fgNode.id,
+                )
+              ) {
+                rfEdges.push(
+                  buildEdge(
+                    sourceId,
+                    fgNode.id,
+                    isAgentActive(agentStates.get(sourceId)),
+                    false,
+                  ),
+                );
+              }
+
+              // Edge: file group -> target instance (with files)
+              const targetFiles = fileRoutingMap.get(conn.target);
+              const sourceActive = isAgentActive(agentStates.get(sourceId));
+              const targetActive = isAgentActive(agentStates.get(targetId));
+              const isProcessing =
+                agentStates.get(targetId)?.status === "processing";
+              rfEdges.push(
+                buildEdge(
+                  fgNode.id,
+                  targetId,
+                  sourceActive && targetActive,
+                  isProcessing ?? false,
+                  targetFiles,
+                ),
+              );
+            });
+          } else {
+            // Direct edge (no file group interception)
+            const sourceActive = isAgentActive(agentStates.get(sourceId));
+            const targetActive = isAgentActive(agentStates.get(targetId));
+            const isProcessing =
+              agentStates.get(targetId)?.status === "processing";
+            const edgeFiles = fileRoutingMap.get(conn.target) ?? undefined;
             rfEdges.push(
-              buildEdge(conn.source, fgNode.id, sourceActive, false),
+              buildEdge(
+                sourceId,
+                targetId,
+                sourceActive && targetActive,
+                isProcessing ?? false,
+                edgeFiles,
+              ),
             );
           }
-
-          // Edge: file group -> target agent (with files)
-          const targetFiles = fileRoutingMap.get(conn.target);
-          rfEdges.push(
-            buildEdge(
-              fgNode.id,
-              conn.target,
-              isChosen,
-              isProcessing ?? false,
-              targetFiles,
-            ),
-          );
-        });
-        return; // Skip the direct edge
+        }
       }
+      return; // Skip the generic cross-product below
     }
 
-    // Direct edge (no file group interception)
-    rfEdges.push(
-      buildEdge(
-        conn.source,
-        conn.target,
-        isChosen,
-        isProcessing ?? false,
-        edgeFiles,
-      ),
-    );
+    // Generic cross-product for non-orchestrator source edges
+    for (const sourceId of sourceInstances) {
+      for (const targetId of targetInstances) {
+        const sourceActive = isAgentActive(agentStates.get(sourceId));
+        const targetActive = isAgentActive(agentStates.get(targetId));
+        const isChosen = sourceActive && targetActive;
+        const isProcessing = agentStates.get(targetId)?.status === "processing";
+
+        rfEdges.push(
+          buildEdge(sourceId, targetId, isChosen, isProcessing ?? false),
+        );
+      }
+    }
   });
 
   // Apply hierarchical layout

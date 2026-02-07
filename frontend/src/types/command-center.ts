@@ -29,6 +29,7 @@ export interface AgentOutput {
 
 export interface RoutingDecision {
   fileId: string;
+  fileName?: string;
   targetAgent: AgentType;
   reason: string;
   domainScore: number; // Confidence score 0-100 (percentage)
@@ -36,15 +37,26 @@ export interface RoutingDecision {
 
 export interface AgentResult {
   taskId: string;
-  agentType: AgentType;
+  agentType: string;
   outputs: AgentOutput[];
   routingDecisions?: RoutingDecision[];
   toolsCalled?: string[];
   metadata?: Record<string, unknown>;
+  /** Resolved base agent type (e.g. "financial" from "financial_grp_0") */
+  baseAgentType?: string;
+  /** Descriptive label for the compound agent group */
+  groupLabel?: string;
+  /** Original filenames processed by this agent instance */
+  fileNames?: string[];
 }
 
 export interface AgentState {
+  /**
+   * Instance identifier. Equals the base `AgentType` for singletons (e.g. "triage"),
+   * or a compound ID for multi-instance agents (e.g. "financial_grp_0").
+   */
   id: string;
+  /** Base agent type — always a valid `AgentType`. Used for color/config lookups and topology resolution. */
   type: AgentType;
   status: AgentStatus;
   currentTask?: AgentTask;
@@ -64,9 +76,12 @@ export interface AgentConnection {
 }
 
 // SSE Event Types
+// Lifecycle events use `string` for agentType because the backend sends
+// compound agent IDs (e.g. "financial_grp_0"). Confirmation events keep
+// `AgentType` since the backend sends base types for those.
 export interface AgentStartedEvent {
   type: "agent-started";
-  agentType: AgentType;
+  agentType: string;
   taskId: string;
   fileId: string;
   fileName: string;
@@ -74,14 +89,14 @@ export interface AgentStartedEvent {
 
 export interface AgentCompleteEvent {
   type: "agent-complete";
-  agentType: AgentType;
+  agentType: string;
   taskId: string;
   result: AgentResult;
 }
 
 export interface AgentErrorEvent {
   type: "agent-error";
-  agentType: AgentType;
+  agentType: string;
   taskId: string;
   error: string;
 }
@@ -99,7 +114,7 @@ export interface ProcessingCompleteEvent {
 
 export interface ThinkingUpdateEvent {
   type: "thinking-update";
-  agentType: AgentType;
+  agentType: string;
   thought: string;
   timestamp?: string; // Optional: present in ADK callback events, may be absent in direct emissions
   tokenDelta?: {
@@ -148,9 +163,31 @@ export interface ConfirmationResolvedEvent {
 
 export interface ToolCalledEvent {
   type: "tool-called";
-  agentType: AgentType;
+  agentType: string;
   toolName: string;
   timestamp: string;
+}
+
+export interface ConfirmationBatchItem {
+  item_id: string;
+  action_description: string;
+  affected_items?: string[];
+  context?: Record<string, unknown>;
+}
+
+export interface ConfirmationBatchRequiredEvent {
+  type: "confirmation-batch-required";
+  agentType: AgentType;
+  batchId: string;
+  items: ConfirmationBatchItem[];
+  context?: Record<string, unknown>;
+}
+
+export interface ConfirmationBatchResolvedEvent {
+  type: "confirmation-batch-resolved";
+  batchId: string;
+  agentType: AgentType;
+  resolvedCount: number;
 }
 
 export type CommandCenterSSEEvent =
@@ -162,6 +199,8 @@ export type CommandCenterSSEEvent =
   | StateSnapshotEvent
   | ConfirmationRequiredEvent
   | ConfirmationResolvedEvent
+  | ConfirmationBatchRequiredEvent
+  | ConfirmationBatchResolvedEvent
   | ToolCalledEvent;
 
 // Agent Configuration
@@ -171,7 +210,6 @@ export interface AgentConfig {
   description: string;
   color: string;
   position: { x: number; y: number };
-  model?: string;
 }
 
 export interface ProcessingSummary {

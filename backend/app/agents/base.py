@@ -112,6 +112,15 @@ class AgentCallbacks(TypedDict):
 # ---------------------------------------------------------------------------
 
 
+def _log_task_exception(task: asyncio.Task[object]) -> None:
+    """Log exceptions from fire-and-forget tasks instead of silently dropping them."""
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:
+        logger.warning("Fire-and-forget SSE publish failed: %s", exc)
+
+
 def create_agent_callbacks(
     case_id: str,
     publish_fn: PublishFn,
@@ -137,7 +146,8 @@ def create_agent_callbacks(
         try:
             result = publish_fn(event_type, data)
             if result is not None:
-                asyncio.ensure_future(result)
+                task = asyncio.ensure_future(result)  # type: ignore[arg-type]
+                task.add_done_callback(_log_task_exception)
         except RuntimeError:
             # No running event loop (e.g. during tests); log instead.
             logger.debug("No event loop for SSE publish: %s %s", event_type, data)

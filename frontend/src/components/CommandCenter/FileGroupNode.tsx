@@ -4,7 +4,7 @@
 "use client";
 
 import { memo } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { motion, type Easing } from "motion/react";
 import { FileStack } from "lucide-react";
 
@@ -12,15 +12,15 @@ import { FileStack } from "lucide-react";
 // Data contract for FileGroupNode. Passed via ReactFlow node `data` field.
 // -----------------------------------------------------------------------
 export interface FileGroupNodeData {
-  groupId: string;
   groupName: string;
   fileCount: number;
   sharedContext: string;
   targetAgents: string[];
   isActive: boolean;
-  onNodeClick: (groupId: string) => void;
   [key: string]: unknown; // ReactFlow requires index signature on node data
 }
+
+export type FileGroupNodeType = Node<FileGroupNodeData, "fileGroup">;
 
 // -----------------------------------------------------------------------
 // Constants
@@ -33,13 +33,8 @@ const EASE_OUT: Easing = [0.0, 0.0, 0.2, 1.0];
 // -----------------------------------------------------------------------
 // FileGroupNode Component
 // -----------------------------------------------------------------------
-function FileGroupNodeInner({ data }: NodeProps) {
-  const { groupId, groupName, fileCount, targetAgents, isActive, onNodeClick } =
-    data as unknown as FileGroupNodeData;
-
-  const handleClick = () => {
-    onNodeClick(groupId);
-  };
+function FileGroupNodeInner({ data }: NodeProps<FileGroupNodeType>) {
+  const { groupName, fileCount, targetAgents, isActive } = data;
 
   // Handle styles
   const handleStyle = isActive
@@ -66,7 +61,7 @@ function FileGroupNodeInner({ data }: NodeProps) {
         style={{ width: FILE_GROUP_NODE_WIDTH, height: FILE_GROUP_NODE_HEIGHT }}
       >
         <motion.div
-          className="relative w-full h-full rounded-lg overflow-hidden cursor-pointer"
+          className="relative w-full h-full rounded-lg overflow-hidden"
           style={{
             background: isActive
               ? "hsl(260 30% 22% / 0.5)"
@@ -84,7 +79,6 @@ function FileGroupNodeInner({ data }: NodeProps) {
             boxShadow: "0 0 20px hsl(260 50% 55% / 0.3)",
           }}
           whileTap={{ scale: 0.98 }}
-          onClick={handleClick}
         >
           <div className="flex flex-col items-center justify-center h-full px-3 py-2 gap-1">
             {/* Group name + icon */}

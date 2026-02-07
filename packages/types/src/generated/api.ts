@@ -259,11 +259,15 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get a signed URL to download a file
-         * @description Generate a signed URL for downloading a file.
+         * Get a signed URL to download or view a file
+         * @description Generate a signed URL for downloading or viewing a file.
          *
          *     The URL is valid for 24 hours and includes the original filename
-         *     in the Content-Disposition header for proper download naming.
+         *     in the Content-Disposition header.
+         *
+         *     Query Parameters:
+         *     - inline: If true, returns URL with 'inline' disposition for browser preview.
+         *               If false (default), returns URL with 'attachment' disposition to force download.
          */
         get: operations["get_download_url_api_cases__case_id__files__file_id__download_get"];
         put?: never;
@@ -355,15 +359,21 @@ export interface paths {
         put?: never;
         /**
          * Start agent analysis for case files
-         * @description Start agent analysis for all uploaded files in a case.
+         * @description Start agent analysis for case files.
          *
          *     Per CONTEXT.md: "Batch after uploads -- user explicitly starts analysis"
+         *
+         *     Supports two modes via the optional request body:
+         *     - uploaded_only (default): Process only files with UPLOADED status.
+         *     - rerun_all: Reset ANALYZED/ERROR files to UPLOADED first, then process all.
          *
          *     This triggers:
          *     1. Triage Agent on all UPLOADED files
          *     2. Orchestrator Agent with triage results
-         *     3. (Future) Domain agents based on routing
-         *     4. (Future) Synthesis agent for final output
+         *     3. Domain Agents (Financial, Legal, Evidence) based on routing
+         *     4. Strategy Agent with domain summaries
+         *     5. HITL confirmation for low-confidence findings
+         *     6. (Future) Synthesis agent for final output
          *
          *     Returns workflow_id for tracking progress via the status endpoint
          *     or the Command Center SSE stream.
@@ -390,6 +400,28 @@ export interface paths {
          *     and error information if the workflow failed.
          */
         get: operations["get_analysis_status_api_cases__case_id__analysis__workflow_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/agents/executions/{execution_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get detailed agent execution data
+         * @description Fetch full execution data (output_data, input_data, thinking_traces).
+         *
+         *     Verifies case ownership via the execution's case_id.
+         */
+        get: operations["get_execution_detail_api_agents_executions__execution_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -447,10 +479,327 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cases/{case_id}/confirmations/batch/{batch_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Respond to a batch confirmation with per-item decisions
+         * @description Submit per-item decisions for a batch confirmation.
+         *
+         *     The frontend receives a ``confirmation-batch-required`` SSE event with
+         *     all flagged items, renders a single multi-item review dialog, and
+         *     submits all decisions here in one request.
+         */
+        post: operations["respond_to_batch_confirmation_api_cases__case_id__confirmations_batch__batch_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/redact/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redact Pdf Direct
+         * @description Redact sensitive information from a PDF file.
+         *
+         *     This endpoint:
+         *     1. Accepts a PDF file upload and redaction prompt
+         *     2. Uses Gemini to identify content matching redaction criteria
+         *     3. Applies black box redactions to the PDF
+         *     4. Returns the redacted PDF as base64 encoded data
+         *
+         *     Args:
+         *         file: PDF file to redact
+         *         prompt: Natural language description of what to redact
+         *         permanent: If true, permanently removes text. If false, draws black boxes.
+         *
+         *     Returns:
+         *         JSON with:
+         *         - redacted_pdf: base64 encoded redacted PDF
+         *         - redaction_count: number of redactions applied
+         *         - targets: list of redacted items
+         *         - reasoning: explanation of redaction decisions
+         */
+        post: operations["redact_pdf_direct_api_redact_pdf_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/redact/pdf/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redact Pdf Download
+         * @description Redact a PDF and return it as a downloadable file.
+         *
+         *     Same as /redact/pdf but returns the PDF directly for download
+         *     instead of base64 encoded JSON.
+         */
+        post: operations["redact_pdf_download_api_redact_pdf_download_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/files/{file_id}/redact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redact Case File
+         * @description Redact sensitive information from a case file PDF.
+         *
+         *     This endpoint redacts a file that's already uploaded to a case.
+         *     It downloads from GCS, applies redactions, and uploads the result.
+         *
+         *     NOTE: This endpoint requires GCS integration to be configured.
+         *     For direct file uploads, use /api/redact/pdf instead.
+         */
+        post: operations["redact_case_file_api_cases__case_id__files__file_id__redact_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/redact/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redact Image Direct
+         * @description Redact/censor sensitive information from an image file.
+         *
+         *     This endpoint:
+         *     1. Accepts an image file upload and redaction prompt
+         *     2. Sends to external censorship API for processing
+         *     3. Returns the censored image and visualization
+         *
+         *     Args:
+         *         file: Image file to redact (JPEG, PNG, WebP, GIF)
+         *         prompt: Natural language description of what to censor
+         *         method: Censorship method - "blur" or "pixelate" (default: blur)
+         *
+         *     Returns:
+         *         JSON with:
+         *         - censored_image: base64 encoded censored image
+         *         - visualization_image: base64 encoded visualization with masks
+         *         - segments_censored: number of segments censored
+         *         - categories_selected: list of detected categories
+         *         - processing_time_seconds: processing time
+         */
+        post: operations["redact_image_direct_api_redact_image_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/redact/image/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redact Image Download
+         * @description Redact an image and return it as a downloadable file.
+         *
+         *     Same as /redact/image but returns the image directly for download
+         *     instead of base64 encoded JSON.
+         */
+        post: operations["redact_image_download_api_redact_image_download_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/redact/video": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redact Video Direct
+         * @description Redact/censor sensitive information from a video file.
+         *
+         *     This endpoint:
+         *     1. Accepts a video file upload and redaction prompt
+         *     2. Sends to external censorship API for processing
+         *     3. Returns the censored video and visualization frame
+         *
+         *     Args:
+         *         file: Video file to redact (MP4, MPEG, MOV, AVI, WebM)
+         *         prompt: Natural language description of what to censor
+         *         method: Censorship method - "blur", "pixelate", or "blackbox" (default: blur)
+         *
+         *     Returns:
+         *         JSON with:
+         *         - censored_video: base64 encoded censored video
+         *         - visualization_image: base64 encoded visualization frame
+         *         - segments_censored: number of segments censored
+         *         - categories_selected: list of detected categories
+         *         - processing_time_seconds: processing time
+         *         - logs: pipeline processing logs
+         *
+         *     Note:
+         *         Video processing can take 2-10 minutes depending on video length.
+         *         Maximum timeout is 15 minutes (900 seconds).
+         */
+        post: operations["redact_video_direct_api_redact_video_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/redact/video/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redact Video Download
+         * @description Redact a video and return it as a downloadable file.
+         *
+         *     Same as /redact/video but returns the video directly for download
+         *     instead of base64 encoded JSON.
+         */
+        post: operations["redact_video_download_api_redact_video_download_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/redact/audio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redact Audio Direct
+         * @description Redact/censor sensitive information from an audio file.
+         *
+         *     This endpoint:
+         *     1. Accepts an audio file upload and redaction prompt
+         *     2. Uses Gemini to transcribe and identify content to censor
+         *     3. Replaces identified segments with beep sounds
+         *     4. Returns the censored audio as base64 encoded data
+         *
+         *     Args:
+         *         file: Audio file to redact (MP3, WAV, OGG, M4A, FLAC, AAC, WebM)
+         *         prompt: Natural language description of what to censor
+         *
+         *     Returns:
+         *         JSON with:
+         *         - censored_audio: base64 encoded censored audio
+         *         - segments_censored: number of segments censored
+         *         - total_censored_duration: total duration censored in seconds
+         *         - transcript: full transcript of the audio
+         *         - reasoning: explanation of censorship decisions
+         *         - targets: list of censored segments with timestamps
+         */
+        post: operations["redact_audio_direct_api_redact_audio_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/redact/audio/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redact Audio Download
+         * @description Redact an audio file and return it as a downloadable file.
+         *
+         *     Same as /redact/audio but returns the audio directly for download
+         *     instead of base64 encoded JSON.
+         */
+        post: operations["redact_audio_download_api_redact_audio_download_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AnalysisMode
+         * @description Mode for starting an analysis workflow.
+         * @enum {string}
+         */
+        AnalysisMode: "uploaded_only" | "rerun_all";
+        /**
+         * AnalysisStartRequest
+         * @description Optional request body for starting an analysis workflow.
+         */
+        AnalysisStartRequest: {
+            /**
+             * @description 'uploaded_only' processes new files; 'rerun_all' resets analyzed/error files first.
+             * @default uploaded_only
+             */
+            mode: components["schemas"]["AnalysisMode"];
+        };
         /**
          * AnalysisStartResponse
          * @description Response returned when an analysis workflow is started.
@@ -522,6 +871,225 @@ export interface components {
              * @description Error message if failed
              */
             error?: string | null;
+            /**
+             * Domain Results Summary
+             * @description Summary of domain agent findings per agent type. Each agent type maps to a list of execution summaries (one per file group). Each summary contains: group_label, finding_count, status.
+             */
+            domain_results_summary?: {
+                [key: string]: {
+                    [key: string]: unknown;
+                }[];
+            } | null;
+        };
+        /**
+         * BatchConfirmationResolveResponse
+         * @description Response after resolving a batch confirmation.
+         */
+        BatchConfirmationResolveResponse: {
+            /**
+             * Status
+             * @description Resolution status
+             */
+            status: string;
+            /**
+             * Resolved Count
+             * @description Number of items resolved
+             */
+            resolved_count: number;
+        };
+        /**
+         * BatchConfirmationResponseBody
+         * @description Request body for responding to a batch confirmation.
+         */
+        BatchConfirmationResponseBody: {
+            /**
+             * Decisions
+             * @description Per-item approval decisions
+             */
+            decisions: components["schemas"]["BatchDecisionBody"][];
+        };
+        /**
+         * BatchDecisionBody
+         * @description Per-item decision within a batch response.
+         */
+        BatchDecisionBody: {
+            /**
+             * Item Id
+             * @description ID of the item being decided
+             */
+            item_id: string;
+            /**
+             * Approved
+             * @description Whether this item was approved
+             */
+            approved: boolean;
+            /**
+             * Reason
+             * @description Optional reason
+             */
+            reason?: string | null;
+        };
+        /** Body_redact_audio_direct_api_redact_audio_post */
+        Body_redact_audio_direct_api_redact_audio_post: {
+            /**
+             * File
+             * Format: binary
+             * @description Audio file to redact
+             */
+            file: string;
+            /**
+             * Prompt
+             * @description Natural language redaction instructions
+             */
+            prompt: string;
+        };
+        /** Body_redact_audio_download_api_redact_audio_download_post */
+        Body_redact_audio_download_api_redact_audio_download_post: {
+            /**
+             * File
+             * Format: binary
+             * @description Audio file to redact
+             */
+            file: string;
+            /**
+             * Prompt
+             * @description Natural language redaction instructions
+             */
+            prompt: string;
+        };
+        /** Body_redact_case_file_api_cases__case_id__files__file_id__redact_post */
+        Body_redact_case_file_api_cases__case_id__files__file_id__redact_post: {
+            /**
+             * Prompt
+             * @description Natural language redaction instructions
+             */
+            prompt: string;
+            /**
+             * Permanent
+             * @description If true, permanently removes text
+             * @default false
+             */
+            permanent: boolean;
+        };
+        /** Body_redact_image_direct_api_redact_image_post */
+        Body_redact_image_direct_api_redact_image_post: {
+            /**
+             * File
+             * Format: binary
+             * @description Image file to redact
+             */
+            file: string;
+            /**
+             * Prompt
+             * @description Natural language redaction instructions
+             */
+            prompt: string;
+            /**
+             * Method
+             * @description Censorship method: blur or pixelate
+             * @default blur
+             */
+            method: string;
+        };
+        /** Body_redact_image_download_api_redact_image_download_post */
+        Body_redact_image_download_api_redact_image_download_post: {
+            /**
+             * File
+             * Format: binary
+             * @description Image file to redact
+             */
+            file: string;
+            /**
+             * Prompt
+             * @description Natural language redaction instructions
+             */
+            prompt: string;
+            /**
+             * Method
+             * @description Censorship method: blur or pixelate
+             * @default blur
+             */
+            method: string;
+        };
+        /** Body_redact_pdf_direct_api_redact_pdf_post */
+        Body_redact_pdf_direct_api_redact_pdf_post: {
+            /**
+             * File
+             * Format: binary
+             * @description PDF file to redact
+             */
+            file: string;
+            /**
+             * Prompt
+             * @description Natural language redaction instructions
+             */
+            prompt: string;
+            /**
+             * Permanent
+             * @description If true, permanently removes text
+             * @default false
+             */
+            permanent: boolean;
+        };
+        /** Body_redact_pdf_download_api_redact_pdf_download_post */
+        Body_redact_pdf_download_api_redact_pdf_download_post: {
+            /**
+             * File
+             * Format: binary
+             * @description PDF file to redact
+             */
+            file: string;
+            /**
+             * Prompt
+             * @description Natural language redaction instructions
+             */
+            prompt: string;
+            /**
+             * Permanent
+             * @description If true, permanently removes text
+             * @default false
+             */
+            permanent: boolean;
+        };
+        /** Body_redact_video_direct_api_redact_video_post */
+        Body_redact_video_direct_api_redact_video_post: {
+            /**
+             * File
+             * Format: binary
+             * @description Video file to redact
+             */
+            file: string;
+            /**
+             * Prompt
+             * @description Natural language redaction instructions
+             */
+            prompt: string;
+            /**
+             * Method
+             * @description Censorship method: blur, pixelate, or blackbox
+             * @default blur
+             */
+            method: string;
+        };
+        /** Body_redact_video_download_api_redact_video_download_post */
+        Body_redact_video_download_api_redact_video_download_post: {
+            /**
+             * File
+             * Format: binary
+             * @description Video file to redact
+             */
+            file: string;
+            /**
+             * Prompt
+             * @description Natural language redaction instructions
+             */
+            prompt: string;
+            /**
+             * Method
+             * @description Censorship method: blur, pixelate, or blackbox
+             * @default blur
+             */
+            method: string;
         };
         /** Body_upload_file_api_cases__case_id__files_post */
         Body_upload_file_api_cases__case_id__files_post: {
@@ -641,6 +1209,11 @@ export interface components {
              * @description Number of files in the case
              */
             file_count: number;
+            /**
+             * Latest Workflow Id
+             * @description ID of the most recent analysis workflow
+             */
+            latest_workflow_id?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -885,6 +1458,49 @@ export interface components {
              * @description Suggested action for the client to take
              */
             suggested_action?: string | null;
+        };
+        /**
+         * ExecutionDetailResponse
+         * @description Detailed execution data for a single agent run.
+         */
+        ExecutionDetailResponse: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Execution record ID
+             */
+            id: string;
+            /**
+             * Agent Name
+             * @description Logical agent name
+             */
+            agent_name: string;
+            /**
+             * Model Name
+             * @description Gemini model ID
+             */
+            model_name: string;
+            /**
+             * Input Data
+             * @description Agent input context
+             */
+            input_data?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Output Data
+             * @description Structured agent output
+             */
+            output_data?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Thinking Traces
+             * @description Thinking traces
+             */
+            thinking_traces?: {
+                [key: string]: unknown;
+            }[] | null;
         };
         /**
          * ExtractedEntity
@@ -1279,7 +1895,17 @@ export interface components {
              */
             priority: "high" | "medium" | "low";
             /** @description Triage domain scores carried forward for reference */
-            domain_scores?: components["schemas"]["RoutingDomainScores"];
+            domain_scores: components["schemas"]["RoutingDomainScores"];
+            /**
+             * Context Injection
+             * @description Case-specific framing injected into the domain agent's prompt. Adapts the agent's analysis to the specific case type without requiring custom agent types. E.g., 'This is a patent infringement case. Focus on claims mapping.'
+             */
+            context_injection?: string | null;
+            /**
+             * Routing Confidence
+             * @description Orchestrator's confidence in this routing (0-100). Low values trigger HITL review before agents deploy.
+             */
+            routing_confidence?: number | null;
         };
         /**
          * RoutingDomainScores
@@ -1292,25 +1918,21 @@ export interface components {
             /**
              * Financial
              * @description Financial score
-             * @default 0
              */
             financial: number;
             /**
              * Legal
              * @description Legal score
-             * @default 0
              */
             legal: number;
             /**
              * Strategy
              * @description Strategy score
-             * @default 0
              */
             strategy: number;
             /**
              * Evidence
              * @description Evidence score
-             * @default 0
              */
             evidence: number;
         };
@@ -2015,7 +2637,9 @@ export interface operations {
     };
     get_download_url_api_cases__case_id__files__file_id__download_get: {
         parameters: {
-            query?: never;
+            query?: {
+                inline?: boolean;
+            };
             header?: never;
             path: {
                 case_id: string;
@@ -2232,7 +2856,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AnalysisStartRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             202: {
@@ -2263,6 +2891,15 @@ export interface operations {
             };
             /** @description Case not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Analysis already in progress */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2312,6 +2949,55 @@ export interface operations {
                 };
             };
             /** @description Workflow or case not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_execution_detail_api_agents_executions__execution_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDetailResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Execution not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2392,6 +3078,349 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConfirmationListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    respond_to_batch_confirmation_api_cases__case_id__confirmations_batch__batch_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchConfirmationResponseBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchConfirmationResolveResponse"];
+                };
+            };
+            /** @description Batch not found or already resolved */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redact_pdf_direct_api_redact_pdf_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_redact_pdf_direct_api_redact_pdf_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redact_pdf_download_api_redact_pdf_download_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_redact_pdf_download_api_redact_pdf_download_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redact_case_file_api_cases__case_id__files__file_id__redact_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                file_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["Body_redact_case_file_api_cases__case_id__files__file_id__redact_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redact_image_direct_api_redact_image_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_redact_image_direct_api_redact_image_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redact_image_download_api_redact_image_download_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_redact_image_download_api_redact_image_download_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redact_video_direct_api_redact_video_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_redact_video_direct_api_redact_video_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redact_video_download_api_redact_video_download_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_redact_video_download_api_redact_video_download_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redact_audio_direct_api_redact_audio_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_redact_audio_direct_api_redact_audio_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redact_audio_download_api_redact_audio_download_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_redact_audio_download_api_redact_audio_download_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

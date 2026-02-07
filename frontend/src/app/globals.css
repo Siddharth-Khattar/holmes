@@ -691,6 +691,49 @@
    Respect user preferences for reduced motion.
    ============================================================ */
 
+/* ============================================================
+   SCAN OVERLAY ANIMATIONS
+   ============================================================
+   GPU-composited keyframes for the redaction scan effect.
+   Uses transform (not top/left) to avoid layout thrashing.
+   ============================================================ */
+
+@keyframes scan-sweep {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(calc(var(--scan-height) - 2px));
+  }
+}
+
+@keyframes scan-particle {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-60px) scale(0);
+    opacity: 0;
+  }
+}
+
+@keyframes scan-shimmer {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

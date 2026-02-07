@@ -11,12 +11,13 @@ from app.services.adk_service import (
 )
 from app.services.agent_events import (
     AgentEventType,
+    clear_event_buffer,
     emit_agent_complete,
     emit_agent_error,
     emit_agent_started,
     emit_processing_complete,
     publish_agent_event,
-    subscribe_to_agent_events,
+    subscribe_with_replay,
     unsubscribe_from_agent_events,
 )
 from app.services.file_service import (
@@ -39,12 +40,13 @@ __all__ = [
     "prepare_file_for_agent",
     # Agent event services
     "AgentEventType",
+    "clear_event_buffer",
     "emit_agent_complete",
     "emit_agent_error",
     "emit_agent_started",
     "emit_processing_complete",
     "publish_agent_event",
-    "subscribe_to_agent_events",
+    "subscribe_with_replay",
     "unsubscribe_from_agent_events",
     # File services
     "ALLOWED_MIME_TYPES",

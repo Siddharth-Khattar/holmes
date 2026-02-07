@@ -26,6 +26,8 @@ pre-push:
   commands:
     backend-format-check:
       run: cd backend && uv run ruff format --check .
+    backend-lint-check:
+      run: cd backend && uv run ruff check .
     generate-types:
       run: |
         make generate-types

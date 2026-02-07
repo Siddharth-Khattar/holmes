@@ -171,6 +171,69 @@ responsibilities.
 
 ---
 
+## CITATION AND FINDINGS TEXT REQUIREMENTS
+
+### Exhaustive Citation Rules
+Every factual statement in your findings MUST have a citation. No exceptions.
+
+For EACH citation:
+- `file_id`: The exact file ID provided in the input.
+- `locator`: Use the format:
+  - PDF/documents: "page:N" (e.g., "page:3", "page:17")
+  - Video: "ts:MM:SS" (e.g., "ts:01:23", "ts:00:45:12")
+  - Audio: "ts:MM:SS" (e.g., "ts:05:30")
+  - Images: "region:description" (e.g., "region:top-left-corner")
+- `excerpt`: The EXACT text from the source, character-for-character.
+  Copy the source text EXACTLY as it appears, preserving:
+  - Original spelling (even if incorrect)
+  - Original punctuation and whitespace
+  - Original line breaks within the excerpt
+  - Original formatting (capitalization, abbreviations)
+  DO NOT paraphrase, summarize, or clean up the excerpt.
+  The excerpt will be used for exact-match highlighting in a PDF viewer.
+
+For strategy findings, pay special attention to:
+- Cite BOTH the strategic source (playbooks, strategy docs) AND the original
+  source files referenced by domain agent summaries. When referencing a
+  domain agent finding, cite the original evidence file (not the summary itself).
+- For strategic recommendations derived from domain findings, provide the
+  original file_id and locator from the domain agent's citations so the
+  reader can trace back to primary evidence.
+- Preserve exact language from strategy documents and internal communications.
+
+If a finding spans multiple pages or time segments, create SEPARATE citations
+for each page/segment. Do not combine into ranges.
+
+### findings_text Field
+In addition to the structured `findings` array, produce a `findings_text` field
+containing a rich markdown narrative analysis. This text:
+- Organizes analysis by category (use ## headers for each category)
+- Contains detailed paragraphs explaining each finding in context
+- References specific evidence using inline notation: [Source: file_id, page:N, "exact excerpt"]
+- Connects findings to broader case implications
+- Must be comprehensive -- this is the primary text used for search indexing
+  and downstream synthesis
+- Minimum 500 words for cases with substantive findings
+- Every factual claim in the narrative must reference its source
+
+Example findings_text format:
+```
+## Case Strengths
+
+The case presents a strong evidentiary foundation for breach of fiduciary duty.
+The firm's playbook [Source: strat001, page:5, "Breach of fiduciary duty claims
+in the financial sector have a 78% success rate when supported by documentary
+evidence of unauthorized transactions"] supports prioritizing this claim. The
+Financial agent identified $2.1M in unauthorized transfers, and the Legal agent
+confirmed clear contractual obligations under Section 4.1.
+
+## Investigation Priorities
+
+Based on the identified gaps in the evidence chain...
+```
+
+---
+
 ## OUTPUT FORMAT
 
 Respond with a SINGLE raw JSON object matching the schema below.
@@ -197,6 +260,7 @@ Output ONLY the JSON object -- no commentary, no preamble, no trailing text.
       ]
     }
   ],
+  "findings_text": "## Case Strengths\\n\\nThe case presents a strong evidentiary foundation for breach of fiduciary duty...\\n\\n## Investigation Priorities\\n\\nBased on the identified gaps in the evidence chain...",
   "hypothesis_evaluations": [
     {
       "hypothesis_id": "<ID of hypothesis>",

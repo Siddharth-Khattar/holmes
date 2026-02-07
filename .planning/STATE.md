@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-07
 **Current Phase:** 7 of 12 (Knowledge Storage & Domain Agent Enrichment) — IN PROGRESS
-**Current Plan:** 07-02 of ?? (KG & Findings API Schemas) — COMPLETE
+**Current Plan:** 07-03 of ?? (KG Builder & Findings Service) — COMPLETE
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -17,7 +17,7 @@
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
-| 7 | Knowledge Storage & Domain Agent Enrichment | IN_PROGRESS | 2026-02-07 | - | Plan 01 (2 commits): 9 DB models + migration. Plan 02 (2 commits): KG/findings Pydantic schemas + findings_text on domain outputs |
+| 7 | Knowledge Storage & Domain Agent Enrichment | IN_PROGRESS | 2026-02-07 | - | Plan 01 (2 commits): 9 DB models + migration. Plan 02 (2 commits): KG/findings Pydantic schemas + findings_text on domain outputs. Plan 03 (2 commits): KG Builder + Findings service |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -31,15 +31,13 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 7, Plan 02 Complete** (2026-02-07): KG & Findings API Schemas — 2 commits
-  - 9 Pydantic schemas for KG API (Entity/Relationship CRUD, GraphResponse, list responses)
-  - 6 Pydantic schemas for findings API (FindingResponse, search request/result/response, citations)
-  - Optional findings_text field added to all 4 domain output models (backward compatible)
-  - Citation.excerpt description updated for character-for-character preservation requirement
-  - All 15 new schemas exported from schemas/__init__.py
+- **Phase 7, Plan 03 Complete** (2026-02-07): KG Builder & Findings Service — 2 commits
+  - KG Builder service: entity extraction from all 4 domain output types, co-occurrence relationship inference, exact-match dedup via soft merge (merged_into_id), fuzzy match flagging (>=85% rapidfuzz ratio), degree computation
+  - Findings service: save findings with citations (JSONB), update_finding_entity_ids for post-KG backfill, full-text search via PG tsvector + plainto_tsquery + ts_rank, paginated listing, single lookup
+  - rapidfuzz 3.14.3 dependency added
 
 **What's next:**
-- Phase 7, Plan 03+: KG Builder service, Findings service, API endpoints, pipeline wiring, SSE events, domain agent enrichment
+- Phase 7, Plan 04+: API endpoints, pipeline wiring (call KG Builder + Findings service after domain agents), SSE events, domain agent enrichment
 
 ---
 
@@ -335,6 +333,10 @@ All frontend features need these backend endpoints:
 | tsvector mapping | SQLAlchemy column vs Raw SQL generated column | Raw SQL in migration | Avoids Alembic autogenerate phantom diffs (Pitfall 6); queries use func.to_tsvector() directly |
 | findings_text backward compat | Required vs Optional (default=None) | Optional (default=None) | Existing agent_executions.output_data records lack this field; optional avoids breaking deserialization |
 | Citation excerpt enforcement | Schema-required vs Prompt-enforced | Prompt-enforced (schema stays optional) | Field type stays str|None for backward compat; description documents char-for-char requirement |
+| v1 search implementation | PG tsvector vs Vertex AI vector search | PG tsvector | v1 uses built-in PG full-text search; Vertex AI vector search deferred to Phase 9 |
+| Entity dedup scope | Per-domain vs Cross-domain | Cross-domain (grouped by entity_type only) | Per CONTEXT.md decision; allows merging same entity found by different agents |
+| Fuzzy match handling | Auto-merge vs Flag for LLM | Flag for LLM (>=85% ratio) | Avoids incorrect merges; deferred to Phase 8 LLM resolution |
+| Findings text enrichment | Description only vs Description + findings_text | Append findings_text when available | Richer searchable text without losing original description |
 
 ---
 
@@ -347,7 +349,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 07-02-PLAN.md (KG & Findings API Schemas)
+Stopped at: Completed 07-03-PLAN.md (KG Builder & Findings Service)
 Resume file: None
 
 ---

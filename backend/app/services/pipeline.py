@@ -14,12 +14,14 @@ from app.models import Case, CaseFile
 from app.models.agent_execution import AgentExecution
 from app.models.case import CaseStatus
 from app.models.file import FileStatus
+from app.models.findings import CaseFinding
 from app.services.agent_events import (
     build_execution_metadata,
     clear_event_buffer,
     emit_agent_complete,
     emit_agent_error,
     emit_agent_started,
+    emit_finding_committed,
     emit_processing_complete,
 )
 
@@ -132,8 +134,11 @@ async def run_analysis_workflow(
     4. Stage 3: Run Domain Agents (file-group-based parallel fresh sessions)
     5. Stage 4: Run Strategy Agent (sequential, receives domain summaries)
     6. Stage 5: HITL for low-confidence findings
-    7. Update file statuses to ANALYZED
-    8. Emit processing-complete event
+    7. Stage 6: Save Findings to case_findings table
+    8. Stage 7: Build Knowledge Graph (entities, relationships, dedup)
+    9. Stage 7b: Backfill finding-to-entity links
+    10. Update file statuses to ANALYZED
+    11. Emit processing-complete event
 
     SSE events emitted at each stage transition:
     - agent-started: When an agent within a stage starts
@@ -152,11 +157,17 @@ async def run_analysis_workflow(
     from app.agents.strategy import run_strategy
     from app.agents.triage import run_triage
     from app.database import _get_sessionmaker
+    from app.models.knowledge_graph import KgEntity
     from app.services.confirmation import (
         BatchConfirmationItem,
         request_batch_confirmation,
         request_confirmation,
     )
+    from app.services.findings_service import (
+        save_findings_from_output,
+        update_finding_entity_ids,
+    )
+    from app.services.kg_builder import build_knowledge_graph
 
     settings = get_settings()
     session_factory = _get_sessionmaker()
@@ -917,6 +928,134 @@ async def run_analysis_workflow(
                                 confirmation_result.reason,
                             )
 
+            # ---- Stage 6: Save Findings to case_findings ----
+            logger.info(
+                "Pipeline starting stage=save_findings case=%s workflow=%s",
+                case_id,
+                workflow_id,
+            )
+            all_saved_findings: list[CaseFinding] = []
+            for domain_agent, domain_run_list in domain_results.items():
+                for domain_output, grp_label in domain_run_list:
+                    if domain_output is None:
+                        continue
+                    # Query execution record for this agent+group
+                    exec_result = await db.execute(
+                        select(AgentExecution)
+                        .where(
+                            AgentExecution.workflow_id == UUID(workflow_id),
+                            AgentExecution.agent_name == domain_agent,
+                        )
+                        .order_by(AgentExecution.created_at.desc())
+                        .limit(1)
+                    )
+                    agent_exec = exec_result.scalar_one_or_none()
+                    execution_id = agent_exec.id if agent_exec else None
+
+                    saved = await save_findings_from_output(
+                        output=domain_output,
+                        agent_type=domain_agent,
+                        execution_id=execution_id,
+                        case_id=UUID(case_id),
+                        workflow_id=UUID(workflow_id),
+                        file_group_label=grp_label,
+                        db=db,
+                    )
+                    all_saved_findings.extend(saved)
+                    for f in saved:
+                        await emit_finding_committed(
+                            case_id=case_id,
+                            finding_id=str(f.id),
+                            agent_type=domain_agent,
+                            title=f.title,
+                        )
+
+            # Also save strategy findings if available
+            if strategy_result:
+                strat_exec_result2 = await db.execute(
+                    select(AgentExecution)
+                    .where(
+                        AgentExecution.workflow_id == UUID(workflow_id),
+                        AgentExecution.agent_name == "strategy",
+                    )
+                    .order_by(AgentExecution.created_at.desc())
+                    .limit(1)
+                )
+                strat_exec2 = strat_exec_result2.scalar_one_or_none()
+                strat_saved = await save_findings_from_output(
+                    output=strategy_result,
+                    agent_type="strategy",
+                    execution_id=strat_exec2.id if strat_exec2 else None,
+                    case_id=UUID(case_id),
+                    workflow_id=UUID(workflow_id),
+                    file_group_label="strategy",
+                    db=db,
+                )
+                all_saved_findings.extend(strat_saved)
+                for f in strat_saved:
+                    await emit_finding_committed(
+                        case_id=case_id,
+                        finding_id=str(f.id),
+                        agent_type="strategy",
+                        title=f.title,
+                    )
+
+            await db.commit()  # Commit findings before KG building
+
+            # ---- Stage 7: Build Knowledge Graph ----
+            logger.info(
+                "Pipeline starting stage=kg_builder case=%s workflow=%s",
+                case_id,
+                workflow_id,
+            )
+            # Add strategy to domain_results so KG Builder processes strategy entities too
+            if strategy_result:
+                domain_results.setdefault("strategy", []).append(
+                    (strategy_result, "strategy")
+                )
+
+            (
+                kg_entities_created,
+                kg_relationships_created,
+                kg_exact_merges,
+            ) = await build_knowledge_graph(
+                case_id=case_id,
+                workflow_id=workflow_id,
+                domain_results=domain_results,
+                db=db,
+            )
+            await db.commit()  # Commit KG data
+
+            logger.info(
+                "KG build complete case=%s entities=%d relationships=%d merges=%d",
+                case_id,
+                kg_entities_created,
+                kg_relationships_created,
+                kg_exact_merges,
+            )
+
+            # ---- Stage 7b: Backfill finding-to-entity links ----
+            # For each saved finding, find KG entities that came from the same
+            # agent execution and link them via the entity_ids JSONB field.
+            for finding in all_saved_findings:
+                if finding.agent_execution_id is None:
+                    continue
+                # Query entities created from this execution
+                entity_result = await db.execute(
+                    select(KgEntity.id).where(
+                        KgEntity.source_execution_id == finding.agent_execution_id,
+                        KgEntity.merged_into_id.is_(None),
+                    )
+                )
+                linked_entity_ids = [str(eid) for (eid,) in entity_result.all()]
+                if linked_entity_ids:
+                    await update_finding_entity_ids(
+                        finding_id=finding.id,
+                        entity_ids=linked_entity_ids,
+                        db=db,
+                    )
+            await db.commit()
+
             # ---- Final: Update file statuses to ANALYZED ----
             await db.execute(
                 update(CaseFile)
@@ -957,8 +1096,10 @@ async def run_analysis_workflow(
             await emit_processing_complete(
                 case_id=case_id,
                 files_processed=len(files),
-                entities_created=total_entities + total_domain_entities,
-                relationships_created=0,  # Relationships created by KG Agent in Phase 7
+                entities_created=total_entities
+                + total_domain_entities
+                + kg_entities_created,
+                relationships_created=kg_relationships_created,
                 total_duration_ms=total_duration_ms,
                 total_input_tokens=total_input_tokens,
                 total_output_tokens=total_output_tokens,
@@ -973,12 +1114,15 @@ async def run_analysis_workflow(
 
             logger.info(
                 "Pipeline complete case=%s workflow=%s files=%d "
-                "total_duration_s=%.2f entities=%d findings=%d",
+                "total_duration_s=%.2f entities=%d kg_entities=%d "
+                "kg_relationships=%d findings=%d",
                 case_id,
                 workflow_id,
                 len(files),
                 total_duration_s,
                 total_entities + total_domain_entities,
+                kg_entities_created,
+                kg_relationships_created,
                 total_findings,
             )
 

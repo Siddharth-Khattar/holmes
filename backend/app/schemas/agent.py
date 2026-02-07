@@ -684,3 +684,22 @@ class AgentExecutionResponse(BaseModel):
     updated_at: datetime = Field(..., description="Record last update time")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ExecutionDetailResponse(BaseModel):
+    """Detailed execution data for a single agent run."""
+
+    id: UUID = Field(..., description="Execution record ID")
+    agent_name: str = Field(..., description="Logical agent name")
+    model_name: str = Field(..., description="Gemini model ID")
+    input_data: dict[str, object] | None = Field(
+        default=None, description="Agent input context"
+    )
+    output_data: dict[str, object] | None = Field(
+        default=None, description="Structured agent output"
+    )
+    thinking_traces: list[dict[str, object]] | None = Field(
+        default=None, description="Thinking traces"
+    )
+
+    model_config = ConfigDict(from_attributes=True)

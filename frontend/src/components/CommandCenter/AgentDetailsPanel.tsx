@@ -85,11 +85,6 @@ export function AgentDetailsPanel({
               {agentState.status}
             </span>
           </div>
-          {config.model && (
-            <div className="px-3 py-1.5 rounded-lg bg-white/50 dark:bg-jet/50 border border-warm-gray/10 dark:border-stone/10">
-              <span className="text-xs text-stone">{config.model}</span>
-            </div>
-          )}
         </div>
       </div>
 

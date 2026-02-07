@@ -3,11 +3,11 @@
 
 import logging
 from datetime import datetime
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +20,7 @@ from app.models.file import FileStatus
 from app.schemas.agent import (
     AnalysisMode,
     AnalysisStartRequest,
+    ExecutionDetailResponse,
     OrchestratorOutput,
     TriageOutput,
 )
@@ -417,25 +418,6 @@ async def get_analysis_status(
 # ---------------------------------------------------------------------------
 # Execution Detail Endpoint
 # ---------------------------------------------------------------------------
-
-
-class ExecutionDetailResponse(BaseModel):
-    """Detailed execution data for a single agent run."""
-
-    id: UUID = Field(..., description="Execution record ID")
-    agent_name: str = Field(..., description="Logical agent name")
-    model_name: str = Field(..., description="Gemini model ID")
-    input_data: dict[str, Any] | None = Field(
-        default=None, description="Agent input context"
-    )
-    output_data: dict[str, Any] | None = Field(
-        default=None, description="Structured agent output"
-    )
-    thinking_traces: list[dict[str, Any]] | None = Field(
-        default=None, description="Thinking traces"
-    )
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 @router.get(

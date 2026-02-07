@@ -408,6 +408,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/agents/executions/{execution_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get detailed agent execution data
+         * @description Fetch full execution data (output_data, input_data, thinking_traces).
+         *
+         *     Verifies case ownership via the execution's case_id.
+         */
+        get: operations["get_execution_detail_api_agents_executions__execution_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cases/{case_id}/confirmations/{request_id}": {
         parameters: {
             query?: never;
@@ -1346,6 +1368,49 @@ export interface components {
              * @description Suggested action for the client to take
              */
             suggested_action?: string | null;
+        };
+        /**
+         * ExecutionDetailResponse
+         * @description Detailed execution data for a single agent run.
+         */
+        ExecutionDetailResponse: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Execution record ID
+             */
+            id: string;
+            /**
+             * Agent Name
+             * @description Logical agent name
+             */
+            agent_name: string;
+            /**
+             * Model Name
+             * @description Gemini model ID
+             */
+            model_name: string;
+            /**
+             * Input Data
+             * @description Agent input context
+             */
+            input_data?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Output Data
+             * @description Structured agent output
+             */
+            output_data?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Thinking Traces
+             * @description Thinking traces
+             */
+            thinking_traces?: {
+                [key: string]: unknown;
+            }[] | null;
         };
         /**
          * ExtractedEntity
@@ -2794,6 +2859,55 @@ export interface operations {
                 };
             };
             /** @description Workflow or case not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_execution_detail_api_agents_executions__execution_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                execution_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionDetailResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Execution not found */
             404: {
                 headers: {
                     [name: string]: unknown;

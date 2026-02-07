@@ -58,13 +58,21 @@ export function AgentFlowCanvas({
     }
   }, [nodes.length, reactFlowInstance]);
 
-  // Auto-fit viewport when the canvas container resizes (sidebar toggle/drag)
+  // Auto-fit viewport when the canvas container resizes (sidebar toggle/drag).
+  // Skip the first callback — ResizeObserver fires immediately on observe(),
+  // which would duplicate the initial fitView from the useEffect above.
+  const hasObservedOnce = useRef(false);
   useEffect(() => {
     const container = containerRef.current;
     if (!container || nodes.length === 0) return;
 
+    hasObservedOnce.current = false;
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const observer = new ResizeObserver(() => {
+      if (!hasObservedOnce.current) {
+        hasObservedOnce.current = true;
+        return;
+      }
       if (debounceTimer) clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
         reactFlowInstance.fitView({

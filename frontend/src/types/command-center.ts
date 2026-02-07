@@ -210,7 +210,6 @@ export interface AgentConfig {
   description: string;
   color: string;
   position: { x: number; y: number };
-  model?: string;
 }
 
 export interface ProcessingSummary {

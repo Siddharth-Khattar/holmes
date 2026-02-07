@@ -255,8 +255,9 @@ function OrchestratorSections({ agentState, outputData }: AgentSectionsProps) {
   if (!result) return null;
 
   // Try REST output_data first (routing_summary field), fall back to SSE outputs
+  const rawRoutingSummary = outputData?.routing_summary;
   const routingReasoning =
-    (outputData?.routing_summary as string | undefined) ??
+    (typeof rawRoutingSummary === "string" ? rawRoutingSummary : undefined) ??
     extractFromOutputs<string>(result.outputs, "routing_reasoning");
   const warnings = (result.metadata?.warnings as string[] | undefined) ?? [];
   const fileGroups = extractFromOutputs<
@@ -436,16 +437,23 @@ function DomainAgentSections({ agentState, outputData }: AgentSectionsProps) {
   if (!result) return null;
 
   // Try REST output_data first, fall back to SSE outputs
+  const rawFindingsSummary = outputData?.findings_summary;
   const findingsSummary =
-    (outputData?.findings_summary as string | undefined) ??
+    (typeof rawFindingsSummary === "string" ? rawFindingsSummary : undefined) ??
     extractFromOutputs<string>(result.outputs, "findings_summary");
+
+  const rawFilesProcessed = outputData?.files_processed;
   const filesProcessed =
-    (outputData?.files_processed as string[] | undefined) ??
+    (Array.isArray(rawFilesProcessed)
+      ? (rawFilesProcessed as string[])
+      : undefined) ??
     extractFromOutputs<string[]>(result.outputs, "files_processed");
+
+  const rawKeyExtractions = outputData?.key_extractions;
   const keyExtractions =
-    (outputData?.key_extractions as
-      | Array<{ label: string; value: string }>
-      | undefined) ??
+    (Array.isArray(rawKeyExtractions)
+      ? (rawKeyExtractions as Array<{ label: string; value: string }>)
+      : undefined) ??
     extractFromOutputs<Array<{ label: string; value: string }>>(
       result.outputs,
       "key_extractions",
@@ -885,15 +893,13 @@ export function NodeDetailsSidebar({
             </span>
           </div>
           {(() => {
-            const modelId = result?.metadata?.model as string | undefined;
-            const displayModel = modelId
-              ? formatModelName(modelId)
-              : config.model;
-            return displayModel ? (
+            const modelId = result?.metadata?.model;
+            if (typeof modelId !== "string") return null;
+            return (
               <span className="text-[11px] text-stone/70" title={modelId}>
-                {displayModel}
+                {formatModelName(modelId)}
               </span>
-            ) : null;
+            );
           })()}
           {isActiveState && (
             <div

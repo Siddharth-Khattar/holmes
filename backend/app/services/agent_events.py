@@ -622,6 +622,7 @@ def build_agent_result(
                     routing_decisions_camel.append(
                         {
                             "fileId": rd.get("file_id", ""),
+                            "fileName": rd.get("file_name", ""),
                             "targetAgent": agent,
                             "reason": rd.get("reasoning", ""),
                             "domainScore": score,

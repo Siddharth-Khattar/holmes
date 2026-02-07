@@ -366,6 +366,7 @@ async def run_analysis_workflow(
                         "routingDecisions": [
                             {
                                 "fileId": rd.file_id,
+                                "fileName": rd.file_name or "",
                                 "targetAgent": agent,
                                 "reason": rd.reasoning,
                                 "domainScore": getattr(rd.domain_scores, agent, 0),

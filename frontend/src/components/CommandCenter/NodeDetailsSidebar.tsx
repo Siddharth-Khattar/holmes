@@ -319,8 +319,11 @@ function OrchestratorSections({ agentState }: AgentSectionsProps) {
                 {result.routingDecisions.map(
                   (decision: RoutingDecision, idx: number) => (
                     <tr key={idx} className="border-b border-stone/5">
-                      <td className="py-2 pr-2 text-smoke truncate max-w-[120px]">
-                        {decision.fileId}
+                      <td
+                        className="py-2 pr-2 text-smoke truncate max-w-[120px]"
+                        title={decision.fileId}
+                      >
+                        {decision.fileName || decision.fileId}
                       </td>
                       <td className="py-2 px-2 text-[hsl(var(--cc-accent))]">
                         {decision.targetAgent}

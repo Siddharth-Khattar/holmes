@@ -29,6 +29,7 @@ export interface AgentOutput {
 
 export interface RoutingDecision {
   fileId: string;
+  fileName?: string;
   targetAgent: AgentType;
   reason: string;
   domainScore: number; // Confidence score 0-100 (percentage)

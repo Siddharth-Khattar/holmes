@@ -173,7 +173,6 @@ function buildEdge(
 interface BuildGraphOptions {
   agentStates: Map<string, AgentState>;
   selectedAgent: string | null;
-  onNodeClick: (instanceId: string) => void;
 }
 
 /**
@@ -190,7 +189,6 @@ interface BuildGraphOptions {
 export function buildAgentFlowGraph({
   agentStates,
   selectedAgent,
-  onNodeClick,
 }: BuildGraphOptions): { nodes: Node[]; edges: Edge[] } {
   const rfNodes: Node[] = [];
   const rfEdges: Edge[] = [];
@@ -215,7 +213,6 @@ export function buildAgentFlowGraph({
         agentState: state,
         isChosen: isAgentActive(state),
         isSelected: selectedAgent === instanceId,
-        onNodeClick: () => onNodeClick(instanceId),
       },
     });
   });
@@ -249,13 +246,11 @@ export function buildAgentFlowGraph({
         type: "fileGroup",
         position: { x: 0, y: 0 }, // layout engine computes final position
         data: {
-          groupId: group.groupId,
           groupName: group.groupName,
           fileCount: group.fileCount,
           sharedContext: group.sharedContext,
           targetAgents: group.targetAgents,
           isActive,
-          onNodeClick: () => {}, // File group nodes are non-selectable
         },
       });
     });

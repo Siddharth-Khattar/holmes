@@ -3,7 +3,6 @@
 
 "use client";
 
-import { useCallback } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { Activity, AlertCircle } from "lucide-react";
 import { AgentFlowCanvas } from "./AgentFlowCanvas";
@@ -70,15 +69,9 @@ function CommandCenterInner({
   className,
 }: CommandCenterProps) {
   // Graph derivation: agent states → laid-out ReactFlow nodes/edges
-  const handleNodeClick = useCallback(
-    (instanceId: string) => onSelectAgent(instanceId),
-    [onSelectAgent],
-  );
-
   const { nodes, edges, isProcessing } = useAgentFlowGraph({
     agentStates,
     selectedAgent,
-    onNodeClick: handleNodeClick,
   });
 
   return (

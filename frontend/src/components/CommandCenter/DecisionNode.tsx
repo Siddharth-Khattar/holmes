@@ -4,7 +4,7 @@
 "use client";
 
 import { memo, useRef, useState, useCallback } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { createPortal } from "react-dom";
 import { motion, type Easing } from "motion/react";
 import { Loader2, AlertTriangle, Clock } from "lucide-react";
@@ -21,10 +21,10 @@ export interface DecisionNodeData {
   agentState: AgentState;
   isChosen: boolean;
   isSelected: boolean;
-  /** Closure created by graph builder — no args needed, captures instanceId. */
-  onNodeClick: () => void;
   [key: string]: unknown; // ReactFlow requires index signature on node data
 }
+
+export type DecisionNodeType = Node<DecisionNodeData, "decision">;
 
 // -----------------------------------------------------------------------
 // Instance label helper — derives a human-readable subtitle for compound
@@ -112,9 +112,8 @@ function getBadgeText(agentState: AgentState): string | null {
 // -----------------------------------------------------------------------
 // DecisionNode Component
 // -----------------------------------------------------------------------
-function DecisionNodeInner({ data }: NodeProps) {
-  const { agentType, agentState, isChosen, isSelected, onNodeClick } =
-    data as unknown as DecisionNodeData;
+function DecisionNodeInner({ data }: NodeProps<DecisionNodeType>) {
+  const { agentType, agentState, isChosen, isSelected } = data;
 
   const nodeRef = useRef<HTMLDivElement>(null);
   const [tooltipPos, setTooltipPos] = useState<{
@@ -156,10 +155,6 @@ function DecisionNodeInner({ data }: NodeProps) {
   const handleMouseLeave = useCallback(() => {
     setTooltipPos(null);
   }, []);
-
-  const handleClick = useCallback(() => {
-    onNodeClick();
-  }, [onNodeClick]);
 
   // ------- Computed styles -------
   const chosenBackground = `linear-gradient(135deg, hsl(${tint} / 0.75) 0%, hsl(${tint} / 0.35) 100%)`;
@@ -223,7 +218,6 @@ function DecisionNodeInner({ data }: NodeProps) {
             boxShadow: `0 0 30px hsl(${accent} / 0.5), 0 0 12px hsl(${accent} / 0.3)${selectedShadow ? `, ${selectedShadow}` : ""}`,
           }}
           whileTap={{ scale: 0.98 }}
-          onClick={handleClick}
         >
           {/* Processing pulse glow overlay */}
           {isProcessing && (

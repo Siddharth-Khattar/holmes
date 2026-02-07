@@ -830,6 +830,10 @@ Plans:
   - Task deduplication via existing task list injection into synthesis prompt
   - Stored in investigation_tasks table
 
+**Known Issues to Resolve (from `.planning/MINOR_ISSUES.md`):**
+- **MI-003**: Fuzzy entity deduplication produces false positives on numeric/temporal values (e.g., `$5,000` vs `$50,000` flagged at 88% similarity). Fix: add type-aware matching in `kg_builder.py:deduplicate_entities()` before fuzzy comparison — parse numeric entity types semantically instead of string-matching. Must be fixed before synthesis consumes fuzzy flags.
+- **MI-004**: Pipeline summary log mixes triage entity count + domain entity count as `entities=N`, confusingly alongside `kg_entities=M`. Fix: rename or separate the counters in `pipeline.py` for clarity.
+
 **Technical Notes:**
 - Synthesis Agent runs in fresh stage-isolated ADK session (consistent with existing pattern)
 - Input is TEXT from PostgreSQL (case_findings.finding_text), NOT multimodal file content

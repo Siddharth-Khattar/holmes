@@ -169,3 +169,37 @@ function isValidCache(value: unknown): value is AgentStateCache {
     obj.agents !== null
   );
 }
+
+/**
+ * Type guard validating a single cache entry has the expected shape.
+ * Guards against corrupted sessionStorage data from different app versions.
+ */
+export function isValidCachedEntry(
+  value: unknown,
+): value is { status: AgentStatus; currentTask?: CachedTask } {
+  if (typeof value !== "object" || value === null) return false;
+  const entry = value as Record<string, unknown>;
+  if (typeof entry.status !== "string") return false;
+  const validStatuses: AgentStatus[] = [
+    "idle",
+    "processing",
+    "complete",
+    "error",
+  ];
+  if (!validStatuses.includes(entry.status as AgentStatus)) return false;
+  // currentTask is optional, but if present must have required fields
+  if (entry.currentTask !== undefined) {
+    if (typeof entry.currentTask !== "object" || entry.currentTask === null)
+      return false;
+    const task = entry.currentTask as Record<string, unknown>;
+    if (
+      typeof task.taskId !== "string" ||
+      typeof task.fileId !== "string" ||
+      typeof task.fileName !== "string" ||
+      typeof task.startedAt !== "string"
+    ) {
+      return false;
+    }
+  }
+  return true;
+}

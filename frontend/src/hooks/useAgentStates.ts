@@ -7,6 +7,7 @@ import { useCommandCenterSSE } from "@/hooks/useCommandCenterSSE";
 import {
   clearCachedAgentStates,
   deserializeCachedTask,
+  isValidCachedEntry,
   loadCachedAgentStates,
   persistAgentStates,
 } from "@/lib/agent-state-cache";
@@ -32,6 +33,25 @@ import type {
   ConfirmationBatchResolvedEvent,
   ToolCalledEvent,
 } from "@/types/command-center";
+
+/** Maximum number of completed tasks retained in processingHistory per agent instance. */
+const MAX_PROCESSING_HISTORY = 5;
+
+/**
+ * Resolves the map key for an instance ID. For singletons (instanceId === baseType),
+ * falls back to baseType if instanceId is not found. For compound instances, only
+ * matches by exact instanceId to prevent cross-instance state corruption.
+ */
+function resolveInstanceKey(
+  map: Map<string, AgentState>,
+  instanceId: string,
+  baseType: string,
+): string | null {
+  if (map.has(instanceId)) return instanceId;
+  // Only fall back to baseType for singletons
+  if (instanceId === baseType && map.has(baseType)) return baseType;
+  return null;
+}
 
 /**
  * Maps backend execution status strings to frontend AgentStatus values.
@@ -210,31 +230,33 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
 
     setAgentStates((prev) => {
       const next = new Map(prev);
-      // Look up by instanceId directly, fall back to baseType
-      const state = next.get(instanceId) ?? next.get(baseType);
-      const resolvedKey = next.has(instanceId) ? instanceId : baseType;
-      if (state) {
-        // Build completedTask for processingHistory only when currentTask
-        // is available (may be absent after snapshot restoration).
-        const completedTask = state.currentTask
-          ? {
-              ...state.currentTask,
-              completedAt: new Date(),
-              status: "complete" as const,
-            }
-          : null;
-        const updatedHistory = completedTask
-          ? [completedTask, ...state.processingHistory].slice(0, 5)
-          : state.processingHistory;
+      const resolvedKey = resolveInstanceKey(next, instanceId, baseType);
+      if (!resolvedKey) return prev; // Unknown instance — silently ignore
+      const state = next.get(resolvedKey)!;
 
-        next.set(resolvedKey, {
-          ...state,
-          status: "idle",
-          currentTask: undefined,
-          lastResult: mergeAgentResult(e.result, state.lastResult),
-          processingHistory: updatedHistory,
-        });
-      }
+      // Build completedTask for processingHistory only when currentTask
+      // is available (may be absent after snapshot restoration).
+      const completedTask = state.currentTask
+        ? {
+            ...state.currentTask,
+            completedAt: new Date(),
+            status: "complete" as const,
+          }
+        : null;
+      const updatedHistory = completedTask
+        ? [completedTask, ...state.processingHistory].slice(
+            0,
+            MAX_PROCESSING_HISTORY,
+          )
+        : state.processingHistory;
+
+      next.set(resolvedKey, {
+        ...state,
+        status: "idle",
+        currentTask: undefined,
+        lastResult: mergeAgentResult(e.result, state.lastResult),
+        processingHistory: updatedHistory,
+      });
       return next;
     });
   }, []);
@@ -247,31 +269,33 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
 
     setAgentStates((prev) => {
       const next = new Map(prev);
-      // Look up by instanceId directly, fall back to baseType
-      const state = next.get(instanceId) ?? next.get(baseType);
-      const resolvedKey = next.has(instanceId) ? instanceId : baseType;
-      if (state) {
-        // Build errorTask for processingHistory only when currentTask
-        // is available (may be absent after snapshot restoration).
-        const errorTask = state.currentTask
-          ? {
-              ...state.currentTask,
-              completedAt: new Date(),
-              status: "error" as const,
-              error: e.error,
-            }
-          : null;
-        const updatedHistory = errorTask
-          ? [errorTask, ...state.processingHistory].slice(0, 5)
-          : state.processingHistory;
+      const resolvedKey = resolveInstanceKey(next, instanceId, baseType);
+      if (!resolvedKey) return prev; // Unknown instance — silently ignore
+      const state = next.get(resolvedKey)!;
 
-        next.set(resolvedKey, {
-          ...state,
-          status: "error",
-          currentTask: undefined,
-          processingHistory: updatedHistory,
-        });
-      }
+      // Build errorTask for processingHistory only when currentTask
+      // is available (may be absent after snapshot restoration).
+      const errorTask = state.currentTask
+        ? {
+            ...state.currentTask,
+            completedAt: new Date(),
+            status: "error" as const,
+            error: e.error,
+          }
+        : null;
+      const updatedHistory = errorTask
+        ? [errorTask, ...state.processingHistory].slice(
+            0,
+            MAX_PROCESSING_HISTORY,
+          )
+        : state.processingHistory;
+
+      next.set(resolvedKey, {
+        ...state,
+        status: "error",
+        currentTask: undefined,
+        processingHistory: updatedHistory,
+      });
       return next;
     });
   }, []);
@@ -320,36 +344,35 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
 
     setAgentStates((prev) => {
       const next = new Map(prev);
-      // Look up by instanceId, fall back to baseType
-      const state = next.get(instanceId) ?? next.get(baseType);
-      const resolvedKey = next.has(instanceId) ? instanceId : baseType;
-      if (state) {
-        // Validate existing traces is actually a string before concatenation
-        const rawTraces = state.lastResult?.metadata?.thinkingTraces;
-        const existingTraces = typeof rawTraces === "string" ? rawTraces : "";
-        let updatedTraces = existingTraces
-          ? existingTraces + "\n" + e.thought
-          : e.thought;
-        // Limit trace length to prevent unbounded memory growth (100KB max)
-        const MAX_TRACES_LENGTH = 100_000;
-        if (updatedTraces.length > MAX_TRACES_LENGTH) {
-          updatedTraces = updatedTraces.slice(-MAX_TRACES_LENGTH);
-        }
-        next.set(resolvedKey, {
-          ...state,
-          lastResult: {
-            ...(state.lastResult || {
-              taskId: "",
-              agentType: baseType,
-              outputs: [],
-            }),
-            metadata: {
-              ...(state.lastResult?.metadata || {}),
-              thinkingTraces: updatedTraces,
-            },
-          },
-        });
+      const resolvedKey = resolveInstanceKey(next, instanceId, baseType);
+      if (!resolvedKey) return prev;
+      const state = next.get(resolvedKey)!;
+
+      // Validate existing traces is actually a string before concatenation
+      const rawTraces = state.lastResult?.metadata?.thinkingTraces;
+      const existingTraces = typeof rawTraces === "string" ? rawTraces : "";
+      let updatedTraces = existingTraces
+        ? existingTraces + "\n" + e.thought
+        : e.thought;
+      // Limit trace length to prevent unbounded memory growth (100KB max)
+      const MAX_TRACES_LENGTH = 100_000;
+      if (updatedTraces.length > MAX_TRACES_LENGTH) {
+        updatedTraces = updatedTraces.slice(-MAX_TRACES_LENGTH);
       }
+      next.set(resolvedKey, {
+        ...state,
+        lastResult: {
+          ...(state.lastResult || {
+            taskId: "",
+            agentType: baseType,
+            outputs: [],
+          }),
+          metadata: {
+            ...(state.lastResult?.metadata || {}),
+            thinkingTraces: updatedTraces,
+          },
+        },
+      });
       return next;
     });
   }, []);
@@ -465,9 +488,12 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
                 }
               : undefined;
 
-          // Preserve processingHistory and lastResult from previous state
-          // while taking status and result authoritatively from server.
-          const prevState = prev.get(agentName) ?? prev.get(baseType);
+          // Preserve processingHistory and lastResult from the same instance's
+          // previous state. For compound instances, only match by exact ID to
+          // avoid grafting history from a different instance or skeleton.
+          const prevState = isCompound
+            ? prev.get(agentName)
+            : (prev.get(baseType) ?? prev.get(agentName));
 
           if (isCompound) {
             // Compound instance: add as its own entry
@@ -519,6 +545,8 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
           }
 
           for (const [instanceId, entry] of Object.entries(cached.agents)) {
+            // Validate entry shape to guard against corrupted sessionStorage
+            if (!isValidCachedEntry(entry)) continue;
             if (entry.status !== "processing") continue;
             if (snapshotInstanceIds.has(instanceId)) continue;
             // Skip if this instance already exists in next (from snapshot)
@@ -625,30 +653,29 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
 
     setAgentStates((prev) => {
       const next = new Map(prev);
-      // Look up by instanceId, fall back to baseType
-      const state = next.get(instanceId) ?? next.get(baseType);
-      const resolvedKey = next.has(instanceId) ? instanceId : baseType;
-      if (state) {
-        // Add tool to the list of tools called for this agent
-        const existingTools = state.lastResult?.toolsCalled || [];
-        // Avoid duplicates and limit to 20 most recent tools
-        const MAX_TOOLS_TRACKED = 20;
-        const updatedTools = existingTools.includes(e.toolName)
-          ? existingTools
-          : [...existingTools, e.toolName].slice(-MAX_TOOLS_TRACKED);
+      const resolvedKey = resolveInstanceKey(next, instanceId, baseType);
+      if (!resolvedKey) return prev;
+      const state = next.get(resolvedKey)!;
 
-        next.set(resolvedKey, {
-          ...state,
-          lastResult: {
-            ...(state.lastResult || {
-              taskId: "",
-              agentType: baseType,
-              outputs: [],
-            }),
-            toolsCalled: updatedTools,
-          },
-        });
-      }
+      // Add tool to the list of tools called for this agent
+      const existingTools = state.lastResult?.toolsCalled || [];
+      // Avoid duplicates and limit to 20 most recent tools
+      const MAX_TOOLS_TRACKED = 20;
+      const updatedTools = existingTools.includes(e.toolName)
+        ? existingTools
+        : [...existingTools, e.toolName].slice(-MAX_TOOLS_TRACKED);
+
+      next.set(resolvedKey, {
+        ...state,
+        lastResult: {
+          ...(state.lastResult || {
+            taskId: "",
+            agentType: baseType,
+            outputs: [],
+          }),
+          toolsCalled: updatedTools,
+        },
+      });
       return next;
     });
   }, []);

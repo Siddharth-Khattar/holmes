@@ -197,8 +197,8 @@ async def build_state_snapshot(case_id: str) -> dict[str, Any]:
                     if not isinstance(raw_suffix, str):
                         raw_suffix = ""
 
-                if raw_suffix:
-                    group_label = raw_suffix.lstrip("_")
+                group_label = raw_suffix.lstrip("_") if raw_suffix else ""
+                if group_label:
                     snapshot_key = f"{execution.agent_name}_{group_label}"
                 else:
                     snapshot_key = execution.agent_name

@@ -267,7 +267,10 @@ async def run_domain_agents_parallel(
             )
             return task.agent_type, None, task.group_label, None
 
-    # Launch ALL tasks concurrently
+    # Launch ALL tasks concurrently.
+    # _run_agent_with_session handles Exception internally (returns clean tuple).
+    # return_exceptions=True catches BaseException (CancelledError, SystemExit)
+    # which the inner function intentionally does not catch.
     coros = [_run_agent_with_session(t) for t in tasks]
     results = await asyncio.gather(*coros, return_exceptions=True)
 

@@ -2,7 +2,7 @@
 
 **Last Updated:** 2026-02-07
 **Current Phase:** 7 of 12 (Knowledge Storage & Domain Agent Enrichment) — IN PROGRESS
-**Current Plan:** 07-03 of ?? (KG Builder & Findings Service) — COMPLETE
+**Current Plan:** 07-04 of ?? (Domain Agent Prompt Enrichment) — COMPLETE
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -17,7 +17,7 @@
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
-| 7 | Knowledge Storage & Domain Agent Enrichment | IN_PROGRESS | 2026-02-07 | - | Plan 01 (2 commits): 9 DB models + migration. Plan 02 (2 commits): KG/findings Pydantic schemas + findings_text on domain outputs. Plan 03 (2 commits): KG Builder + Findings service |
+| 7 | Knowledge Storage & Domain Agent Enrichment | IN_PROGRESS | 2026-02-07 | - | Plan 01 (2 commits): 9 DB models + migration. Plan 02 (2 commits): KG/findings Pydantic schemas + findings_text on domain outputs. Plan 03 (2 commits): KG Builder + Findings service. Plan 04 (1 commit): Citation enrichment + findings_text instructions in all 4 domain agent prompts |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -31,13 +31,15 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 7, Plan 03 Complete** (2026-02-07): KG Builder & Findings Service — 2 commits
-  - KG Builder service: entity extraction from all 4 domain output types, co-occurrence relationship inference, exact-match dedup via soft merge (merged_into_id), fuzzy match flagging (>=85% rapidfuzz ratio), degree computation
-  - Findings service: save findings with citations (JSONB), update_finding_entity_ids for post-KG backfill, full-text search via PG tsvector + plainto_tsquery + ts_rank, paginated listing, single lookup
-  - rapidfuzz 3.14.3 dependency added
+- **Phase 7, Plan 04 Complete** (2026-02-07): Domain Agent Prompt Enrichment — 1 commit
+  - Added "CITATION AND FINDINGS TEXT REQUIREMENTS" section to all 4 domain agent prompts (financial, legal, evidence, strategy)
+  - Character-for-character exact excerpt requirement for all citations
+  - ts:MM:SS locator format for video/audio timestamps
+  - findings_text rich markdown narrative field instructions with inline [Source: ...] notation
+  - Domain-specific citation guidance per agent type
 
 **What's next:**
-- Phase 7, Plan 04+: API endpoints, pipeline wiring (call KG Builder + Findings service after domain agents), SSE events, domain agent enrichment
+- Phase 7, Plan 05+: API endpoints, pipeline wiring (call KG Builder + Findings service after domain agents), SSE events
 
 ---
 
@@ -349,7 +351,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 07-03-PLAN.md (KG Builder & Findings Service)
+Stopped at: Completed 07-04-PLAN.md (Domain Agent Prompt Enrichment)
 Resume file: None
 
 ---

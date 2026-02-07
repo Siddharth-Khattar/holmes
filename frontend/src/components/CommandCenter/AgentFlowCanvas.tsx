@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import {
   ReactFlow,
   Background,
@@ -41,6 +41,7 @@ export function AgentFlowCanvas({
   onNodeClick,
 }: AgentFlowCanvasProps) {
   const reactFlowInstance = useReactFlow();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Auto-fit viewport when nodes change (progressive tree build adds nodes)
   useEffect(() => {
@@ -56,6 +57,31 @@ export function AgentFlowCanvas({
       return () => clearTimeout(timer);
     }
   }, [nodes.length, reactFlowInstance]);
+
+  // Auto-fit viewport when the canvas container resizes (sidebar toggle/drag)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || nodes.length === 0) return;
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const observer = new ResizeObserver(() => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        reactFlowInstance.fitView({
+          duration: 300,
+          padding: 0.2,
+          minZoom: 0.1,
+          maxZoom: 1,
+        });
+      }, 150);
+    });
+
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
+  }, [reactFlowInstance, nodes.length]);
 
   const handleZoomIn = useCallback(() => {
     reactFlowInstance.zoomIn({ duration: 300 });
@@ -80,6 +106,7 @@ export function AgentFlowCanvas({
 
   return (
     <div
+      ref={containerRef}
       className="relative w-full h-full"
       style={{ background: "var(--color-jet)" }}
     >

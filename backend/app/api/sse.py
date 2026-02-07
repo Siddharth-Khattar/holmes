@@ -188,7 +188,22 @@ async def build_state_snapshot(case_id: str) -> dict[str, Any]:
                 if last_result is not None:
                     agent_entry["lastResult"] = last_result
 
-                agents[execution.agent_name] = agent_entry
+                # Build compound snapshot key from agent_name + stage_suffix
+                # so multiple instances (e.g. financial_grp_0, financial_grp_1)
+                # don't overwrite each other under the same base-type key.
+                raw_suffix = ""
+                if execution.input_data and isinstance(execution.input_data, dict):
+                    raw_suffix = execution.input_data.get("stage_suffix", "")
+                    if not isinstance(raw_suffix, str):
+                        raw_suffix = ""
+
+                if raw_suffix:
+                    group_label = raw_suffix.lstrip("_")
+                    snapshot_key = f"{execution.agent_name}_{group_label}"
+                else:
+                    snapshot_key = execution.agent_name
+
+                agents[snapshot_key] = agent_entry
 
     except Exception:
         logger.exception("Failed to build state snapshot for case=%s", case_id)

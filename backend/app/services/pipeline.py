@@ -16,6 +16,7 @@ from app.models.case import CaseStatus
 from app.models.file import FileStatus
 from app.services.agent_events import (
     build_execution_metadata,
+    clear_event_buffer,
     emit_agent_complete,
     emit_agent_error,
     emit_agent_started,
@@ -159,6 +160,9 @@ async def run_analysis_workflow(
     settings = get_settings()
     session_factory = _get_sessionmaker()
     pipeline_start = time.monotonic()
+
+    # Clear stale events from any previous workflow for this case
+    clear_event_buffer(case_id)
 
     # Create a bound SSE publish function for real-time THINKING_UPDATE events
     publish_fn = create_sse_publish_fn(case_id)
@@ -945,6 +949,10 @@ async def run_analysis_workflow(
                 total_input_tokens=total_input_tokens,
                 total_output_tokens=total_output_tokens,
             )
+
+            # Free replay buffer memory now that all events have been dispatched.
+            # Any future SSE reconnect will get full state from the DB snapshot.
+            clear_event_buffer(case_id)
 
             # Update case status to READY on successful completion
             await _update_case_status(session_factory, case_id, CaseStatus.READY)

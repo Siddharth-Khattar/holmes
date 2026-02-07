@@ -18,7 +18,7 @@ from app.services.agent_events import (
     AgentEventType,
     build_agent_result,
     build_execution_metadata,
-    subscribe_to_agent_events,
+    subscribe_with_replay,
     unsubscribe_from_agent_events,
 )
 
@@ -231,13 +231,17 @@ async def command_center_generator(case_id: str):
     # Send state snapshot immediately on connect.
     # Include `type` so the frontend validation switch dispatches correctly.
     snapshot = await build_state_snapshot(case_id)
+    snapshot_agent_ids = set(snapshot.get("agents", {}).keys())
     snapshot["type"] = AgentEventType.STATE_SNAPSHOT.value
     yield {
         "event": AgentEventType.STATE_SNAPSHOT.value,
         "data": json.dumps(snapshot),
     }
 
-    queue = subscribe_to_agent_events(case_id)
+    # Subscribe with replay of buffered events for agents not in the snapshot.
+    # This bridges the gap when events fire before the subscriber connects
+    # (e.g. triage agent-started emitted before SSE connection established).
+    queue = subscribe_with_replay(case_id, exclude_agents=snapshot_agent_ids)
 
     try:
         while True:

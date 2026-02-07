@@ -57,3 +57,55 @@ export function formatModelName(modelId: string): string {
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ");
 }
+
+// -----------------------------------------------------------------------
+// Agent instance label helpers
+// -----------------------------------------------------------------------
+
+/**
+ * Derive a human-readable instance label from a compound agent ID.
+ *
+ * Compound IDs follow the convention `<baseType>_<suffix>` where suffix is
+ * one of: `grp_N` (grouped files) or `ungrouped_N` (standalone file).
+ *
+ * Returns `null` for singleton agents where `instanceId === baseType`.
+ *
+ * @example
+ *   formatInstanceLabel("financial_grp_0", "financial")     // "Group 1"
+ *   formatInstanceLabel("financial_ungrouped_2", "financial") // "File 3"
+ *   formatInstanceLabel("financial", "financial")             // null
+ */
+export function formatInstanceLabel(
+  instanceId: string,
+  baseType: string,
+): string | null {
+  if (instanceId === baseType) return null;
+
+  // Remove the base type prefix + underscore
+  const suffix = instanceId.slice(baseType.length + 1);
+
+  // Match "grp_N" pattern
+  const grpMatch = suffix.match(/^grp_(\d+)$/);
+  if (grpMatch) {
+    return `Group ${Number(grpMatch[1]) + 1}`;
+  }
+
+  // Match "ungrouped_N" pattern
+  const ungroupedMatch = suffix.match(/^ungrouped_(\d+)$/);
+  if (ungroupedMatch) {
+    return `File ${Number(ungroupedMatch[1]) + 1}`;
+  }
+
+  // Fallback: humanize the suffix
+  return suffix.replace(/_/g, " ");
+}
+
+/**
+ * Determine whether a compound instance ID represents a file group
+ * (multiple files processed together) vs an ungrouped single file.
+ */
+export function isGroupInstance(instanceId: string, baseType: string): boolean {
+  if (instanceId === baseType) return false;
+  const suffix = instanceId.slice(baseType.length + 1);
+  return suffix.startsWith("grp_");
+}

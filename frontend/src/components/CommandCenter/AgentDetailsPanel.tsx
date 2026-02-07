@@ -185,7 +185,7 @@ export function AgentDetailsPanel({
               {isExpanded("thinking") && (
                 <div className="px-6 pb-4">
                   <div className="p-3 rounded-lg bg-white/50 dark:bg-jet/50 border border-warm-gray/10 dark:border-stone/10 max-h-80 overflow-y-auto">
-                    <pre className="text-xs text-stone font-mono whitespace-pre-wrap break-words">
+                    <pre className="text-xs text-stone font-mono whitespace-pre-wrap wrap-break-word">
                       {agentState.lastResult.metadata.thinkingTraces as string}
                     </pre>
                   </div>

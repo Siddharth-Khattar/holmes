@@ -59,6 +59,9 @@ export function ExecutionTimeline({ agentStates }: ExecutionTimelineProps) {
   // Need at least 1 agent with timing data to render
   if (entries.length === 0) return null;
 
+  // Sort by actual start time so bars appear in execution order (top = earliest)
+  entries.sort((a, b) => a.startMs - b.startMs);
+
   // Compute timeline scale
   const earliestStart = Math.min(...entries.map((e) => e.startMs));
   const latestEnd = Math.max(...entries.map((e) => e.startMs + e.durationMs));
@@ -93,8 +96,12 @@ export function ExecutionTimeline({ agentStates }: ExecutionTimelineProps) {
           const leftPercent =
             ((entry.startMs - earliestStart) / safeSpan) * 100;
           const widthPercent = (entry.durationMs / safeSpan) * 100;
-          // Ensure minimum visible width for very short durations
-          const displayWidth = Math.max(widthPercent, 2);
+          // Ensure minimum visible width for very short durations,
+          // and clamp so bar never overflows the container
+          const displayWidth = Math.min(
+            Math.max(widthPercent, 2),
+            100 - leftPercent,
+          );
 
           return (
             <div
@@ -112,7 +119,7 @@ export function ExecutionTimeline({ agentStates }: ExecutionTimelineProps) {
 
               {/* Bar container */}
               <div
-                className="flex-1 h-5 rounded relative"
+                className="flex-1 h-5 rounded relative overflow-hidden"
                 style={{ background: "hsl(0 0% 12% / 0.5)" }}
                 aria-hidden="true"
               >

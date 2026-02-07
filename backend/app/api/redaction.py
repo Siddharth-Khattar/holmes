@@ -36,6 +36,21 @@ SUPPORTED_VIDEO_TYPES = {
     "video/webm",
 }
 
+# Supported audio MIME types
+SUPPORTED_AUDIO_TYPES = {
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/ogg",
+    "audio/mp4",
+    "audio/m4a",
+    "audio/x-m4a",
+    "audio/flac",
+    "audio/aac",
+    "audio/webm",
+}
+
 
 @router.post("/redact/pdf", status_code=status.HTTP_200_OK)
 async def redact_pdf_direct(
@@ -684,4 +699,212 @@ async def redact_video_download(
         logger.error(f"Video redaction failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Video redaction failed: {str(e)}"
+        ) from e
+
+
+@router.post("/redact/audio", status_code=status.HTTP_200_OK)
+async def redact_audio_direct(
+    file: UploadFile = File(..., description="Audio file to redact"),
+    prompt: str = Form(..., description="Natural language redaction instructions"),
+):
+    """Redact/censor sensitive information from an audio file.
+
+    This endpoint:
+    1. Accepts an audio file upload and redaction prompt
+    2. Uses Gemini to transcribe and identify content to censor
+    3. Replaces identified segments with beep sounds
+    4. Returns the censored audio as base64 encoded data
+
+    Args:
+        file: Audio file to redact (MP3, WAV, OGG, M4A, FLAC, AAC, WebM)
+        prompt: Natural language description of what to censor
+
+    Returns:
+        JSON with:
+        - censored_audio: base64 encoded censored audio
+        - segments_censored: number of segments censored
+        - total_censored_duration: total duration censored in seconds
+        - transcript: full transcript of the audio
+        - reasoning: explanation of censorship decisions
+        - targets: list of censored segments with timestamps
+    """
+    # Validate file type
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Filename is required")
+
+    # Check file extension
+    file_ext = file.filename.lower().split(".")[-1]
+    if file_ext not in {"mp3", "wav", "ogg", "m4a", "flac", "aac", "webm"}:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type: .{file_ext}. Supported: mp3, wav, ogg, m4a, flac, aac, webm",
+        )
+
+    # Validate content type if provided
+    if file.content_type and file.content_type not in SUPPORTED_AUDIO_TYPES:
+        logger.warning(f"Unexpected content type: {file.content_type}")
+
+    # Check for API key
+    api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="Audio redaction service unavailable: GOOGLE_API_KEY or GEMINI_API_KEY not configured",
+        )
+
+    try:
+        # Read audio content
+        content = await file.read()
+
+        logger.info(f"Processing audio redaction for: {file.filename}")
+        logger.info(f"Prompt: {prompt}")
+        logger.info(f"File size: {len(content) / 1024:.1f} KB")
+
+        # Import agent
+        from app.agents.audio_redaction import AudioRedactionAgent
+
+        # Create agent and process
+        agent = AudioRedactionAgent(api_key=api_key)
+
+        # Determine output format (keep same as input for common formats)
+        output_format = file_ext if file_ext in {"mp3", "wav", "ogg", "flac"} else "mp3"
+
+        # Run redaction
+        response = agent.redact_audio(
+            audio_data=content,
+            prompt=prompt,
+            file_ext=file_ext,
+            output_format=output_format,
+        )
+
+        logger.info(
+            f"Audio redaction complete: {response.segments_censored} segments censored"
+        )
+
+        return {
+            "censored_audio": response.censored_audio,
+            "segments_censored": response.segments_censored,
+            "segments_found": response.segments_found,
+            "total_censored_duration": response.total_censored_duration,
+            "audio_duration_seconds": response.audio_duration_seconds,
+            "processing_time_seconds": response.processing_time_seconds,
+            "transcript": response.transcript,
+            "reasoning": response.reasoning,
+            "targets": [
+                {
+                    "start_time": t.start_time,
+                    "end_time": t.end_time,
+                    "text": t.text[:100] + "..." if len(t.text) > 100 else t.text,
+                    "reason": t.reason,
+                }
+                for t in response.targets
+            ],
+            "output_format": output_format,
+        }
+
+    except ImportError as e:
+        logger.error(f"Missing dependency: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Audio redaction service unavailable: missing dependency ({str(e)}). Make sure pydub and ffmpeg are installed.",
+        ) from e
+    except ValueError as e:
+        logger.error(f"Audio redaction failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        logger.error(f"Audio redaction failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Audio redaction failed: {str(e)}"
+        ) from e
+
+
+@router.post("/redact/audio/download", status_code=status.HTTP_200_OK)
+async def redact_audio_download(
+    file: UploadFile = File(..., description="Audio file to redact"),
+    prompt: str = Form(..., description="Natural language redaction instructions"),
+):
+    """Redact an audio file and return it as a downloadable file.
+
+    Same as /redact/audio but returns the audio directly for download
+    instead of base64 encoded JSON.
+    """
+    # Validate file type
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Filename is required")
+
+    file_ext = file.filename.lower().split(".")[-1]
+    if file_ext not in {"mp3", "wav", "ogg", "m4a", "flac", "aac", "webm"}:
+        raise HTTPException(
+            status_code=400, detail=f"Unsupported file type: .{file_ext}"
+        )
+
+    # Check for API key
+    api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="Audio redaction service unavailable: GOOGLE_API_KEY or GEMINI_API_KEY not configured",
+        )
+
+    try:
+        # Read audio content
+        content = await file.read()
+
+        # Import agent
+        from app.agents.audio_redaction import AudioRedactionAgent
+
+        # Create agent and process
+        agent = AudioRedactionAgent(api_key=api_key)
+
+        # Determine output format
+        output_format = file_ext if file_ext in {"mp3", "wav", "ogg", "flac"} else "mp3"
+
+        # Run redaction
+        response = agent.redact_audio(
+            audio_data=content,
+            prompt=prompt,
+            file_ext=file_ext,
+            output_format=output_format,
+        )
+
+        # Decode base64 audio
+        censored_audio_bytes = base64.b64decode(response.censored_audio)
+
+        # Generate output filename
+        original_name = file.filename
+        name_parts = original_name.rsplit(".", 1)
+        if len(name_parts) == 2:
+            output_name = f"{name_parts[0]}_censored.{output_format}"
+        else:
+            output_name = f"{original_name}_censored.{output_format}"
+
+        # Determine content type
+        content_type_map = {
+            "mp3": "audio/mpeg",
+            "wav": "audio/wav",
+            "ogg": "audio/ogg",
+            "flac": "audio/flac",
+            "m4a": "audio/mp4",
+            "aac": "audio/aac",
+            "webm": "audio/webm",
+        }
+        content_type = content_type_map.get(output_format, "audio/mpeg")
+
+        return Response(
+            content=censored_audio_bytes,
+            media_type=content_type,
+            headers={"Content-Disposition": f'attachment; filename="{output_name}"'},
+        )
+
+    except ImportError as e:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Audio redaction service unavailable: missing dependency ({str(e)})",
+        ) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        logger.error(f"Audio redaction failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Audio redaction failed: {str(e)}"
         ) from e

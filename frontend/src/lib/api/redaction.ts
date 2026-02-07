@@ -27,6 +27,40 @@ export interface ImageRedactionResponse {
   method: string;
 }
 
+export interface VideoRedactionResponse {
+  censored_video: string; // base64 encoded video
+  visualization_image: string; // base64 encoded visualization frame
+  segments_censored: number;
+  segments_found: number;
+  categories_selected: string[];
+  agent1_reasoning: string;
+  frames_processed: number;
+  video_duration_seconds: number;
+  processing_time_seconds: number;
+  method: string;
+  logs: string[];
+}
+
+export interface AudioCensorTarget {
+  start_time: number;
+  end_time: number;
+  text: string;
+  reason: string | null;
+}
+
+export interface AudioRedactionResponse {
+  censored_audio: string; // base64 encoded audio
+  segments_censored: number;
+  segments_found: number;
+  total_censored_duration: number;
+  audio_duration_seconds: number;
+  processing_time_seconds: number;
+  transcript: string;
+  reasoning: string | null;
+  targets: AudioCensorTarget[];
+  output_format: string;
+}
+
 export interface RedactionError {
   detail: string;
 }
@@ -321,6 +355,290 @@ export async function downloadRedactedImage(
 export function base64ToImageDataUrl(
   base64: string,
   mimeType: string = "image/jpeg",
+): string {
+  return `data:${mimeType};base64,${base64}`;
+}
+
+/**
+ * Fetch video content from a URL and return as a Blob
+ */
+async function fetchVideoBlob(url: string): Promise<Blob> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch video: ${response.status}`);
+  }
+  return response.blob();
+}
+
+/**
+ * Redact/censor a video using natural language instructions.
+ *
+ * @param videoUrl - URL of the video to redact (can be a signed URL or data URL)
+ * @param prompt - Natural language description of what to censor
+ * @param fileName - Name of the file for the form submission
+ * @param method - Censorship method: "blur", "pixelate", or "blackbox"
+ * @returns VideoRedactionResponse with base64 encoded video and metadata
+ */
+export async function redactVideo(
+  videoUrl: string,
+  prompt: string,
+  fileName: string = "video.mp4",
+  method: "blur" | "pixelate" | "blackbox" = "blur",
+): Promise<VideoRedactionResponse> {
+  // Fetch the video content
+  let videoBlob: Blob;
+
+  try {
+    if (videoUrl.startsWith("data:")) {
+      // Handle base64 data URL
+      const base64Data = videoUrl.split(",")[1];
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      // Determine MIME type from data URL
+      const mimeMatch = videoUrl.match(/^data:(video\/[^;]+);/);
+      const mimeType = mimeMatch ? mimeMatch[1] : "video/mp4";
+      videoBlob = new Blob([bytes], { type: mimeType });
+    } else {
+      // Fetch from URL
+      videoBlob = await fetchVideoBlob(videoUrl);
+    }
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Unknown error fetching video";
+    throw new Error(`Failed to fetch video: ${message}`);
+  }
+
+  // Create form data
+  const formData = new FormData();
+  formData.append("file", videoBlob, fileName);
+  formData.append("prompt", prompt);
+  formData.append("method", method);
+
+  // Send to backend (15 minute timeout)
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/api/redact/video`, {
+      method: "POST",
+      body: formData,
+      // Note: Browser fetch doesn't support timeout, but the backend has a 15min timeout
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Network error";
+    throw new Error(
+      `Network error: ${message}. Is the backend running at ${API_URL}?`,
+    );
+  }
+
+  if (!response.ok) {
+    let errorDetail: string;
+    try {
+      const errorData: RedactionError = await response.json();
+      errorDetail = errorData.detail;
+    } catch {
+      errorDetail = `Server returned ${response.status} ${response.statusText}`;
+    }
+    throw new Error(errorDetail);
+  }
+
+  return response.json();
+}
+
+/**
+ * Download a redacted video directly (returns blob for download)
+ */
+export async function downloadRedactedVideo(
+  videoUrl: string,
+  prompt: string,
+  fileName: string = "video.mp4",
+  method: "blur" | "pixelate" | "blackbox" = "blur",
+): Promise<Blob> {
+  // Fetch the video content
+  let videoBlob: Blob;
+
+  if (videoUrl.startsWith("data:")) {
+    const base64Data = videoUrl.split(",")[1];
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const mimeMatch = videoUrl.match(/^data:(video\/[^;]+);/);
+    const mimeType = mimeMatch ? mimeMatch[1] : "video/mp4";
+    videoBlob = new Blob([bytes], { type: mimeType });
+  } else {
+    videoBlob = await fetchVideoBlob(videoUrl);
+  }
+
+  // Create form data
+  const formData = new FormData();
+  formData.append("file", videoBlob, fileName);
+  formData.append("prompt", prompt);
+  formData.append("method", method);
+
+  // Send to backend download endpoint
+  const response = await fetch(`${API_URL}/api/redact/video/download`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error: RedactionError = await response.json().catch(() => ({
+      detail: `Download failed with status ${response.status}`,
+    }));
+    throw new Error(error.detail);
+  }
+
+  return response.blob();
+}
+
+/**
+ * Convert a base64 string to a data URL for video display
+ */
+export function base64ToVideoDataUrl(
+  base64: string,
+  mimeType: string = "video/mp4",
+): string {
+  return `data:${mimeType};base64,${base64}`;
+}
+
+/**
+ * Fetch audio content from a URL and return as a Blob
+ */
+async function fetchAudioBlob(url: string): Promise<Blob> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch audio: ${response.status}`);
+  }
+  return response.blob();
+}
+
+/**
+ * Redact/censor audio using natural language instructions.
+ *
+ * @param audioUrl - URL of the audio to redact (can be a signed URL or data URL)
+ * @param prompt - Natural language description of what to censor
+ * @param fileName - Name of the file for the form submission
+ * @returns AudioRedactionResponse with base64 encoded audio and metadata
+ */
+export async function redactAudio(
+  audioUrl: string,
+  prompt: string,
+  fileName: string = "audio.mp3",
+): Promise<AudioRedactionResponse> {
+  // Fetch the audio content
+  let audioBlob: Blob;
+
+  try {
+    if (audioUrl.startsWith("data:")) {
+      // Handle base64 data URL
+      const base64Data = audioUrl.split(",")[1];
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      // Determine MIME type from data URL
+      const mimeMatch = audioUrl.match(/^data:(audio\/[^;]+);/);
+      const mimeType = mimeMatch ? mimeMatch[1] : "audio/mpeg";
+      audioBlob = new Blob([bytes], { type: mimeType });
+    } else {
+      // Fetch from URL
+      audioBlob = await fetchAudioBlob(audioUrl);
+    }
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Unknown error fetching audio";
+    throw new Error(`Failed to fetch audio: ${message}`);
+  }
+
+  // Create form data
+  const formData = new FormData();
+  formData.append("file", audioBlob, fileName);
+  formData.append("prompt", prompt);
+
+  // Send to backend
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/api/redact/audio`, {
+      method: "POST",
+      body: formData,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Network error";
+    throw new Error(
+      `Network error: ${message}. Is the backend running at ${API_URL}?`,
+    );
+  }
+
+  if (!response.ok) {
+    let errorDetail: string;
+    try {
+      const errorData: RedactionError = await response.json();
+      errorDetail = errorData.detail;
+    } catch {
+      errorDetail = `Server returned ${response.status} ${response.statusText}`;
+    }
+    throw new Error(errorDetail);
+  }
+
+  return response.json();
+}
+
+/**
+ * Download a redacted audio directly (returns blob for download)
+ */
+export async function downloadRedactedAudio(
+  audioUrl: string,
+  prompt: string,
+  fileName: string = "audio.mp3",
+): Promise<Blob> {
+  // Fetch the audio content
+  let audioBlob: Blob;
+
+  if (audioUrl.startsWith("data:")) {
+    const base64Data = audioUrl.split(",")[1];
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const mimeMatch = audioUrl.match(/^data:(audio\/[^;]+);/);
+    const mimeType = mimeMatch ? mimeMatch[1] : "audio/mpeg";
+    audioBlob = new Blob([bytes], { type: mimeType });
+  } else {
+    audioBlob = await fetchAudioBlob(audioUrl);
+  }
+
+  // Create form data
+  const formData = new FormData();
+  formData.append("file", audioBlob, fileName);
+  formData.append("prompt", prompt);
+
+  // Send to backend download endpoint
+  const response = await fetch(`${API_URL}/api/redact/audio/download`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error: RedactionError = await response.json().catch(() => ({
+      detail: `Download failed with status ${response.status}`,
+    }));
+    throw new Error(error.detail);
+  }
+
+  return response.blob();
+}
+
+/**
+ * Convert a base64 string to a data URL for audio display
+ */
+export function base64ToAudioDataUrl(
+  base64: string,
+  mimeType: string = "audio/mpeg",
 ): string {
   return `data:${mimeType};base64,${base64}`;
 }

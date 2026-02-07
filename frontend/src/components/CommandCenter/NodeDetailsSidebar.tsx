@@ -29,12 +29,12 @@ import {
   formatTime,
 } from "@/lib/formatting";
 import { ExecutionTimeline } from "@/components/CommandCenter/ExecutionTimeline";
+import { InstanceRoutingView } from "@/components/CommandCenter/InstanceRoutingView";
 import { useAgentExecutionDetail } from "@/hooks/useAgentExecutionDetail";
 import type {
   AgentType,
   AgentState,
   AgentOutput,
-  RoutingDecision,
 } from "@/types/command-center";
 
 // -----------------------------------------------------------------------
@@ -145,6 +145,8 @@ function statusLabel(status: AgentState["status"]): string {
 interface AgentSectionsProps {
   agentState: AgentState;
   outputData?: Record<string, unknown> | null;
+  /** All agent instance states — only needed by OrchestratorSections for instance routing view. */
+  allAgentStates?: Map<string, AgentState>;
 }
 
 /** Triage-specific sections: domain scores, entities, complexity */
@@ -250,7 +252,11 @@ function TriageSections({ agentState, outputData }: AgentSectionsProps) {
 }
 
 /** Orchestrator-specific sections: routing summary, file routing table, warnings, file groups */
-function OrchestratorSections({ agentState, outputData }: AgentSectionsProps) {
+function OrchestratorSections({
+  agentState,
+  outputData,
+  allAgentStates,
+}: AgentSectionsProps) {
   const result = agentState.lastResult;
   if (!result) return null;
 
@@ -294,55 +300,10 @@ function OrchestratorSections({ agentState, outputData }: AgentSectionsProps) {
           icon={<Network className="w-3.5 h-3.5" />}
           badge={result.routingDecisions.length}
         >
-          <div className="overflow-x-auto">
-            <table
-              className="w-full text-xs"
-              aria-label="File routing decisions"
-            >
-              <thead>
-                <tr className="border-b border-stone/15">
-                  <th
-                    scope="col"
-                    className="text-left py-2 pr-2 text-stone font-medium"
-                  >
-                    File
-                  </th>
-                  <th
-                    scope="col"
-                    className="text-left py-2 px-2 text-stone font-medium"
-                  >
-                    Agent
-                  </th>
-                  <th
-                    scope="col"
-                    className="text-right py-2 pl-2 text-stone font-medium"
-                  >
-                    Score
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.routingDecisions.map(
-                  (decision: RoutingDecision, idx: number) => (
-                    <tr key={idx} className="border-b border-stone/5">
-                      <td
-                        className="py-2 pr-2 text-smoke truncate max-w-[120px]"
-                        title={decision.fileId}
-                      >
-                        {decision.fileName || decision.fileId}
-                      </td>
-                      <td className="py-2 px-2 text-[hsl(var(--cc-accent))]">
-                        {decision.targetAgent}
-                      </td>
-                      <td className="py-2 pl-2 text-right text-stone">
-                        {Math.round(decision.domainScore)}%
-                      </td>
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
-          </div>
+          <InstanceRoutingView
+            decisions={result.routingDecisions}
+            agentStates={allAgentStates ?? new Map()}
+          />
         </CollapsibleSection>
       )}
 
@@ -596,13 +557,13 @@ function KnowledgeGraphSections({ agentState }: AgentSectionsProps) {
                   key={idx}
                   className="text-xs text-smoke flex items-center gap-1.5"
                 >
-                  <span className="truncate max-w-[80px]">{rel.source}</span>
+                  <span className="truncate max-w-20">{rel.source}</span>
                   <span className="text-stone">--</span>
                   <span className="text-[hsl(var(--cc-accent))]">
                     {rel.type}
                   </span>
                   <span className="text-stone">--&gt;</span>
-                  <span className="truncate max-w-[80px]">{rel.target}</span>
+                  <span className="truncate max-w-20">{rel.target}</span>
                 </div>
               ))}
             </div>
@@ -949,7 +910,7 @@ export function NodeDetailsSidebar({
         >
           {thinkingTraces ? (
             <div
-              className="p-3 rounded-lg text-sm leading-relaxed break-words"
+              className="p-3 rounded-lg text-sm leading-relaxed wrap-break-word"
               style={{
                 background: "hsl(var(--cc-accent) / 0.05)",
                 borderLeft: "3px solid hsl(var(--cc-accent) / 0.3)",
@@ -1075,6 +1036,7 @@ export function NodeDetailsSidebar({
           <OrchestratorSections
             agentState={agentState}
             outputData={outputData}
+            allAgentStates={allAgentStates}
           />
         )}
         {isDomainAgent && (
@@ -1141,37 +1103,6 @@ export function NodeDetailsSidebar({
                 </pre>
               </div>
             ))}
-
-            {/* Routing decisions inline (from AgentDetailsPanel pattern) */}
-            {result.routingDecisions && result.routingDecisions.length > 0 && (
-              <div>
-                <div className="text-xs text-stone mb-2 mt-2">
-                  Routing Decisions
-                </div>
-                <div className="space-y-2">
-                  {result.routingDecisions.map(
-                    (decision: RoutingDecision, idx: number) => (
-                      <div
-                        key={idx}
-                        className="p-3 rounded-lg bg-jet/50 border border-stone/10"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-smoke font-medium">
-                            &rarr; {decision.targetAgent}
-                          </span>
-                          <span className="text-xs text-[hsl(var(--cc-accent))]">
-                            {Math.round(decision.domainScore)}%
-                          </span>
-                        </div>
-                        <div className="text-xs text-stone">
-                          {decision.reason}
-                        </div>
-                      </div>
-                    ),
-                  )}
-                </div>
-              </div>
-            )}
           </CollapsibleSection>
         )}
 

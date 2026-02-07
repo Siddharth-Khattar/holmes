@@ -6,7 +6,14 @@
 import { useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { createPortal } from "react-dom";
-import { X, FileText, Video, Image as ImageIcon, Music, Loader2 } from "lucide-react";
+import {
+  X,
+  FileText,
+  Video,
+  Image as ImageIcon,
+  Music,
+  Loader2,
+} from "lucide-react";
 import { EvidenceViewer, type EvidenceFileType } from "./EvidenceViewer";
 
 /**

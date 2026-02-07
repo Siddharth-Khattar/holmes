@@ -15,15 +15,27 @@ class VideoRedactionResponse(BaseModel):
     """Structured response from the video censorship API."""
 
     censored_video: str = Field(description="Base64 encoded censored video")
-    visualization_image: str = Field(default="", description="Base64 encoded visualization frame")
-    categories_selected: list[str] = Field(default_factory=list, description="Categories detected")
-    agent1_reasoning: str = Field(default="", description="AI reasoning for category selection")
+    visualization_image: str = Field(
+        default="", description="Base64 encoded visualization frame"
+    )
+    categories_selected: list[str] = Field(
+        default_factory=list, description="Categories detected"
+    )
+    agent1_reasoning: str = Field(
+        default="", description="AI reasoning for category selection"
+    )
     segments_found: int = Field(default=0, description="Number of segments found")
     segments_censored: int = Field(default=0, description="Number of segments censored")
     frames_processed: int = Field(default=0, description="Number of frames processed")
-    video_duration_seconds: float = Field(default=0.0, description="Video duration in seconds")
-    processing_time_seconds: float = Field(default=0.0, description="Processing time in seconds")
-    logs: list[str] = Field(default_factory=list, description="Pipeline processing logs")
+    video_duration_seconds: float = Field(
+        default=0.0, description="Video duration in seconds"
+    )
+    processing_time_seconds: float = Field(
+        default=0.0, description="Processing time in seconds"
+    )
+    logs: list[str] = Field(
+        default_factory=list, description="Pipeline processing logs"
+    )
 
 
 class VideoRedactionAgent:
@@ -108,7 +120,7 @@ class VideoRedactionAgent:
         """
         logger.info(f"Starting video redaction with prompt: {prompt}")
         logger.info(f"Method: {method}")
-        logger.info(f"Video size: {len(video_data) / (1024*1024):.2f} MB")
+        logger.info(f"Video size: {len(video_data) / (1024 * 1024):.2f} MB")
 
         # Encode video to base64
         video_base64 = base64.b64encode(video_data).decode("utf-8")
@@ -131,7 +143,9 @@ class VideoRedactionAgent:
             response.raise_for_status()
         except requests.Timeout as e:
             logger.error(f"Request timed out after {timeout}s")
-            raise requests.RequestException(f"Request timed out after {timeout}s") from e
+            raise requests.RequestException(
+                f"Request timed out after {timeout}s"
+            ) from e
         except requests.RequestException as e:
             logger.error(f"API request failed: {e}")
             raise
@@ -139,21 +153,23 @@ class VideoRedactionAgent:
         # Parse response
         try:
             result = response.json()
-            
+
             # Check for error in response
             if result.get("error"):
                 error_msg = result.get("error", "Unknown error")
                 error_type = result.get("error_type", "UnknownError")
                 logger.error(f"API returned error: {error_type} - {error_msg}")
                 raise ValueError(f"{error_type}: {error_msg}")
-            
+
             redaction_response = VideoRedactionResponse(**result)
             logger.info(
                 f"✅ Redaction complete: {redaction_response.segments_censored} segments censored"
             )
             logger.info(f"Categories: {redaction_response.categories_selected}")
             logger.info(f"Frames processed: {redaction_response.frames_processed}")
-            logger.info(f"Processing time: {redaction_response.processing_time_seconds:.1f}s")
+            logger.info(
+                f"Processing time: {redaction_response.processing_time_seconds:.1f}s"
+            )
             return redaction_response
         except (ValueError, KeyError) as e:
             logger.error(f"Failed to parse API response: {e}")

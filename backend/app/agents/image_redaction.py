@@ -15,7 +15,9 @@ class ImageRedactionResponse(BaseModel):
     """Structured response from the censorship API."""
 
     censored_image: str = Field(description="Base64 encoded censored image")
-    visualization_image: str = Field(description="Base64 encoded visualization with masks")
+    visualization_image: str = Field(
+        description="Base64 encoded visualization with masks"
+    )
     categories_selected: list[str] = Field(description="Categories detected")
     segments_found: int = Field(description="Number of segments found")
     segments_censored: int = Field(description="Number of segments censored")
@@ -97,7 +99,9 @@ class ImageRedactionAgent:
                 f"✅ Redaction complete: {redaction_response.segments_censored} segments censored"
             )
             logger.info(f"Categories: {redaction_response.categories_selected}")
-            logger.info(f"Processing time: {redaction_response.processing_time_seconds}s")
+            logger.info(
+                f"Processing time: {redaction_response.processing_time_seconds}s"
+            )
             return redaction_response
         except (ValueError, KeyError) as e:
             logger.error(f"Failed to parse API response: {e}")

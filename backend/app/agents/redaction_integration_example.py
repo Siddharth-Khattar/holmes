@@ -9,6 +9,7 @@ directly, but serves as a reference for future integration work.
 
 from typing import Any
 
+
 # Example 1: Standalone redaction as a preprocessing step
 async def preprocess_case_files_with_redaction(
     case_id: str,

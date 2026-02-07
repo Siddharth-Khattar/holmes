@@ -4,7 +4,6 @@
 import json
 import logging
 import os
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -54,7 +53,11 @@ class PDFRedactionAgent:
             api_key: Gemini API key (defaults to GOOGLE_API_KEY or GEMINI_API_KEY env var)
             model: Gemini model to use (default: gemini-2.0-flash)
         """
-        self.api_key = api_key or os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+        self.api_key = (
+            api_key
+            or os.environ.get("GOOGLE_API_KEY")
+            or os.environ.get("GEMINI_API_KEY")
+        )
         if not self.api_key:
             raise ValueError(
                 "GOOGLE_API_KEY or GEMINI_API_KEY must be provided or set in environment"
@@ -170,8 +173,7 @@ Identify all text segments that match the redaction criteria. Return a JSON obje
             logger.error(f"Raw response: {full_response}")
             # Return empty response on parse failure
             return RedactionResponse(
-                targets=[],
-                reasoning=f"Failed to parse response: {str(e)}"
+                targets=[], reasoning=f"Failed to parse response: {str(e)}"
             )
 
     def apply_redactions(
@@ -249,8 +251,8 @@ Identify all text segments that match the redaction criteria. Return a JSON obje
                         page.draw_rect(
                             rect,
                             color=(0, 0, 0),  # Black border
-                            fill=(0, 0, 0),   # Black fill
-                            width=0,          # No border (just fill)
+                            fill=(0, 0, 0),  # Black fill
+                            width=0,  # No border (just fill)
                         )
                         logger.info(
                             f"Visually redacting text on page {target.page}: {target.text[:30]}..."
@@ -259,9 +261,9 @@ Identify all text segments that match the redaction criteria. Return a JSON obje
         # Save the redacted PDF
         doc.save(
             output_path,
-            garbage=4,      # Maximum garbage collection
-            deflate=True,   # Compress
-            clean=True,     # Clean up
+            garbage=4,  # Maximum garbage collection
+            deflate=True,  # Compress
+            clean=True,  # Clean up
         )
         doc.close()
 
@@ -337,7 +339,7 @@ def redact_pdf_file(
         ...     "contract.pdf",
         ...     "Redact all personal names, phone numbers, and email addresses"
         ... )
-        >>> 
+        >>>
         >>> # Permanent removal (use with caution)
         >>> output, info = redact_pdf_file(
         ...     "contract.pdf",

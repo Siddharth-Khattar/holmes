@@ -85,7 +85,9 @@ Examples:
     try:
         print(f"Processing: {args.pdf_file}")
         print(f"Redaction criteria: {args.redaction_prompt}")
-        print(f"Mode: {'Permanent removal' if args.permanent else 'Visual covering (default)'}")
+        print(
+            f"Mode: {'Permanent removal' if args.permanent else 'Visual covering (default)'}"
+        )
         print()
 
         output_file, info = redact_pdf_file(

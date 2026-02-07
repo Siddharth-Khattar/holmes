@@ -304,7 +304,12 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
 
       try {
         const response = await getDownloadUrl(caseId, file.id, true);
-        setCachedUrl(caseId, file.id, response.download_url, response.expires_in);
+        setCachedUrl(
+          caseId,
+          file.id,
+          response.download_url,
+          response.expires_in,
+        );
         setRedactModalFile({ ...file, url: response.download_url });
       } catch (err) {
         console.error("Failed to get file URL:", err);
@@ -330,7 +335,12 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
 
       try {
         const response = await getDownloadUrl(caseId, file.id, true);
-        setCachedUrl(caseId, file.id, response.download_url, response.expires_in);
+        setCachedUrl(
+          caseId,
+          file.id,
+          response.download_url,
+          response.expires_in,
+        );
         setPreviewModalFile({ ...file, url: response.download_url });
       } catch (err) {
         console.error("Failed to get file URL:", err);
@@ -351,8 +361,15 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
 
       try {
         const response = await getDownloadUrl(caseId, file.id, true);
-        setCachedUrl(caseId, file.id, response.download_url, response.expires_in);
-        setPreloadedUrls((prev) => new Map(prev).set(file.id, response.download_url));
+        setCachedUrl(
+          caseId,
+          file.id,
+          response.download_url,
+          response.expires_in,
+        );
+        setPreloadedUrls((prev) =>
+          new Map(prev).set(file.id, response.download_url),
+        );
       } catch (err) {
         // Silent fail for preloading
         console.debug("Preload failed:", err);

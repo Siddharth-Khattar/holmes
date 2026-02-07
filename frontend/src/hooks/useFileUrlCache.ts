@@ -1,7 +1,7 @@
 // ABOUTME: Hook for caching signed file URLs to avoid regenerating them repeatedly
 // ABOUTME: URLs are cached for 1 hour (well before the 24h expiration)
 
-import { useState, useCallback, useRef } from "react";
+import { useCallback, useRef } from "react";
 
 interface CachedUrl {
   url: string;
@@ -45,7 +45,12 @@ export function useFileUrlCache() {
   );
 
   const setCachedUrl = useCallback(
-    (caseId: string, fileId: string, url: string, expiresIn: number = 86400) => {
+    (
+      caseId: string,
+      fileId: string,
+      url: string,
+      expiresIn: number = 86400,
+    ) => {
       const key = getCacheKey(caseId, fileId);
       cacheRef.current[key] = {
         url,

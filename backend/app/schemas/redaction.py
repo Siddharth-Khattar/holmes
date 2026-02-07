@@ -62,13 +62,14 @@ class ImageRedactionResult(BaseModel):
     """Result of an image redaction/censorship operation."""
 
     censored_image: str = Field(description="Base64 encoded censored image")
-    visualization_image: str = Field(description="Base64 encoded visualization with masks")
+    visualization_image: str = Field(
+        description="Base64 encoded visualization with masks"
+    )
     categories_selected: list[str] = Field(description="Categories detected")
     segments_found: int = Field(description="Number of segments found")
     segments_censored: int = Field(description="Number of segments censored")
     processing_time_seconds: float = Field(description="Processing time in seconds")
     method: str = Field(description="Censorship method used")
-
 
 
 class VideoRedactionRequest(BaseModel):
@@ -88,13 +89,25 @@ class VideoRedactionResult(BaseModel):
     """Result of a video redaction/censorship operation."""
 
     censored_video: str = Field(description="Base64 encoded censored video")
-    visualization_image: str = Field(default="", description="Base64 encoded visualization frame")
-    categories_selected: list[str] = Field(default_factory=list, description="Categories detected")
-    agent1_reasoning: str = Field(default="", description="AI reasoning for category selection")
+    visualization_image: str = Field(
+        default="", description="Base64 encoded visualization frame"
+    )
+    categories_selected: list[str] = Field(
+        default_factory=list, description="Categories detected"
+    )
+    agent1_reasoning: str = Field(
+        default="", description="AI reasoning for category selection"
+    )
     segments_found: int = Field(default=0, description="Number of segments found")
     segments_censored: int = Field(default=0, description="Number of segments censored")
     frames_processed: int = Field(default=0, description="Number of frames processed")
-    video_duration_seconds: float = Field(default=0.0, description="Video duration in seconds")
-    processing_time_seconds: float = Field(default=0.0, description="Processing time in seconds")
+    video_duration_seconds: float = Field(
+        default=0.0, description="Video duration in seconds"
+    )
+    processing_time_seconds: float = Field(
+        default=0.0, description="Processing time in seconds"
+    )
     method: str = Field(description="Censorship method used")
-    logs: list[str] = Field(default_factory=list, description="Pipeline processing logs")
+    logs: list[str] = Field(
+        default_factory=list, description="Pipeline processing logs"
+    )

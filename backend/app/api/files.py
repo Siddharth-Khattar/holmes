@@ -324,7 +324,7 @@ async def get_download_url(
 
     The URL is valid for 24 hours and includes the original filename
     in the Content-Disposition header.
-    
+
     Query Parameters:
     - inline: If true, returns URL with 'inline' disposition for browser preview.
               If false (default), returns URL with 'attachment' disposition to force download.

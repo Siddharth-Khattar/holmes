@@ -3,9 +3,18 @@
 
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
-import { X, Download, Sparkles, Loader2, AlertCircle, CheckCircle, FileText, Image as ImageIcon } from "lucide-react";
+import {
+  X,
+  Download,
+  Sparkles,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  FileText,
+  Image as ImageIcon,
+} from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   redactPdf,
@@ -46,9 +55,18 @@ const SCAN_PARTICLES: [number, string, string][] = [
  * redaction processing. All animations use transform/opacity only
  * (no layout-triggering properties) for smooth 60fps rendering.
  */
-function ScanOverlay({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
-  // Read container height once on mount for the CSS variable
-  const height = containerRef.current?.offsetHeight ?? 600;
+function ScanOverlay({
+  containerRef,
+}: {
+  containerRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  // Read container height on mount via effect (refs cannot be accessed during render)
+  const [height, setHeight] = useState(600);
+  useEffect(() => {
+    if (containerRef.current) {
+      setHeight(containerRef.current.offsetHeight);
+    }
+  }, [containerRef]);
 
   return (
     <div
@@ -76,9 +94,9 @@ function ScanOverlay({ containerRef }: { containerRef: React.RefObject<HTMLDivEl
         style={{ animation: "scan-sweep 3s ease-in-out infinite" }}
       >
         {/* Glow trail */}
-        <div className="h-16 bg-gradient-to-t from-purple-500/15 to-transparent" />
+        <div className="h-16 bg-linear-to-t from-purple-500/15 to-transparent" />
         {/* Core line */}
-        <div className="h-[2px] bg-purple-500 shadow-[0_0_12px_3px_rgba(168,85,247,0.4)]" />
+        <div className="h-0.5 bg-purple-500 shadow-[0_0_12px_3px_rgba(168,85,247,0.4)]" />
       </div>
 
       {/* Floating particles - 5 elements, transform-only animation */}
@@ -102,11 +120,14 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
   const originalPanelRef = useRef<HTMLDivElement>(null);
   const [showRedactionInput, setShowRedactionInput] = useState(false);
   const [redactionPrompt, setRedactionPrompt] = useState("");
-  const [redactionMethod, setRedactionMethod] = useState<RedactionMethod>("blur");
+  const [redactionMethod, setRedactionMethod] =
+    useState<RedactionMethod>("blur");
   const [status, setStatus] = useState<RedactionStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [redactionResult, setRedactionResult] = useState<RedactionResponse | null>(null);
-  const [imageRedactionResult, setImageRedactionResult] = useState<ImageRedactionResponse | null>(null);
+  const [redactionResult, setRedactionResult] =
+    useState<RedactionResponse | null>(null);
+  const [imageRedactionResult, setImageRedactionResult] =
+    useState<ImageRedactionResponse | null>(null);
   const [redactedPdfUrl, setRedactedPdfUrl] = useState<string | null>(null);
   const [redactedImageUrl, setRedactedImageUrl] = useState<string | null>(null);
   // Visualization image is available but not currently displayed in the UI
@@ -151,9 +172,10 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
         setStatus("success");
       }
     } catch (error) {
-      const message = error instanceof Error
-        ? error.message
-        : "An unexpected error occurred during redaction";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred during redaction";
       setStatus("error");
       setErrorMessage(message);
     }
@@ -184,13 +206,13 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
           bytes[i] = binaryString.charCodeAt(i);
         }
         const blob = new Blob([bytes], { type: "image/jpeg" });
-        
+
         // Generate output filename
         const nameParts = file.name.split(".");
         const ext = nameParts.length > 1 ? nameParts.pop() : "jpg";
         const baseName = nameParts.join(".");
         const outputName = `${baseName}_censored.${ext}`;
-        
+
         downloadBlob(blob, outputName);
       }
     } catch (error) {
@@ -330,7 +352,9 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                   </div>
                   <div className="flex-1 px-4 py-2 bg-warm-gray/5 dark:bg-stone/5">
                     <h3 className="text-sm font-medium text-foreground">
-                      {status === "success" ? `${isPdf ? "Redacted" : "Censored"} Preview` : "Redaction Controls"}
+                      {status === "success"
+                        ? `${isPdf ? "Redacted" : "Censored"} Preview`
+                        : "Redaction Controls"}
                     </h3>
                   </div>
                 </div>
@@ -376,7 +400,8 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
 
                   {/* Right Half - Redaction Controls or Preview */}
                   <div className="flex-1 overflow-hidden flex flex-col">
-                    {status === "success" && (redactedPdfUrl || redactedImageUrl) ? (
+                    {status === "success" &&
+                    (redactedPdfUrl || redactedImageUrl) ? (
                       /* Redacted Preview */
                       <div className="flex-1 relative">
                         {isPdf && redactedPdfUrl ? (
@@ -441,7 +466,8 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                               : "Analyzing image and applying censorship..."}
                           </p>
                           <p className="text-xs text-muted-foreground mt-4">
-                            This may take 10-30 seconds depending on {isPdf ? "document" : "image"} size
+                            This may take 10-30 seconds depending on{" "}
+                            {isPdf ? "document" : "image"} size
                           </p>
                         </div>
                       </div>
@@ -468,14 +494,17 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                               What should we {isPdf ? "redact" : "censor"}?
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              Describe the information to {isPdf ? "redact" : "censor"} in plain language
+                              Describe the information to{" "}
+                              {isPdf ? "redact" : "censor"} in plain language
                             </p>
                           </div>
 
                           <div>
                             <textarea
                               value={redactionPrompt}
-                              onChange={(e) => setRedactionPrompt(e.target.value)}
+                              onChange={(e) =>
+                                setRedactionPrompt(e.target.value)
+                              }
                               placeholder={
                                 isPdf
                                   ? "E.g., 'Redact all personal names, phone numbers, and email addresses' or 'Redact the word Agentic Marketplace'"
@@ -526,7 +555,9 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                               className="w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 disabled:cursor-not-allowed text-white font-medium transition-colors"
                             >
                               <Sparkles className="w-4 h-4" />
-                              <span>Apply {isPdf ? "Redaction" : "Censorship"}</span>
+                              <span>
+                                Apply {isPdf ? "Redaction" : "Censorship"}
+                              </span>
                             </button>
                             <button
                               onClick={() => setShowRedactionInput(false)}
@@ -538,7 +569,8 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
 
                           <div className="pt-4 border-t border-warm-gray/15 dark:border-stone/15">
                             <p className="text-xs text-muted-foreground">
-                              <strong>How it works:</strong> {isPdf 
+                              <strong>How it works:</strong>{" "}
+                              {isPdf
                                 ? "Our AI analyzes the document to find matching content, then draws black boxes over the text to censor it while preserving the document structure."
                                 : "Our AI analyzes the image to find matching content, then applies blur or pixelation to censor it while preserving the image structure."}
                             </p>
@@ -550,60 +582,79 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                 </div>
 
                 {/* Bottom Bar - Download Button */}
-                {status === "success" && (redactionResult || imageRedactionResult) && (
-                  <div className="flex-none border-t border-warm-gray/15 dark:border-stone/15 px-6 py-4 bg-warm-gray/5 dark:bg-stone/5">
-                    <div className="flex items-center justify-between max-w-4xl mx-auto">
-                      <div className="text-sm">
-                        {isPdf && redactionResult ? (
-                          <>
-                            <span className="text-muted-foreground">
-                              Redacted{" "}
-                              <span className="font-semibold text-foreground">
-                                {redactionResult.redaction_count}
-                              </span>{" "}
-                              {redactionResult.redaction_count === 1 ? "item" : "items"}
-                            </span>
-                            {redactionResult.targets.length > 0 && (
-                              <span className="text-muted-foreground ml-2">
-                                on {new Set(redactionResult.targets.map((t: RedactionTarget) => t.page)).size} page(s)
+                {status === "success" &&
+                  (redactionResult || imageRedactionResult) && (
+                    <div className="flex-none border-t border-warm-gray/15 dark:border-stone/15 px-6 py-4 bg-warm-gray/5 dark:bg-stone/5">
+                      <div className="flex items-center justify-between max-w-4xl mx-auto">
+                        <div className="text-sm">
+                          {isPdf && redactionResult ? (
+                            <>
+                              <span className="text-muted-foreground">
+                                Redacted{" "}
+                                <span className="font-semibold text-foreground">
+                                  {redactionResult.redaction_count}
+                                </span>{" "}
+                                {redactionResult.redaction_count === 1
+                                  ? "item"
+                                  : "items"}
                               </span>
-                            )}
-                          </>
-                        ) : isImage && imageRedactionResult ? (
-                          <>
-                            <span className="text-muted-foreground">
-                              Censored{" "}
-                              <span className="font-semibold text-foreground">
-                                {imageRedactionResult.segments_censored}
-                              </span>{" "}
-                              {imageRedactionResult.segments_censored === 1 ? "segment" : "segments"}
-                            </span>
-                            <span className="text-muted-foreground ml-2">
-                              ({imageRedactionResult.segments_found} found)
-                            </span>
-                            {imageRedactionResult.categories_selected.length > 0 && (
-                              <span className="text-muted-foreground ml-2">
-                                • {imageRedactionResult.categories_selected.join(", ")}
+                              {redactionResult.targets.length > 0 && (
+                                <span className="text-muted-foreground ml-2">
+                                  on{" "}
+                                  {
+                                    new Set(
+                                      redactionResult.targets.map(
+                                        (t: RedactionTarget) => t.page,
+                                      ),
+                                    ).size
+                                  }{" "}
+                                  page(s)
+                                </span>
+                              )}
+                            </>
+                          ) : isImage && imageRedactionResult ? (
+                            <>
+                              <span className="text-muted-foreground">
+                                Censored{" "}
+                                <span className="font-semibold text-foreground">
+                                  {imageRedactionResult.segments_censored}
+                                </span>{" "}
+                                {imageRedactionResult.segments_censored === 1
+                                  ? "segment"
+                                  : "segments"}
                               </span>
-                            )}
-                          </>
-                        ) : null}
+                              <span className="text-muted-foreground ml-2">
+                                ({imageRedactionResult.segments_found} found)
+                              </span>
+                              {imageRedactionResult.categories_selected.length >
+                                0 && (
+                                <span className="text-muted-foreground ml-2">
+                                  •{" "}
+                                  {imageRedactionResult.categories_selected.join(
+                                    ", ",
+                                  )}
+                                </span>
+                              )}
+                            </>
+                          ) : null}
+                        </div>
+                        <button
+                          onClick={handleDownloadRedacted}
+                          disabled={isDownloading}
+                          className="flex items-center space-x-2 px-6 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white font-medium transition-colors"
+                        >
+                          {isDownloading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Download className="w-4 h-4" />
+                          )}
+                          <span>
+                            Download {isPdf ? "Redacted PDF" : "Censored Image"}
+                          </span>
+                        </button>
                       </div>
-                      <button
-                        onClick={handleDownloadRedacted}
-                        disabled={isDownloading}
-                        className="flex items-center space-x-2 px-6 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white font-medium transition-colors"
-                      >
-                        {isDownloading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Download className="w-4 h-4" />
-                        )}
-                        <span>Download {isPdf ? "Redacted PDF" : "Censored Image"}</span>
-                      </button>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
           </motion.div>

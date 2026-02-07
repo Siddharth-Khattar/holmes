@@ -75,7 +75,8 @@ export async function redactPdf(
       pdfBlob = await fetchPdfBlob(pdfUrl);
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error fetching PDF";
+    const message =
+      err instanceof Error ? err.message : "Unknown error fetching PDF";
     throw new Error(`Failed to fetch PDF: ${message}`);
   }
 
@@ -94,7 +95,9 @@ export async function redactPdf(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Network error";
-    throw new Error(`Network error: ${message}. Is the backend running at ${API_URL}?`);
+    throw new Error(
+      `Network error: ${message}. Is the backend running at ${API_URL}?`,
+    );
   }
 
   if (!response.ok) {
@@ -178,7 +181,6 @@ export function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-
 /**
  * Fetch image content from a URL and return as a Blob
  */
@@ -226,7 +228,8 @@ export async function redactImage(
       imageBlob = await fetchImageBlob(imageUrl);
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error fetching image";
+    const message =
+      err instanceof Error ? err.message : "Unknown error fetching image";
     throw new Error(`Failed to fetch image: ${message}`);
   }
 
@@ -245,7 +248,9 @@ export async function redactImage(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Network error";
-    throw new Error(`Network error: ${message}. Is the backend running at ${API_URL}?`);
+    throw new Error(
+      `Network error: ${message}. Is the backend running at ${API_URL}?`,
+    );
   }
 
   if (!response.ok) {
@@ -313,6 +318,9 @@ export async function downloadRedactedImage(
 /**
  * Convert a base64 string to a data URL for image display
  */
-export function base64ToImageDataUrl(base64: string, mimeType: string = "image/jpeg"): string {
+export function base64ToImageDataUrl(
+  base64: string,
+  mimeType: string = "image/jpeg",
+): string {
   return `data:${mimeType};base64,${base64}`;
 }

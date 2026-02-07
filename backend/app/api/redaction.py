@@ -64,10 +64,9 @@ async def redact_pdf_direct(
         - reasoning: explanation of redaction decisions
     """
     # Validate file type
-    if not file.filename or not file.filename.lower().endswith('.pdf'):
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
-            status_code=400,
-            detail="Only PDF files are supported for redaction"
+            status_code=400, detail="Only PDF files are supported for redaction"
         )
 
     if file.content_type and file.content_type != "application/pdf":
@@ -79,7 +78,7 @@ async def redact_pdf_direct(
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="Redaction service unavailable: GOOGLE_API_KEY or GEMINI_API_KEY not configured"
+            detail="Redaction service unavailable: GOOGLE_API_KEY or GEMINI_API_KEY not configured",
         )
 
     temp_input = None
@@ -103,7 +102,7 @@ async def redact_pdf_direct(
         agent = PDFRedactionAgent(api_key=api_key)
 
         # Generate output path
-        output_path = temp_input.replace('.pdf', '_redacted.pdf')
+        output_path = temp_input.replace(".pdf", "_redacted.pdf")
         temp_output = output_path
 
         # Run redaction
@@ -115,11 +114,11 @@ async def redact_pdf_direct(
         )
 
         # Read redacted PDF
-        with open(output_file, 'rb') as f:
+        with open(output_file, "rb") as f:
             redacted_content = f.read()
 
         # Encode as base64
-        redacted_base64 = base64.b64encode(redacted_content).decode('utf-8')
+        redacted_base64 = base64.b64encode(redacted_content).decode("utf-8")
 
         logger.info(f"Redaction complete: {len(response.targets)} items redacted")
 
@@ -130,7 +129,9 @@ async def redact_pdf_direct(
                 {
                     "text": t.text[:100] + "..." if len(t.text) > 100 else t.text,
                     "page": t.page,
-                    "context": t.context[:100] + "..." if t.context and len(t.context) > 100 else t.context,
+                    "context": t.context[:100] + "..."
+                    if t.context and len(t.context) > 100
+                    else t.context,
                 }
                 for t in response.targets
             ],
@@ -142,13 +143,12 @@ async def redact_pdf_direct(
         logger.error(f"Missing dependency: {e}")
         raise HTTPException(
             status_code=503,
-            detail=f"Redaction service unavailable: missing dependency ({str(e)})"
+            detail=f"Redaction service unavailable: missing dependency ({str(e)})",
         ) from e
     except Exception as e:
         logger.error(f"Redaction failed: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Redaction failed: {str(e)}"
+            status_code=500, detail=f"Redaction failed: {str(e)}"
         ) from e
     finally:
         # Cleanup temp files
@@ -176,10 +176,9 @@ async def redact_pdf_download(
     instead of base64 encoded JSON.
     """
     # Validate file type
-    if not file.filename or not file.filename.lower().endswith('.pdf'):
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
-            status_code=400,
-            detail="Only PDF files are supported for redaction"
+            status_code=400, detail="Only PDF files are supported for redaction"
         )
 
     # Check for API key (support both GOOGLE_API_KEY and GEMINI_API_KEY)
@@ -187,7 +186,7 @@ async def redact_pdf_download(
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="Redaction service unavailable: GOOGLE_API_KEY or GEMINI_API_KEY not configured"
+            detail="Redaction service unavailable: GOOGLE_API_KEY or GEMINI_API_KEY not configured",
         )
 
     temp_input = None
@@ -207,7 +206,7 @@ async def redact_pdf_download(
         agent = PDFRedactionAgent(api_key=api_key)
 
         # Generate output path
-        output_path = temp_input.replace('.pdf', '_redacted.pdf')
+        output_path = temp_input.replace(".pdf", "_redacted.pdf")
         temp_output = output_path
 
         # Run redaction
@@ -219,31 +218,28 @@ async def redact_pdf_download(
         )
 
         # Read redacted PDF
-        with open(output_file, 'rb') as f:
+        with open(output_file, "rb") as f:
             redacted_content = f.read()
 
         # Generate output filename
         original_name = file.filename or "document.pdf"
-        output_name = original_name.replace('.pdf', '_redacted.pdf')
+        output_name = original_name.replace(".pdf", "_redacted.pdf")
 
         return Response(
             content=redacted_content,
             media_type="application/pdf",
-            headers={
-                "Content-Disposition": f'attachment; filename="{output_name}"'
-            }
+            headers={"Content-Disposition": f'attachment; filename="{output_name}"'},
         )
 
     except ImportError as e:
         raise HTTPException(
             status_code=503,
-            detail=f"Redaction service unavailable: missing dependency ({str(e)})"
+            detail=f"Redaction service unavailable: missing dependency ({str(e)})",
         ) from e
     except Exception as e:
         logger.error(f"Redaction failed: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Redaction failed: {str(e)}"
+            status_code=500, detail=f"Redaction failed: {str(e)}"
         ) from e
     finally:
         # Cleanup temp files
@@ -283,7 +279,7 @@ async def redact_case_file(
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="Redaction service unavailable: GOOGLE_API_KEY or GEMINI_API_KEY not configured"
+            detail="Redaction service unavailable: GOOGLE_API_KEY or GEMINI_API_KEY not configured",
         )
 
     logger.info(f"Redaction requested for case={case_id}, file={file_id}")
@@ -295,9 +291,8 @@ async def redact_case_file(
         detail=(
             "Case file redaction requires GCS integration. "
             "Use /api/redact/pdf for direct file upload redaction instead."
-        )
+        ),
     )
-
 
 
 @router.post("/redact/image", status_code=status.HTTP_200_OK)
@@ -328,17 +323,14 @@ async def redact_image_direct(
     """
     # Validate file type
     if not file.filename:
-        raise HTTPException(
-            status_code=400,
-            detail="Filename is required"
-        )
+        raise HTTPException(status_code=400, detail="Filename is required")
 
     # Check file extension
     file_ext = file.filename.lower().split(".")[-1]
     if file_ext not in {"jpg", "jpeg", "png", "webp", "gif"}:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type: .{file_ext}. Supported: jpg, jpeg, png, webp, gif"
+            detail=f"Unsupported file type: .{file_ext}. Supported: jpg, jpeg, png, webp, gif",
         )
 
     # Validate content type if provided
@@ -349,7 +341,7 @@ async def redact_image_direct(
     if method not in {"blur", "pixelate"}:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid method: {method}. Must be 'blur' or 'pixelate'"
+            detail=f"Invalid method: {method}. Must be 'blur' or 'pixelate'",
         )
 
     try:
@@ -374,7 +366,9 @@ async def redact_image_direct(
             method=method,  # type: ignore
         )
 
-        logger.info(f"Image redaction complete: {response.segments_censored} segments censored")
+        logger.info(
+            f"Image redaction complete: {response.segments_censored} segments censored"
+        )
 
         return {
             "censored_image": response.censored_image,
@@ -390,13 +384,12 @@ async def redact_image_direct(
         logger.error(f"Missing dependency: {e}")
         raise HTTPException(
             status_code=503,
-            detail=f"Image redaction service unavailable: missing dependency ({str(e)})"
+            detail=f"Image redaction service unavailable: missing dependency ({str(e)})",
         ) from e
     except Exception as e:
         logger.error(f"Image redaction failed: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Image redaction failed: {str(e)}"
+            status_code=500, detail=f"Image redaction failed: {str(e)}"
         ) from e
 
 
@@ -413,22 +406,18 @@ async def redact_image_download(
     """
     # Validate file type
     if not file.filename:
-        raise HTTPException(
-            status_code=400,
-            detail="Filename is required"
-        )
+        raise HTTPException(status_code=400, detail="Filename is required")
 
     file_ext = file.filename.lower().split(".")[-1]
     if file_ext not in {"jpg", "jpeg", "png", "webp", "gif"}:
         raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: .{file_ext}"
+            status_code=400, detail=f"Unsupported file type: .{file_ext}"
         )
 
     if method not in {"blur", "pixelate"}:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid method: {method}. Must be 'blur' or 'pixelate'"
+            detail=f"Invalid method: {method}. Must be 'blur' or 'pixelate'",
         )
 
     try:
@@ -471,30 +460,28 @@ async def redact_image_download(
         return Response(
             content=censored_image_bytes,
             media_type=content_type,
-            headers={
-                "Content-Disposition": f'attachment; filename="{output_name}"'
-            }
+            headers={"Content-Disposition": f'attachment; filename="{output_name}"'},
         )
 
     except ImportError as e:
         raise HTTPException(
             status_code=503,
-            detail=f"Image redaction service unavailable: missing dependency ({str(e)})"
+            detail=f"Image redaction service unavailable: missing dependency ({str(e)})",
         ) from e
     except Exception as e:
         logger.error(f"Image redaction failed: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Image redaction failed: {str(e)}"
+            status_code=500, detail=f"Image redaction failed: {str(e)}"
         ) from e
-
 
 
 @router.post("/redact/video", status_code=status.HTTP_200_OK)
 async def redact_video_direct(
     file: UploadFile = File(..., description="Video file to redact"),
     prompt: str = Form(..., description="Natural language redaction instructions"),
-    method: str = Form("blur", description="Censorship method: blur, pixelate, or blackbox"),
+    method: str = Form(
+        "blur", description="Censorship method: blur, pixelate, or blackbox"
+    ),
 ):
     """Redact/censor sensitive information from a video file.
 
@@ -523,17 +510,14 @@ async def redact_video_direct(
     """
     # Validate file type
     if not file.filename:
-        raise HTTPException(
-            status_code=400,
-            detail="Filename is required"
-        )
+        raise HTTPException(status_code=400, detail="Filename is required")
 
     # Check file extension
     file_ext = file.filename.lower().split(".")[-1]
     if file_ext not in {"mp4", "mpeg", "mov", "avi", "webm", "m4v"}:
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type: .{file_ext}. Supported: mp4, mpeg, mov, avi, webm"
+            detail=f"Unsupported file type: .{file_ext}. Supported: mp4, mpeg, mov, avi, webm",
         )
 
     # Validate content type if provided
@@ -544,7 +528,7 @@ async def redact_video_direct(
     if method not in {"blur", "pixelate", "blackbox"}:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid method: {method}. Must be 'blur', 'pixelate', or 'blackbox'"
+            detail=f"Invalid method: {method}. Must be 'blur', 'pixelate', or 'blackbox'",
         )
 
     try:
@@ -554,7 +538,7 @@ async def redact_video_direct(
         logger.info(f"Processing video redaction for: {file.filename}")
         logger.info(f"Prompt: {prompt}")
         logger.info(f"Method: {method}")
-        logger.info(f"File size: {len(content) / (1024*1024):.2f} MB")
+        logger.info(f"File size: {len(content) / (1024 * 1024):.2f} MB")
 
         # Import agent
         from app.agents.video_redaction import VideoRedactionAgent
@@ -570,7 +554,9 @@ async def redact_video_direct(
             timeout=900,
         )
 
-        logger.info(f"Video redaction complete: {response.segments_censored} segments censored")
+        logger.info(
+            f"Video redaction complete: {response.segments_censored} segments censored"
+        )
 
         return {
             "censored_video": response.censored_video,
@@ -590,26 +576,21 @@ async def redact_video_direct(
         logger.error(f"Missing dependency: {e}")
         raise HTTPException(
             status_code=503,
-            detail=f"Video redaction service unavailable: missing dependency ({str(e)})"
+            detail=f"Video redaction service unavailable: missing dependency ({str(e)})",
         ) from e
     except ValueError as e:
         # API returned an error
         logger.error(f"Video redaction failed: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except requests.RequestException as e:
         logger.error(f"Video redaction API error: {e}")
         raise HTTPException(
-            status_code=503,
-            detail=f"Video redaction service unavailable: {str(e)}"
+            status_code=503, detail=f"Video redaction service unavailable: {str(e)}"
         ) from e
     except Exception as e:
         logger.error(f"Video redaction failed: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Video redaction failed: {str(e)}"
+            status_code=500, detail=f"Video redaction failed: {str(e)}"
         ) from e
 
 
@@ -617,7 +598,9 @@ async def redact_video_direct(
 async def redact_video_download(
     file: UploadFile = File(..., description="Video file to redact"),
     prompt: str = Form(..., description="Natural language redaction instructions"),
-    method: str = Form("blur", description="Censorship method: blur, pixelate, or blackbox"),
+    method: str = Form(
+        "blur", description="Censorship method: blur, pixelate, or blackbox"
+    ),
 ):
     """Redact a video and return it as a downloadable file.
 
@@ -626,22 +609,18 @@ async def redact_video_download(
     """
     # Validate file type
     if not file.filename:
-        raise HTTPException(
-            status_code=400,
-            detail="Filename is required"
-        )
+        raise HTTPException(status_code=400, detail="Filename is required")
 
     file_ext = file.filename.lower().split(".")[-1]
     if file_ext not in {"mp4", "mpeg", "mov", "avi", "webm", "m4v"}:
         raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: .{file_ext}"
+            status_code=400, detail=f"Unsupported file type: .{file_ext}"
         )
 
     if method not in {"blur", "pixelate", "blackbox"}:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid method: {method}. Must be 'blur', 'pixelate', or 'blackbox'"
+            detail=f"Invalid method: {method}. Must be 'blur', 'pixelate', or 'blackbox'",
         )
 
     try:
@@ -687,29 +666,22 @@ async def redact_video_download(
         return Response(
             content=censored_video_bytes,
             media_type=content_type,
-            headers={
-                "Content-Disposition": f'attachment; filename="{output_name}"'
-            }
+            headers={"Content-Disposition": f'attachment; filename="{output_name}"'},
         )
 
     except ImportError as e:
         raise HTTPException(
             status_code=503,
-            detail=f"Video redaction service unavailable: missing dependency ({str(e)})"
+            detail=f"Video redaction service unavailable: missing dependency ({str(e)})",
         ) from e
     except ValueError as e:
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except requests.RequestException as e:
         raise HTTPException(
-            status_code=503,
-            detail=f"Video redaction service unavailable: {str(e)}"
+            status_code=503, detail=f"Video redaction service unavailable: {str(e)}"
         ) from e
     except Exception as e:
         logger.error(f"Video redaction failed: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500,
-            detail=f"Video redaction failed: {str(e)}"
+            status_code=500, detail=f"Video redaction failed: {str(e)}"
         ) from e

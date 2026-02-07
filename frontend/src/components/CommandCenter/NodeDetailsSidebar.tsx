@@ -29,6 +29,7 @@ import {
   formatTime,
 } from "@/lib/formatting";
 import { ExecutionTimeline } from "@/components/CommandCenter/ExecutionTimeline";
+import { useAgentExecutionDetail } from "@/hooks/useAgentExecutionDetail";
 import type {
   AgentType,
   AgentState,
@@ -143,28 +144,35 @@ function statusLabel(status: AgentState["status"]): string {
 
 interface AgentSectionsProps {
   agentState: AgentState;
+  outputData?: Record<string, unknown> | null;
 }
 
 /** Triage-specific sections: domain scores, entities, complexity */
-function TriageSections({ agentState }: AgentSectionsProps) {
+function TriageSections({ agentState, outputData }: AgentSectionsProps) {
   const result = agentState.lastResult;
   if (!result) return null;
 
-  // Extract triage-specific data from outputs
-  const domainScores = extractFromOutputs<Record<string, number>>(
-    result.outputs,
-    "domain_scores",
-  );
-  const entities = extractFromOutputs<Array<{ name: string; type: string }>>(
-    result.outputs,
-    "entities",
-  );
-  const complexity = extractFromOutputs<string>(result.outputs, "complexity");
-  const summary = extractFromOutputs<string>(result.outputs, "summary");
-  const detailedSummary = extractFromOutputs<string>(
-    result.outputs,
-    "detailed_summary",
-  );
+  // Prefer rich data from REST execution detail (outputData), fall back to SSE outputs
+  const fileResult = getFirstFileResult(outputData);
+
+  const domainScores =
+    fileResult?.domainScores ??
+    extractFromOutputs<Record<string, number>>(result.outputs, "domain_scores");
+  const entities =
+    fileResult?.entities ??
+    extractFromOutputs<Array<{ name: string; type: string }>>(
+      result.outputs,
+      "entities",
+    );
+  const complexity =
+    fileResult?.complexity ??
+    extractFromOutputs<string>(result.outputs, "complexity");
+  const summary =
+    fileResult?.summary ??
+    extractFromOutputs<string>(result.outputs, "summary");
+  const detailedSummary =
+    fileResult?.detailedSummary ??
+    extractFromOutputs<string>(result.outputs, "detailed_summary");
 
   return (
     <>
@@ -242,14 +250,14 @@ function TriageSections({ agentState }: AgentSectionsProps) {
 }
 
 /** Orchestrator-specific sections: routing summary, file routing table, warnings, file groups */
-function OrchestratorSections({ agentState }: AgentSectionsProps) {
+function OrchestratorSections({ agentState, outputData }: AgentSectionsProps) {
   const result = agentState.lastResult;
   if (!result) return null;
 
-  const routingReasoning = extractFromOutputs<string>(
-    result.outputs,
-    "routing_reasoning",
-  );
+  // Try REST output_data first (routing_summary field), fall back to SSE outputs
+  const routingReasoning =
+    (outputData?.routing_summary as string | undefined) ??
+    extractFromOutputs<string>(result.outputs, "routing_reasoning");
   const warnings = (result.metadata?.warnings as string[] | undefined) ?? [];
   const fileGroups = extractFromOutputs<
     Array<{
@@ -423,21 +431,25 @@ function OrchestratorSections({ agentState }: AgentSectionsProps) {
 }
 
 /** Domain agent-specific sections (financial, legal, strategy) */
-function DomainAgentSections({ agentState }: AgentSectionsProps) {
+function DomainAgentSections({ agentState, outputData }: AgentSectionsProps) {
   const result = agentState.lastResult;
   if (!result) return null;
 
-  const findingsSummary = extractFromOutputs<string>(
-    result.outputs,
-    "findings_summary",
-  );
-  const filesProcessed = extractFromOutputs<string[]>(
-    result.outputs,
-    "files_processed",
-  );
-  const keyExtractions = extractFromOutputs<
-    Array<{ label: string; value: string }>
-  >(result.outputs, "key_extractions");
+  // Try REST output_data first, fall back to SSE outputs
+  const findingsSummary =
+    (outputData?.findings_summary as string | undefined) ??
+    extractFromOutputs<string>(result.outputs, "findings_summary");
+  const filesProcessed =
+    (outputData?.files_processed as string[] | undefined) ??
+    extractFromOutputs<string[]>(result.outputs, "files_processed");
+  const keyExtractions =
+    (outputData?.key_extractions as
+      | Array<{ label: string; value: string }>
+      | undefined) ??
+    extractFromOutputs<Array<{ label: string; value: string }>>(
+      result.outputs,
+      "key_extractions",
+    );
 
   return (
     <>
@@ -710,6 +722,80 @@ function extractFromOutputs<T>(
 }
 
 // -----------------------------------------------------------------------
+// Helper to extract triage file result from REST output_data
+// -----------------------------------------------------------------------
+interface TriageFileResultData {
+  domainScores: Record<string, number> | undefined;
+  entities: Array<{ name: string; type: string }> | undefined;
+  complexity: string | undefined;
+  summary: string | undefined;
+  detailedSummary: string | undefined;
+}
+
+/**
+ * Extract the first triage file result from REST execution output_data.
+ * The triage agent stores results under `file_results[0]` with nested structures.
+ * Returns undefined if output_data doesn't contain triage data.
+ */
+function getFirstFileResult(
+  outputData: Record<string, unknown> | null | undefined,
+): TriageFileResultData | undefined {
+  if (!outputData) return undefined;
+  const fileResults = outputData.file_results;
+  if (!Array.isArray(fileResults) || fileResults.length === 0) return undefined;
+
+  const fr = fileResults[0] as Record<string, unknown>;
+  if (!fr || typeof fr !== "object") return undefined;
+
+  // Map domain_scores array [{domain, score}] to Record<string, number>
+  let domainScores: Record<string, number> | undefined;
+  const rawScores = fr.domain_scores;
+  if (Array.isArray(rawScores)) {
+    domainScores = {};
+    for (const item of rawScores) {
+      if (
+        item &&
+        typeof item === "object" &&
+        "domain" in item &&
+        "score" in item
+      ) {
+        const entry = item as { domain: string; score: number };
+        domainScores[entry.domain] = entry.score;
+      }
+    }
+  }
+
+  // Map entities array [{type, value}] to [{name, type}]
+  let entities: Array<{ name: string; type: string }> | undefined;
+  const rawEntities = fr.entities;
+  if (Array.isArray(rawEntities)) {
+    entities = rawEntities.map((e) => {
+      const entity = e as { type: string; value: string };
+      return { name: entity.value, type: entity.type };
+    });
+  }
+
+  // Complexity tier
+  let complexity: string | undefined;
+  const rawComplexity = fr.complexity;
+  if (rawComplexity && typeof rawComplexity === "object") {
+    complexity = (rawComplexity as { tier?: string }).tier;
+  }
+
+  // Summaries
+  let summary: string | undefined;
+  let detailedSummary: string | undefined;
+  const rawSummary = fr.summary;
+  if (rawSummary && typeof rawSummary === "object") {
+    const summaryObj = rawSummary as { short?: string; detailed?: string };
+    summary = summaryObj.short;
+    detailedSummary = summaryObj.detailed;
+  }
+
+  return { domainScores, entities, complexity, summary, detailedSummary };
+}
+
+// -----------------------------------------------------------------------
 // Source label for the input context section
 // -----------------------------------------------------------------------
 function getSourceLabel(agentType: AgentType): string {
@@ -731,6 +817,13 @@ export function NodeDetailsSidebar({
   agentState,
   allAgentStates,
 }: NodeDetailsSidebarProps) {
+  // Hook must be called unconditionally (Rules of Hooks)
+  const executionId = agentState?.lastResult?.metadata?.executionId as
+    | string
+    | undefined;
+  const { data: executionDetail, isLoading: isDetailLoading } =
+    useAgentExecutionDetail(executionId);
+
   if (!agentType || !agentState) return null;
 
   const config = AGENT_CONFIGS[agentType];
@@ -744,6 +837,8 @@ export function NodeDetailsSidebar({
     agentType === "financial" ||
     agentType === "legal" ||
     agentType === "strategy";
+
+  const outputData = executionDetail?.output_data ?? null;
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
@@ -949,12 +1044,31 @@ export function NodeDetailsSidebar({
           );
         })()}
 
-        {/* Agent-type-specific sections */}
-        {agentType === "triage" && <TriageSections agentState={agentState} />}
-        {agentType === "orchestrator" && (
-          <OrchestratorSections agentState={agentState} />
+        {/* Loading indicator for execution detail fetch */}
+        {isDetailLoading && executionId && (
+          <div className="px-5 py-2">
+            <div className="h-1 w-full rounded-full bg-stone/10 overflow-hidden">
+              <div className="h-full w-1/3 rounded-full bg-[hsl(var(--cc-accent))] animate-pulse" />
+            </div>
+          </div>
         )}
-        {isDomainAgent && <DomainAgentSections agentState={agentState} />}
+
+        {/* Agent-type-specific sections */}
+        {agentType === "triage" && (
+          <TriageSections agentState={agentState} outputData={outputData} />
+        )}
+        {agentType === "orchestrator" && (
+          <OrchestratorSections
+            agentState={agentState}
+            outputData={outputData}
+          />
+        )}
+        {isDomainAgent && (
+          <DomainAgentSections
+            agentState={agentState}
+            outputData={outputData}
+          />
+        )}
         {agentType === "knowledge-graph" && (
           <KnowledgeGraphSections agentState={agentState} />
         )}

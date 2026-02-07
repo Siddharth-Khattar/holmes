@@ -535,6 +535,7 @@ def build_execution_metadata(
         duration_ms = int(delta.total_seconds() * 1000)
 
     return {
+        "executionId": str(execution.id),
         "inputTokens": execution.input_tokens or 0,
         "outputTokens": execution.output_tokens or 0,
         "durationMs": duration_ms or 0,

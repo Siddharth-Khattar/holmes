@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -412,3 +412,65 @@ async def get_analysis_status(
         error=error_msg,
         domain_results_summary=domain_summary,
     )
+
+
+# ---------------------------------------------------------------------------
+# Execution Detail Endpoint
+# ---------------------------------------------------------------------------
+
+
+class ExecutionDetailResponse(BaseModel):
+    """Detailed execution data for a single agent run."""
+
+    id: UUID = Field(..., description="Execution record ID")
+    agent_name: str = Field(..., description="Logical agent name")
+    model_name: str = Field(..., description="Gemini model ID")
+    input_data: dict | None = Field(default=None, description="Agent input context")
+    output_data: dict | None = Field(
+        default=None, description="Structured agent output"
+    )
+    thinking_traces: list[dict] | None = Field(
+        default=None, description="Thinking traces"
+    )
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+@router.get(
+    "/api/agents/executions/{execution_id}",
+    response_model=ExecutionDetailResponse,
+    summary="Get detailed agent execution data",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        404: {"model": ErrorResponse, "description": "Execution not found"},
+    },
+)
+async def get_execution_detail(
+    execution_id: UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> ExecutionDetailResponse:
+    """Fetch full execution data (output_data, input_data, thinking_traces).
+
+    Verifies case ownership via the execution's case_id.
+    """
+    result = await db.execute(
+        select(AgentExecution).where(AgentExecution.id == execution_id)
+    )
+    execution = result.scalar_one_or_none()
+
+    if not execution:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Execution not found",
+        )
+
+    # Verify ownership via case
+    case = await _get_user_case(db, execution.case_id, current_user.id)
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Execution not found",
+        )
+
+    return ExecutionDetailResponse.model_validate(execution)

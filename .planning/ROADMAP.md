@@ -29,15 +29,17 @@
 | 4.1 | Agent Decision Tree Revamp (INSERTED) | Replace D3 Command Center with @xyflow/react + dagre decision tree | REQ-VIS-001 (visual quality) | ✅ COMPLETE |
 | 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 | ✅ COMPLETE |
 | 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ✅ COMPLETE |
-| 7 | Synthesis & Knowledge Graph | Synthesis Agent, KG Agent, Hypothesis system, Task generation, 5-layer KG | REQ-AGENT-008/009, REQ-VIS-003, REQ-HYPO-001/004/005/006, REQ-TASK-001/002 | 🟡 FRONTEND_DONE |
-| 8 | Intelligence Layer & Geospatial | Contradictions, Gaps, Geospatial Agent, Map View, Earth Engine | REQ-WOW-*, REQ-VIS-005/006, REQ-GEO-* | ⏳ NOT_STARTED |
-| 9 | Chat Interface & Research | Chat UI, Research/Discovery (Chat + Orchestrator-triggered), Hypothesis View, Context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
-| 10 | Agent Flow & Source Panel | Full source viewers, Task Panel, Timeline | REQ-SOURCE-*, REQ-VIS-*, REQ-TASK-003/004/005/006/007 | 🟡 FRONTEND_DONE |
+| 7 | Knowledge Storage & Domain Agent Enrichment | DB schema, enriched citations, KG Builder, findings storage, KG API | REQ-AGENT-009, REQ-STORE-001/002, REQ-AGENT-003-006 (enrichment) | ⏳ NOT_STARTED |
+| 7.1 | Knowledge Graph Frontend (vis-network) | Premium graph visualization with clustering, physics, relationship-based layout | REQ-VIS-003 | ⏳ NOT_STARTED |
+| 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ⏳ NOT_STARTED |
+| 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ⏳ NOT_STARTED |
+| 9 | Chat Interface & Research | Multi-source tool-based Q&A, research/discovery, context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
+| 10 | Source Panel & Agent Flow Polish | Source viewers, citation navigation, task panel, narrative generation | REQ-SOURCE-*, REQ-VIS-*, REQ-TASK-003-007 | 🟡 FRONTEND_DONE |
 | 11 | Corrections & Refinement | Error flagging, Verification, Regeneration | REQ-CORR-* | ⏳ NOT_STARTED |
 | 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i | ⏳ NOT_STARTED |
 
 > **Status Legend:** ✅ COMPLETE | 🟡 FRONTEND_DONE (backend pending) | ⏳ NOT_STARTED | ⏳ PLANNED
-> **Note:** Phase 6 complete (2026-02-06, 35 commits: 5 plans + refactoring + routing HITL + production hardening + live-testing bugfixes). Phases 7, 9, 10 have frontend UI implemented by Yatharth (2026-02-02). Backend integration remains for those phases.
+> **Note:** Phase 6 complete (2026-02-06, 35 commits). Architecture redesigned 2026-02-07: Phases 7-9 restructured with KG-as-Memory pattern, hybrid storage (PG + Vector), programmatic KG Builder, Synthesis Agent, vis-network frontend, and tool-based Chat Agent.
 
 **Post-MVP:**
 | Phase | Name | Focus | Requirements |
@@ -560,136 +562,355 @@ Plans:
 
 ---
 
-## Phase 7: Synthesis & Knowledge Graph
+## Phase 7: Knowledge Storage & Domain Agent Enrichment
 
-**Goal:** Cross-reference findings, build entity-relationship graph, and implement hypothesis system.
+**Goal:** Create the knowledge storage foundation and enrich domain agent outputs with exhaustive exact-source citations for downstream consumption by KG Builder, Synthesis, and Chat.
 
-**Requirements:** REQ-AGENT-008, REQ-AGENT-009, REQ-AGENT-010, REQ-VIS-003 (basic), REQ-HYPO-001, REQ-HYPO-004, REQ-HYPO-005, REQ-HYPO-006, REQ-TASK-001, REQ-TASK-002
+**Requirements:** REQ-AGENT-009 (partial — programmatic KG Builder), REQ-STORE-001, REQ-STORE-002, REQ-AGENT-003/004/005/006 (citation enrichment)
 
-**Status:** 🟡 FRONTEND_DONE (KG Visualization) — Backend agents + API required
+**Depends on:** Phase 6 (Domain Agents)
 
-### Frontend Completed (Yatharth, 2026-02-02)
-- ✅ **D3.js chosen** for Knowledge Graph visualization
-- ✅ Force-directed graph with zoom/pan (`knowledge-graph.tsx`)
-- ✅ Entity nodes (circles) with 6 types: person, organization, location, event, document, evidence
-- ✅ Evidence nodes (squares) with 5 types: text, image, video, audio, document
-- ✅ Manual relationship creation UI (click-to-connect)
-- ✅ Node details panel with entity info
-- ✅ Legend showing node types and colors
+**Status:** ⏳ NOT_STARTED
+
+Plans: TBD (via /gsd:plan-phase)
+
+### Frontend Available (Yatharth, 2026-02-02)
+- ✅ D3.js Knowledge Graph visualization (to be replaced by vis-network in Phase 7.1)
+- ✅ Entity detail panel, legend, zoom/pan controls
 - ✅ Evidence source panel (`evidence-source-panel.tsx`)
 - ✅ Hooks ready (`use-case-graph.ts`)
 
-### Backend Work Remaining
-- ⏳ Synthesis Agent implementation
-- ⏳ Knowledge Graph Agent implementation
-- ⏳ Cross-referencing logic for links, contradictions, gaps
-- ⏳ Hypothesis system integration (database tables, SSE)
-- ⏳ Investigation task generation
-- ⏳ Full entity taxonomy extraction (domain-specific types)
-- ⏳ Entity resolution: auto-merge with >85% similarity
-- ⏳ PostgreSQL schema for graph (nodes, edges tables)
-- ⏳ 5-layer system (current: 6 entity types, not 5 investigation layers)
-- ⏳ Graph query APIs
-- ⏳ Incremental graph updates
-
+### Backend Work
 **Deliverables:**
-- Synthesis Agent implementation
-- Cross-referencing logic for links, contradictions, gaps
-- **Hypothesis system integration** (database tables pending)
-- **Investigation task generation from synthesis** (pending)
-- Knowledge Graph Agent implementation
-- **Full entity taxonomy extraction** (domain-specific types)
-- **Entity resolution: auto-merge with flag for >85% matches**
-- Relationship extraction with types
-- PostgreSQL schema for graph (nodes, edges tables)
-- **5-layer Knowledge Graph:** Evidence (red), Legal (blue), Strategy (green), Temporal (amber), Hypothesis (pink)
-- Graph query APIs
-- ~~**Evaluate graph library: vis-network vs D3.js**~~ → **D3.js chosen** ✅
-- ~~Basic force-directed visualization~~ ✅
-- Incremental graph updates
+- New database tables + Alembic migrations:
+  - `kg_entities` (id, case_id, name, entity_type, domain, metadata JSONB, source_execution_id, source_finding_index, merged_into_id, created_at)
+  - `kg_relationships` (id, case_id, source_entity_id, target_entity_id, type, label, strength, source_execution_id, metadata JSONB, created_at)
+  - `case_findings` (id, case_id, workflow_id, agent_type, agent_execution_id, file_group_label, category, title, finding_text, confidence, citations JSONB, entity_ids JSONB, created_at)
+  - `case_hypotheses` (id, case_id, workflow_id, claim, status, confidence, supporting_evidence JSONB, contradicting_evidence JSONB, source_agent, reasoning, created_at)
+  - `case_contradictions` (id, case_id, workflow_id, claim_a, claim_b, source_a JSONB, source_b JSONB, severity, domain, resolution_status, created_at)
+  - `case_gaps` (id, case_id, workflow_id, description, what_is_missing, why_needed, priority, related_entity_ids JSONB, suggested_actions, created_at)
+  - `case_synthesis` (id, case_id, workflow_id, case_summary, case_verdict JSONB, cross_modal_links JSONB, cross_domain_conclusions JSONB, key_findings_summary, risk_assessment, timeline_event_count, created_at)
+  - `timeline_events` (id, case_id, workflow_id, title, description, event_date, event_end_date, event_type, layer, source_entity_ids JSONB, citations JSONB, created_at)
+  - `locations` (id, case_id, workflow_id, name, coordinates JSONB, location_type, source_entity_ids JSONB, temporal_associations JSONB, created_at) — populated later by Geospatial Agent (Phase 8.1)
+- Domain agent prompt enrichment:
+  - Exhaustive span-level citations for EVERY statement (exact excerpts, page numbers, timestamps)
+  - Rich markdown `findings_text` field: detailed analysis paragraphs per finding with inline source references
+  - Instruction reinforcement: "Every factual claim must reference the exact source excerpt"
+- Domain agent output schema enhancements:
+  - Add `findings_text: str` field (markdown format, extensive analysis with inline citations)
+  - Ensure `Citation` model captures exact excerpts and page/timestamp locators
+- Programmatic KG Builder service (Python, NOT an LLM agent):
+  - Reads domain agent structured output (`agent_executions.output_data`)
+  - Extracts ALL entities from `DomainEntity` lists across all domain agents
+  - Creates relationship edges (entity A mentioned with entity B in same finding)
+  - Entity deduplication: exact name+type match → auto-merge; fuzzy >85% → flag for LLM resolution in Phase 8
+  - Degree computation (connection counts for node sizing)
+  - Additive-only: NEVER filters or discards entities/relationships
+- case_findings storage service:
+  - Saves each finding to `case_findings` table after domain agent completes
+  - Links to agent_execution via agent_execution_id for audit trail
+- KG API endpoints:
+  - `GET /api/cases/:caseId/graph` — Full graph data (nodes + edges for frontend)
+  - `GET /api/cases/:caseId/entities` — Entity list with search/filter
+  - `GET /api/cases/:caseId/relationships` — Relationship list
+  - `POST /api/cases/:caseId/entities` — Create entity (manual user addition)
+  - `PATCH /api/cases/:caseId/entities/:entityId` — Update entity
+  - `DELETE /api/cases/:caseId/entities/:entityId` — Delete entity
+  - `POST /api/cases/:caseId/relationships` — Create relationship (manual)
+- Findings API endpoints:
+  - `GET /api/cases/:caseId/findings` — List findings by agent/category
+  - `GET /api/cases/:caseId/findings/:findingId` — Get finding with full citations
+- SSE events:
+  - `FINDING_COMMITTED` — Finding saved, available for sidebar display
+  - `KG_ENTITY_ADDED` — Entity added to KG
+  - `KG_RELATIONSHIP_ADDED` — Relationship added to KG
+- Vector store setup (v1 = PG full-text search via tsvector; Vertex AI RAG upgrade path in Phase 9):
+  - Raw finding text indexed for semantic/keyword search by Chat Agent
+  - Full-text search index on case_findings.finding_text
+- Pipeline wiring update in agents.py:
+  - After each domain agent completes: save findings → extract entities → build relationships → emit SSE
+  - After ALL domain agents complete: run entity deduplication pass
+  - SSE events fire as data is committed
 
 **Technical Notes:**
-- Graph stored relationally (nodes table, edges table with foreign keys)
-- Entity resolution via fuzzy string matching + LLM confirmation
-- Graph layers stored as node properties
-- Synthesis outputs feed KG Agent
-- **Simplified hypothesis lifecycle: PENDING → SUPPORTED/REFUTED (user marks RESOLVED)**
-- **Task types: resolve_contradiction, obtain_evidence, verify_hypothesis, etc.**
-- **Task list injected into agent context for deduplication (no complex coordination)**
-- ~~vis-network offers ForceAtlas2 physics, better interactivity; D3.js offers more customization~~
-- **Frontend files:** `frontend/src/components/app/knowledge-graph.tsx`, `frontend/src/hooks/use-case-graph.ts`, `frontend/src/types/knowledge-graph.ts`
+- KG Builder is a Python service (NOT an LLM agent) — reads structured Pydantic output, writes to DB tables
+- Entity deduplication: exact name+type match for easy cases (95%+), fuzzy matching for harder cases (Levenshtein distance)
+- Domain agents produce dual output: structured entities (for KG) + rich markdown text (for display + vector/full-text search)
+- All citation fields must include: file_id, locator (page/timestamp), exact_excerpt, surrounding_context
+- case_findings rows link to agent_executions via agent_execution_id for full audit trail
+- Pipeline remains: Triage → Orchestrator → Domain Agents (parallel) → [KG Builder + findings storage]
+- Vector store is optional for Phase 7 (PG full-text search sufficient); Vertex AI RAG can be added in Phase 9
+- **Key architecture files to create:**
+  - `backend/app/services/kg_builder.py` — Programmatic KG Builder
+  - `backend/app/services/findings_service.py` — case_findings storage
+  - `backend/app/models/knowledge_graph.py` — KgEntity, KgRelationship models
+  - `backend/app/models/findings.py` — CaseFinding model
+  - `backend/app/models/synthesis.py` — Hypothesis, Contradiction, Gap, Synthesis, TimelineEvent models
+  - `backend/app/api/knowledge_graph.py` — KG API endpoints
+  - `backend/app/api/findings.py` — Findings API endpoints
 
 **Exit Criteria:**
-- Synthesis Agent produces unified findings
-- Contradictions and gaps identified
-- **Hypothesis system functional with status updates via SSE**
-- **Investigation tasks generated from synthesis**
-- Knowledge Graph populated with entities and relationships
-- **5 layers toggleable in visualization**
-- **Entity resolution auto-merges >85% matches**
-- ~~Basic graph visualization works~~ ✅
-- New files update graph incrementally
-
+- Domain agents produce enriched findings with exhaustive exact-source citations for every statement
+- All findings stored in case_findings table and accessible via API
+- All entities and relationships extracted and stored in KG tables
+- KG API returns valid graph data for frontend consumption
+- SSE events fire for findings + KG updates
+- Entity deduplication produces clean, non-redundant entity set
+- No entity or relationship from domain agents is lost in the programmatic extraction
+- Full-text search operational on case_findings
 
 ---
 
-## Phase 8: Intelligence Layer & Geospatial
+## Phase 7.1: Knowledge Graph Frontend (vis-network)
 
-**Goal:** Implement WOW capabilities and Geospatial Agent.
+**Goal:** Premium knowledge graph visualization with intelligent clustering, physics-based layout, and relationship-aware spacing — replacing the D3.js implementation with vis-network.
 
-**Requirements:** REQ-WOW-001, REQ-WOW-002, REQ-WOW-003, REQ-VIS-005, REQ-VIS-006, REQ-GEO-001, REQ-GEO-002, REQ-GEO-003, REQ-GEO-004, REQ-GEO-005, REQ-GEO-006, REQ-GEO-007, REQ-GEO-008, REQ-GEO-009, REQ-GEO-011
+**Requirements:** REQ-VIS-003 (complete)
+
+**Depends on:** Phase 7 (KG API must exist with real data)
+
+**Status:** ⏳ NOT_STARTED
+
+Plans: TBD (via /gsd:plan-phase)
 
 **Deliverables:**
-- Cross-modal linking logic (video timestamp ↔ document date)
-- Contradiction detection refinement
-- Contradiction severity classification
-- Evidence gap identification refinement
-- Gap priority ranking
-- Contradictions Panel UI
-- Evidence Gaps Panel UI
-- Cross-modal links visible in KG view
-- Confidence scores for all intelligence outputs
-- **Geospatial Agent implementation:**
-  - Location extraction and enrichment
-  - Geocoding via mapping API (Mapbox tentative, evaluate alternatives)
-  - Movement pattern detection
-  - `locations` database table
-  - ResilientAgentWrapper (Pro → Flash fallback)
-- **Google Earth Engine integration:**
-  - Historical imagery retrieval
-  - Side-by-side change detection comparison
-  - Location verification workflow
-- **Map View tab:**
-  - Interactive map component
-  - Location markers styled by type
-  - Route visualization for movement patterns
-  - Fullscreen capability
-- Evidence Agent coordination with Geospatial Agent for verification
+- Replace D3.js force-directed graph with vis-network (direct integration via `useRef`/`useEffect` for full control and TypeScript safety — not via stale React wrapper packages)
+- Group-based entity type clustering:
+  - Nodes assigned to groups by entity type (person, organization, location, event, document, evidence)
+  - Each group has distinct visual properties (shape, color, size, icon)
+  - Group definitions in vis-network `groups` option with per-group styling
+  - Natural spatial clustering — related entities gravitate together, unrelated push apart
+- ForceAtlas2-based physics simulation:
+  - Solver: `forceAtlas2Based` (superior clustering for investigative graphs vs barnesHut)
+  - `gravitationalConstant`: tuned per graph density (default -50, adjustable)
+  - `springLength` and `springConstant`: varied by relationship type (stronger relationships = shorter springs)
+  - `centralGravity`: low (0.01-0.05) to allow natural clustering
+  - `avoidOverlap`: enabled to prevent node collision
+  - Stabilization: 200-500 iterations with fit-after-stabilize
+- Relationship-type-based edge configuration:
+  - Edge length varies by relationship type (e.g., EMPLOYED_BY shorter than MENTIONED_IN)
+  - Edge width indicates relationship strength
+  - Edge color indicates relationship category (financial=blue, legal=purple, evidence=red)
+  - Labeled edges with relationship type
+  - Smooth curves for overlapping edges
+- Entity detail panel:
+  - Click node → detail panel with entity metadata
+  - Full citation chain (which finding, which file, exact excerpt)
+  - Connected entities list with relationship labels
+  - Source agent type badge
+- 5 toggleable layers: Evidence (red), Legal (blue), Strategy (green), Temporal (amber), Hypothesis (pink)
+- Search and highlight (find entity by name, highlight connections)
+- Fullscreen capability
+- Node scaling by degree (connection count)
+- Zoom/pan controls
+- Connected to real KG API from Phase 7 (not mock data)
+- Lazy clustering for graphs with >200 nodes (vis-network clustering API)
 
 **Technical Notes:**
-- Cross-modal links from temporal/entity alignment
-- Contradictions from Synthesis Agent, refined here
-- Gaps from comparing case requirements vs available evidence
-- Intelligence outputs stored in dedicated tables
-- **Geospatial Agent triggered post-synthesis when location data exists**
-- **Earth Engine API approval may take days/weeks — start early**
+- vis-network integrated directly via `useRef<HTMLDivElement>` + `useEffect` pattern (full TypeScript control)
+- vis-network physics docs: https://visjs.github.io/vis-network/docs/network/physics.html
+- Physics solvers: barnesHut, forceAtlas2Based, repulsion, hierarchicalRepulsion
+- ForceAtlas2Based recommended: continuous gravity model, superior cluster formation for entity networks
+- Edge `length` property controls per-edge spring length (relationship-type-based spacing)
+- Node `group` property assigns visual cluster identity
+- `physics.stabilization.fit: true` ensures viewport fits all nodes after stabilization
+- Dependencies: `vis-network` and `vis-data` npm packages
+- **Key frontend files (to create/modify):**
+  - `frontend/src/components/KnowledgeGraph/KnowledgeGraph.tsx` — Main vis-network component (replaces D3)
+  - `frontend/src/components/KnowledgeGraph/EntityDetailPanel.tsx` — Entity detail sidebar
+  - `frontend/src/components/KnowledgeGraph/GraphControls.tsx` — Layer toggles, search, zoom
+  - `frontend/src/components/KnowledgeGraph/GraphLegend.tsx` — Visual legend for node types
+  - `frontend/src/hooks/useKnowledgeGraph.ts` — vis-network instance management + data fetching
+  - `frontend/src/lib/knowledge-graph-config.ts` — Physics, groups, edge type configuration
+  - `frontend/src/types/knowledge-graph.ts` — Updated types for vis-network DataSet format
 
 **Exit Criteria:**
-- Cross-modal links detected and displayed
-- Contradictions with severity shown
-- Evidence gaps with priorities shown
-- All linked to source evidence
-- **Geospatial Agent working with Earth Engine**
-- **Map View displays locations with movement patterns**
-- **Location verification workflow functional**
+- KG renders with vis-network using real entity/relationship data from API
+- Nodes cluster naturally by entity type group with clear spatial separation
+- Connected nodes are visually closer than unconnected ones
+- Relationship types influence edge length/spacing
+- Entity detail panel shows full metadata + citation chain back to source files
+- 5 layers toggleable
+- Search highlights entities and their connections
+- Fullscreen mode works
+- Physics simulation stabilizes within 3 seconds for graphs up to 500 nodes
+- Graph is intuitive: a first-time user can understand entity relationships at a glance
+
+---
+
+## Phase 8: Synthesis Agent & Intelligence Layer
+
+**Goal:** Cross-reference all domain findings to generate hypotheses, contradictions, evidence gaps, timeline events, cross-modal/cross-domain conclusions, and case-level summary/verdict. Connect existing frontend components to real data.
+
+**Requirements:** REQ-AGENT-008, REQ-HYPO-001/002/003/004/005/006, REQ-WOW-001/002/003/004, REQ-VIS-004/005/006, REQ-TASK-001/002
+
+**Depends on:** Phase 7 (case_findings + KG tables populated)
+
+**Status:** ⏳ NOT_STARTED
+
+Plans: TBD (via /gsd:plan-phase)
+
+### Frontend Available (Yatharth, 2026-02-02)
+- ✅ Timeline view with day/week/month/year zoom, layer filtering, event cards, search (`Timeline/`)
+- ✅ Evidence source panel (`evidence-source-panel.tsx`)
+- ✅ Timeline SSE hooks ready (`useTimelineSSE.ts`)
+- ⏳ Hypothesis view (pending implementation or connection)
+- ⏳ Contradictions panel (basic conflict UI in Evidence Library)
+- ⏳ Evidence gaps panel (not started)
+
+**Deliverables:**
+- Synthesis Agent implementation (LLM, Gemini Pro, `thinking_level="high"`):
+  - Input: ALL case_findings from PostgreSQL for the case (rich markdown findings with citations)
+  - Additional context: entity summary from KG tables, file metadata, case description
+  - Gemini 3 Pro with 1M context window (sufficient: ~100-150K tokens for 50-file cases)
+  - Output (SynthesisOutput Pydantic model):
+    a. `hypotheses: list[Hypothesis]` — Case hypotheses with initial confidence + supporting/contradicting evidence
+    b. `contradictions: list[Contradiction]` — Detected contradictions with exact source pairs, severity (minor/significant/critical)
+    c. `gaps: list[EvidenceGap]` — Missing evidence with priority ranking, what's needed, why
+    d. `cross_modal_links: list[CrossModalLink]` — Temporal correlations across modalities (video ↔ document, audio ↔ text)
+    e. `cross_domain_conclusions: list[CrossDomainConclusion]` — Insights from combining financial + legal + evidence + strategy findings
+    f. `timeline_events: list[TimelineEvent]` — Chronological events extracted from findings with date/time, type, layer
+    g. `case_summary: str` — Executive summary of the entire case
+    h. `case_verdict: CaseVerdict` — Overall assessment with confidence, key strengths, key weaknesses
+    i. `risk_assessment: str` — Risk factors and mitigation suggestions
+    j. `has_location_data: bool` — Trigger flag for Geospatial Agent (Phase 8.1)
+- Store results in dedicated synthesis tables (schema from Phase 7 migrations):
+  - case_hypotheses, case_contradictions, case_gaps, case_synthesis, timeline_events
+- Pipeline wiring:
+  - Triggered after domain agents + KG Builder complete
+  - Reads case_findings via SQL (not through LLM session state — fresh stage-isolated session)
+  - Stores all outputs via dedicated storage services
+  - Triggers Geospatial Agent (Phase 8.1) if `has_location_data == True`
+- SSE events:
+  - `SYNTHESIS_STARTED`, `SYNTHESIS_COMPLETE`
+  - `HYPOTHESIS_CREATED` (per hypothesis)
+  - `CONTRADICTION_DETECTED` (per contradiction)
+  - `GAP_IDENTIFIED` (per gap)
+  - `TIMELINE_EVENT_CREATED` (per event)
+- Synthesis API endpoints:
+  - `GET /api/cases/:caseId/synthesis` — Full synthesis results (summary, verdict, conclusions)
+  - `GET /api/cases/:caseId/hypotheses` — Hypotheses with evidence links
+  - `GET /api/cases/:caseId/contradictions` — Contradictions with source pairs
+  - `GET /api/cases/:caseId/gaps` — Evidence gaps with priorities
+  - `GET /api/cases/:caseId/timeline/events` — Timeline events
+- Frontend integration (connecting existing components to real data):
+  - Hypothesis view → case_hypotheses API (cards with claim, status badge, confidence meter, evidence counts)
+  - Contradictions panel → case_contradictions API (claim A vs claim B, severity, source navigation)
+  - Evidence gaps panel → case_gaps API (description, priority, suggestions)
+  - Timeline → timeline_events API (TimelineCore.tsx, TimelineEventCard.tsx connected to real events)
+  - Case summary/verdict display (in case layout or dedicated component)
+- Investigation task generation:
+  - Tasks from contradictions (`resolve_contradiction`)
+  - Tasks from gaps (`obtain_evidence`)
+  - Tasks from pending hypotheses (`verify_hypothesis`)
+  - Task deduplication via existing task list injection into synthesis prompt
+  - Stored in investigation_tasks table
+
+**Technical Notes:**
+- Synthesis Agent runs in fresh stage-isolated ADK session (consistent with existing pattern)
+- Input is TEXT from PostgreSQL (case_findings.finding_text), NOT multimodal file content
+- 1M context window handles even large cases comfortably (~100-150K tokens for 50-file case)
+- Cost estimate: ~$0.10-0.15 per synthesis run at Gemini Pro rates
+- Synthesis prompt: "Every contradiction must cite exact source excerpts from both sides"
+- Hypothesis confidence: deterministic (sum(supporting_weights) / sum(all_weights)), user override allowed
+- Timeline events are a natural byproduct of chronological cross-referencing (no separate timeline agent)
+- Synthesis is a BATCH operation, runs once per analysis pipeline
+- All synthesis outputs reference back to case_findings IDs and kg_entity IDs for traceability
+- Pipeline becomes: Triage → Orchestrator → Domain Agents → [KG Builder + findings storage] → Synthesis → [Geospatial if locations]
+- **Key files to create:**
+  - `backend/app/agents/synthesis/` — Synthesis agent module (agent, prompts, schemas)
+  - `backend/app/services/synthesis_service.py` — Storage service for synthesis outputs
+  - `backend/app/api/synthesis.py` — Synthesis API endpoints
+  - `backend/app/api/timeline.py` — Timeline API endpoints
+  - `backend/app/api/hypotheses.py` — Hypothesis API endpoints
+
+**Exit Criteria:**
+- Synthesis Agent produces unified analysis from all domain findings
+- Hypotheses generated with evidence links and confidence scores
+- Contradictions detected with severity and exact source citations on both sides
+- Evidence gaps identified with priority and actionable suggestions
+- Timeline events populate the Timeline view with real data
+- Cross-modal and cross-domain conclusions identified
+- Case summary and verdict generated
+- All results stored in appropriate tables and accessible via API
+- SSE events signal data readiness for frontend
+- Existing frontend components display real data (not mock)
+- Investigation tasks generated from contradictions/gaps/hypotheses
+
+---
+
+## Phase 8.1: Geospatial Agent & Map View
+
+**Goal:** Location intelligence: extract, enrich, geocode locations and visualize movement patterns on interactive map.
+
+**Requirements:** REQ-GEO-001 through REQ-GEO-011
+
+**Depends on:** Phase 8 (Synthesis triggers Geospatial when `has_location_data == True`)
+
+**Status:** ⏳ NOT_STARTED
+
+Plans: TBD (via /gsd:plan-phase)
+
+**Deliverables:**
+- Geospatial Agent implementation (LLM with tools):
+  - Triggered by Synthesis Agent when `has_location_data == True`
+  - Extracts and enriches location entities from synthesis findings
+  - Disambiguates ambiguous place names
+  - Geocodes locations to coordinates via mapping API
+  - Detects movement patterns and spatial relationships
+  - Flags locations needing satellite imagery analysis
+  - Gemini 3 Pro with `thinking_level="medium"`
+  - Inline Pro-to-Flash fallback
+- Geocoding integration:
+  - Mapbox or Google Maps Geocoding API
+  - Address → coordinates resolution
+  - Reverse geocoding for coordinate-only locations
+- Movement pattern detection:
+  - Connect locations showing movement over time
+  - Route visualization (dashed for inferred, solid for confirmed)
+  - Anomaly detection for unusual patterns
+- Locations table population (schema from Phase 7):
+  - name, coordinates, location_type, source entities, temporal associations
+- Google Earth Engine integration (if API approved):
+  - Historical imagery retrieval
+  - Change detection between dates
+  - Thumbnail generation
+- Map View tab (frontend):
+  - Interactive map component (Mapbox GL JS or alternative)
+  - Location markers styled by type
+  - Route visualization for movement patterns
+  - Click interactions for location details
+  - Fullscreen capability
+- SSE events: `LOCATION_ENRICHED`, `GEOSPATIAL_COMPLETE`
+- Map API endpoints:
+  - `GET /api/cases/:caseId/locations` — All locations with coordinates
+  - `GET /api/cases/:caseId/locations/:locationId` — Location detail with temporal data
+
+**Technical Notes:**
+- Geospatial Agent is a POST-SYNTHESIS utility, not part of the main domain analysis pipeline
+- Earth Engine API approval may take days/weeks — geocoding works without it
+- Map component should be lazy-loaded (heavy dependency)
+- **Key files to create:**
+  - `backend/app/agents/geospatial/` — Geospatial agent module
+  - `backend/app/services/geocoding_service.py` — Geocoding API integration
+  - `backend/app/api/locations.py` — Location API endpoints
+
+**Exit Criteria:**
+- Locations extracted and geocoded from case findings
+- Movement patterns detected and visualized on map
+- Map View tab functional with real location data
+- Location markers clickable with detail panel
+- Geospatial Agent triggered automatically when synthesis detects location data
 
 ---
 
 ## Phase 9: Chat Interface & Research
 
-**Goal:** Contextual chat with knowledge-first querying, Research/Discovery on-demand, and hypothesis view.
+**Goal:** Interactive case Q&A via standalone Chat Agent with multi-source tool-based access to KG, findings, synthesis outputs, and on-demand domain agent escalation.
 
-**Requirements:** REQ-CHAT-001, REQ-CHAT-002, REQ-CHAT-003, REQ-CHAT-004, REQ-CHAT-005, REQ-AGENT-007f, REQ-AGENT-007g, REQ-SOURCE-005 (complete), REQ-RESEARCH-001, REQ-RESEARCH-002, REQ-RESEARCH-003, REQ-RESEARCH-005, REQ-RESEARCH-006, REQ-RESEARCH-007, REQ-RESEARCH-008, REQ-RESEARCH-009, REQ-HYPO-007, REQ-HYPO-008, REQ-GEO-010
+**Requirements:** REQ-CHAT-001/002/003/004/005, REQ-AGENT-007f/007g, REQ-SOURCE-005 (complete), REQ-RESEARCH-001/002/003/005/006/007/008/009, REQ-HYPO-007/008, REQ-GEO-010
+
+**Depends on:** Phase 7 (KG tables), Phase 8 (synthesis tables)
 
 **Status:** 🟡 FRONTEND_DONE (Chat UI) — Backend agents + API required
 
@@ -704,58 +925,73 @@ Plans:
 - ✅ Keyboard support (Enter to send, Shift+Enter newline)
 - ✅ Mock fallback when backend unavailable (`useChatbot.ts`)
 
-### Backend Work Remaining
-- ⏳ Chat API endpoint (`POST /api/chat`)
-- ⏳ Knowledge-first query pattern (KG lookup first)
-- ⏳ Agent escalation for novel questions
-- ⏳ Chat Agent implementation
-- ⏳ Research/Discovery invocation (all sub-items)
-- ⏳ Hypothesis View
-- ⏳ Context caching for cost optimization
-- ⏳ Context compaction for long sessions
-- ⏳ Inline citations in responses
-- ⏳ Citation hover preview
-- ⏳ Citation click to Source Panel
-- ⏳ Chat history persistence (database)
-
+### Backend Work
 **Deliverables:**
-- ~~Chat UI with message history~~ ✅
-- ~~Streaming responses~~ ✅ (UI ready)
-- Knowledge-first query pattern (KG lookup first)
-- Agent escalation for novel questions
-- Chat Agent implementation with `thinking_level="medium"`
-- **Research/Discovery invocation** (all pending)
-- **Hypothesis View** (pending)
-- **Optional temporal sync between Map View and Timeline**
-- **Context caching for cost optimization** (pending)
-- **Context compaction for long sessions** (pending)
-- Inline citations in responses
-- Citation hover preview
-- Citation click to Source Panel
-- Chat history persistence
-
-**Frontend Files:** `frontend/src/components/app/chatbot.tsx`, `frontend/src/hooks/useChatbot.ts`, `frontend/src/types/chatbot.ts`
+- Chat Agent implementation (standalone LlmAgent with tools):
+  - Model: Gemini 3 Pro with `thinking_level="high"`
+  - System prompt includes `case_synthesis.case_summary` (~500-1000 tokens) for immediate context
+  - System prompt describes each tool, when to use it, and query strategy
+  - Tools (tiered by speed):
+    - **Fast lookups (SQL, <100ms):**
+      - `query_knowledge_graph` — Entity/relationship lookups from kg_entities, kg_relationships
+      - `get_case_hypotheses` — Hypothesis status and evidence from case_hypotheses
+      - `get_contradictions` — Pre-computed contradictions from case_contradictions
+      - `get_evidence_gaps` — Evidence gaps from case_gaps
+      - `get_case_synthesis` — Case summary, verdict, conclusions from case_synthesis
+      - `get_finding_details` — Specific finding by ID from case_findings
+    - **Semantic search (~500ms):**
+      - `search_findings` — Full-text search over case_findings (PG tsvector or Vertex AI RAG)
+    - **Deep analysis (10-60s, on-demand):**
+      - `run_domain_analysis` — Spawns domain agent for novel questions requiring raw file examination
+  - Prompt strategy instructions: "Always try fast lookups first. Use search_findings for evidence discovery. Only use run_domain_analysis when existing knowledge cannot answer."
+- Chat API endpoint: `POST /api/cases/:caseId/chat` (streaming SSE response)
+- Chat history persistence (PostgreSQL):
+  - `chat_messages` table (id, case_id, role, content, citations JSONB, tool_calls JSONB, created_at)
+  - Load on case open, searchable
+- Inline citations in responses:
+  - Citations formatted as [1], [2] with footer list
+  - Each citation links to source file + exact location
+  - Hover shows source preview
+  - Click opens Source Panel (Phase 10)
+- Context caching for cost optimization:
+  - Context cache created when user opens case for chat
+  - Cache includes case evidence file references
+  - TTL: 2 hours (session duration)
+  - Chat queries use `cached_content` parameter
+- Context compaction for long sessions:
+  - `EventsCompactionConfig` for Chat Agent sessions only (not pipeline)
+  - Compaction interval: every 5 invocations
+  - `LlmEventSummarizer` with Gemini Flash for cost efficiency
+- Research/Discovery invocation:
+  - Research Agent uses Gemini web search for source discovery
+  - Discovery Agent synthesizes external research
+  - Triggerable from chat ("Research background on [subject]")
+  - Results feed back into case findings
 
 **Technical Notes:**
-- KG queries via SQL for fast responses
-- Novel question detection: if KG returns <0.7 confidence
-- Agent escalation shows "Analyzing..." indicator
-- Citations formatted as [1], [2] with footer list
-- Context cache created via `client.caches.create()`
-- Cached queries use `cached_content=cache.name`
-- **Research Agent uses Gemini web search for source discovery**
-- **Dynamic source discovery (no curated source list)**
+- Chat Agent self-routes based on retrieval confidence — no separate router agent needed
+- The LLM's native reasoning handles tool selection and escalation decisions
+- System prompt loaded with case_synthesis.case_summary on each chat session start
+- KG queries via SQL for sub-100ms fast path responses
+- Novel question detection: if tools return insufficient results AND user asks for analysis → escalate
+- Context cache via `client.caches.create()` for 4x cheaper repeated queries
+- **Key files to create:**
+  - `backend/app/agents/chat/` — Chat agent module (agent, prompts, tools)
+  - `backend/app/api/chat.py` — Chat API endpoint with streaming
+  - `backend/app/models/chat.py` — ChatMessage model
+  - `backend/app/services/chat_service.py` — Chat history + tool implementations
+- **Frontend files:** `frontend/src/components/app/chatbot.tsx`, `frontend/src/hooks/useChatbot.ts`, `frontend/src/types/chatbot.ts`
 
 **Exit Criteria:**
-- Chat answers questions about case
-- Simple questions answered from KG (fast)
-- Complex questions escalate to agents
-- **Research/Discovery invocable from chat**
-- **Hypothesis View functional with fullscreen**
+- Chat answers questions about case using tools
+- Simple questions answered from KG/synthesis (fast path, <2 seconds)
+- Complex questions escalate to domain agents via tool
+- All responses have inline citations to exact source locations
+- Chat history persists across sessions
 - Context caching working (verify cost reduction)
-- Long sessions don't exhaust context
-- All responses have citations
-- Chat history persists
+- Long sessions don't exhaust context (compaction working)
+- Research/Discovery invocable from chat
+- Case summary available in chat context from first message
 
 ---
 
@@ -955,27 +1191,33 @@ Phase 1 (Foundation)
     └── Phase 2 (Auth & Case)
             │
             └── Phase 3 (File Ingestion)
-    │               │
-    │               └── Phase 4 (Core Agent System)
-    │                       │
-    │                       └── Phase 5 (Domain Agents)
-    │                               │
-    │                               └── Phase 6 (Synthesis & KG)
-    │                                       │
-    │                                       ├── Phase 7 (Agent Flow)
-    │                                       │
-    │                                       ├── Phase 8 (Intelligence Layer)
-    │                                       │
-    │                                       └── Phase 9 (Chat Interface)
-    │                                               │
-    │                                               └── Phase 10 (Source Panel)
-    │                                                       │
-    │                                                       └── Phase 11 (Corrections)
-    │                                                               │
-    │                                                               └── Phase 12 (Demo Prep)
+                    │
+                    └── Phase 4 (Core Agent System)
+                            │
+                            ├── Phase 4.1 (Decision Tree Revamp) ← INSERTED
+                            │
+                            └── Phase 5 (Agent Flow)
+                                    │
+                                    └── Phase 6 (Domain Agents)
+                                            │
+                                            └── Phase 7 (Knowledge Storage & Domain Enrichment)
+                                                    │
+                                                    ├── Phase 7.1 (KG Frontend / vis-network)
+                                                    │
+                                                    └── Phase 8 (Synthesis & Intelligence Layer)
+                                                            │
+                                                            ├── Phase 8.1 (Geospatial & Map View)
+                                                            │
+                                                            └── Phase 9 (Chat Interface)
+                                                                    │
+                                                                    └── Phase 10 (Source Panel)
+                                                                            │
+                                                                            └── Phase 11 (Corrections)
+                                                                                    │
+                                                                                    └── Phase 12 (Demo Prep)
 ```
 
-Note: Phases 7, 8, 9 can run in parallel after Phase 6 completes.
+Note: Phase 7.1 can start as soon as Phase 7 KG API is ready (may overlap with Phase 7 completion). Phase 8.1 runs after Phase 8 synthesis completes. Phase 9 depends on both Phase 7 (KG tables) and Phase 8 (synthesis tables).
 
 ---
 
@@ -1019,7 +1261,7 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 2.4*
+*Roadmap Version: 3.0*
 *Updated: 2026-02-06 (Phase 6 complete — 35 commits including post-plan hardening)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
@@ -1037,3 +1279,4 @@ For 2 developers working simultaneously:
 *Phase 5 complete: 2026-02-05 (all 4 plans + 15 post-plan fixes, 26 commits total)*
 *Phase 6 planned: 2026-02-05 (5 plans in 3 waves)*
 *Phase 6 complete: 2026-02-06 (5 plans + 21 post-plan commits = 35 total, 10/10 verified + hardening)*
+*Architecture redesign: 2026-02-07 (Phases 7-9 restructured: KG-as-Memory, hybrid storage, programmatic KG Builder, vis-network, tool-based Chat)*

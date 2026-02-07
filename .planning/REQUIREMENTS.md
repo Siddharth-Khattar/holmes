@@ -205,6 +205,9 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Links to other evidence (temporal, entity-based)
 - Outputs structured findings with span-level citations
 - Gemini 3 Pro for deep analysis
+- Rich markdown `findings_text` output: detailed analysis paragraphs per finding with inline source references
+- Exhaustive span-level citations: EVERY factual statement must reference exact file_id + page/timestamp + verbatim excerpt
+- Dual output: structured entities (for KG tables) + rich text findings (for display, vector search, and synthesis input)
 **Dependencies:** REQ-AGENT-002
 
 ### REQ-AGENT-004: Legal Analysis Agent
@@ -217,6 +220,9 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Links to statutes/regulations mentioned
 - Outputs structured findings with span-level citations
 - Gemini 3 Pro for nuanced legal interpretation
+- Rich markdown `findings_text` output: detailed analysis paragraphs per finding with inline source references
+- Exhaustive span-level citations: EVERY factual statement must reference exact file_id + page/timestamp + verbatim excerpt
+- Dual output: structured entities (for KG tables) + rich text findings (for display, vector search, and synthesis input)
 **Dependencies:** REQ-AGENT-002
 
 ### REQ-AGENT-005: Strategy Analysis Agent
@@ -229,6 +235,9 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Prioritizes evidence by strategic value
 - Outputs strategic recommendations with citations
 - Gemini 3 Pro for complex reasoning
+- Rich markdown `findings_text` output: detailed analysis paragraphs per finding with inline source references
+- Exhaustive span-level citations: EVERY factual statement must reference exact file_id + page/timestamp + verbatim excerpt
+- Dual output: structured entities (for KG tables) + rich text findings (for display, vector search, and synthesis input)
 **Dependencies:** REQ-AGENT-002
 
 ### REQ-AGENT-006: Evidence Analysis Agent
@@ -286,6 +295,9 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Media resolution: `"high"` for document forensics
 - `include_thoughts=True` for audit trail
 - Outputs structured findings with span-level citations
+- Rich markdown `findings_text` output: detailed analysis paragraphs per finding with inline source references
+- Exhaustive span-level citations: EVERY factual statement must reference exact file_id + page/timestamp + verbatim excerpt
+- Dual output: structured entities (for KG tables) + rich text findings (for display, vector search, and synthesis input)
 
 **Dependencies:** REQ-AGENT-002, REQ-AGENT-007c
 
@@ -497,32 +509,52 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ### REQ-AGENT-008: Synthesis Agent
 **Priority:** HIGH
-**Description:** Agent that cross-references all domain findings.
+**Description:** Agent that cross-references all domain findings to produce hypotheses, contradictions, gaps, timeline events, cross-domain conclusions, and case-level summary/verdict.
 **Acceptance Criteria:**
-- Receives outputs from all domain agents
-- Identifies: links between findings, contradictions, gaps
-- Produces: unified findings document, contradiction list, gap list
-- Maintains provenance chain for all assertions
-- Gemini 3 Pro with `thinking_level="high"` for complex synthesis
+- Receives ALL case_findings from PostgreSQL (rich markdown findings with citations)
+- Additional context: entity summary from KG tables, file metadata, case description
+- Gemini 3 Pro with `thinking_level="high"` and 1M context window
+- Runs in fresh stage-isolated ADK session (consistent with pipeline pattern)
+- Produces structured SynthesisOutput:
+  - `hypotheses`: Case hypotheses with initial confidence + supporting/contradicting evidence references
+  - `contradictions`: Detected contradictions with exact source pairs from both sides, severity classification (minor/significant/critical)
+  - `gaps`: Missing evidence with priority ranking, description of what's needed and why
+  - `cross_modal_links`: Temporal correlations across modalities (video timestamp ↔ document date, audio mention ↔ text entity)
+  - `cross_domain_conclusions`: Insights from combining financial + legal + evidence + strategy findings
+  - `timeline_events`: Chronological events extracted from findings with date/time, type, layer assignment
+  - `case_summary`: Executive summary of the entire case
+  - `case_verdict`: Overall assessment with confidence, key strengths, key weaknesses
+  - `risk_assessment`: Risk factors and mitigation suggestions
+  - `has_location_data`: Boolean trigger flag for Geospatial Agent
+- Timeline events are a byproduct of chronological cross-referencing (no separate timeline agent)
+- Investigation tasks generated from contradictions (resolve_contradiction), gaps (obtain_evidence), pending hypotheses (verify_hypothesis)
+- All outputs stored in dedicated synthesis tables with SSE events signaling data readiness
+- Every statement in synthesis output must reference source case_finding IDs and/or kg_entity IDs
 - Uses `include_thoughts=True` for transparency
-**Dependencies:** REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006
+**Dependencies:** REQ-STORE-001, REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006
 
-### REQ-AGENT-009: Knowledge Graph Agent
+### REQ-AGENT-009: Knowledge Graph Builder Service
 **Priority:** HIGH
-**Description:** Agent that builds entity-relationship graph from synthesis.
+**Description:** Programmatic Python service (NOT an LLM agent) that extracts entities and relationships from domain agent structured output and stores them in KG tables.
 **Acceptance Criteria:**
-- Extracts entities with full domain-specific taxonomy
-- Core types: Person, Organization, Event, Document, Location, Amount
-- Legal types: statute, case_citation, contract, legal_term, court
-- Financial types: monetary_amount, account, transaction, asset
-- Evidence types: communication, alias, vehicle, property, timestamp
-- Identifies relationships with types (e.g., EMPLOYED_BY, SIGNED, WITNESSED)
-- Entity resolution: auto-merge with flag for >85% similarity matches
-- Domain-dependent metadata depth per entity type
-- Incremental updates without full rebuild
-- Stores in PostgreSQL (nodes + edges tables)
-- Links all nodes to source evidence
-**Dependencies:** REQ-AGENT-008
+- Reads domain agent structured output from `agent_executions.output_data` (Pydantic models)
+- Extracts ALL entities from `DomainEntity` lists across all domain agents
+- Creates relationship edges from findings (entities co-occurring in same finding)
+- Entity types from all domain taxonomies:
+  - Core: Person, Organization, Event, Document, Location, Amount
+  - Financial: monetary_amount, account, transaction, asset, financial_instrument, tax_record
+  - Legal: statute, case_citation, contract, legal_term, court, obligation, party, clause
+  - Evidence: communication, alias, vehicle, property, timestamp, physical_evidence, digital_artifact, witness
+  - Strategy: strategic_decision, organizational_unit, stakeholder, objective, risk_factor
+- Entity deduplication: exact name+type match → auto-merge; fuzzy matching (>85% similarity) → flag for LLM resolution
+- Additive-only: NEVER filters or discards entities/relationships from domain agent output
+- Degree computation (connection counts) for frontend node sizing
+- Stores in PostgreSQL: kg_entities, kg_relationships tables
+- All nodes linked to source execution (source_execution_id) and source finding (source_finding_index)
+- Runs AFTER each domain agent completes (progressive KG population)
+- Final entity deduplication pass after ALL domain agents complete
+- Incremental updates without full rebuild when new files analyzed
+**Dependencies:** REQ-STORE-001, REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006
 
 ### REQ-AGENT-010: Incremental Processing
 **Priority:** MEDIUM
@@ -534,6 +566,52 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Affected entities marked for review
 - No reprocessing of unchanged files
 **Dependencies:** REQ-AGENT-008, REQ-AGENT-009
+
+---
+
+## REQ-STORE: Knowledge Storage Infrastructure
+
+### REQ-STORE-001: Structured Knowledge Tables
+**Priority:** CRITICAL
+**Description:** PostgreSQL tables for storing extracted knowledge from domain agents and synthesis.
+**Acceptance Criteria:**
+- `kg_entities` table: id, case_id, name, entity_type, domain, metadata (JSONB), source_execution_id, source_finding_index, merged_into_id, created_at
+- `kg_relationships` table: id, case_id, source_entity_id, target_entity_id, type, label, strength, source_execution_id, metadata (JSONB), created_at
+- `case_findings` table: id, case_id, workflow_id, agent_type, agent_execution_id, file_group_label, category, title, finding_text (markdown with inline citations), confidence, citations (JSONB array of {file_id, locator, exact_excerpt, context}), entity_ids (JSONB), created_at
+- `case_hypotheses` table: id, case_id, workflow_id, claim, status (PENDING/SUPPORTED/REFUTED), confidence, supporting_evidence (JSONB), contradicting_evidence (JSONB), source_agent, reasoning, created_at
+- `case_contradictions` table: id, case_id, workflow_id, claim_a, claim_b, source_a (JSONB with file_id + excerpt), source_b (JSONB with file_id + excerpt), severity (minor/significant/critical), domain, resolution_status, created_at
+- `case_gaps` table: id, case_id, workflow_id, description, what_is_missing, why_needed, priority (low/medium/high/critical), related_entity_ids (JSONB), suggested_actions, created_at
+- `case_synthesis` table: id, case_id, workflow_id, case_summary, case_verdict (JSONB), cross_modal_links (JSONB), cross_domain_conclusions (JSONB), key_findings_summary, risk_assessment, created_at
+- `timeline_events` table: id, case_id, workflow_id, title, description, event_date, event_end_date, event_type, layer, source_entity_ids (JSONB), citations (JSONB), created_at
+- `locations` table: id, case_id, workflow_id, name, coordinates (JSONB), location_type, source_entity_ids (JSONB), temporal_associations (JSONB), created_at
+- All tables indexed on case_id; kg_entities also indexed on name, entity_type
+- Foreign keys: entity→execution, relationship→entities, finding→execution
+- Alembic migrations for all tables
+**Dependencies:** REQ-INF-002
+
+### REQ-STORE-002: Semantic Search Index
+**Priority:** HIGH
+**Description:** Full-text or vector search capability over case findings for Chat Agent queries.
+**Acceptance Criteria:**
+- V1: PostgreSQL full-text search via tsvector/tsquery on case_findings.finding_text
+- V2 (optional upgrade): Vertex AI RAG Engine corpus for vector-based semantic search
+- Search returns ranked results with relevance scores
+- Supports natural language queries ("find evidence about money laundering")
+- Results include finding_id, agent_type, category, relevance_score, excerpt
+- Index updated automatically when findings are committed
+**Dependencies:** REQ-STORE-001
+
+### REQ-STORE-003: Citation Integrity
+**Priority:** CRITICAL
+**Description:** Every factual statement in findings and synthesis outputs must have exact source grounding.
+**Acceptance Criteria:**
+- All citations include: file_id, locator (page number OR timestamp OR region), exact_excerpt (verbatim source text), context (surrounding text for disambiguation)
+- Domain agent prompts reinforced: "Every factual claim must reference the exact source excerpt from the analyzed files"
+- Synthesis outputs reference back to case_finding IDs and kg_entity IDs
+- Citation validation: all file_ids in citations must exist in case_files table
+- No orphaned citations (citations without valid source references)
+- UI displays citations as clickable links to exact source locations
+**Dependencies:** REQ-STORE-001, REQ-CASE-004
 
 ---
 
@@ -593,18 +671,33 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ### REQ-VIS-003: Knowledge Graph View
 **Priority:** HIGH
-**Description:** Force-directed graph displaying entities and relationships.
+**Description:** Premium knowledge graph visualization using vis-network with intelligent clustering, physics-based layout, and relationship-aware spacing.
 **Acceptance Criteria:**
-- Graph library: evaluate vis-network vs D3.js during Phase 7 implementation
-- Nodes sized by connection count
-- Edges labeled with relationship type
+- **vis-network** library (replacing D3.js) integrated via `useRef`/`useEffect` for full TypeScript control
+- ForceAtlas2-based physics simulation:
+  - Solver: `forceAtlas2Based` for superior cluster formation in investigative graphs
+  - Configurable gravitationalConstant, springLength, springConstant, centralGravity
+  - `avoidOverlap` enabled to prevent node collision
+  - Stabilization: 200-500 iterations with fit-after-stabilize
+- Group-based entity type clustering:
+  - Nodes assigned to groups by entity type (person, organization, location, event, document, evidence)
+  - Each group has distinct shape, color, size, and icon
+  - Natural spatial clustering — related entities closer, unrelated further apart
+- Relationship-type-based edge configuration:
+  - Edge length varies by relationship type (e.g., EMPLOYED_BY shorter than MENTIONED_IN)
+  - Edge width indicates relationship strength
+  - Edge color indicates relationship category
+  - Labeled edges with relationship type
+- Nodes sized by connection count (degree)
 - Five toggleable layers: Evidence (red), Legal (blue), Strategy (green), Temporal (amber), Hypothesis (pink)
 - Zoom and pan controls
-- Node search and highlight
-- Click node to see details and source links
+- Node search and highlight (find entity by name, highlight path)
+- Click node to see details: entity metadata, full citation chain, connected entities, source agent
 - Fullscreen capability with maximize button
 - Basic analytics: node count, edge count, most connected entities
-**Dependencies:** REQ-AGENT-009
+- Lazy clustering for graphs with >200 nodes
+- Intuitive at first glance: a user can understand entity relationships without instruction
+**Dependencies:** REQ-AGENT-009, REQ-STORE-001
 
 ### REQ-VIS-004: Timeline View
 **Priority:** MEDIUM
@@ -715,25 +808,38 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Mobile-responsive
 **Dependencies:** REQ-VIS-001
 
-### REQ-CHAT-002: Knowledge-First Query
+### REQ-CHAT-002: Multi-Source Tool-Based Query
 **Priority:** HIGH
-**Description:** Chat queries Knowledge Graph before escalating.
+**Description:** Chat Agent uses tiered tools to query multiple data stores, with fast path for simple questions and escalation for complex analysis.
 **Acceptance Criteria:**
-- Simple questions answered from KG (fast path)
-- Response time < 2 seconds for KG queries
-- Indicates when using cached knowledge
-- Fallback to agent escalation for novel questions
-**Dependencies:** REQ-AGENT-009, REQ-CHAT-001
+- **Fast path tools (SQL, <100ms):**
+  - `query_knowledge_graph`: Entity/relationship lookups from KG tables
+  - `get_case_hypotheses`: Hypothesis status and evidence from case_hypotheses
+  - `get_contradictions`: Pre-computed contradictions from case_contradictions
+  - `get_evidence_gaps`: Evidence gaps from case_gaps
+  - `get_case_synthesis`: Case summary, verdict, conclusions from case_synthesis
+  - `get_finding_details`: Specific finding by ID from case_findings
+- **Semantic search tool (~500ms):**
+  - `search_findings`: Full-text/vector search over case_findings
+- **Deep analysis tool (10-60s, on-demand):**
+  - `run_domain_analysis`: Spawns domain agent for novel questions requiring raw file examination
+- Chat Agent's system prompt includes case_synthesis.case_summary for immediate context (~500-1000 tokens)
+- Prompt includes explicit tool usage strategy: "Try fast lookups first, then search, then escalate"
+- Simple questions answered from KG/synthesis in <2 seconds
+- Indicates data source in response (e.g., "Based on the financial analysis...")
+**Dependencies:** REQ-STORE-001, REQ-STORE-002, REQ-AGENT-008, REQ-CHAT-001
 
 ### REQ-CHAT-003: Agent Escalation
 **Priority:** HIGH
-**Description:** Complex questions escalate to Orchestrator.
+**Description:** Chat Agent self-routes to domain agents for novel analysis when existing knowledge is insufficient.
 **Acceptance Criteria:**
-- Detects when KG is insufficient
-- Routes to Orchestrator for domain agent analysis
-- User sees "Analyzing with agents..." indicator
-- Full agent trace available during processing
-- Results added to KG for future queries
+- Chat Agent decides when to escalate based on tool retrieval confidence (no separate router agent)
+- Escalation triggered when: (1) fast lookup tools return insufficient results, AND (2) user asks for novel analysis or deeper investigation
+- Uses `run_domain_analysis` tool to spawn targeted domain agent
+- User sees "Analyzing with agents..." indicator during escalation
+- Full agent trace available in Command Center during processing
+- Results from escalation added to case findings and KG for future queries
+- Chat Agent prompt includes escalation rules and decision criteria
 **Dependencies:** REQ-AGENT-002, REQ-CHAT-002
 
 ### REQ-CHAT-004: Inline Citations
@@ -1360,6 +1466,7 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 | Authentication | 4 | 0 | 4 | 0 | 0 |
 | Case Management | 5 | 1 | 3 | 1 | 0 |
 | Agents (Core) | 10 | 3 | 6 | 1 | 0 |
+| Knowledge Storage | 3 | 2 | 1 | 0 | 0 |
 | Agents (ADK Config) | 10 | 0 | 6 | 3 | 1 |
 | Visualization | 7 | 1 | 4 | 1 | 1 |
 | Source Panel | 5 | 1 | 3 | 1 | 0 |
@@ -1372,7 +1479,7 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 | Geospatial Intelligence | 11 | 0 | 6 | 4 | 1 |
 | Investigation Tasks | 7 | 0 | 4 | 2 | 1 |
 | Memory (Post-MVP) | 1 | 0 | 0 | 0 | 1 |
-| **TOTAL** | **100** | **10** | **58** | **24** | **6** |
+| **TOTAL** | **103** | **12** | **59** | **24** | **6** |
 
 ---
 
@@ -1701,7 +1808,8 @@ Limitations documented in code comments and mitigated:
 ---
 
 *Generated: 2026-01-18*
-*Updated: 2026-02-03*
+*Updated: 2026-02-07*
+*Architecture redesign: 2026-02-07 (REQ-STORE added, REQ-AGENT-008/009 rewritten, REQ-VIS-003 updated for vis-network, REQ-CHAT-002/003 updated for tool-based architecture)*
 *Status: Complete - Integration features added (REQ-RESEARCH, REQ-HYPO, REQ-GEO, REQ-TASK)*
 *Frontend Status: Partial implementation by Yatharth (see DEVELOPMENT_DOCS/YATHARTH_WORK_SUMMARY.md)*
 *Phase 4 Agent requirements tracked: 2026-02-03*

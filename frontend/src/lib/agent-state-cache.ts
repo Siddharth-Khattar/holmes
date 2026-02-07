@@ -1,11 +1,7 @@
 // ABOUTME: sessionStorage cache for agent states to bridge the visibility gap between
 // ABOUTME: SSE events and backend DB commits during browser refresh.
 
-import type {
-  AgentState,
-  AgentStatus,
-  AgentType,
-} from "@/types/command-center";
+import type { AgentState, AgentStatus } from "@/types/command-center";
 
 const CACHE_KEY_PREFIX = "holmes:agent-states:";
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -33,10 +29,8 @@ interface CachedAgentEntry {
 interface AgentStateCache {
   /** Unix timestamp (ms) of when the cache was written. */
   timestamp: number;
-  /** Agent states keyed by base AgentType. */
+  /** Agent states keyed by instance ID (e.g. "financial_grp_0" or "triage"). */
   agents: Record<string, CachedAgentEntry>;
-  /** Compound agent tracking: baseType → array of compound IDs. */
-  compoundTracking: Record<string, string[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,7 +38,7 @@ interface AgentStateCache {
 // ---------------------------------------------------------------------------
 
 /**
- * Persist the current agent states and compound tracking to sessionStorage.
+ * Persist the current agent states to sessionStorage, keyed by instance ID.
  *
  * Only non-idle agents are stored. The payload is intentionally lightweight
  * (no lastResult, no processingHistory, no thinkingTraces) because the cache
@@ -54,15 +48,14 @@ interface AgentStateCache {
  */
 export function persistAgentStates(
   caseId: string,
-  states: Map<AgentType, AgentState>,
-  compoundTracking: Map<AgentType, Set<string>>,
+  states: Map<string, AgentState>,
 ): void {
   const agents: Record<string, CachedAgentEntry> = {};
 
-  for (const [type, state] of states) {
+  for (const [instanceId, state] of states) {
     if (state.status === "idle" && !state.currentTask) continue;
 
-    agents[type] = {
+    agents[instanceId] = {
       status: state.status,
       currentTask:
         state.currentTask && state.currentTask.status === "processing"
@@ -77,17 +70,9 @@ export function persistAgentStates(
     };
   }
 
-  const tracking: Record<string, string[]> = {};
-  for (const [baseType, compoundIds] of compoundTracking) {
-    if (compoundIds.size > 0) {
-      tracking[baseType] = [...compoundIds];
-    }
-  }
-
   const cache: AgentStateCache = {
     timestamp: Date.now(),
     agents,
-    compoundTracking: tracking,
   };
 
   try {
@@ -101,10 +86,9 @@ export function persistAgentStates(
 // Read
 // ---------------------------------------------------------------------------
 
-/** Result of loading the cache: validated entries + compound tracking. */
+/** Result of loading the cache: validated entries keyed by instance ID. */
 export interface LoadedCache {
   agents: Record<string, CachedAgentEntry>;
-  compoundTracking: Record<string, string[]>;
 }
 
 /**
@@ -130,7 +114,6 @@ export function loadCachedAgentStates(caseId: string): LoadedCache | null {
 
     return {
       agents: cache.agents,
-      compoundTracking: cache.compoundTracking,
     };
   } catch {
     // Malformed JSON or sessionStorage error — discard silently
@@ -183,8 +166,6 @@ function isValidCache(value: unknown): value is AgentStateCache {
   return (
     typeof obj.timestamp === "number" &&
     typeof obj.agents === "object" &&
-    obj.agents !== null &&
-    typeof obj.compoundTracking === "object" &&
-    obj.compoundTracking !== null
+    obj.agents !== null
   );
 }

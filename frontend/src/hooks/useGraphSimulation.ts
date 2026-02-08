@@ -282,33 +282,58 @@ export function useGraphSimulation({
         .attr("stop-opacity", 0.6);
     }
 
-    // Single shared glow filter (uses SourceGraphic color, not per-entity floods).
-    // Much cheaper than N per-type filters with feGaussianBlur each.
+    // Two shared glow filters: ambient (constant) and hover (stronger).
+    // Uses SourceGraphic color — much cheaper than N per-type filters.
     defs.selectAll("#kg-node-glow").remove();
-    const glowFilter = defs
+    defs.selectAll("#kg-node-glow-hover").remove();
+
+    // Ambient glow: subtle halo visible at all times (CC aesthetic)
+    const ambientGlow = defs
       .append("filter")
       .attr("id", "kg-node-glow")
-      .attr("x", "-50%")
-      .attr("y", "-50%")
-      .attr("width", "200%")
-      .attr("height", "200%");
-    // Outer glow layer: blur the source graphic itself (preserves fill color)
-    glowFilter
+      .attr("x", "-60%")
+      .attr("y", "-60%")
+      .attr("width", "220%")
+      .attr("height", "220%");
+    ambientGlow
       .append("feGaussianBlur")
       .attr("in", "SourceGraphic")
-      .attr("stdDeviation", 5)
+      .attr("stdDeviation", 6)
       .attr("result", "blur");
-    glowFilter
+    ambientGlow
       .append("feComponentTransfer")
       .attr("in", "blur")
       .attr("result", "dimmedBlur")
       .append("feFuncA")
       .attr("type", "linear")
-      .attr("slope", 0.4);
-    // Merge glow behind the original graphic
-    const merge = glowFilter.append("feMerge");
-    merge.append("feMergeNode").attr("in", "dimmedBlur");
-    merge.append("feMergeNode").attr("in", "SourceGraphic");
+      .attr("slope", 0.25);
+    const ambientMerge = ambientGlow.append("feMerge");
+    ambientMerge.append("feMergeNode").attr("in", "dimmedBlur");
+    ambientMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+    // Hover glow: stronger halo for mouse-over emphasis
+    const hoverGlow = defs
+      .append("filter")
+      .attr("id", "kg-node-glow-hover")
+      .attr("x", "-80%")
+      .attr("y", "-80%")
+      .attr("width", "260%")
+      .attr("height", "260%");
+    hoverGlow
+      .append("feGaussianBlur")
+      .attr("in", "SourceGraphic")
+      .attr("stdDeviation", 10)
+      .attr("result", "blur");
+    hoverGlow
+      .append("feComponentTransfer")
+      .attr("in", "blur")
+      .attr("result", "dimmedBlur")
+      .append("feFuncA")
+      .attr("type", "linear")
+      .attr("slope", 0.5);
+    const hoverMerge = hoverGlow.append("feMerge");
+    hoverMerge.append("feMergeNode").attr("in", "dimmedBlur");
+    hoverMerge.append("feMergeNode").attr("in", "SourceGraphic");
 
     // -- Composite edge weight: combines max strength, avg confidence, and corroboration bonus --
     function computeEdgeWeight(link: ForceLink): number {
@@ -436,13 +461,15 @@ export function useGraphSimulation({
           .attr("ry", 6)
           .attr("fill", gradientUrl)
           .attr("stroke", "none")
-          .attr("stroke-width", 1.5);
+          .attr("stroke-width", 1.5)
+          .attr("filter", "url(#kg-node-glow)");
       } else {
         g.append("circle")
           .attr("r", d.radius)
           .attr("fill", gradientUrl)
           .attr("stroke", "none")
-          .attr("stroke-width", 1.5);
+          .attr("stroke-width", 1.5)
+          .attr("filter", "url(#kg-node-glow)");
       }
 
       // Embed Lucide icon inside the node
@@ -616,6 +643,7 @@ export function useGraphSimulation({
       svgSel.on(".zoom", null);
       svgSel.selectAll("g.kg-main-group").remove();
       defs.selectAll("#kg-node-glow").remove();
+      defs.selectAll("#kg-node-glow-hover").remove();
       defs.selectAll("[id^='kg-grad-']").remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -39,6 +39,8 @@ interface GraphSvgProps {
   onEntitySelect: (entityId: string | null) => void;
   selectedEntityId: string | null;
   searchMatchIds?: Set<string>;
+  /** When set, triggers a smooth zoom+pan to center on this entity in the viewport. */
+  focusEntityId?: string | null;
   className?: string;
 }
 
@@ -109,6 +111,7 @@ export function GraphSvg({
   onEntitySelect,
   selectedEntityId,
   searchMatchIds,
+  focusEntityId,
   className,
 }: GraphSvgProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -145,6 +148,7 @@ export function GraphSvg({
     toggleSimulation,
     resetZoom,
     zoomRef,
+    zoomToNode,
   } = useGraphSimulation({
     entities,
     relationships,
@@ -194,6 +198,13 @@ export function GraphSvg({
     setEdgeTooltip(null);
   }, [selectedEntityId]);
 
+  // Zoom to focused entity when triggered (e.g. clicking a connected entity in sidebar)
+  useEffect(() => {
+    if (focusEntityId) {
+      zoomToNode(focusEntityId);
+    }
+  }, [focusEntityId, zoomToNode]);
+
   // -- Wire up click and hover handlers AFTER D3 creates elements --
   useEffect(() => {
     const nodes = nodeGroupRef.current;
@@ -208,13 +219,18 @@ export function GraphSvg({
       onEntitySelect(d.id === selectedEntityIdRef.current ? null : d.id);
     });
 
-    // Node hover: show tooltip
-    nodes.on("mouseenter", (event: MouseEvent, d: ForceNode) => {
+    // Node hover: show tooltip + glow filter (CC aesthetic)
+    nodes.on("mouseenter", function (event: MouseEvent, d: ForceNode) {
       setNodeTooltip({
         x: event.clientX,
         y: event.clientY,
         node: d,
       });
+      // Apply glow on hover
+      const shape = select(this).select<SVGElement>("circle, rect");
+      if (!shape.empty()) {
+        shape.attr("filter", "url(#kg-node-glow)");
+      }
     });
 
     nodes.on("mousemove", (event: MouseEvent, d: ForceNode) => {
@@ -225,8 +241,13 @@ export function GraphSvg({
       });
     });
 
-    nodes.on("mouseleave", () => {
+    nodes.on("mouseleave", function () {
       setNodeTooltip(null);
+      // Remove glow on leave
+      const shape = select(this).select<SVGElement>("circle, rect");
+      if (!shape.empty()) {
+        shape.attr("filter", null);
+      }
     });
 
     // Edge hover: show tooltip + show edge label on hover
@@ -496,14 +517,14 @@ function EdgeTooltipOverlay({ tooltip }: { tooltip: EdgeTooltip }) {
 
         {/* Temporal context */}
         {primary.temporal_context && (
-          <div className="text-xs text-stone/70 italic mb-1.5">
+          <div className="text-xs text-stone/90 italic mb-1.5">
             {truncate(primary.temporal_context, 120)}
           </div>
         )}
 
         {/* Evidence excerpt in inset box */}
         {primary.evidence_excerpt && (
-          <div className="text-sm text-stone/60 leading-relaxed border-l-2 border-stone/20 pl-2.5 py-0.5 italic">
+          <div className="text-sm text-smoke/80 leading-relaxed border-l-2 border-stone/30 pl-2.5 py-0.5 italic">
             &ldquo;{truncate(primary.evidence_excerpt, 200)}&rdquo;
           </div>
         )}
@@ -511,13 +532,13 @@ function EdgeTooltipOverlay({ tooltip }: { tooltip: EdgeTooltip }) {
         {/* Multi-relationship list */}
         {link.count > 1 && (
           <div className="mt-2 pt-2 border-t border-stone/15">
-            <div className="text-[10px] text-stone/50 uppercase tracking-wider font-medium mb-1">
+            <div className="text-[11px] text-stone/70 uppercase tracking-wider font-medium mb-1">
               All relationships
             </div>
             {link.relationships.map((rel) => (
               <div
                 key={rel.id}
-                className="flex items-center gap-1.5 text-xs text-stone/80 truncate mb-0.5"
+                className="flex items-center gap-1.5 text-xs text-smoke/80 truncate mb-0.5"
               >
                 <span
                   className="w-1 h-1 rounded-full shrink-0"
@@ -526,7 +547,7 @@ function EdgeTooltipOverlay({ tooltip }: { tooltip: EdgeTooltip }) {
                   }}
                 />
                 {rel.label}
-                <span className="text-stone/50">({rel.relationship_type})</span>
+                <span className="text-stone/70">({rel.relationship_type})</span>
               </div>
             ))}
           </div>

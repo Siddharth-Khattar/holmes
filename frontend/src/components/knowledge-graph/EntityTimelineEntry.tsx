@@ -97,7 +97,7 @@ export function EntityTimelineEntry({
         )}
       >
         {/* Date column */}
-        <span className="text-xs text-stone/60 mt-0.5 shrink-0 w-16 text-right">
+        <span className="text-xs text-stone/80 mt-0.5 shrink-0 w-16 text-right">
           {dateLabel}
         </span>
 
@@ -107,22 +107,22 @@ export function EntityTimelineEntry({
             <span className="font-medium" style={{ color: sourceColor }}>
               {sourceName}
             </span>
-            <span className="text-stone/50 mx-1">&rarr;</span>
-            <span className="text-stone/80 italic">{relationship.label}</span>
-            <span className="text-stone/50 mx-1">&rarr;</span>
+            <span className="text-stone/70 mx-1">&rarr;</span>
+            <span className="text-smoke/90 italic">{relationship.label}</span>
+            <span className="text-stone/70 mx-1">&rarr;</span>
             <span className="font-medium" style={{ color: targetColor }}>
               {targetName}
             </span>
           </div>
           {connectedEntity && (
-            <span className="text-xs text-stone/40 mt-0.5 block">
+            <span className="text-xs text-stone/70 mt-0.5 block">
               {formatEntityType(connectedEntity.entity_type)}
             </span>
           )}
         </div>
 
         {/* Chevron */}
-        <span className="text-stone/40 mt-0.5 shrink-0">
+        <span className="text-stone/60 mt-0.5 shrink-0">
           {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </span>
       </button>
@@ -133,17 +133,17 @@ export function EntityTimelineEntry({
           {/* Temporal context badge */}
           {relationship.temporal_context && (
             <div className="mb-2">
-              <span className="inline-block text-xs px-2 py-0.5 rounded bg-charcoal/40 text-stone/60 border border-stone/8">
+              <span className="inline-block text-xs px-2 py-0.5 rounded bg-charcoal/40 text-stone/80 border border-stone/15">
                 {relationship.temporal_context}
               </span>
             </div>
           )}
 
           {/* Source document card */}
-          <div className="rounded-lg bg-charcoal/30 border border-stone/10 p-3">
+          <div className="rounded-lg bg-charcoal/30 border border-stone/15 p-3">
             {/* Evidence excerpt */}
             {hasEvidence && (
-              <p className="text-sm text-stone/70 leading-relaxed mb-2 italic">
+              <p className="text-sm text-smoke/80 leading-relaxed mb-2 italic">
                 &ldquo;{relationship.evidence_excerpt}&rdquo;
               </p>
             )}
@@ -151,15 +151,15 @@ export function EntityTimelineEntry({
             {/* Corroboration badge */}
             {hasCorroboration && (
               <div className="flex items-center gap-1.5 mb-2">
-                <Shield size={12} className="text-emerald-500/70" />
-                <span className="text-xs text-emerald-400/80">
+                <Shield size={12} className="text-emerald-500" />
+                <span className="text-xs text-emerald-400">
                   Corroborated by {relationship.corroboration_count} agents
                 </span>
               </div>
             )}
 
             {/* Confidence + relationship type */}
-            <div className="flex items-center gap-3 text-xs text-stone/50">
+            <div className="flex items-center gap-3 text-xs text-stone/80">
               {relationship.confidence != null && (
                 <span>Confidence: {relationship.confidence}%</span>
               )}
@@ -167,9 +167,9 @@ export function EntityTimelineEntry({
             </div>
 
             {/* View source (graceful degradation) */}
-            <div className="mt-2 pt-2 border-t border-stone/8">
+            <div className="mt-2 pt-2 border-t border-stone/15">
               <span
-                className="inline-flex items-center gap-1.5 text-xs text-stone/35 cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 text-xs text-stone/50 cursor-not-allowed"
                 title="Full source navigation will be available in a future update"
               >
                 <FileSearch size={12} />

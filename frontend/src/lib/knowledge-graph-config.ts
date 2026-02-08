@@ -40,22 +40,59 @@ export interface EntityTypeStyle {
 /**
  * Tint/accent palette per entity type, inspired by Command Center's
  * `--cc-*-tint` / `--cc-*-accent` CSS variable pattern.
+ * Tints at 25-30% L for visible dark fill, accents at 55-65% L for vibrant highlights.
  */
 export const ENTITY_TYPE_STYLE: Record<string, EntityTypeStyle> = {
-  person: { tint: "215 45% 22%", accent: "215 70% 62%" },
-  organization: { tint: "270 35% 22%", accent: "270 60% 62%" },
-  location: { tint: "150 35% 18%", accent: "150 55% 52%" },
-  event: { tint: "0 40% 22%", accent: "0 65% 58%" },
-  asset: { tint: "175 35% 18%", accent: "175 55% 52%" },
-  financial_entity: { tint: "42 40% 20%", accent: "42 70% 58%" },
-  communication: { tint: "330 35% 22%", accent: "330 55% 58%" },
-  document: { tint: "25 40% 20%", accent: "25 65% 58%" },
-  other: { tint: "0 0% 18%", accent: "0 0% 55%" },
+  person: { tint: "200 50% 28%", accent: "200 60% 65%" },
+  organization: { tint: "270 45% 28%", accent: "270 50% 65%" },
+  location: { tint: "150 45% 25%", accent: "150 50% 60%" },
+  event: { tint: "30 50% 28%", accent: "30 60% 65%" },
+  asset: { tint: "175 45% 25%", accent: "175 55% 58%" },
+  financial_entity: { tint: "42 50% 26%", accent: "42 70% 58%" },
+  communication: { tint: "330 45% 28%", accent: "330 55% 62%" },
+  document: { tint: "25 50% 26%", accent: "25 65% 60%" },
+  other: { tint: "0 0% 25%", accent: "0 0% 55%" },
 };
 
 /** Returns the tint/accent style for a given entity type. */
 export function getEntityStyle(entityType: string): EntityTypeStyle {
   return ENTITY_TYPE_STYLE[entityType.toLowerCase()] ?? ENTITY_TYPE_STYLE.other;
+}
+
+// ---------------------------------------------------------------------------
+// Shared entity badge styling (unified across CC and KG)
+// ---------------------------------------------------------------------------
+
+/** Alias map: CC triage uses short type names, KG uses canonical names. */
+const ENTITY_TYPE_ALIAS: Record<string, string> = {
+  org: "organization",
+  amount: "financial_entity",
+  date: "event",
+};
+
+/** Resolves a potentially aliased entity type to its canonical KG name. */
+export function resolveEntityType(type: string): string {
+  const lower = type.toLowerCase();
+  return ENTITY_TYPE_ALIAS[lower] ?? lower;
+}
+
+/** Pre-computed badge style: background + text color for entity type badges. */
+export interface EntityBadgeStyle {
+  readonly bg: string;
+  readonly text: string;
+}
+
+/**
+ * Returns badge styling (background + text color) for a given entity type.
+ * Handles both CC short names (org, date, amount) and KG canonical names.
+ */
+export function getEntityBadgeStyle(type: string): EntityBadgeStyle {
+  const canonical = resolveEntityType(type);
+  const style = ENTITY_TYPE_STYLE[canonical] ?? ENTITY_TYPE_STYLE.other;
+  return {
+    bg: `hsl(${style.accent} / 0.15)`,
+    text: `hsl(${style.accent})`,
+  };
 }
 
 // ---------------------------------------------------------------------------

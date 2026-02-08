@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
+import { getEntityBadgeStyle } from "@/lib/knowledge-graph-config";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { MarkdownContent } from "@/components/ui/markdown-content";
 import {
@@ -553,20 +554,9 @@ function domainHue(domain: string): number {
   return hues[domain] ?? 180;
 }
 
-/** Badge for entity type */
+/** Badge for entity type — uses shared color source from knowledge-graph-config. */
 function EntityBadge({ name, type }: { name: string; type: string }) {
-  const typeColors: Record<string, { bg: string; text: string }> = {
-    person: { bg: "hsl(200 50% 30% / 0.2)", text: "hsl(200 60% 65%)" },
-    org: { bg: "hsl(140 40% 30% / 0.2)", text: "hsl(140 50% 60%)" },
-    date: { bg: "hsl(30 50% 30% / 0.2)", text: "hsl(30 60% 65%)" },
-    location: { bg: "hsl(270 40% 30% / 0.2)", text: "hsl(270 50% 65%)" },
-    amount: { bg: "hsl(60 40% 30% / 0.2)", text: "hsl(60 50% 65%)" },
-    legal_term: { bg: "hsl(220 40% 30% / 0.2)", text: "hsl(220 50% 65%)" },
-  };
-  const colors = typeColors[type] ?? {
-    bg: "hsl(0 0% 30% / 0.2)",
-    text: "hsl(0 0% 65%)",
-  };
+  const colors = getEntityBadgeStyle(type);
 
   return (
     <span

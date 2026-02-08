@@ -1,3 +1,9 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-vars */
+// @ts-nocheck
+// SUPERSEDED: This monolithic component has been decomposed into components/knowledge-graph/*
+// See: KnowledgeGraphCanvas.tsx, GraphSvg.tsx, FilterPanel.tsx, EntityTimeline.tsx
+// Preserved for reference but no longer actively imported.
+
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
@@ -93,7 +99,7 @@ const EVIDENCE_ICONS: Record<
   document: File,
 };
 
-export function KnowledgeGraph({
+function KnowledgeGraph({
   nodes,
   connections,
   entityCount,

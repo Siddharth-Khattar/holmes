@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+// SUPERSEDED: These helpers were used by the old knowledge-graph.tsx monolith.
+// Replaced by knowledge-graph-config.ts (Plan 01). Preserved for reference.
 // ABOUTME: Helper utilities for D3 graph operations
 // ABOUTME: Provides node sizing, opacity calculations, and other D3-related utilities
 

@@ -592,3 +592,24 @@ class TimelineEventResponse(BaseModel):
     created_at: datetime = Field(..., description="Creation timestamp")
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TimelineApiResponseModel(BaseModel):
+    """API response wrapping a list of timeline events with aggregation metadata.
+
+    Matches the frontend TimelineApiResponse shape: events list, total count,
+    date range boundaries, and per-layer counts.
+    """
+
+    events: list[TimelineEventResponse] = Field(
+        ..., description="Timeline events matching the query"
+    )
+    totalCount: int = Field(..., description="Total number of events returned")
+    dateRange: dict[str, str] = Field(
+        ...,
+        description="Date boundaries: {earliest: ISO string, latest: ISO string}",
+    )
+    layerCounts: dict[str, int] = Field(
+        default_factory=dict,
+        description="Count of events per layer (e.g. financial: 5, legal: 3)",
+    )

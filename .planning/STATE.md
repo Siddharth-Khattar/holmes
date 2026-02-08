@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-08
-**Current Phase:** 7.2 of 12 (D3.js KG Frontend Enhancement) — IN PROGRESS (4/5 plans)
-**Next Phase:** 07.2-05 (page integration) → 8 (Synthesis)
+**Current Phase:** 7.2 of 12 (D3.js KG Frontend Enhancement) — ✅ COMPLETE (5/5 plans + 28 polish commits)
+**Next Phase:** 8 (Synthesis Agent & Intelligence Layer)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -19,7 +19,7 @@
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
 | 7 | Knowledge Storage & Domain Agent Enrichment | COMPLETE | 2026-02-07 | 2026-02-07 | 6 plans (11 commits), 8/8 verified: 9 DB models + migration, KG/findings schemas, KG Builder + findings service, prompt enrichment, 10 API endpoints, pipeline wiring |
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
-| 7.2 | KG Frontend (D3.js Enhancement) | IN_PROGRESS | 2026-02-08 | - | Plans 01-04 complete: types/config/API + source viewer system + GraphSvg D3 force canvas + FilterPanel + EntityTimeline |
+| 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
@@ -76,9 +76,18 @@
   - Task 1: useGraphFilters (disabled-set pattern for lint-safe state, domain/type toggles, keyword filtering, search highlighting), FilterPanel (collapsible left panel: stats, search, keyword filter, 4 domain toggles, 9 entity type toggles)
   - Task 2: EntityTimeline (right sidebar: gradient header, date range, filter-by-entity, chronological list), EntityTimelineEntry (expandable: color-coded entities, evidence excerpt, corroboration badge, "Source not yet available" graceful degradation)
 
+**Phase 7.2 Plan 05 Complete** (2026-02-08): KnowledgeGraphCanvas integration + 4 rounds visual polish -- 29 commits
+  - Core: KnowledgeGraphCanvas 3-panel orchestrator (CanvasShell + GraphSvg + FilterPanel + SourceViewerModal), page rewrite with real API data
+  - Round 1 (8 commits): CanvasShell/CollapsibleSection shared components, entity detail in app-wide DetailSidebar, floating FilterPanel, node shapes + icons, edge label disclosure, font normalization
+  - Round 2 (6 commits): dot-pattern zoom scaling, tiered node sizing, composite edge weight, glassy node gradients, glass-blur tooltips, QC fixes (stale closure, tooltip overflow)
+  - Round 3 (8 commits): simulation lifecycle stabilized on resize (no teardown), zoom performance (removed 100k rect), vibrant node colors, unified entity badge styling (CC + KG), sidebar text contrast, click-to-navigate connected entities, QC fix (callback ref stabilization), agent key alias (kg_builder)
+  - Round 4 (6 commits): timeline text smoke colors for readability, CC-style borderless nodes with ambient glow, zoom-to-node on sidebar click, forceSelect sync for sidebar-triggered selection highlighting, date label sizing
+  - **Source viewer NOT wired:** source_finding_ids → file URL chain requires backend API. Deferred to Phase 10.
+  - Full summary: `.planning/phases/07.2-kg-frontend-d3-enhancement/07.2-05-SUMMARY.md`
+
 **What's next:**
-- Phase 7.2 Plan 05: KnowledgeGraphCanvas integration (replaces monolith page, wires 3-panel layout)
 - Phase 8: Synthesis Agent & Intelligence Layer
+- Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
 
 ---
 
@@ -129,19 +138,21 @@
 
 ---
 
-### REQ-VIS-003: Knowledge Graph — IN_PROGRESS (Phase 7.2)
+### REQ-VIS-003: Knowledge Graph — COMPLETE (Source viewer wiring deferred to Phase 10)
 
 | Component | File Path |
 |-----------|-----------|
-| Main visualization (legacy) | `frontend/src/components/app/knowledge-graph.tsx` |
+| **Canvas orchestrator** | `frontend/src/components/knowledge-graph/KnowledgeGraphCanvas.tsx` |
 | GraphSvg D3 force canvas | `frontend/src/components/knowledge-graph/GraphSvg.tsx` |
+| Entity detail panel (DetailSidebar) | `frontend/src/components/knowledge-graph/KnowledgeGraphEntityPanel.tsx` |
 | Force simulation hook | `frontend/src/hooks/useGraphSimulation.ts` |
 | Selection/search hook | `frontend/src/hooks/useGraphSelection.ts` |
 | Filter state hook | `frontend/src/hooks/useGraphFilters.ts` |
-| Filter panel (left) | `frontend/src/components/knowledge-graph/FilterPanel.tsx` |
-| Entity timeline (right) | `frontend/src/components/knowledge-graph/EntityTimeline.tsx` |
+| Filter panel (floating left) | `frontend/src/components/knowledge-graph/FilterPanel.tsx` |
+| Entity timeline (in DetailSidebar) | `frontend/src/components/knowledge-graph/EntityTimeline.tsx` |
 | Timeline entry | `frontend/src/components/knowledge-graph/EntityTimelineEntry.tsx` |
-| Evidence panel (wrapper) | `frontend/src/components/app/evidence-source-panel.tsx` |
+| Canvas shell (shared UI) | `frontend/src/components/ui/canvas-shell.tsx` |
+| Collapsible section (shared UI) | `frontend/src/components/ui/collapsible-section.tsx` |
 | Source viewer modal | `frontend/src/components/source-viewer/SourceViewerModal.tsx` |
 | PDF viewer | `frontend/src/components/source-viewer/PdfViewer.tsx` |
 | Audio viewer | `frontend/src/components/source-viewer/AudioViewer.tsx` |
@@ -149,9 +160,12 @@
 | Image viewer | `frontend/src/components/source-viewer/ImageViewer.tsx` |
 | Data hook (real API) | `frontend/src/hooks/use-case-graph.ts` |
 | API client | `frontend/src/lib/api/graph.ts` |
-| Visualization config | `frontend/src/lib/knowledge-graph-config.ts` |
-| Mock data (legacy) | `frontend/src/lib/mock-graph-data.ts` |
+| Visualization config + badge styles | `frontend/src/lib/knowledge-graph-config.ts` |
+| Detail sidebar types | `frontend/src/types/detail-sidebar.ts` |
+| Detail sidebar dispatch | `frontend/src/components/app/detail-sidebar.tsx` |
 | Types (backend-matching) | `frontend/src/types/knowledge-graph.ts` |
+| Main visualization (legacy, superseded) | `frontend/src/components/app/knowledge-graph.tsx` |
+| Mock data (legacy, superseded) | `frontend/src/lib/mock-graph-data.ts` |
 
 **Backend APIs:** All complete
 - `GET /api/cases/:caseId/graph` - Full graph visualization data
@@ -430,8 +444,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-08
-Stopped at: Completed 07.2-04-PLAN.md (FilterPanel + EntityTimeline sidebar components)
+Stopped at: Phase 7.2 COMPLETE (all 5 plans + 28 polish commits, 46 total). Source viewer deferred to Phase 10.
 Resume file: None
+Next action: Begin Phase 8 (Synthesis Agent & Intelligence Layer)
 
 ---
 

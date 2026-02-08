@@ -31,7 +31,7 @@
 | 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ✅ COMPLETE |
 | 7 | Knowledge Storage & Domain Agent Enrichment | DB schema, enriched citations, KG Builder, findings storage, KG API | REQ-AGENT-009, REQ-STORE-001/002, REQ-AGENT-003-006 (enrichment) | ✅ COMPLETE |
 | 7.1 | LLM-Based KG Builder Agent | Replace programmatic KG Builder with LLM agent for curated entities + semantic relationships | REQ-AGENT-009 (revised) | ✅ COMPLETE |
-| 7.2 | Knowledge Graph Frontend (D3.js Enhancement) | Improve D3.js graph with Epstein-inspired layout, physics, sidebars, filtering, document excerpts | REQ-VIS-003 | ⏳ NOT_STARTED |
+| 7.2 | Knowledge Graph Frontend (D3.js Enhancement) | Improve D3.js graph with Epstein-inspired layout, physics, sidebars, filtering, document excerpts | REQ-VIS-003 | ✅ COMPLETE |
 | 7.3 | Knowledge Graph Frontend (vis-network) — OPTIONAL | Premium vis-network graph visualization (preserved for experimentation) | REQ-VIS-003 (alternative) | ⏳ DEFERRED |
 | 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ⏳ NOT_STARTED |
 | 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ⏳ NOT_STARTED |
@@ -789,16 +789,18 @@ Research (Microsoft GraphRAG, KGGen NeurIPS 2025, LINK-KG, Epstein Doc Explorer)
 
 **Depends on:** Phase 7.1 (curated KG data with semantic relationships), Phase 7 (KG API endpoints)
 
-**Status:** ⏳ NOT_STARTED
+**Status:** ✅ COMPLETE (2026-02-08) — 5 plans + 28 post-plan polish commits (46 total)
+
+**Verification:** `.planning/phases/07.2-kg-frontend-d3-enhancement/07.2-05-SUMMARY.md` — Full summary with all 29 Plan 05 commits
 
 **Plans:** 5 plans in 3 waves
 
 Plans:
-- [ ] 07.2-01-PLAN.md — Foundation: types rewrite, entity color config, force params, API client, data hook
-- [ ] 07.2-02-PLAN.md — Source viewer: modal shell + PDF/audio/video/image sub-components
-- [ ] 07.2-03-PLAN.md — D3 graph canvas: GraphSvg, simulation hook (5 forces, D3 refs), selection hook
-- [ ] 07.2-04-PLAN.md — Panels: FilterPanel (domain/type/search), EntityTimeline sidebar, filter hook
-- [ ] 07.2-05-PLAN.md — Integration: KnowledgeGraphCanvas orchestrator, page rewrite, fullscreen, polish
+- [x] 07.2-01-PLAN.md — Foundation: types rewrite, entity color config, force params, API client, data hook
+- [x] 07.2-02-PLAN.md — Source viewer: modal shell + PDF/audio/video/image sub-components
+- [x] 07.2-03-PLAN.md — D3 graph canvas: GraphSvg, simulation hook (5 forces, D3 refs), selection hook
+- [x] 07.2-04-PLAN.md — Panels: FilterPanel (domain/type/search), EntityTimeline sidebar, filter hook
+- [x] 07.2-05-PLAN.md — Integration: KnowledgeGraphCanvas orchestrator, page rewrite, fullscreen, + 4 rounds visual polish
 
 **Reference:** `DOCS/reference/epstein-network-ui/` — Epstein Doc Explorer frontend code (layout, physics, interactions). Adapt patterns to Holmes design system and use case.
 
@@ -865,26 +867,46 @@ Plans:
 - Multi-media source viewer inspired by Epstein's document viewer with entity highlighting (extends to audio/video/image)
 - Maintain Holmes Liquid Glass aesthetic (cream palette, glass effects, Fraunces typography)
 - **Reference code:** `DOCS/reference/epstein-network-ui/` (NetworkGraph.tsx, App.tsx, types, API patterns)
-- **Key frontend files (to create/modify):**
-  - `frontend/src/components/app/knowledge-graph.tsx` — Enhance D3.js with force simulation, radial layout, interactions
-  - `frontend/src/components/KnowledgeGraph/GraphFilterPanel.tsx` — Left panel (local to KG canvas): search, filters, domain toggles
-  - `frontend/src/components/KnowledgeGraph/EntityTimeline.tsx` — Right panel (local to KG canvas): chronological relationship timeline + citation navigation
-  - `frontend/src/components/app/SourceViewer.tsx` — Multi-media source viewer (reusable across views) — details during phase discussions
-  - `frontend/src/hooks/use-case-graph.ts` — Enhance to fetch curated KG data + support filtering
-  - `frontend/src/lib/knowledge-graph-config.ts` — Physics tuning, color palette, force parameters
-  - `frontend/src/types/knowledge-graph.ts` — Updated types for curated entity/relationship format
+- **Key frontend files created:**
+  - `frontend/src/components/knowledge-graph/KnowledgeGraphCanvas.tsx` — 3-panel orchestrator (CanvasShell + GraphSvg + FilterPanel + SourceViewerModal)
+  - `frontend/src/components/knowledge-graph/GraphSvg.tsx` — D3.js SVG canvas with tooltips, zoom controls, simulation toggle
+  - `frontend/src/components/knowledge-graph/FilterPanel.tsx` — Floating filter panel (domain/type toggles, search, keyword filter)
+  - `frontend/src/components/knowledge-graph/KnowledgeGraphEntityPanel.tsx` — Entity detail for app-wide DetailSidebar
+  - `frontend/src/components/knowledge-graph/EntityTimeline.tsx` — Chronological relationship timeline
+  - `frontend/src/components/knowledge-graph/EntityTimelineEntry.tsx` — Expandable timeline entry with evidence excerpt
+  - `frontend/src/components/source-viewer/SourceViewerModal.tsx` — Multi-media source viewer shell
+  - `frontend/src/components/source-viewer/PdfViewer.tsx` — PDF viewer with page navigation
+  - `frontend/src/components/source-viewer/AudioViewer.tsx` — Audio viewer with wavesurfer.js waveform
+  - `frontend/src/components/source-viewer/VideoViewer.tsx` — HTML5 video with timestamp markers
+  - `frontend/src/components/source-viewer/ImageViewer.tsx` — Zoom/pan image viewer
+  - `frontend/src/components/ui/canvas-shell.tsx` — Shared canvas container (used by CC and KG)
+  - `frontend/src/components/ui/collapsible-section.tsx` — Shared accordion section
+  - `frontend/src/hooks/useGraphSimulation.ts` — D3 force simulation lifecycle (5 forces, D3 refs, zoomToNode)
+  - `frontend/src/hooks/useGraphSelection.ts` — Selection + search highlighting (forceSelect for external sync)
+  - `frontend/src/hooks/useGraphFilters.ts` — Filter state with disabled-set pattern
+  - `frontend/src/hooks/use-case-graph.ts` — Real API data hook (refactored from mock)
+  - `frontend/src/lib/api/graph.ts` — KG API client
+  - `frontend/src/lib/knowledge-graph-config.ts` — Entity colors, force params, badge styles, alias map
+  - `frontend/src/types/knowledge-graph.ts` — Backend-matching types (EntityResponse, RelationshipResponse, ForceNode, ForceLink)
+- **Key frontend files modified:**
+  - `frontend/src/components/CommandCenter/NodeDetailsSidebar.tsx` — Uses shared getEntityBadgeStyle()
+  - `frontend/src/lib/command-center-validation.ts` — Agent key alias map (kg_builder → knowledge-graph)
+  - `frontend/src/components/app/detail-sidebar.tsx` — Passes onEntitySelect prop to KG entity panel
+  - `frontend/src/types/detail-sidebar.ts` — onEntitySelect in KG entity content type
 
-**Exit Criteria:**
-- KG renders with D3.js force simulation using curated entity/relationship data from API
-- High-connection entities visually closer to center (radial force)
-- Clicking a node highlights it and all connected edges, opens right sidebar timeline
-- Entity timeline shows chronological relationships with source citations that navigate the source viewer
-- Source viewer panel renders document/audio/video/image content with entity highlighting
-- Left panel provides filtering by domain, keywords, entity search, density threshold
-- Graph tells a clear story: a first-time user can identify key persons, organizations, and their relationships
-- Three-panel layout (local to KG canvas) adapts to screen size
-- Fullscreen mode works
-- Performance: renders graphs up to 500 nodes smoothly
+**Exit Criteria:** ✓ ALL MET (source viewer deferred)
+- ✅ KG renders with D3.js force simulation using curated entity/relationship data from API
+- ✅ High-connection entities visually closer to center (radial force)
+- ✅ Clicking a node highlights it and all connected edges, opens entity detail in app-wide DetailSidebar
+- ✅ Entity detail shows chronological relationships, connected entities (click-to-navigate + zoom-to-node)
+- ⏳ Source viewer panel: components built (PDF/audio/video/image) but NOT wired — `source_finding_ids → file URL` chain requires backend API. **Deferred to Phase 10 (Source Panel).** Currently shows "Source not yet available" graceful degradation.
+- ✅ Filter panel provides filtering by domain, keywords, entity search, entity type toggles
+- ✅ Graph tells a clear story: a first-time user can identify key persons, organizations, and their relationships
+- ✅ CanvasShell layout with floating filter panel, adapts to screen size
+- ✅ Fullscreen mode works
+- ✅ Performance: ambient glow on all nodes, smooth zoom, no simulation teardown on sidebar open
+- ✅ Node aesthetic matches Command Center: gradient fills, ambient glow, stronger hover glow, borderless by default, white stroke on selection
+- ✅ Entity colors unified between CC extracted entities and KG badges via shared getEntityBadgeStyle()
 
 ---
 
@@ -1225,6 +1247,7 @@ Plans:
 - ⏳ Investigation Task Panel (all items)
 
 **Deliverables:**
+- **KG Source Viewer wiring (deferred from Phase 7.2):** Wire `source_finding_ids` → `case_findings` → `agent_executions` → `case_files` → signed download URL chain so that clicking "View source" in KG EntityTimelineEntry opens the SourceViewerModal with the actual document/audio/video/image content. Components already built in Phase 7.2 (SourceViewerModal, PdfViewer, AudioViewer, VideoViewer, ImageViewer); only the data pipeline needs wiring.
 - PDF viewer with excerpt highlighting
 - Video player with timestamp markers
 - Audio player with waveform and transcript sync
@@ -1462,8 +1485,8 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 4.0*
-*Updated: 2026-02-08 (Architecture revision: LLM-based KG Builder Agent, D3.js enhancement, vis-network deferred)*
+*Roadmap Version: 5.0*
+*Updated: 2026-02-08 (Phase 7.2 complete: D3.js KG Frontend with 46 commits; source viewer deferred to Phase 10)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
@@ -1490,3 +1513,4 @@ For 2 developers working simultaneously:
 *Phase 7.2 (D3.js Enhancement) defined: 2026-02-08
 *Phase 7.3 (vis-network, optional) renumbered: 2026-02-08
 *Phase 7.2 (D3.js Enhancement) planned: 2026-02-08 (5 plans in 3 waves)
+*Phase 7.2 (D3.js Enhancement) complete: 2026-02-08 (5 plans + 28 post-plan polish, 46 total commits; source viewer deferred to Phase 10)

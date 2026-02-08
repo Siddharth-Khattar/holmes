@@ -80,6 +80,18 @@ export function KnowledgeGraphCanvas({
     );
   }, [selectedEntityId, relationships]);
 
+  // -- Event handlers (declared before effects that reference them) --
+  const handleEntitySelect = useCallback(
+    (entityId: string | null) => {
+      // Close source viewer when selecting a different entity or deselecting
+      if (entityId !== selectedEntityId) {
+        setSourceViewerContent(null);
+      }
+      setSelectedEntityId(entityId);
+    },
+    [selectedEntityId],
+  );
+
   // -- Push entity content to app-wide DetailSidebar --
   useEffect(() => {
     if (selectedEntity) {
@@ -90,6 +102,7 @@ export function KnowledgeGraphCanvas({
           entity: selectedEntity,
           relationships: selectedEntityRelationships,
           allEntities: entities,
+          onEntitySelect: handleEntitySelect,
         },
       });
     } else {
@@ -101,6 +114,7 @@ export function KnowledgeGraphCanvas({
     entities,
     setContent,
     clearContent,
+    handleEntitySelect,
   ]);
 
   // -- Clear sidebar on unmount --
@@ -110,18 +124,6 @@ export function KnowledgeGraphCanvas({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // -- Event handlers --
-  const handleEntitySelect = useCallback(
-    (entityId: string | null) => {
-      // Close source viewer when selecting a different entity or deselecting
-      if (entityId !== selectedEntityId) {
-        setSourceViewerContent(null);
-      }
-      setSelectedEntityId(entityId);
-    },
-    [selectedEntityId],
-  );
 
   const handleViewSource = useCallback((content: SourceViewerContent) => {
     setSourceViewerContent(content);

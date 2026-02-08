@@ -41,6 +41,7 @@ function renderContent(descriptor: SidebarContentDescriptor): React.ReactNode {
           entity={descriptor.props.entity}
           relationships={descriptor.props.relationships}
           allEntities={descriptor.props.allEntities}
+          onEntitySelect={descriptor.props.onEntitySelect}
         />
       );
   }

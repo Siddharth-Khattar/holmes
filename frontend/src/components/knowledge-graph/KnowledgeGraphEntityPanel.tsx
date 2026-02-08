@@ -22,6 +22,7 @@ interface KnowledgeGraphEntityPanelProps {
   entity: EntityResponse;
   relationships: RelationshipResponse[];
   allEntities: EntityResponse[];
+  onEntitySelect?: (entityId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -96,6 +97,7 @@ export function KnowledgeGraphEntityPanel({
   entity,
   relationships,
   allEntities,
+  onEntitySelect,
 }: KnowledgeGraphEntityPanelProps) {
   const [filterText, setFilterText] = useState("");
 
@@ -188,7 +190,7 @@ export function KnowledgeGraphEntityPanel({
             {entity.name}
           </h3>
           {entity.description_brief && (
-            <p className="text-xs text-stone mt-0.5 leading-relaxed line-clamp-3">
+            <p className="text-xs text-smoke/80 mt-0.5 leading-relaxed line-clamp-3">
               {entity.description_brief}
             </p>
           )}
@@ -212,7 +214,7 @@ export function KnowledgeGraphEntityPanel({
           </span>
         </div>
 
-        <div className="flex items-center gap-4 text-xs text-stone/60">
+        <div className="flex items-center gap-4 text-xs text-stone/80">
           <span className="flex items-center gap-1">
             <GitBranch size={12} />
             {relationships.length} relationship
@@ -300,26 +302,26 @@ export function KnowledgeGraphEntityPanel({
               {connectedEntities.map((connected) => {
                 const color = getEntityColor(connected.entity_type);
                 return (
-                  <span
+                  <button
                     key={connected.id}
-                    className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded"
+                    type="button"
+                    className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded cursor-pointer transition-all hover:brightness-110"
                     style={{
                       background: `${color}15`,
                       color,
                       border: `1px solid ${color}30`,
                     }}
+                    onClick={() => onEntitySelect?.(connected.id)}
                   >
                     <span
                       className="w-1.5 h-1.5 rounded-full shrink-0"
                       style={{ backgroundColor: color }}
                     />
-                    <span className="font-medium truncate max-w-32">
-                      {connected.name}
-                    </span>
-                    <span className="text-stone/50 text-xs">
+                    <span className="font-medium">{connected.name}</span>
+                    <span className="text-stone/70 text-xs">
                       {formatEntityType(connected.entity_type)}
                     </span>
-                  </span>
+                  </button>
                 );
               })}
             </div>
@@ -338,13 +340,21 @@ export function KnowledgeGraphEntityPanel({
               {sourceIds.map((id) => (
                 <div
                   key={id}
-                  className="flex items-center gap-2 text-sm text-smoke"
+                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg bg-charcoal/50 border border-stone/10"
                 >
-                  <div
-                    className="w-1.5 h-1.5 rounded-full shrink-0"
-                    style={{ backgroundColor: entityColor }}
+                  <FileText
+                    size={14}
+                    className="shrink-0"
+                    style={{ color: entityColor }}
                   />
-                  <span className="truncate font-mono text-xs">{id}</span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs text-smoke font-medium">
+                      Source Finding
+                    </span>
+                    <span className="text-[11px] text-stone/70 font-mono truncate">
+                      {id.slice(0, 8)}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>

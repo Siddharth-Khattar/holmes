@@ -43,7 +43,7 @@ export default function KnowledgeGraphPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-120px)]">
+    <div className="h-[calc(100vh-200px)]">
       <KnowledgeGraphCanvas
         entities={data.entities}
         relationships={data.relationships}

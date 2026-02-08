@@ -69,6 +69,8 @@ interface UseGraphSelectionReturn {
   selectedEntityId: string | null;
   connectedEntityIds: Set<string>;
   selectEntity: (entityId: string | null) => void;
+  /** Directly set the selected entity (no toggle). Used for external sync (e.g. sidebar). */
+  forceSelect: (entityId: string | null) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -157,6 +159,11 @@ export function useGraphSelection({
     },
     [selectedEntityId],
   );
+
+  // Direct set (no toggle) for external sync (e.g. sidebar navigation)
+  const forceSelect = useCallback((entityId: string | null) => {
+    setSelectedEntityId(entityId);
+  }, []);
 
   // ---------------------------------------------------------------------------
   // Selection highlighting useEffect (depends ONLY on selectedEntityId)
@@ -311,5 +318,6 @@ export function useGraphSelection({
     selectedEntityId,
     connectedEntityIds,
     selectEntity,
+    forceSelect,
   };
 }

@@ -158,15 +158,25 @@ export function GraphSvg({
   });
 
   // -- Selection + search highlighting --
-  const { selectedEntityId: internalSelectedId, selectEntity } =
-    useGraphSelection({
-      nodeGroupRef,
-      linkGroupRef,
-      labelGroupRef,
-      edgeLabelGroupRef,
-      forceLinks,
-      searchMatchIds,
-    });
+  const {
+    selectedEntityId: internalSelectedId,
+    selectEntity,
+    forceSelect,
+  } = useGraphSelection({
+    nodeGroupRef,
+    linkGroupRef,
+    labelGroupRef,
+    edgeLabelGroupRef,
+    forceLinks,
+    searchMatchIds,
+  });
+
+  // Sync external selectedEntityId prop into internal selection state so that
+  // sidebar-triggered selections also apply D3 highlighting (connected nodes,
+  // dimmed non-connected nodes, edge highlighting).
+  useEffect(() => {
+    forceSelect(selectedEntityId);
+  }, [selectedEntityId, forceSelect]);
 
   // -- Progressive edge label disclosure (zoom threshold) --
   useEffect(() => {
@@ -219,17 +229,17 @@ export function GraphSvg({
       onEntitySelect(d.id === selectedEntityIdRef.current ? null : d.id);
     });
 
-    // Node hover: show tooltip + glow filter (CC aesthetic)
+    // Node hover: show tooltip + stronger glow (CC aesthetic — ambient glow always on)
     nodes.on("mouseenter", function (event: MouseEvent, d: ForceNode) {
       setNodeTooltip({
         x: event.clientX,
         y: event.clientY,
         node: d,
       });
-      // Apply glow on hover
+      // Switch from ambient to hover glow
       const shape = select(this).select<SVGElement>("circle, rect");
       if (!shape.empty()) {
-        shape.attr("filter", "url(#kg-node-glow)");
+        shape.attr("filter", "url(#kg-node-glow-hover)");
       }
     });
 
@@ -243,10 +253,10 @@ export function GraphSvg({
 
     nodes.on("mouseleave", function () {
       setNodeTooltip(null);
-      // Remove glow on leave
+      // Restore ambient glow
       const shape = select(this).select<SVGElement>("circle, rect");
       if (!shape.empty()) {
-        shape.attr("filter", null);
+        shape.attr("filter", "url(#kg-node-glow)");
       }
     });
 

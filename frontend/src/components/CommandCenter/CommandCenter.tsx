@@ -6,6 +6,7 @@
 import { ReactFlowProvider } from "@xyflow/react";
 import { Activity, AlertCircle } from "lucide-react";
 import { AgentFlowCanvas } from "./AgentFlowCanvas";
+import { CanvasShell } from "@/components/ui/canvas-shell";
 import { useAgentFlowGraph } from "@/hooks/useAgentFlowGraph";
 import type { AgentState, ProcessingSummary } from "@/types/command-center";
 
@@ -74,67 +75,54 @@ function CommandCenterInner({
     selectedAgent,
   });
 
-  return (
-    <div
-      className={`command-center-scope flex flex-col w-full h-full bg-background dark:bg-charcoal rounded-lg overflow-hidden border-2 border-warm-gray/30 dark:border-stone/30 ${className || ""}`}
-    >
-      {/* Header */}
-      <div className="flex-none px-6 py-3 border-b border-stone/15">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-medium text-smoke mb-0.5">
-              Command Center
-            </h2>
-            <p className="text-xs text-stone">
-              Real-time agent processing visualization
-            </p>
-          </div>
-          <ConnectionBadge
-            isConnected={isConnected}
-            isReconnecting={isReconnecting}
-          />
+  const footerContent = (
+    <div className="flex items-center justify-between text-xs">
+      {isProcessing ? (
+        <div className="flex items-center gap-2 text-stone">
+          <Activity className="w-4 h-4 animate-pulse" />
+          <span>Processing in progress...</span>
         </div>
-      </div>
-
-      {/* Canvas */}
-      <div className="flex-1 overflow-hidden min-h-0">
-        <AgentFlowCanvas
-          nodes={nodes}
-          edges={edges}
-          onNodeClick={(nodeId) => {
-            if (!nodeId.startsWith("file-group-")) {
-              onSelectAgent(nodeId);
-            }
-          }}
-          selectedNodeId={selectedAgent}
-        />
-      </div>
-
-      {/* Footer */}
-      <div className="flex-none px-6 py-3 border-t border-stone/15">
-        <div className="flex items-center justify-between text-xs">
-          {isProcessing ? (
-            <div className="flex items-center gap-2 text-stone">
-              <Activity className="w-4 h-4 animate-pulse" />
-              <span>Processing in progress...</span>
-            </div>
-          ) : lastProcessingSummary ? (
-            <div className="text-stone">
-              Last Processing Complete • {lastProcessingSummary.filesProcessed}{" "}
-              files • {lastProcessingSummary.entitiesCreated} entities •{" "}
-              {lastProcessingSummary.relationshipsCreated} relationships
-            </div>
-          ) : (
-            <div className="text-stone">Idle</div>
-          )}
-          {lastProcessingSummary && !isProcessing && (
-            <div className="text-stone/60">
-              {lastProcessingSummary.completedAt.toLocaleTimeString()}
-            </div>
-          )}
+      ) : lastProcessingSummary ? (
+        <div className="text-stone">
+          Last Processing Complete • {lastProcessingSummary.filesProcessed}{" "}
+          files • {lastProcessingSummary.entitiesCreated} entities •{" "}
+          {lastProcessingSummary.relationshipsCreated} relationships
         </div>
-      </div>
+      ) : (
+        <div className="text-stone">Idle</div>
+      )}
+      {lastProcessingSummary && !isProcessing && (
+        <div className="text-stone/60">
+          {lastProcessingSummary.completedAt.toLocaleTimeString()}
+        </div>
+      )}
     </div>
+  );
+
+  return (
+    <CanvasShell
+      title="Command Center"
+      subtitle="Real-time agent processing visualization"
+      headerRight={
+        <ConnectionBadge
+          isConnected={isConnected}
+          isReconnecting={isReconnecting}
+        />
+      }
+      footer={footerContent}
+      className={`command-center-scope ${className || ""}`}
+    >
+      <AgentFlowCanvas
+        nodes={nodes}
+        edges={edges}
+        onNodeClick={(nodeId) => {
+          if (!nodeId.startsWith("file-group-")) {
+            onSelectAgent(nodeId);
+          }
+        }}
+        selectedNodeId={selectedAgent}
+      />
+    </CanvasShell>
   );
 }
 

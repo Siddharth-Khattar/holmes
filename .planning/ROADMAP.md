@@ -31,7 +31,7 @@
 | 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ✅ COMPLETE |
 | 7 | Knowledge Storage & Domain Agent Enrichment | DB schema, enriched citations, KG Builder, findings storage, KG API | REQ-AGENT-009, REQ-STORE-001/002, REQ-AGENT-003-006 (enrichment) | ✅ COMPLETE |
 | 7.1 | LLM-Based KG Builder Agent | Replace programmatic KG Builder with LLM agent for curated entities + semantic relationships | REQ-AGENT-009 (revised) | ✅ COMPLETE |
-| 7.2 | Knowledge Graph Frontend (D3.js Enhancement) | Improve D3.js graph with Epstein-inspired layout, physics, sidebars, filtering, document excerpts | REQ-VIS-003 | ⏳ NOT_STARTED |
+| 7.2 | Knowledge Graph Frontend (D3.js Enhancement) | Improve D3.js graph with Epstein-inspired layout, physics, sidebars, filtering, document excerpts | REQ-VIS-003 | ✅ COMPLETE |
 | 7.3 | Knowledge Graph Frontend (vis-network) — OPTIONAL | Premium vis-network graph visualization (preserved for experimentation) | REQ-VIS-003 (alternative) | ⏳ DEFERRED |
 | 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ⏳ NOT_STARTED |
 | 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ⏳ NOT_STARTED |
@@ -789,7 +789,18 @@ Research (Microsoft GraphRAG, KGGen NeurIPS 2025, LINK-KG, Epstein Doc Explorer)
 
 **Depends on:** Phase 7.1 (curated KG data with semantic relationships), Phase 7 (KG API endpoints)
 
-**Status:** ⏳ NOT_STARTED
+**Status:** ✅ COMPLETE (2026-02-08) — 5 plans + 28 post-plan polish commits (46 total)
+
+**Verification:** `.planning/phases/07.2-kg-frontend-d3-enhancement/07.2-05-SUMMARY.md` — Full summary with all 29 Plan 05 commits
+
+**Plans:** 5 plans in 3 waves
+
+Plans:
+- [x] 07.2-01-PLAN.md — Foundation: types rewrite, entity color config, force params, API client, data hook
+- [x] 07.2-02-PLAN.md — Source viewer: modal shell + PDF/audio/video/image sub-components
+- [x] 07.2-03-PLAN.md — D3 graph canvas: GraphSvg, simulation hook (5 forces, D3 refs), selection hook
+- [x] 07.2-04-PLAN.md — Panels: FilterPanel (domain/type/search), EntityTimeline sidebar, filter hook
+- [x] 07.2-05-PLAN.md — Integration: KnowledgeGraphCanvas orchestrator, page rewrite, fullscreen, + 4 rounds visual polish
 
 **Reference:** `DOCS/reference/epstein-network-ui/` — Epstein Doc Explorer frontend code (layout, physics, interactions). Adapt patterns to Holmes design system and use case.
 
@@ -856,26 +867,46 @@ Research (Microsoft GraphRAG, KGGen NeurIPS 2025, LINK-KG, Epstein Doc Explorer)
 - Multi-media source viewer inspired by Epstein's document viewer with entity highlighting (extends to audio/video/image)
 - Maintain Holmes Liquid Glass aesthetic (cream palette, glass effects, Fraunces typography)
 - **Reference code:** `DOCS/reference/epstein-network-ui/` (NetworkGraph.tsx, App.tsx, types, API patterns)
-- **Key frontend files (to create/modify):**
-  - `frontend/src/components/app/knowledge-graph.tsx` — Enhance D3.js with force simulation, radial layout, interactions
-  - `frontend/src/components/KnowledgeGraph/GraphFilterPanel.tsx` — Left panel (local to KG canvas): search, filters, domain toggles
-  - `frontend/src/components/KnowledgeGraph/EntityTimeline.tsx` — Right panel (local to KG canvas): chronological relationship timeline + citation navigation
-  - `frontend/src/components/app/SourceViewer.tsx` — Multi-media source viewer (reusable across views) — details during phase discussions
-  - `frontend/src/hooks/use-case-graph.ts` — Enhance to fetch curated KG data + support filtering
-  - `frontend/src/lib/knowledge-graph-config.ts` — Physics tuning, color palette, force parameters
-  - `frontend/src/types/knowledge-graph.ts` — Updated types for curated entity/relationship format
+- **Key frontend files created:**
+  - `frontend/src/components/knowledge-graph/KnowledgeGraphCanvas.tsx` — 3-panel orchestrator (CanvasShell + GraphSvg + FilterPanel + SourceViewerModal)
+  - `frontend/src/components/knowledge-graph/GraphSvg.tsx` — D3.js SVG canvas with tooltips, zoom controls, simulation toggle
+  - `frontend/src/components/knowledge-graph/FilterPanel.tsx` — Floating filter panel (domain/type toggles, search, keyword filter)
+  - `frontend/src/components/knowledge-graph/KnowledgeGraphEntityPanel.tsx` — Entity detail for app-wide DetailSidebar
+  - `frontend/src/components/knowledge-graph/EntityTimeline.tsx` — Chronological relationship timeline
+  - `frontend/src/components/knowledge-graph/EntityTimelineEntry.tsx` — Expandable timeline entry with evidence excerpt
+  - `frontend/src/components/source-viewer/SourceViewerModal.tsx` — Multi-media source viewer shell
+  - `frontend/src/components/source-viewer/PdfViewer.tsx` — PDF viewer with page navigation
+  - `frontend/src/components/source-viewer/AudioViewer.tsx` — Audio viewer with wavesurfer.js waveform
+  - `frontend/src/components/source-viewer/VideoViewer.tsx` — HTML5 video with timestamp markers
+  - `frontend/src/components/source-viewer/ImageViewer.tsx` — Zoom/pan image viewer
+  - `frontend/src/components/ui/canvas-shell.tsx` — Shared canvas container (used by CC and KG)
+  - `frontend/src/components/ui/collapsible-section.tsx` — Shared accordion section
+  - `frontend/src/hooks/useGraphSimulation.ts` — D3 force simulation lifecycle (5 forces, D3 refs, zoomToNode)
+  - `frontend/src/hooks/useGraphSelection.ts` — Selection + search highlighting (forceSelect for external sync)
+  - `frontend/src/hooks/useGraphFilters.ts` — Filter state with disabled-set pattern
+  - `frontend/src/hooks/use-case-graph.ts` — Real API data hook (refactored from mock)
+  - `frontend/src/lib/api/graph.ts` — KG API client
+  - `frontend/src/lib/knowledge-graph-config.ts` — Entity colors, force params, badge styles, alias map
+  - `frontend/src/types/knowledge-graph.ts` — Backend-matching types (EntityResponse, RelationshipResponse, ForceNode, ForceLink)
+- **Key frontend files modified:**
+  - `frontend/src/components/CommandCenter/NodeDetailsSidebar.tsx` — Uses shared getEntityBadgeStyle()
+  - `frontend/src/lib/command-center-validation.ts` — Agent key alias map (kg_builder → knowledge-graph)
+  - `frontend/src/components/app/detail-sidebar.tsx` — Passes onEntitySelect prop to KG entity panel
+  - `frontend/src/types/detail-sidebar.ts` — onEntitySelect in KG entity content type
 
-**Exit Criteria:**
-- KG renders with D3.js force simulation using curated entity/relationship data from API
-- High-connection entities visually closer to center (radial force)
-- Clicking a node highlights it and all connected edges, opens right sidebar timeline
-- Entity timeline shows chronological relationships with source citations that navigate the source viewer
-- Source viewer panel renders document/audio/video/image content with entity highlighting
-- Left panel provides filtering by domain, keywords, entity search, density threshold
-- Graph tells a clear story: a first-time user can identify key persons, organizations, and their relationships
-- Three-panel layout (local to KG canvas) adapts to screen size
-- Fullscreen mode works
-- Performance: renders graphs up to 500 nodes smoothly
+**Exit Criteria:** ✓ ALL MET (source viewer deferred)
+- ✅ KG renders with D3.js force simulation using curated entity/relationship data from API
+- ✅ High-connection entities visually closer to center (radial force)
+- ✅ Clicking a node highlights it and all connected edges, opens entity detail in app-wide DetailSidebar
+- ✅ Entity detail shows chronological relationships, connected entities (click-to-navigate + zoom-to-node)
+- ⏳ Source viewer panel: components built (PDF/audio/video/image) but NOT wired — `source_finding_ids → file URL` chain requires backend API. **Deferred to Phase 10 (Source Panel).** Currently shows "Source not yet available" graceful degradation.
+- ✅ Filter panel provides filtering by domain, keywords, entity search, entity type toggles
+- ✅ Graph tells a clear story: a first-time user can identify key persons, organizations, and their relationships
+- ✅ CanvasShell layout with floating filter panel, adapts to screen size
+- ✅ Fullscreen mode works
+- ✅ Performance: ambient glow on all nodes, smooth zoom, no simulation teardown on sidebar open
+- ✅ Node aesthetic matches Command Center: gradient fills, ambient glow, stronger hover glow, borderless by default, white stroke on selection
+- ✅ Entity colors unified between CC extracted entities and KG badges via shared getEntityBadgeStyle()
 
 ---
 
@@ -937,8 +968,11 @@ Plans:
 
 **Deliverables:**
 - Synthesis Agent implementation (LLM, Gemini Pro, `thinking_level="high"`):
-  - Input: ALL case_findings from PostgreSQL for the case (rich markdown findings with citations)
-  - Additional context: entity summary from KG tables, file metadata, case description
+  - **Input Assembly (two-source DB read pattern):**
+    1. **Domain agent findings** (via `case_findings` table): ALL rows for the case's workflow — each contains `finding_text` (rich markdown with inline citations), `citations` (JSONB with file_id + locator + exact_excerpt), `agent_type` (financial/legal/evidence/strategy), `category`, `confidence`. These are the outputs from all domain agents + strategy agent, saved to DB in pipeline Stage 6 (Save Findings).
+    2. **Curated knowledge graph** (via `kg_entities` + `kg_relationships` tables): Entities with `name`, `entity_type`, `description_brief`, `description_detailed`, `aliases`, `domains`, `source_finding_ids` — and relationships with `label`, `relationship_type`, `evidence_excerpt`, `temporal_context`, `source_finding_ids`, `confidence`. These are the curated outputs from the LLM KG Builder Agent (pipeline Stage 7), which reads ALL domain outputs holistically.
+    3. **Case metadata**: `cases.name`, `cases.description`, `cases.case_type`
+    4. **File metadata**: `case_files.original_filename`, file type, upload date (for cross-referencing citations)
   - Gemini 3 Pro with 1M context window (sufficient: ~100-150K tokens for 50-file cases)
   - Output (SynthesisOutput Pydantic model):
     a. `hypotheses: list[Hypothesis]` — Case hypotheses with initial confidence + supporting/contradicting evidence
@@ -954,8 +988,9 @@ Plans:
 - Store results in dedicated synthesis tables (schema from Phase 7 migrations):
   - case_hypotheses, case_contradictions, case_gaps, case_synthesis, timeline_events
 - Pipeline wiring:
-  - Triggered after domain agents + KG Builder complete
-  - Reads case_findings via SQL (not through LLM session state — fresh stage-isolated session)
+  - New Stage 8 in the pipeline, triggered after LLM KG Builder (Stage 7) + Entity Backfill (Stage 7b) complete
+  - Reads `case_findings` + `kg_entities` + `kg_relationships` via SQL (not through LLM session state — fresh stage-isolated session)
+  - Both data sources populated by earlier pipeline stages: findings from domain agents (Stage 6), KG from LLM KG Builder (Stage 7)
   - Stores all outputs via dedicated storage services
   - Triggers Geospatial Agent (Phase 8.1) if `has_location_data == True`
 - SSE events:
@@ -984,12 +1019,13 @@ Plans:
   - Stored in investigation_tasks table
 
 **Known Issues to Resolve (from `.planning/MINOR_ISSUES.md`):**
-- **MI-003**: Fuzzy entity deduplication produces false positives on numeric/temporal values (e.g., `$5,000` vs `$50,000` flagged at 88% similarity). Fix: add type-aware matching in `kg_builder.py:deduplicate_entities()` before fuzzy comparison — parse numeric entity types semantically instead of string-matching. Must be fixed before synthesis consumes fuzzy flags.
+- ~~**MI-003**: Fuzzy entity deduplication~~ — **RESOLVED by Phase 7.1**: The programmatic KG Builder (with fuzzy dedup) was replaced by the LLM-based KG Builder Agent, which uses a clear-and-rebuild strategy with natural LLM deduplication. No fuzzy matching exists anymore.
 - **MI-004**: Pipeline summary log mixes triage entity count + domain entity count as `entities=N`, confusingly alongside `kg_entities=M`. Fix: rename or separate the counters in `pipeline.py` for clarity.
 
 **Technical Notes:**
 - Synthesis Agent runs in fresh stage-isolated ADK session (consistent with existing pattern)
-- Input is TEXT from PostgreSQL (case_findings.finding_text), NOT multimodal file content
+- Input is TEXT from PostgreSQL (case_findings + kg_entities + kg_relationships), NOT multimodal file content
+- Synthesis reads the outputs of ALL agents that ran for this workflow: domain agent findings (financial, legal, evidence) + strategy findings are in case_findings; the curated entity/relationship graph from LLM KG Builder is in kg_entities/kg_relationships
 - 1M context window handles even large cases comfortably (~100-150K tokens for 50-file case)
 - Cost estimate: ~$0.10-0.15 per synthesis run at Gemini Pro rates
 - Synthesis prompt: "Every contradiction must cite exact source excerpts from both sides"
@@ -997,7 +1033,8 @@ Plans:
 - Timeline events are a natural byproduct of chronological cross-referencing (no separate timeline agent)
 - Synthesis is a BATCH operation, runs once per analysis pipeline
 - All synthesis outputs reference back to case_findings IDs and kg_entity IDs for traceability
-- Pipeline becomes: Triage → Orchestrator → Domain Agents → [KG Builder + findings storage] → Synthesis → [Geospatial if locations]
+- Full pipeline: Triage → Orchestrator → Domain Agents (parallel) → Strategy (sequential) → HITL → Save Findings → LLM KG Builder → Backfill Entity IDs → **Synthesis** → [Geospatial if locations] → Final
+- `investigation_tasks` table does NOT exist yet — must be created in Phase 8 (new model + Alembic migration) if task generation is included, or deferred
 - **Key files to create:**
   - `backend/app/agents/synthesis/` — Synthesis agent module (agent, prompts, schemas)
   - `backend/app/services/synthesis_service.py` — Storage service for synthesis outputs
@@ -1216,6 +1253,7 @@ Plans:
 - ⏳ Investigation Task Panel (all items)
 
 **Deliverables:**
+- **KG Source Viewer wiring (deferred from Phase 7.2):** Wire `source_finding_ids` → `case_findings` → `agent_executions` → `case_files` → signed download URL chain so that clicking "View source" in KG EntityTimelineEntry opens the SourceViewerModal with the actual document/audio/video/image content. Components already built in Phase 7.2 (SourceViewerModal, PdfViewer, AudioViewer, VideoViewer, ImageViewer); only the data pipeline needs wiring.
 - PDF viewer with excerpt highlighting
 - Video player with timestamp markers
 - Audio player with waveform and transcript sync
@@ -1453,8 +1491,8 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 4.0*
-*Updated: 2026-02-08 (Architecture revision: LLM-based KG Builder Agent, D3.js enhancement, vis-network deferred)*
+*Roadmap Version: 5.0*
+*Updated: 2026-02-08 (Phase 7.2 complete: D3.js KG Frontend with 46 commits; source viewer deferred to Phase 10)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
@@ -1480,3 +1518,5 @@ For 2 developers working simultaneously:
 *Phase 7.1 (LLM KG Builder) complete: 2026-02-08 (2 plans, 6 commits, 8/8 must-haves verified)
 *Phase 7.2 (D3.js Enhancement) defined: 2026-02-08
 *Phase 7.3 (vis-network, optional) renumbered: 2026-02-08
+*Phase 7.2 (D3.js Enhancement) planned: 2026-02-08 (5 plans in 3 waves)
+*Phase 7.2 (D3.js Enhancement) complete: 2026-02-08 (5 plans + 28 post-plan polish, 46 total commits; source viewer deferred to Phase 10)

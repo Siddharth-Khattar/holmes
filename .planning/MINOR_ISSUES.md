@@ -21,18 +21,13 @@ Deferred issues that are non-blocking but should be addressed in future work.
 - **Priority**: Low (no runtime impact, passes pyright default mode)
 - **Added**: 2025-02-07, QC review of Phase 7 execution ID fix
 
-## MI-003: Fuzzy entity matching produces false positives on numeric/temporal values
+## ~~MI-003: Fuzzy entity matching produces false positives on numeric/temporal values~~ — RESOLVED
 
-- **File**: `backend/app/services/kg_builder.py`, `deduplicate_entities()` (~line 270-288)
-- **Detail**: Fuzzy string matching (rapidfuzz ratio >=85%) flags semantically distinct values as potential duplicates when they are string-similar but numerically different. Observed in live testing:
-  - `'2016-05-02 20:00'` vs `'2016-05-02 22:00'` (92%) — different timestamps (8 PM vs 10 PM)
-  - `'50,000 dollars'` vs `'2,000 dollars'` (88%) — 25x difference in amount
-  - `'$5,000'` vs `'$50,000'` (88%) — 10x difference in amount
-- **Impact**: No data corruption (flags only, not auto-merged). But these false flags add noise for Phase 8 LLM resolution, wasting tokens and potentially confusing the synthesis agent.
-- **Fix**: Add type-aware matching logic before fuzzy comparison. For `entity_type` in (`timestamp`, `monetary_amount`, `date`, `other` when value looks numeric): parse the actual value and compare semantically instead of string-matching. E.g., for monetary amounts, extract the number and compare magnitude; for timestamps, parse and compare actual time difference.
-- **Priority**: Medium (should be fixed before or during Phase 8 to avoid noisy LLM resolution input)
-- **Phase**: Fix during Phase 8 (Synthesis) when fuzzy flags are consumed
+- **Status**: RESOLVED by Phase 7.1 (2026-02-08)
+- **Resolution**: The programmatic KG Builder with fuzzy dedup (`backend/app/services/kg_builder.py`) was entirely replaced by the LLM-based KG Builder Agent. The LLM uses a clear-and-rebuild strategy and handles deduplication naturally by seeing all findings holistically. No fuzzy string matching exists in the current pipeline.
+- **Original file**: `backend/app/services/kg_builder.py` — programmatic service is now dead code (superseded by `backend/app/agents/kg_builder.py`)
 - **Added**: 2026-02-07, live pipeline testing
+- **Resolved**: 2026-02-08, Phase 7.1 LLM KG Builder
 
 ## MI-004: Pipeline summary log mixes two different entity count semantics
 

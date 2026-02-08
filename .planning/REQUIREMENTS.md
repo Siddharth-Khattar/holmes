@@ -511,10 +511,13 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 **Priority:** HIGH
 **Description:** Agent that cross-references all domain findings to produce hypotheses, contradictions, gaps, timeline events, cross-domain conclusions, and case-level summary/verdict.
 **Acceptance Criteria:**
-- Receives ALL case_findings from PostgreSQL (rich markdown findings with citations)
-- Additional context: entity summary from KG tables, file metadata, case description
+- **Two-source DB input assembly:**
+  - Source 1: ALL `case_findings` rows for the case workflow — rich markdown `finding_text` with inline citations, `citations` JSONB (file_id + locator + exact_excerpt), `agent_type` (financial/legal/evidence/strategy), `category`, `confidence`. These are the persisted outputs from all domain agents + strategy agent (pipeline Stage 6).
+  - Source 2: Curated knowledge graph from `kg_entities` (name, entity_type, description_brief, description_detailed, aliases, domains, source_finding_ids) + `kg_relationships` (label, relationship_type, evidence_excerpt, temporal_context, source_finding_ids, confidence). These are the outputs from the LLM KG Builder Agent (pipeline Stage 7).
+  - Additional context: case metadata (name, description, case_type) + file metadata (filenames, types) from `cases` and `case_files` tables.
 - Gemini 3 Pro with `thinking_level="high"` and 1M context window
 - Runs in fresh stage-isolated ADK session (consistent with pipeline pattern)
+- Pipeline position: Stage 8, after LLM KG Builder (Stage 7) + Entity Backfill (Stage 7b) complete
 - Produces structured SynthesisOutput:
   - `hypotheses`: Case hypotheses with initial confidence + supporting/contradicting evidence references
   - `contradictions`: Detected contradictions with exact source pairs from both sides, severity classification (minor/significant/critical)
@@ -1550,73 +1553,84 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ### REQ-VIS: Visualization & UI
 
-#### REQ-VIS-001: Agent Flow — 🟡 FRONTEND_COMPLETE
+#### REQ-VIS-001: Agent Flow — ✅ COMPLETE
 
 | Sub-Criterion | Status | Notes |
 |---------------|--------|-------|
-| React Flow canvas showing agent nodes | ✅ | D3-based canvas in `CommandCenter/AgentFlowCanvas.tsx` |
-| Animated edges during data flow | ✅ | Dashed line animations when data flows |
-| Color-coded by agent type | ✅ | 6 agent types with distinct colors |
-| Click node to expand details panel | ✅ | `AgentDetailsPanel.tsx` with collapsible sections |
-| Shows model, input, tools, output, duration | 🟡 | UI ready, needs real backend data |
-| Shows thinking traces | 🟡 | UI ready, needs ADK `include_thoughts=True` data |
-| Updates in real-time via SSE | 🟡 | `useCommandCenterSSE.ts` hook ready, needs backend SSE endpoint |
-| ADK callback-to-SSE mapping | ⏳ | Backend work required |
+| React Flow canvas showing agent nodes | ✅ | @xyflow/react + dagre in `CommandCenter/AgentFlowCanvas.tsx` (Phase 4.1 revamp) |
+| Animated edges during data flow | ✅ | FileRoutingEdge with gray tier system |
+| Color-coded by agent type | ✅ | 7 agent types (incl. evidence, kg_builder) with muted color palette |
+| Click node to expand details panel | ✅ | `NodeDetailsSidebar.tsx` page-level 30% panel with spring animation |
+| Shows model, input, tools, output, duration | ✅ | Real backend data via SSE state-snapshot + agent-complete events |
+| Shows thinking traces | ✅ | Full untruncated text from after_model_callback, JSON normalized |
+| Updates in real-time via SSE | ✅ | `useCommandCenterSSE.ts` with state-snapshot on reconnect |
+| ADK callback-to-SSE mapping | ✅ | THINKING_UPDATE, TOOL_CALLED, agent lifecycle events |
 
-**Backend APIs Needed:**
-- `SSE GET /api/cases/:caseId/command-center/stream` — Agent lifecycle events
+**Backend APIs:** All complete
+- `SSE GET /sse/cases/:caseId/command-center/stream` — Agent lifecycle events
+- `POST /api/cases/:caseId/confirmations/:requestId` — HITL confirmation
+- `GET /api/cases/:caseId/confirmations/pending` — Pending confirmations
 
-**Files:** `frontend/src/components/CommandCenter/`, `frontend/src/hooks/useCommandCenterSSE.ts`
-
----
-
-#### REQ-VIS-001a: Human-in-the-Loop Confirmation — ⏳ NOT_STARTED
-
-No confirmation dialogs implemented yet.
+**Files:** `frontend/src/components/CommandCenter/`, `frontend/src/hooks/useCommandCenterSSE.ts`, `frontend/src/hooks/useAgentStates.ts`, `frontend/src/hooks/useAgentFlowGraph.ts`
 
 ---
 
-#### REQ-VIS-002: Agent Detail View — 🟡 FRONTEND_COMPLETE
+#### REQ-VIS-001a: Human-in-the-Loop Confirmation — ✅ COMPLETE
 
 | Sub-Criterion | Status | Notes |
 |---------------|--------|-------|
-| Full thinking trace | 🟡 | UI section exists, needs backend data |
-| Complete input context | 🟡 | UI section exists, needs backend data |
-| Tool calls with inputs/outputs | 🟡 | "Tools Called" section exists |
-| Complete output findings | 🟡 | "Output Findings" section exists |
-| Token usage statistics | ⏳ | Not implemented |
-| Execution timeline | ⏳ | Not implemented |
+| Confirmation dialog UI | ✅ | `ConfirmationModal.tsx` with approve/reject + reason input |
+| Routing HITL (batch) | ✅ | Per-agent-type confidence thresholds, batch confirmation modal |
+| Low-confidence finding HITL | ✅ | Findings below threshold trigger confirmation |
+| Strategy standalone HITL | ✅ | User prompted when domain agents fail but strategy has files |
 
-**Files:** `frontend/src/components/CommandCenter/AgentDetailsPanel.tsx`
+**Files:** `frontend/src/components/CommandCenter/ConfirmationModal.tsx`, `backend/app/services/confirmation.py`
 
 ---
 
-#### REQ-VIS-003: Knowledge Graph View — 🟡 FRONTEND_COMPLETE
+#### REQ-VIS-002: Agent Detail View — ✅ COMPLETE
 
 | Sub-Criterion | Status | Notes |
 |---------------|--------|-------|
-| D3.js force simulation (5 forces) | 🟠 | Basic D3.js graph exists; needs radial force, collision, charge tuning (Phase 7.2) |
-| Nodes sized by connection count | ✅ | Implemented |
-| Edges labeled with relationship type | ✅ | Implemented |
-| Domain layer toggles | 🟠 | Layer concept exists but not domain-based toggle system yet |
-| Zoom and pan controls | ✅ | Full zoom/pan/reset controls |
-| Node search and highlight | ✅ | Implemented |
-| Click node for details | ✅ | Info panel shows on click |
-| Left panel (filters/controls, local to KG canvas) | ⏳ | Not implemented (Phase 7.2) |
-| Right panel (entity timeline, local to KG canvas) | ⏳ | Not implemented (Phase 7.2) |
-| Source viewer panel (multi-media) | ⏳ | Not implemented (Phase 7.2+) — details during phase discussions |
-| Density threshold slider | ⏳ | Not implemented (Phase 7.2) |
+| Full thinking trace | ✅ | JSON-normalized thinking traces from all agents |
+| Complete input context | ✅ | Input data visible in sidebar |
+| Tool calls with inputs/outputs | ✅ | Tool-called events displayed |
+| Complete output findings | ✅ | Finding counts, entity counts in sidebar |
+| Token usage statistics | ✅ | CollapsibleSection with input/output tokens, model name |
+| Execution timeline | ✅ | Gantt chart showing agent timing overlap |
+
+**Files:** `frontend/src/components/CommandCenter/NodeDetailsSidebar.tsx`, `frontend/src/components/CommandCenter/ExecutionTimeline.tsx`
+
+---
+
+#### REQ-VIS-003: Knowledge Graph View — ✅ COMPLETE (Source viewer wiring deferred to Phase 10)
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| D3.js force simulation (5 forces) | ✅ | useGraphSimulation: link, charge, center, collision, radial (Phase 7.2) |
+| Nodes sized by connection count | ✅ | Sqrt-scaled node radius via d3.scalePow().exponent(0.5) |
+| Edges labeled with relationship type | ✅ | Always-horizontal edge labels with disclosure |
+| Domain layer toggles | ✅ | 4 domain toggles (Financial, Legal, Evidence, Strategy) in FilterPanel |
+| Zoom and pan controls | ✅ | d3.zoom() with scale extent [0.01, 10], zoom/pan/reset buttons |
+| Node search and highlight | ✅ | Debounced search with coral (#E87461) highlight, distinct from selection (white) |
+| Click node for details | ✅ | Opens DetailSidebar with entity panel + EntityTimeline |
+| Left panel (filters/controls, local to KG canvas) | ✅ | FilterPanel: stats, search, keyword filter, domain/type toggles |
+| Right panel (entity timeline, local to KG canvas) | ✅ | EntityTimeline in DetailSidebar: chronological relationships, date range, filter-by-entity |
+| Source viewer panel (multi-media) | 🟡 | Components built (PdfViewer, AudioViewer, VideoViewer, ImageViewer) but NOT wired — deferred to Phase 10 |
+| Density threshold slider | ⏳ | Not implemented |
 | Fullscreen capability | ⏳ | Not implemented |
-| Basic analytics | ⏳ | Not implemented |
+| Basic analytics | ✅ | Entity count, relationship count, domain breakdown in FilterPanel |
 
-**Backend APIs Needed:**
-- `GET /api/cases/:caseId/graph` — Fetch graph data
+**Backend APIs:** All complete
+- `GET /api/cases/:caseId/graph` — Full graph visualization data
+- `GET /api/cases/:caseId/entities` — List entities with filters
 - `POST /api/cases/:caseId/entities` — Create entity
-- `POST /api/cases/:caseId/relationships` — Create relationship
 - `PATCH /api/cases/:caseId/entities/:entityId` — Update entity
 - `DELETE /api/cases/:caseId/entities/:entityId` — Delete entity
+- `GET /api/cases/:caseId/relationships` — List relationships with filters
+- `POST /api/cases/:caseId/relationships` — Create relationship
 
-**Files:** `frontend/src/components/app/knowledge-graph.tsx`, `frontend/src/hooks/use-case-graph.ts`, `frontend/src/types/knowledge-graph.ts`
+**Files:** `frontend/src/components/knowledge-graph/KnowledgeGraphCanvas.tsx`, `frontend/src/components/knowledge-graph/GraphSvg.tsx`, `frontend/src/components/knowledge-graph/FilterPanel.tsx`, `frontend/src/components/knowledge-graph/EntityTimeline.tsx`, `frontend/src/hooks/useGraphSimulation.ts`, `frontend/src/hooks/useGraphSelection.ts`, `frontend/src/hooks/useGraphFilters.ts`, `frontend/src/hooks/use-case-graph.ts`, `frontend/src/types/knowledge-graph.ts`
 
 ---
 
@@ -1824,19 +1838,20 @@ Limitations documented in code comments and mitigated:
 
 | Category | Requirements | Complete | Frontend Done | Partial | Not Started |
 |----------|-------------|----------|---------------|---------|-------------|
-| Visualization (VIS) | 6 | 0 | 4 | 1 | 1 |
+| Visualization (VIS) | 6 | 4 | 1 | 0 | 1 |
 | Case Management (CASE) | 5 | 5 | 0 | 0 | 0 |
 | Chat (CHAT) | 5 | 0 | 1 | 0 | 4 |
 | Source Panel (SOURCE) | 5 | 0 | 0 | 0 | 5 |
-| Agents (Core) | 2 | 1 | 0 | 1 | 0 |
+| Agents (Core) | 4 | 3 | 0 | 0 | 1 |
 | Agents (ADK Config) | 4 | 4 | 0 | 0 | 0 |
+| Knowledge Storage (STORE) | 3 | 2 | 0 | 0 | 1 |
 
-*Phase 2 requirements (REQ-CASE-001, 002, 003) completed previously. Phase 3 requirements (REQ-CASE-004, 005) completed 2026-02-02. Phase 4 requirements (REQ-AGENT-001, 007, 007a, 007b, 007e) completed 2026-02-03. REQ-AGENT-002 partial (routing logic done, domain agent execution pending Phase 6).*
+*Phase 2 requirements (REQ-CASE-001, 002, 003) completed. Phase 3 requirements (REQ-CASE-004, 005) completed 2026-02-02. Phase 4 requirements (REQ-AGENT-001, 007, 007a, 007b, 007e) completed 2026-02-03. Phase 5 (REQ-VIS-001, 001a, 002) completed 2026-02-05. Phase 6 (REQ-AGENT-002/003/004/005/006) completed 2026-02-06. Phase 7/7.1 (REQ-STORE-001/002, REQ-AGENT-009) completed 2026-02-08. Phase 7.2 (REQ-VIS-003) completed 2026-02-08. REQ-AGENT-008 (Synthesis) next in Phase 8.*
 
 ---
 
 *Generated: 2026-01-18*
-*Updated: 2026-02-07*
+*Updated: 2026-02-08*
 *Architecture redesign: 2026-02-07 (REQ-STORE added, REQ-AGENT-008/009 rewritten, REQ-CHAT-002/003 updated for tool-based architecture)*
 *Architecture revision: 2026-02-08 (REQ-AGENT-009 revised for LLM-based KG Builder; REQ-VIS-003 updated for D3.js with Epstein-inspired patterns; vis-network deferred)*
 *Status: Complete - Integration features added (REQ-RESEARCH, REQ-HYPO, REQ-GEO, REQ-TASK)*

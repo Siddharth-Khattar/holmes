@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+// SUPERSEDED: This hook was used by the old knowledge-graph.tsx monolith.
+// Replaced by useGraphSimulation.ts (Plan 03). Preserved for reference.
 // ABOUTME: Utility function for creating D3 drag behavior for graph nodes
 // ABOUTME: Handles drag start, drag, and drag end events with proper physics simulation integration
 

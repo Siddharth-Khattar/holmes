@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-08
-**Current Phase:** 7.1 of 12 (LLM-Based KG Builder Agent) — COMPLETE (2/2 plans)
-**Next Phase:** 7.2 (D3.js KG Frontend Enhancement) → 8 (Synthesis)
+**Current Phase:** 7.2 of 12 (D3.js KG Frontend Enhancement) — ✅ COMPLETE (5/5 plans + 28 polish commits)
+**Next Phase:** 8 (Synthesis Agent & Intelligence Layer)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -19,9 +19,10 @@
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
 | 7 | Knowledge Storage & Domain Agent Enrichment | COMPLETE | 2026-02-07 | 2026-02-07 | 6 plans (11 commits), 8/8 verified: 9 DB models + migration, KG/findings schemas, KG Builder + findings service, prompt enrichment, 10 API endpoints, pipeline wiring |
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
-| 7.2 | KG Frontend (D3.js Enhancement) | NOT_STARTED | - | - | Epstein-inspired D3.js improvements |
+| 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
-| 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
+| 8 | Synthesis Agent & Intelligence Layer | NOT_STARTED | - | - | |
+| 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
@@ -58,9 +59,40 @@
   - Plan 02: KgBuilderAgentRunner with text-only input, KG_BUILDER_SYSTEM_PROMPT (8+1 entity taxonomy), AgentFactory.create_kg_builder_agent(), DB writer with clear-and-rebuild, pipeline Stage 7 replaced with LLM invocation
   - Full pipeline: Triage -> Orchestrator -> Domain -> Strategy -> HITL -> Save Findings -> LLM KG Builder -> Backfill Entity IDs -> Final
 
+**Phase 7.2 Plan 01 Complete** (2026-02-08): Foundation types, config, and API layer -- 2 tasks, 2 commits
+  - Task 1: d3-scale installed, knowledge-graph.ts rewritten with EntityResponse/RelationshipResponse/GraphResponse/ForceNode/ForceLink/GraphFilters matching backend schemas
+  - Task 2: knowledge-graph-config.ts (9 entity colors, force/node/edge/SVG config), api/graph.ts (fetchGraph with auth), use-case-graph.ts refactored to real API
+
+**Phase 7.2 Plan 02 Complete** (2026-02-08): Source viewer modal and media components -- 3 tasks, 3 commits
+  - Task 1: 8 media deps (react-pdf-viewer suite, pdfjs-dist, wavesurfer.js, @wavesurfer/react), SourceViewerModal shell, PdfViewer with page-navigation + search/highlight
+  - Task 2: AudioViewer (wavesurfer.js waveform + transcript), VideoViewer (HTML5 + markers), ImageViewer (zoom/pan)
+  - Task 3: evidence-source-panel refactored from 462-line mock monolith to 58-line thin wrapper, detail-sidebar types updated
+
+**Phase 7.2 Plan 03 Complete** (2026-02-08): GraphSvg D3 force canvas -- 2 tasks, 2 commits
+  - Task 1: useGraphSimulation (5 forces, sqrt-scaled nodes, radial centrality, edge deduplication, D3 ref-based tick updates) + useGraphSelection (selection highlighting + search match highlighting in separate useEffects)
+  - Task 2: GraphSvg component (dark SVG canvas, dot pattern, zoom/pan controls, simulation toggle, node/edge tooltips, background click deselect, searchMatchIds prop)
+  - Performance pattern: zero React re-renders during simulation (D3 refs only)
+
+**Phase 7.2 Plan 04 Complete** (2026-02-08): FilterPanel + EntityTimeline -- 2 tasks, 2 commits
+  - Task 1: useGraphFilters (disabled-set pattern for lint-safe state, domain/type toggles, keyword filtering, search highlighting), FilterPanel (collapsible left panel: stats, search, keyword filter, 4 domain toggles, 9 entity type toggles)
+  - Task 2: EntityTimeline (right sidebar: gradient header, date range, filter-by-entity, chronological list), EntityTimelineEntry (expandable: color-coded entities, evidence excerpt, corroboration badge, "Source not yet available" graceful degradation)
+
+**Phase 7.2 Plan 05 Complete** (2026-02-08): KnowledgeGraphCanvas integration + 4 rounds visual polish -- 29 commits
+  - Core: KnowledgeGraphCanvas 3-panel orchestrator (CanvasShell + GraphSvg + FilterPanel + SourceViewerModal), page rewrite with real API data
+  - Round 1 (8 commits): CanvasShell/CollapsibleSection shared components, entity detail in app-wide DetailSidebar, floating FilterPanel, node shapes + icons, edge label disclosure, font normalization
+  - Round 2 (6 commits): dot-pattern zoom scaling, tiered node sizing, composite edge weight, glassy node gradients, glass-blur tooltips, QC fixes (stale closure, tooltip overflow)
+  - Round 3 (8 commits): simulation lifecycle stabilized on resize (no teardown), zoom performance (removed 100k rect), vibrant node colors, unified entity badge styling (CC + KG), sidebar text contrast, click-to-navigate connected entities, QC fix (callback ref stabilization), agent key alias (kg_builder)
+  - Round 4 (6 commits): timeline text smoke colors for readability, CC-style borderless nodes with ambient glow, zoom-to-node on sidebar click, forceSelect sync for sidebar-triggered selection highlighting, date label sizing
+  - **Source viewer NOT wired:** source_finding_ids → file URL chain requires backend API. Deferred to Phase 10.
+  - Full summary: `.planning/phases/07.2-kg-frontend-d3-enhancement/07.2-05-SUMMARY.md`
+
 **What's next:**
-- Phase 7.2: D3.js KG Frontend Enhancement — Epstein-inspired layout, physics, sidebars, filtering, document excerpts
-- Phase 8: Synthesis Agent & Intelligence Layer — cross-referencing, hypotheses, contradictions, gaps, timeline
+- Phase 8: Synthesis Agent & Intelligence Layer
+  - Synthesis Agent reads two DB sources: (1) `case_findings` from domain agents + strategy, (2) curated `kg_entities`/`kg_relationships` from LLM KG Builder
+  - Pipeline Stage 8: after LLM KG Builder + Entity Backfill → Synthesis → [Geospatial if locations]
+  - Populates: case_hypotheses, case_contradictions, case_gaps, case_synthesis, timeline_events
+  - Frontend integration: connect Timeline, Hypothesis, Contradictions, Gaps panels to real API data
+- Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
 
 ---
 
@@ -111,15 +143,34 @@
 
 ---
 
-### REQ-VIS-003: Knowledge Graph — FRONTEND_DONE
+### REQ-VIS-003: Knowledge Graph — COMPLETE (Source viewer wiring deferred to Phase 10)
 
 | Component | File Path |
 |-----------|-----------|
-| Main visualization | `frontend/src/components/app/knowledge-graph.tsx` |
-| Evidence panel | `frontend/src/components/app/evidence-source-panel.tsx` |
-| Data hook | `frontend/src/hooks/use-case-graph.ts` |
-| Mock data | `frontend/src/lib/mock-graph-data.ts` |
-| Types | `frontend/src/types/knowledge-graph.ts` |
+| **Canvas orchestrator** | `frontend/src/components/knowledge-graph/KnowledgeGraphCanvas.tsx` |
+| GraphSvg D3 force canvas | `frontend/src/components/knowledge-graph/GraphSvg.tsx` |
+| Entity detail panel (DetailSidebar) | `frontend/src/components/knowledge-graph/KnowledgeGraphEntityPanel.tsx` |
+| Force simulation hook | `frontend/src/hooks/useGraphSimulation.ts` |
+| Selection/search hook | `frontend/src/hooks/useGraphSelection.ts` |
+| Filter state hook | `frontend/src/hooks/useGraphFilters.ts` |
+| Filter panel (floating left) | `frontend/src/components/knowledge-graph/FilterPanel.tsx` |
+| Entity timeline (in DetailSidebar) | `frontend/src/components/knowledge-graph/EntityTimeline.tsx` |
+| Timeline entry | `frontend/src/components/knowledge-graph/EntityTimelineEntry.tsx` |
+| Canvas shell (shared UI) | `frontend/src/components/ui/canvas-shell.tsx` |
+| Collapsible section (shared UI) | `frontend/src/components/ui/collapsible-section.tsx` |
+| Source viewer modal | `frontend/src/components/source-viewer/SourceViewerModal.tsx` |
+| PDF viewer | `frontend/src/components/source-viewer/PdfViewer.tsx` |
+| Audio viewer | `frontend/src/components/source-viewer/AudioViewer.tsx` |
+| Video viewer | `frontend/src/components/source-viewer/VideoViewer.tsx` |
+| Image viewer | `frontend/src/components/source-viewer/ImageViewer.tsx` |
+| Data hook (real API) | `frontend/src/hooks/use-case-graph.ts` |
+| API client | `frontend/src/lib/api/graph.ts` |
+| Visualization config + badge styles | `frontend/src/lib/knowledge-graph-config.ts` |
+| Detail sidebar types | `frontend/src/types/detail-sidebar.ts` |
+| Detail sidebar dispatch | `frontend/src/components/app/detail-sidebar.tsx` |
+| Types (backend-matching) | `frontend/src/types/knowledge-graph.ts` |
+| Main visualization (legacy, superseded) | `frontend/src/components/app/knowledge-graph.tsx` |
+| Mock data (legacy, superseded) | `frontend/src/lib/mock-graph-data.ts` |
 
 **Backend APIs:** All complete
 - `GET /api/cases/:caseId/graph` - Full graph visualization data
@@ -375,6 +426,17 @@ All frontend features need these backend endpoints:
 | KG Builder rebuild strategy | Incremental merge vs Clear-and-rebuild | Clear-and-rebuild | Clean slate every run; delete all KG data then insert curated LLM output |
 | KG Builder failure handling | Block pipeline vs Non-blocking | Non-blocking (try/except, continue) | KG Builder failure emits SSE error, pipeline continues; KG page shows empty state |
 | KG Builder media resolution | HIGH vs None | None (text-only input) | No generate_content_config needed; KG Builder receives text, not files |
+| pdfjs-dist version | Latest (5.x) vs Compatible (3.x) | 3.11.174 | @react-pdf-viewer 3.12 requires pdfjs-dist ^2.16 or ^3.0; v5 is incompatible |
+| wavesurfer.js import strategy | Static import vs Dynamic import | Dynamic import | ESM-only package; dynamic import() inside useEffect for Next.js compatibility |
+| Zoom pan reset pattern | useEffect on zoom vs Inline in zoom handlers | Inline in zoom handlers | Avoids eslint react-hooks/set-state-in-effect cascading render violation |
+| detail-sidebar Evidence type | Keep Evidence type vs Replace with SourceViewerContent | SourceViewerContent | Evidence type removed in Plan 01; SourceViewerContent is the production-quality replacement |
+| D3 .each() ESLint pattern | this-aliasing vs select(elements[i]) | select(elements[i]) | Arrow fn with third arg of .each() avoids @typescript-eslint/no-this-alias violation |
+| KG tooltip implementation | SVG foreignObject vs React fixed overlay | React fixed overlay | Avoids SVG clipping and z-index issues; positioned at mouse coordinates |
+| KG search vs selection visual | Same style vs Distinct styles | Distinct: coral (#E87461) for search, white (#ffffff) for selection | Two highlighting modes must be visually distinguishable |
+| KG edge label orientation | Rotated along edge vs Always horizontal | Always horizontal | Readability per CONTEXT.md specification |
+| KG filter state model | Active-set vs Disabled-set | Disabled-set pattern | ESLint react-hooks rules prohibit setState in useMemo/useEffect; inverted model avoids sync entirely |
+| KG source viewer wiring | Wire onViewSource vs Graceful degradation | Graceful degradation | source_finding_ids -> file URL chain requires backend API not available in Phase 7.2; show "Source not yet available" |
+| KG timeline relationship input | Full list + filter in component vs Pre-filtered by parent | Pre-filtered by parent | EntityTimeline receives only relationships involving selected entity; keeps component focused on display |
 
 ---
 
@@ -387,8 +449,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-08
-Stopped at: Completed 07.1-02-PLAN.md (KG Builder agent runner, prompt, pipeline wiring)
+Stopped at: Phase 7.2 COMPLETE (all 5 plans + 28 polish commits, 46 total). Source viewer deferred to Phase 10.
 Resume file: None
+Next action: Begin Phase 8 (Synthesis Agent & Intelligence Layer)
 
 ---
 

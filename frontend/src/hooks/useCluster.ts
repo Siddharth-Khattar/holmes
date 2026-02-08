@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+// SUPERSEDED: This hook was used by the old knowledge-graph.tsx monolith.
+// Replaced by useGraphSelection.ts (Plan 03). Preserved for reference.
 // ABOUTME: Hook for managing graph cluster selection state and operations
 // ABOUTME: Provides adjacency map creation, cluster computation, and state management for node clusters
 

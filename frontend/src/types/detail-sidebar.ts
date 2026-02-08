@@ -2,7 +2,8 @@
 // ABOUTME: Uses discriminated union pattern for content descriptors.
 
 import type { AgentType, AgentState } from "./command-center";
-import type { Evidence } from "./knowledge-graph";
+import type { SourceViewerContent } from "@/components/source-viewer/SourceViewerModal";
+import type { EntityResponse, RelationshipResponse } from "./knowledge-graph";
 
 // ---------------------------------------------------------------------------
 // Content Descriptors (discriminated union)
@@ -18,18 +19,31 @@ export interface CommandCenterAgentContent {
   };
 }
 
-/** Knowledge Graph evidence detail view */
+/** Knowledge Graph evidence / source viewer detail view */
 export interface KnowledgeGraphEvidenceContent {
   type: "knowledge-graph-evidence";
   props: {
-    evidence: Evidence;
+    content: SourceViewerContent;
+  };
+}
+
+/** Knowledge Graph entity detail view (replaces inline EntityTimeline) */
+export interface KnowledgeGraphEntityContent {
+  type: "knowledge-graph-entity";
+  props: {
+    entityId: string;
+    entity: EntityResponse;
+    relationships: RelationshipResponse[];
+    allEntities: EntityResponse[];
+    onEntitySelect?: (entityId: string) => void;
   };
 }
 
 /** Union of all possible sidebar content descriptors */
 export type SidebarContentDescriptor =
   | CommandCenterAgentContent
-  | KnowledgeGraphEvidenceContent;
+  | KnowledgeGraphEvidenceContent
+  | KnowledgeGraphEntityContent;
 
 // ---------------------------------------------------------------------------
 // Sidebar State

@@ -3,10 +3,7 @@
 
 "use client";
 
-import { useState, type ReactNode } from "react";
 import {
-  ChevronDown,
-  ChevronUp,
   AlertTriangle,
   Brain,
   FileText,
@@ -21,6 +18,8 @@ import {
 } from "lucide-react";
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
+import { getEntityBadgeStyle } from "@/lib/knowledge-graph-config";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { MarkdownContent } from "@/components/ui/markdown-content";
 import {
   formatDuration,
@@ -44,65 +43,6 @@ interface NodeDetailsSidebarProps {
   agentType: AgentType | null;
   agentState: AgentState | null;
   allAgentStates?: Map<string, AgentState>;
-}
-
-// -----------------------------------------------------------------------
-// CollapsibleSection - reusable collapsible panel with color-coded border
-// -----------------------------------------------------------------------
-interface CollapsibleSectionProps {
-  title: string;
-  color: string;
-  defaultOpen?: boolean;
-  icon?: ReactNode;
-  badge?: string | number;
-  children: ReactNode;
-}
-
-function CollapsibleSection({
-  title,
-  color,
-  defaultOpen = false,
-  icon,
-  badge,
-  children,
-}: CollapsibleSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <div
-      className="border-b border-stone/10"
-      style={{
-        borderLeftWidth: 3,
-        borderLeftStyle: "solid",
-        borderLeftColor: color,
-      }}
-    >
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-stone/5 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          {icon && (
-            <span className="opacity-60" style={{ color }}>
-              {icon}
-            </span>
-          )}
-          <span className="text-xs font-medium text-stone uppercase tracking-wide">
-            {title}
-          </span>
-          {badge !== undefined && (
-            <span className="text-xs text-stone/60">({badge})</span>
-          )}
-        </div>
-        {isOpen ? (
-          <ChevronUp className="w-4 h-4 text-stone" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-stone" />
-        )}
-      </button>
-      {isOpen && <div className="px-5 pb-4 space-y-3">{children}</div>}
-    </div>
-  );
 }
 
 // -----------------------------------------------------------------------
@@ -614,20 +554,9 @@ function domainHue(domain: string): number {
   return hues[domain] ?? 180;
 }
 
-/** Badge for entity type */
+/** Badge for entity type — uses shared color source from knowledge-graph-config. */
 function EntityBadge({ name, type }: { name: string; type: string }) {
-  const typeColors: Record<string, { bg: string; text: string }> = {
-    person: { bg: "hsl(200 50% 30% / 0.2)", text: "hsl(200 60% 65%)" },
-    org: { bg: "hsl(140 40% 30% / 0.2)", text: "hsl(140 50% 60%)" },
-    date: { bg: "hsl(30 50% 30% / 0.2)", text: "hsl(30 60% 65%)" },
-    location: { bg: "hsl(270 40% 30% / 0.2)", text: "hsl(270 50% 65%)" },
-    amount: { bg: "hsl(60 40% 30% / 0.2)", text: "hsl(60 50% 65%)" },
-    legal_term: { bg: "hsl(220 40% 30% / 0.2)", text: "hsl(220 50% 65%)" },
-  };
-  const colors = typeColors[type] ?? {
-    bg: "hsl(0 0% 30% / 0.2)",
-    text: "hsl(0 0% 65%)",
-  };
+  const colors = getEntityBadgeStyle(type);
 
   return (
     <span

@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+// SUPERSEDED: Mock data no longer used. The useCaseGraph hook now fetches real data from the API.
+// This file is preserved for reference but not imported anywhere.
+
 import {
   Entity,
   Evidence,

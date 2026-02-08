@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+// SUPERSEDED: This hook was used by the old knowledge-graph.tsx monolith.
+// Replaced by useGraphSimulation.ts (Plan 03). Preserved for reference.
 // ABOUTME: Custom React hook for managing D3 force simulation physics
 // ABOUTME: Handles simulation initialization, tick updates, and cleanup for force-directed graph layout
 

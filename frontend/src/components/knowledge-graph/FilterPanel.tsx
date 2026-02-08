@@ -1,18 +1,10 @@
-// ABOUTME: Left collapsible filter panel for the knowledge graph visualization.
-// ABOUTME: Contains graph stats, entity search, keyword filter, domain toggles, and entity type toggles.
+// ABOUTME: Floating vertical filter panel for the knowledge graph visualization.
+// ABOUTME: Expands downward from a toggle button, positioned absolute top-left inside the canvas.
 
 "use client";
 
 import { useState, useCallback } from "react";
-import {
-  Filter,
-  Search,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Network,
-  Hash,
-} from "lucide-react";
+import { Filter, Search, X, Network, Hash } from "lucide-react";
 import { clsx } from "clsx";
 
 import {
@@ -85,7 +77,7 @@ export function FilterPanel({
   const [localSearch, setLocalSearch] = useState(filters.searchQuery);
   const [localKeyword, setLocalKeyword] = useState(filters.keywordFilter);
 
-  // Search input: immediate local state + debounced callback
+  // Search input: immediate local state + callback
   const handleSearchChange = useCallback(
     (value: string) => {
       setLocalSearch(value);
@@ -153,252 +145,258 @@ export function FilterPanel({
     return valA - valB;
   });
 
-  // Collapsed strip
-  if (!isOpen) {
-    return (
-      <div className="flex-none flex flex-col items-center py-4 px-1 bg-jet border-r border-stone/15 w-10">
-        <button
-          onClick={onToggle}
-          className="p-2 rounded-md hover:bg-charcoal/60 transition-colors text-stone hover:text-smoke"
-          title="Open filter panel"
-        >
-          <Filter size={16} />
-        </button>
-        <button
-          onClick={onToggle}
-          className="mt-2 p-1 rounded hover:bg-charcoal/60 transition-colors text-stone/50 hover:text-stone"
-          title="Expand filters"
-        >
-          <ChevronRight size={14} />
-        </button>
-      </div>
-    );
-  }
-
-  // Expanded panel
   return (
-    <div
-      className="flex-none flex flex-col bg-jet border-r border-stone/15 overflow-hidden"
-      style={{
-        width: 320,
-        transition: "width 250ms ease-out",
-      }}
-    >
-      {/* Panel header */}
-      <div className="flex-none flex items-center justify-between px-4 py-3 border-b border-stone/15">
-        <div className="flex items-center gap-2">
-          <Filter size={14} className="text-stone" />
-          <span className="text-xs font-medium text-smoke uppercase tracking-wide">
-            Filters
-          </span>
-        </div>
-        <button
-          onClick={onToggle}
-          className="p-1 rounded hover:bg-charcoal/60 transition-colors text-stone hover:text-smoke"
-          title="Collapse filter panel"
-        >
-          <ChevronLeft size={16} />
-        </button>
-      </div>
-
-      {/* Scrollable content */}
-      <div
-        className="flex-1 overflow-y-auto"
-        style={{ scrollbarWidth: "thin" }}
+    <div className="absolute top-4 left-4 z-20">
+      {/* Toggle button (always visible) */}
+      <button
+        onClick={onToggle}
+        className={clsx(
+          "flex items-center justify-center w-10 h-10 rounded-lg transition-colors",
+          "bg-jet/90 backdrop-blur-sm border border-stone/20 shadow-lg",
+          isOpen ? "text-smoke" : "text-stone hover:text-smoke hover:bg-jet",
+        )}
+        title={isOpen ? "Close filters" : "Open filters"}
       >
-        {/* Graph stats */}
-        <div className="px-4 py-3 border-b border-stone/10">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <Network size={13} className="text-stone/60" />
-              <span className="text-xs text-stone">
-                {totalEntities}{" "}
-                <span className="text-stone/60">
-                  entit{totalEntities === 1 ? "y" : "ies"}
-                </span>
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Hash size={13} className="text-stone/60" />
-              <span className="text-xs text-stone">
-                {totalRelationships}{" "}
-                <span className="text-stone/60">
-                  relationship{totalRelationships === 1 ? "" : "s"}
-                </span>
-              </span>
-            </div>
-          </div>
-        </div>
+        <Filter size={16} />
+      </button>
 
-        {/* Entity search (highlights, does not filter) */}
-        <div className="px-4 py-3 border-b border-stone/10">
-          <label className="text-[10px] text-stone/60 uppercase tracking-wider mb-1.5 block">
-            Search (highlight)
-          </label>
-          <div className="relative">
-            <Search
-              size={14}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone/50"
-            />
-            <input
-              type="text"
-              value={localSearch}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search entities..."
-              className="w-full pl-8 pr-8 py-1.5 bg-charcoal/50 border border-stone/10 rounded-md text-xs text-smoke placeholder:text-stone/40 focus:outline-none focus:border-stone/30 transition-colors"
-            />
-            {localSearch && (
-              <button
-                onClick={() => handleSearchChange("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-stone/50 hover:text-stone transition-colors"
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Keyword filter (actually filters the graph) */}
-        <div className="px-4 py-3 border-b border-stone/10">
-          <label className="text-[10px] text-stone/60 uppercase tracking-wider mb-1.5 block">
-            Keyword filter
-          </label>
-          <div className="relative">
-            <Filter
-              size={14}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone/50"
-            />
-            <input
-              type="text"
-              value={localKeyword}
-              onChange={(e) => handleKeywordChange(e.target.value)}
-              placeholder="Filter by keywords (comma-separated)"
-              className="w-full pl-8 pr-8 py-1.5 bg-charcoal/50 border border-stone/10 rounded-md text-xs text-smoke placeholder:text-stone/40 focus:outline-none focus:border-stone/30 transition-colors"
-            />
-            {localKeyword && (
-              <button
-                onClick={() => handleKeywordChange("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-stone/50 hover:text-stone transition-colors"
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Domain layer toggles */}
-        <div className="px-4 py-3 border-b border-stone/10">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] text-stone/60 uppercase tracking-wider">
-              Domains
+      {/* Floating expanded panel */}
+      <div
+        className={clsx(
+          "absolute top-12 left-0 w-[280px] bg-jet/95 backdrop-blur-sm border border-stone/20 rounded-lg shadow-lg overflow-hidden",
+          "transition-all duration-250 ease-out origin-top",
+          isOpen
+            ? "opacity-100 scale-y-100"
+            : "opacity-0 scale-y-0 pointer-events-none",
+        )}
+        style={{
+          maxHeight: "60vh",
+          transitionProperty: "opacity, transform",
+          transitionDuration: "250ms",
+          transitionTimingFunction: "ease-out",
+        }}
+      >
+        {/* Panel header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-stone/15">
+          <div className="flex items-center gap-2">
+            <Filter size={14} className="text-stone" />
+            <span className="text-xs font-medium text-smoke uppercase tracking-wide">
+              Filters
             </span>
-            <button
-              onClick={
-                allDomainsActive
-                  ? handleDomainDeselectAll
-                  : handleDomainSelectAll
-              }
-              className="text-[10px] text-stone/50 hover:text-smoke transition-colors"
-            >
-              {allDomainsActive ? "Deselect All" : "Select All"}
-            </button>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {sortedDomains.map((domain) => {
-              const isActive = filters.activeDomains.has(domain);
-              const display = DOMAIN_DISPLAY[domain];
-              const color = display?.color ?? "#8A8A82";
-              const label = display?.label ?? formatEntityType(domain);
-              const count = domainCounts.get(domain) ?? 0;
-
-              return (
-                <button
-                  key={domain}
-                  onClick={() => onToggleDomain(domain)}
-                  className={clsx(
-                    "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs transition-all",
-                    isActive
-                      ? "text-smoke"
-                      : "text-stone/40 bg-transparent hover:text-stone/60",
-                  )}
-                  style={
-                    isActive
-                      ? {
-                          backgroundColor: `${color}15`,
-                          border: `1px solid ${color}30`,
-                        }
-                      : {
-                          backgroundColor: "transparent",
-                          border: "1px solid rgba(138,138,130,0.1)",
-                        }
-                  }
-                >
-                  <span
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: isActive ? color : "#8A8A8240" }}
-                  />
-                  <span>{label}</span>
-                  <span className="text-stone/50 text-[10px]">({count})</span>
-                </button>
-              );
-            })}
-          </div>
+          <button
+            onClick={onToggle}
+            className="p-1 rounded hover:bg-charcoal/60 transition-colors text-stone hover:text-smoke"
+            title="Close filter panel"
+          >
+            <X size={14} />
+          </button>
         </div>
 
-        {/* Entity type toggles */}
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] text-stone/60 uppercase tracking-wider">
-              Entity Types
-            </span>
-            <button
-              onClick={
-                allEntityTypesActive
-                  ? handleEntityTypeDeselectAll
-                  : handleEntityTypeSelectAll
-              }
-              className="text-[10px] text-stone/50 hover:text-smoke transition-colors"
-            >
-              {allEntityTypesActive ? "Deselect All" : "Select All"}
-            </button>
-          </div>
-          <div className="space-y-0.5">
-            {sortedEntityTypes.map((type) => {
-              const isActive = filters.activeEntityTypes.has(type);
-              const color = getEntityColor(type);
-              const count = entityTypeCounts.get(type) ?? 0;
-
-              return (
-                <button
-                  key={type}
-                  onClick={() => onToggleEntityType(type)}
-                  className={clsx(
-                    "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs transition-all",
-                    isActive
-                      ? "text-smoke"
-                      : "text-stone/40 hover:text-stone/60",
-                  )}
-                  style={
-                    isActive
-                      ? {
-                          backgroundColor: `${color}10`,
-                        }
-                      : {}
-                  }
-                >
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{
-                      backgroundColor: isActive ? color : "#8A8A8240",
-                    }}
-                  />
-                  <span className="flex-1 text-left">
-                    {formatEntityType(type)}
+        {/* Scrollable content */}
+        <div
+          className="overflow-y-auto"
+          style={{
+            maxHeight: "calc(60vh - 48px)",
+            scrollbarWidth: "thin",
+          }}
+        >
+          {/* Graph stats */}
+          <div className="px-4 py-3 border-b border-stone/10">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5">
+                <Network size={13} className="text-stone/60" />
+                <span className="text-sm text-stone">
+                  {totalEntities}{" "}
+                  <span className="text-stone/60">
+                    entit{totalEntities === 1 ? "y" : "ies"}
                   </span>
-                  <span className="text-stone/50 text-[10px]">({count})</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Hash size={13} className="text-stone/60" />
+                <span className="text-sm text-stone">
+                  {totalRelationships}{" "}
+                  <span className="text-stone/60">
+                    relationship{totalRelationships === 1 ? "" : "s"}
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Entity search (highlights, does not filter) */}
+          <div className="px-4 py-3 border-b border-stone/10">
+            <label className="text-xs text-stone/60 uppercase tracking-wider mb-1.5 block">
+              Search (highlight)
+            </label>
+            <div className="relative">
+              <Search
+                size={14}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone/50"
+              />
+              <input
+                type="text"
+                value={localSearch}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Search entities..."
+                className="w-full pl-8 pr-8 py-1.5 bg-charcoal/50 border border-stone/10 rounded-md text-sm text-smoke placeholder:text-stone/40 focus:outline-none focus:border-stone/30 transition-colors"
+              />
+              {localSearch && (
+                <button
+                  onClick={() => handleSearchChange("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-stone/50 hover:text-stone transition-colors"
+                >
+                  <X size={12} />
                 </button>
-              );
-            })}
+              )}
+            </div>
+          </div>
+
+          {/* Keyword filter (actually filters the graph) */}
+          <div className="px-4 py-3 border-b border-stone/10">
+            <label className="text-xs text-stone/60 uppercase tracking-wider mb-1.5 block">
+              Keyword filter
+            </label>
+            <div className="relative">
+              <Filter
+                size={14}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone/50"
+              />
+              <input
+                type="text"
+                value={localKeyword}
+                onChange={(e) => handleKeywordChange(e.target.value)}
+                placeholder="Filter by keywords (comma-separated)"
+                className="w-full pl-8 pr-8 py-1.5 bg-charcoal/50 border border-stone/10 rounded-md text-sm text-smoke placeholder:text-stone/40 focus:outline-none focus:border-stone/30 transition-colors"
+              />
+              {localKeyword && (
+                <button
+                  onClick={() => handleKeywordChange("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-stone/50 hover:text-stone transition-colors"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Domain layer toggles */}
+          <div className="px-4 py-3 border-b border-stone/10">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-stone/60 uppercase tracking-wider">
+                Domains
+              </span>
+              <button
+                onClick={
+                  allDomainsActive
+                    ? handleDomainDeselectAll
+                    : handleDomainSelectAll
+                }
+                className="text-xs text-stone/50 hover:text-smoke transition-colors"
+              >
+                {allDomainsActive ? "Deselect All" : "Select All"}
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {sortedDomains.map((domain) => {
+                const isActive = filters.activeDomains.has(domain);
+                const display = DOMAIN_DISPLAY[domain];
+                const color = display?.color ?? "#8A8A82";
+                const label = display?.label ?? formatEntityType(domain);
+                const count = domainCounts.get(domain) ?? 0;
+
+                return (
+                  <button
+                    key={domain}
+                    onClick={() => onToggleDomain(domain)}
+                    className={clsx(
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm transition-all",
+                      isActive
+                        ? "text-smoke"
+                        : "text-stone/40 bg-transparent hover:text-stone/60",
+                    )}
+                    style={
+                      isActive
+                        ? {
+                            backgroundColor: `${color}15`,
+                            border: `1px solid ${color}30`,
+                          }
+                        : {
+                            backgroundColor: "transparent",
+                            border: "1px solid rgba(138,138,130,0.1)",
+                          }
+                    }
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: isActive ? color : "#8A8A8240",
+                      }}
+                    />
+                    <span>{label}</span>
+                    <span className="text-stone/50 text-[10px]">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Entity type toggles */}
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-stone/60 uppercase tracking-wider">
+                Entity Types
+              </span>
+              <button
+                onClick={
+                  allEntityTypesActive
+                    ? handleEntityTypeDeselectAll
+                    : handleEntityTypeSelectAll
+                }
+                className="text-xs text-stone/50 hover:text-smoke transition-colors"
+              >
+                {allEntityTypesActive ? "Deselect All" : "Select All"}
+              </button>
+            </div>
+            <div className="space-y-0.5">
+              {sortedEntityTypes.map((type) => {
+                const isActive = filters.activeEntityTypes.has(type);
+                const color = getEntityColor(type);
+                const count = entityTypeCounts.get(type) ?? 0;
+
+                return (
+                  <button
+                    key={type}
+                    onClick={() => onToggleEntityType(type)}
+                    className={clsx(
+                      "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition-all",
+                      isActive
+                        ? "text-smoke"
+                        : "text-stone/40 hover:text-stone/60",
+                    )}
+                    style={
+                      isActive
+                        ? {
+                            backgroundColor: `${color}10`,
+                          }
+                        : {}
+                    }
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: isActive ? color : "#8A8A8240",
+                      }}
+                    />
+                    <span className="flex-1 text-left">
+                      {formatEntityType(type)}
+                    </span>
+                    <span className="text-stone/50 text-[10px]">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

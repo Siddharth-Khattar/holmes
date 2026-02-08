@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-07
+**Last Updated:** 2026-02-08
 **Current Phase:** 7 of 12 (Knowledge Storage & Domain Agent Enrichment) — COMPLETE
-**Next Phase:** 7.1 (Knowledge Graph Frontend) or 8 (Synthesis & Intelligence Layer)
+**Next Phase:** 7.1 (LLM-Based KG Builder Agent) → 7.2 (D3.js KG Frontend Enhancement) → 8 (Synthesis)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -18,6 +18,9 @@
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
 | 7 | Knowledge Storage & Domain Agent Enrichment | COMPLETE | 2026-02-07 | 2026-02-07 | 6 plans (11 commits), 8/8 verified: 9 DB models + migration, KG/findings schemas, KG Builder + findings service, prompt enrichment, 10 API endpoints, pipeline wiring |
+| 7.1 | LLM-Based KG Builder Agent | NOT_STARTED | - | - | Replaces programmatic KG Builder with LLM agent |
+| 7.2 | KG Frontend (D3.js Enhancement) | NOT_STARTED | - | - | Epstein-inspired D3.js improvements |
+| 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -40,8 +43,19 @@
   - Plan 06: 3 SSE event types + pipeline wiring (Save Findings → Build KG → Backfill Entity IDs)
   - Full pipeline: Triage → Orchestrator → Domain → Strategy → HITL → Save Findings → Build KG → Backfill Entity IDs → Final
 
+**Architecture revision (2026-02-08):**
+- Programmatic KG Builder replaced with LLM-based KG Builder Agent (Approach 4)
+  - Research: Microsoft GraphRAG, KGGen (NeurIPS '25), LINK-KG, Epstein Doc Explorer all validate LLM-based KG construction
+  - Root cause of poor graph quality: co-occurrence relationships + zero entity filtering + granular entity types
+  - LLM agent sees ALL domain outputs holistically → cross-domain connections + semantic relationships + natural dedup
+- D3.js retained as primary graph library (not replaced by vis-network)
+  - Epstein Doc Explorer proves D3.js force simulation produces excellent investigative graphs
+  - vis-network deferred to optional Phase 7.3
+- New phase structure: 7.1 (LLM KG Builder) → 7.2 (D3.js Enhancement) → 7.3 (vis-network, optional)
+
 **What's next:**
-- Phase 7.1: Knowledge Graph Frontend (vis-network) — replace D3.js with vis-network, connect to real KG API
+- Phase 7.1: LLM-Based KG Builder Agent — replace programmatic KG Builder with LLM agent for curated entities + semantic relationships
+- Phase 7.2: D3.js KG Frontend Enhancement — Epstein-inspired layout, physics, sidebars, filtering, document excerpts
 - Phase 8: Synthesis Agent & Intelligence Layer — cross-referencing, hypotheses, contradictions, gaps, timeline
 
 ---
@@ -230,7 +244,8 @@ All frontend features need these backend endpoints:
 | Streaming | WebSocket vs SSE | SSE | Simpler, sufficient for unidirectional updates, auto-reconnect |
 | Auth | NextAuth vs Better Auth | Better Auth | Modern, TypeScript-first, good PostgreSQL integration |
 | Hypothesis system | Integrated in KG vs Separate view | Separate view | Cleaner UX, fullscreen capability, complements contradiction/gap detection |
-| Graph library | D3.js vs vis-network | **D3.js** | Chosen by Yatharth during implementation |
+| Graph library | D3.js vs vis-network | **D3.js (enhanced)** | D3.js retained and enhanced with Epstein-inspired physics/layout; vis-network deferred to optional Phase 7.3 |
+| KG Builder approach | Programmatic vs LLM-based | **LLM-based (Approach 4)** | Research validates: co-occurrence relationships are fundamentally insufficient; LLM agent sees all findings holistically for cross-domain connections + semantic relationships + natural dedup |
 | Map API | Mapbox vs alternatives | Mapbox (tentative) | Evaluate alternatives during implementation |
 | Geospatial agent | Part of pipeline vs Post-synthesis | Post-synthesis utility | Autonomous when location data exists, on-demand via chat |
 | Entity taxonomy | Core types only vs Full domain-specific | Full adoption | Better knowledge graph quality, domain-appropriate metadata |
@@ -362,8 +377,8 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-07
-Stopped at: Phase 7 complete (6 plans, 11 commits, 8/8 verified); ready to begin Phase 7.1 or Phase 8
+Last session: 2026-02-08
+Stopped at: Architecture revision complete (Phases 7.1-7.3 restructured); ready to begin Phase 7.1 (LLM KG Builder Agent)
 Resume file: None
 
 ---

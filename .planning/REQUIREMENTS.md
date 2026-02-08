@@ -533,27 +533,32 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Uses `include_thoughts=True` for transparency
 **Dependencies:** REQ-STORE-001, REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006
 
-### REQ-AGENT-009: Knowledge Graph Builder Service
+### REQ-AGENT-009: Knowledge Graph Builder Agent (LLM-Based)
 **Priority:** HIGH
-**Description:** Programmatic Python service (NOT an LLM agent) that extracts entities and relationships from domain agent structured output and stores them in KG tables.
+**Description:** LLM-based agent (Gemini Pro) that reads ALL domain agent findings and entities holistically, then produces a curated knowledge graph with deduplicated high-level entities and semantic relationships. Replaces the previous programmatic co-occurrence approach.
 **Acceptance Criteria:**
-- Reads domain agent structured output from `agent_executions.output_data` (Pydantic models)
-- Extracts ALL entities from `DomainEntity` lists across all domain agents
-- Creates relationship edges from findings (entities co-occurring in same finding)
-- Entity types from all domain taxonomies:
-  - Core: Person, Organization, Event, Document, Location, Amount
-  - Financial: monetary_amount, account, transaction, asset, financial_instrument, tax_record
-  - Legal: statute, case_citation, contract, legal_term, court, obligation, party, clause
-  - Evidence: communication, alias, vehicle, property, timestamp, physical_evidence, digital_artifact, witness
-  - Strategy: strategic_decision, organizational_unit, stakeholder, objective, risk_factor
-- Entity deduplication: exact name+type match → auto-merge; fuzzy matching (>85% similarity) → flag for LLM resolution
-- Additive-only: NEVER filters or discards entities/relationships from domain agent output
+- Receives ALL case_findings (rich markdown with citations) + all raw DomainEntity lists from agent_executions.output_data + case description
+- Gemini 3 Pro with `thinking_level="high"` and 1M context window
+- Runs in fresh stage-isolated ADK session after ALL domain agents complete
+- Produces curated entity list with investigation-focused taxonomy:
+  - **PERSON** — Named individuals (suspects, witnesses, victims, officers)
+  - **ORGANIZATION** — Companies, agencies, groups, shell entities
+  - **LOCATION** — Physical places, addresses, jurisdictions
+  - **EVENT** — Specific occurrences with dates (transactions, meetings, communications)
+  - **ASSET** — Properties, vehicles, investments, digital wallets
+  - **FINANCIAL_ENTITY** — Bank accounts, transactions, instruments
+  - **COMMUNICATION** — Phone calls, emails, messages, documents exchanged
+  - **DOCUMENT** — Key evidence items referenced across findings
+- Timestamps, monetary amounts, physical objects → metadata on entities/relationships, NOT standalone graph nodes
+- Produces semantic relationships with typed labels (e.g., "employed_by", "transferred_funds_to", "owns") — NOT co-occurrence
+- Entity deduplication handled naturally by LLM seeing all findings together (cross-agent alias resolution)
+- Cross-domain relationship inference (financial finding ↔ legal finding connected when semantically related)
+- Every entity includes aliases array (all known name variants from different agents)
+- Every relationship includes evidence_excerpt (exact source text) and source_finding_ids for traceability
+- Stores curated output in existing kg_entities and kg_relationships tables (clears old data for workflow, writes curated data)
 - Degree computation (connection counts) for frontend node sizing
-- Stores in PostgreSQL: kg_entities, kg_relationships tables
-- All nodes linked to source execution (source_execution_id) and source finding (source_finding_index)
-- Runs AFTER each domain agent completes (progressive KG population)
-- Final entity deduplication pass after ALL domain agents complete
-- Incremental updates without full rebuild when new files analyzed
+- Inline Pro-to-Flash fallback for resilience
+- Raw entities from domain agents preserved in agent_executions.output_data for audit trail
 **Dependencies:** REQ-STORE-001, REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006
 
 ### REQ-AGENT-010: Incremental Processing
@@ -671,32 +676,51 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ### REQ-VIS-003: Knowledge Graph View
 **Priority:** HIGH
-**Description:** Premium knowledge graph visualization using vis-network with intelligent clustering, physics-based layout, and relationship-aware spacing.
+**Description:** Premium knowledge graph visualization using D3.js force simulation with Epstein Doc Explorer-inspired layout, physics, filtering panels, entity timeline, and multi-media source viewer — adapted to Holmes's Liquid Glass design system. Filter/control and timeline panels are local to the KG canvas, not in the app-wide sidebar.
 **Acceptance Criteria:**
-- **vis-network** library (replacing D3.js) integrated via `useRef`/`useEffect` for full TypeScript control
-- ForceAtlas2-based physics simulation:
-  - Solver: `forceAtlas2Based` for superior cluster formation in investigative graphs
-  - Configurable gravitationalConstant, springLength, springConstant, centralGravity
-  - `avoidOverlap` enabled to prevent node collision
-  - Stabilization: 200-500 iterations with fit-after-stabilize
-- Group-based entity type clustering:
-  - Nodes assigned to groups by entity type (person, organization, location, event, document, evidence)
-  - Each group has distinct shape, color, size, and icon
-  - Natural spatial clustering — related entities closer, unrelated further apart
-- Relationship-type-based edge configuration:
-  - Edge length varies by relationship type (e.g., EMPLOYED_BY shorter than MENTIONED_IN)
-  - Edge width indicates relationship strength
-  - Edge color indicates relationship category
-  - Labeled edges with relationship type
-- Nodes sized by connection count (degree)
-- Five toggleable layers: Evidence (red), Legal (blue), Strategy (green), Temporal (amber), Hypothesis (pink)
-- Zoom and pan controls
-- Node search and highlight (find entity by name, highlight path)
-- Click node to see details: entity metadata, full citation chain, connected entities, source agent
+- **D3.js** force simulation with 5 forces (link, charge, center, collision, radial) inside React `useRef`/`useEffect`
+- Radial force: high-connection entities near center, low-connection pushed outward (connection-count-based gravity well)
+- Sqrt-scaled node radius (connection count → 5-100px range via `d3.scalePow().exponent(0.5)`)
+- Collision detection using actual circle radius + padding
+- Link distance: constant base (50px) or relationship-type-based
+- Charge repulsion: -400 (tunable)
+- Domain-colored SVG circle nodes (person=orange, org=green, location=blue, event=amber — consistent with Holmes palette)
+- Node labels below circles, entity type indicated by color
+- Click node → highlight node + all connected edges (white), dim unconnected edges; open right sidebar timeline
+- Drag individual nodes (fix position during drag, release on drop)
+- Zoom/pan with `d3.zoom()` (scale extent [0.01, 10])
+- **Left panel — Filters & Controls** (local to KG canvas, NOT in the app-wide sidebar):
+  - Positioned on the left side of the knowledge graph canvas area
+  - Selected entity display with Clear button
+  - Graph stats: entity count, relationship count, domain breakdown
+  - Entity search (debounced text input, highlights matching nodes)
+  - Keyword filter (comma-separated fuzzy match against relationship labels/entity names)
+  - Domain layer toggles (Financial, Legal, Evidence, Strategy) with select/deselect all
+  - Density threshold slider (prune low-connection nodes by percentage of average)
+- **Right panel — Entity Timeline** (local to KG canvas):
+  - Appears when entity is selected
+  - Chronological list of relationships involving selected entity
+  - Each entry: year/date, relationship description (actor → action → target), source citation reference
+  - Source citations list acts as navigation for the source viewer panel (click a citation → jump to that excerpt/timestamp)
+  - Scrollable timeline with entity names highlighted in accent colors
+  - Stays visible when source viewer is open (does not get hidden)
+- **Source viewer panel** (replaces simple "document excerpt modal" — details to be refined during phase discussions):
+  - Multi-media: renders content based on source type (document text, video player, audio player, image viewer)
+  - For documents: full text excerpt with entity names highlighted (selected entity = yellow, related = orange)
+  - For audio/video: playback with timestamp navigation from right panel citations
+  - For images: viewer with annotation overlay capability
+  - Opens alongside (not replacing) the right panel — right panel citations serve as a navigable index
+  - Source metadata header (summary, category, date range)
+  - Close button (X)
+  - NOTE: This component is reusable beyond the KG view (Evidence Library, Timeline, etc.) — full specification during phase discussions
+- Edge deduplication: multiple relationships between same entity pair → single edge with count
+- Edge hover tooltip: relationship label, temporal context, source document
 - Fullscreen capability with maximize button
 - Basic analytics: node count, edge count, most connected entities
-- Lazy clustering for graphs with >200 nodes
+- Bottom instruction bar: "Click nodes to explore relationships · Scroll to zoom · Drag to pan"
+- Responsive layout within KG canvas: left panel (320px) | center graph | right panel (384px, appears on select) — all local to the KG page content area, not the app-wide sidebar
 - Intuitive at first glance: a user can understand entity relationships without instruction
+- **Reference:** `DOCS/reference/epstein-network-ui/` for layout, physics, and interaction patterns
 **Dependencies:** REQ-AGENT-009, REQ-STORE-001
 
 ### REQ-VIS-004: Timeline View
@@ -1571,13 +1595,17 @@ No confirmation dialogs implemented yet.
 
 | Sub-Criterion | Status | Notes |
 |---------------|--------|-------|
-| Force-directed graph | ✅ | D3.js chosen and implemented |
+| D3.js force simulation (5 forces) | 🟠 | Basic D3.js graph exists; needs radial force, collision, charge tuning (Phase 7.2) |
 | Nodes sized by connection count | ✅ | Implemented |
 | Edges labeled with relationship type | ✅ | Implemented |
-| Five toggleable layers | 🟠 | Layer concept exists but not 5-layer system yet |
+| Domain layer toggles | 🟠 | Layer concept exists but not domain-based toggle system yet |
 | Zoom and pan controls | ✅ | Full zoom/pan/reset controls |
 | Node search and highlight | ✅ | Implemented |
 | Click node for details | ✅ | Info panel shows on click |
+| Left panel (filters/controls, local to KG canvas) | ⏳ | Not implemented (Phase 7.2) |
+| Right panel (entity timeline, local to KG canvas) | ⏳ | Not implemented (Phase 7.2) |
+| Source viewer panel (multi-media) | ⏳ | Not implemented (Phase 7.2+) — details during phase discussions |
+| Density threshold slider | ⏳ | Not implemented (Phase 7.2) |
 | Fullscreen capability | ⏳ | Not implemented |
 | Basic analytics | ⏳ | Not implemented |
 
@@ -1809,7 +1837,8 @@ Limitations documented in code comments and mitigated:
 
 *Generated: 2026-01-18*
 *Updated: 2026-02-07*
-*Architecture redesign: 2026-02-07 (REQ-STORE added, REQ-AGENT-008/009 rewritten, REQ-VIS-003 updated for vis-network, REQ-CHAT-002/003 updated for tool-based architecture)*
+*Architecture redesign: 2026-02-07 (REQ-STORE added, REQ-AGENT-008/009 rewritten, REQ-CHAT-002/003 updated for tool-based architecture)*
+*Architecture revision: 2026-02-08 (REQ-AGENT-009 revised for LLM-based KG Builder; REQ-VIS-003 updated for D3.js with Epstein-inspired patterns; vis-network deferred)*
 *Status: Complete - Integration features added (REQ-RESEARCH, REQ-HYPO, REQ-GEO, REQ-TASK)*
 *Frontend Status: Partial implementation by Yatharth (see DEVELOPMENT_DOCS/YATHARTH_WORK_SUMMARY.md)*
 *Phase 4 Agent requirements tracked: 2026-02-03*

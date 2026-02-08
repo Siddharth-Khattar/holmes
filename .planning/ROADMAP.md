@@ -30,7 +30,9 @@
 | 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 | ✅ COMPLETE |
 | 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ✅ COMPLETE |
 | 7 | Knowledge Storage & Domain Agent Enrichment | DB schema, enriched citations, KG Builder, findings storage, KG API | REQ-AGENT-009, REQ-STORE-001/002, REQ-AGENT-003-006 (enrichment) | ✅ COMPLETE |
-| 7.1 | Knowledge Graph Frontend (vis-network) | Premium graph visualization with clustering, physics, relationship-based layout | REQ-VIS-003 | ⏳ NOT_STARTED |
+| 7.1 | LLM-Based KG Builder Agent | Replace programmatic KG Builder with LLM agent for curated entities + semantic relationships | REQ-AGENT-009 (revised) | ⏳ NOT_STARTED |
+| 7.2 | Knowledge Graph Frontend (D3.js Enhancement) | Improve D3.js graph with Epstein-inspired layout, physics, sidebars, filtering, document excerpts | REQ-VIS-003 | ⏳ NOT_STARTED |
+| 7.3 | Knowledge Graph Frontend (vis-network) — OPTIONAL | Premium vis-network graph visualization (preserved for experimentation) | REQ-VIS-003 (alternative) | ⏳ DEFERRED |
 | 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ⏳ NOT_STARTED |
 | 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ⏳ NOT_STARTED |
 | 9 | Chat Interface & Research | Multi-source tool-based Q&A, research/discovery, context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
@@ -39,7 +41,7 @@
 | 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i | ⏳ NOT_STARTED |
 
 > **Status Legend:** ✅ COMPLETE | 🟡 FRONTEND_DONE (backend pending) | ⏳ NOT_STARTED | ⏳ PLANNED
-> **Note:** Phase 6 complete (2026-02-06, 35 commits). Architecture redesigned 2026-02-07: Phases 7-9 restructured with KG-as-Memory pattern, hybrid storage (PG + Vector), programmatic KG Builder, Synthesis Agent, vis-network frontend, and tool-based Chat Agent.
+> **Note:** Phase 6 complete (2026-02-06, 35 commits). Architecture redesigned 2026-02-07: Phases 7-9 restructured with KG-as-Memory pattern, hybrid storage (PG + Vector), programmatic KG Builder, Synthesis Agent, tool-based Chat Agent. Architecture revised 2026-02-08: Programmatic KG Builder replaced with LLM-based KG Builder Agent (Approach 4); D3.js retained and enhanced (Epstein-inspired); vis-network deferred to optional Phase 7.3.
 
 **Post-MVP:**
 | Phase | Name | Focus | Requirements |
@@ -671,87 +673,237 @@ Plans:
 
 ---
 
-## Phase 7.1: Knowledge Graph Frontend (vis-network)
+## Phase 7.1: LLM-Based KG Builder Agent
 
-**Goal:** Premium knowledge graph visualization with intelligent clustering, physics-based layout, and relationship-aware spacing — replacing the D3.js implementation with vis-network.
+**Goal:** Replace the programmatic KG Builder with an LLM-based agent that reads ALL domain agent outputs holistically and produces a curated knowledge graph with deduplicated high-level entities and semantic relationships — enabling cross-domain connections impossible with per-finding co-occurrence.
 
-**Requirements:** REQ-VIS-003 (complete)
+**Requirements:** REQ-AGENT-009 (revised — LLM-based, not programmatic)
 
-**Depends on:** Phase 7 (KG API must exist with real data)
+**Depends on:** Phase 7 (case_findings + raw entities stored, KG API endpoints exist)
 
 **Status:** ⏳ NOT_STARTED
+
+**Context / Why This Change:**
+The Phase 7 programmatic KG Builder produces low-quality graphs because:
+1. **Zero entity filtering** — every entity (timestamps, dollar amounts, hardware model numbers) becomes a graph node
+2. **Pure co-occurrence relationships** — edges labeled "co-occurrence (Authenticity Analysis)" carry zero semantic signal
+3. **Incomplete deduplication** — "$2,000" and "2,000 dollars" stay as separate nodes (fuzzy matches logged but not merged)
+4. **No cross-domain connections** — each domain agent operates in isolation; the programmatic builder can't connect financial findings to legal findings
+
+Research (Microsoft GraphRAG, KGGen NeurIPS 2025, LINK-KG, Epstein Doc Explorer) confirms: **LLM-based relationship extraction + LLM-based deduplication** is the state of the art. The programmatic approach is suitable only when structured relationships are already available.
+
+**Deliverables:**
+- **KG Builder Agent** (Gemini Pro, `thinking_level="high"`, 1M context window):
+  - Input: ALL `case_findings` (rich markdown with citations) + all raw `DomainEntity` lists from `agent_executions.output_data` + case description + file metadata
+  - Output (`KGBuilderOutput` Pydantic model):
+    - `entities: list[CuratedEntity]` — Deduplicated, high-level investigation entities only
+    - `relationships: list[SemanticRelationship]` — Typed semantic relationships with evidence grounding
+  - Entity taxonomy (investigation-focused, inspired by LINK-KG + Epstein Doc Explorer):
+    - **PERSON** — Named individuals (suspects, witnesses, victims, officers)
+    - **ORGANIZATION** — Companies, agencies, groups, shell entities
+    - **LOCATION** — Physical places, addresses, jurisdictions
+    - **EVENT** — Specific occurrences with dates (transactions, meetings, communications)
+    - **ASSET** — Properties, vehicles, investments, digital wallets
+    - **FINANCIAL_ENTITY** — Bank accounts, transactions, instruments
+    - **COMMUNICATION** — Phone calls, emails, messages, documents exchanged
+    - **DOCUMENT** — Key evidence items referenced across findings
+  - Timestamps, monetary amounts, physical objects → metadata on entities/relationships, NOT standalone nodes
+  - Entity deduplication handled naturally by the LLM seeing all findings together (e.g., "$2,000" and "2,000 dollars" → single entity with aliases)
+  - Cross-domain relationship inference: financial agent found wire transfer + legal agent found regulatory violation → LLM connects them
+  - Every relationship must include `evidence_excerpt` (exact source text) and `source_finding_ids` for traceability
+- **Pydantic output schemas:**
+  ```python
+  class CuratedEntity(BaseModel):
+      name: str                       # Canonical name
+      entity_type: str                # PERSON, ORGANIZATION, LOCATION, EVENT, ASSET, etc.
+      aliases: list[str]              # All known aliases/variants found across agents
+      description: str                # Brief description synthesized from findings
+      domain: str                     # Primary domain (financial/legal/evidence/strategy)
+      confidence: float               # 0-100
+      source_finding_ids: list[int]   # Traceability to case_findings
+
+  class SemanticRelationship(BaseModel):
+      source_entity: str              # Must match an entity name
+      target_entity: str              # Must match an entity name
+      relationship_type: str          # Semantic: "employed_by", "transferred_funds_to", "owns"
+      label: str                      # Human-readable: "CEO of", "Wire transfer to"
+      strength: float                 # 0-100
+      temporal_context: str | None    # When: "2016-05-02", "Q4 2019", etc.
+      evidence_excerpt: str           # Exact source text supporting this relationship
+      source_finding_ids: list[int]   # Traceability
+  ```
+- **Pipeline wiring changes:**
+  - Remove programmatic KG Builder calls from pipeline (extract_entities_from_output, build_relationships_from_findings, deduplicate_entities)
+  - After ALL domain agents complete + findings saved → invoke KG Builder Agent
+  - KG Builder Agent clears old kg_entities/kg_relationships for this workflow → writes curated data
+  - Emit SSE events: `KG_BUILDER_STARTED`, `KG_BUILDER_COMPLETE`
+  - Raw entities from domain agents still saved in `agent_executions.output_data` for audit trail
+- **KG API compatibility:**
+  - Existing `GET /api/cases/:caseId/graph` endpoint continues to work (reads from same kg_entities/kg_relationships tables)
+  - No frontend API changes needed — curated data replaces noisy data in same tables
+  - Entity `aliases` stored in `properties` JSONB column
+- **Prompt design:**
+  - Instruct: "Extract only investigation-relevant entities. Do NOT create standalone nodes for timestamps, monetary values, or physical objects — these are metadata on events and relationships."
+  - Instruct: "Every relationship must have a specific semantic type (not 'co-occurrence'). Use verbs like 'employed_by', 'transferred_funds_to', 'owns', 'met_with', 'signed', 'authorized'."
+  - Instruct: "Deduplicate entities across all domain agents. If the financial agent found 'J. Smith' and the legal agent found 'John Smith', merge them into one entity with both as aliases."
+  - Instruct: "Identify cross-domain connections. If a wire transfer (financial) relates to a contract violation (legal), create a relationship between them."
+
+**Technical Notes:**
+- KG Builder Agent runs in fresh stage-isolated ADK session (consistent with pipeline pattern)
+- Input is TEXT from PostgreSQL (case_findings.finding_text + entity lists), NOT multimodal file content
+- 1M context window handles even large cases (~100-150K tokens for 50-file case)
+- Cost: ~$0.05-0.15 per KG build at Gemini Pro rates (single LLM call)
+- The curated KG directly improves Phase 8 Synthesis quality — cleaner entity data → better hypotheses and contradictions
+- **Key files to create/modify:**
+  - `backend/app/agents/kg_builder/` — KG Builder agent module (agent, prompts, schemas)
+  - `backend/app/services/kg_builder.py` — Refactor: replace programmatic logic with LLM agent invocation + result storage
+  - `backend/app/schemas/knowledge_graph.py` — Add CuratedEntity, SemanticRelationship, KGBuilderOutput schemas
+  - `backend/app/api/agents.py` — Update pipeline: remove programmatic KG calls, add KG Builder Agent invocation
+
+**Exit Criteria:**
+- KG Builder Agent produces curated entity list with ~15-30 entities (not 50+ noisy ones) for a typical case
+- Relationships have semantic type labels (e.g., "CEO of", "transferred $50K to") not "co-occurrence"
+- Entity deduplication works across domain agents (same person found by financial + legal = one entity)
+- Cross-domain relationships exist (financial finding connected to legal finding)
+- No standalone timestamp/amount/physical-object nodes in the graph
+- Every entity has aliases array populated from cross-agent dedup
+- Every relationship has evidence_excerpt for traceability
+- Existing KG API returns the curated data without changes
+- Graph quality comparable to Image 1 (mock) or Epstein Doc Explorer (Image 3) in terms of clarity and semantic meaning
+
+---
+
+## Phase 7.2: Knowledge Graph Frontend (D3.js Enhancement)
+
+**Goal:** Transform the existing D3.js knowledge graph into a premium investigative visualization with Epstein Doc Explorer-inspired layout, physics, filtering panels (local to KG canvas), multi-media source viewer, and relationship timeline — while adapting to Holmes's Liquid Glass design system.
+
+**Requirements:** REQ-VIS-003 (D3.js approach)
+
+**Depends on:** Phase 7.1 (curated KG data with semantic relationships), Phase 7 (KG API endpoints)
+
+**Status:** ⏳ NOT_STARTED
+
+**Reference:** `DOCS/reference/epstein-network-ui/` — Epstein Doc Explorer frontend code (layout, physics, interactions). Adapt patterns to Holmes design system and use case.
+
+**Deliverables:**
+- **D3.js force simulation enhancement** (improve existing `knowledge-graph.tsx`):
+  - D3 force simulation with 5 forces: link, charge, center, collision, radial
+  - Radial force: high-connection entities near center, low-connection pushed outward
+  - Collision detection using actual circle radius + padding
+  - Sqrt-scaled node radius (connection count → 5-100px range)
+  - Link distance: constant base (50px) or relationship-type-based
+  - Charge repulsion: -400 (tunable)
+  - Continuous simulation with tick-based position updates
+- **Node rendering and interaction:**
+  - SVG circles with domain-colored fills (person=orange, org=green, location=blue — consistent with Holmes palette)
+  - Node labels (entity names) below circles
+  - Click node → highlight node + all connected edges (white), dim unconnected edges
+  - Click same node again → deselect
+  - Hover tooltip: entity name, connection count, entity type
+  - Drag individual nodes (fix position during drag, release on drop)
+  - Zoom/pan with `d3.zoom()` (scale extent [0.01, 10])
+- **Left panel — Filters & Controls** (local to KG canvas, NOT in the app-wide sidebar):
+  - Positioned on the left side of the knowledge graph canvas area
+  - Selected entity display with Clear button
+  - Graph stats: entity count, relationship count, domain breakdown
+  - Entity search (debounced text input, highlights matching nodes)
+  - Keyword filter (comma-separated fuzzy match against relationship labels/entity names)
+  - Domain layer toggles (Financial, Legal, Evidence, Strategy) with select/deselect all
+  - Document category toggles (with counts) mapped from source file types
+  - Density threshold slider (prune low-connection nodes by percentage of average)
+- **Right panel — Entity Timeline** (local to KG canvas):
+  - Appears when entity is selected
+  - Chronological list of relationships involving selected entity
+  - Each entry: year/date, relationship description (actor → action → target), source citation reference
+  - Filter by related entity name (text input)
+  - Source citations act as navigation index for the source viewer (click a citation → jump to excerpt/timestamp)
+  - Scrollable timeline with entity names highlighted in accent colors
+  - Stays visible when source viewer is open (does not get hidden)
+- **Source viewer panel** (replaces simple "document excerpt modal" — details to be refined during phase discussions):
+  - Multi-media: renders content based on source type (document text, video player, audio player, image viewer)
+  - For documents: full text excerpt with entity names highlighted (selected entity = yellow, related = orange)
+  - For audio/video: playback with timestamp navigation from right panel citations
+  - For images: viewer with annotation overlay capability
+  - Opens alongside (not replacing) the right panel — right panel citations serve as navigable index
+  - Source metadata header (summary, category, date range)
+  - Close button (X)
+  - NOTE: Reusable component beyond KG view (Evidence Library, Timeline, etc.) — full specification during phase discussions
+- **Edge rendering:**
+  - SVG lines with relationship-type-based opacity
+  - Highlight connected edges on node selection (white, full opacity); dim unconnected edges
+  - Edge hover tooltip: relationship label, temporal context, source document
+  - Edge deduplication: multiple relationships between same entity pair → single edge with count
+- **Responsive layout:**
+  - Three-panel layout LOCAL to KG canvas: left panel (320px) | center graph | right panel (384px, appears on select) — not in app-wide sidebar
+  - Dark canvas background consistent with Holmes theme
+  - Bottom instruction bar: "Click nodes to explore relationships · Scroll to zoom · Drag to pan"
+  - Fullscreen capability with maximize button
+- **Connected to real KG API** from Phase 7 (curated data from Phase 7.1)
+
+**Technical Notes:**
+- Enhance existing D3.js implementation — do NOT replace with vis-network
+- Use raw D3.js (d3.forceSimulation, d3.zoom, d3.drag) inside React useEffect hooks
+- Adapt Epstein Doc Explorer patterns (radial force, density pruning, sidebar layout) to Holmes design system
+- Entity timeline right panel inspired by Epstein's relationship timeline (stays visible when source viewer opens)
+- Multi-media source viewer inspired by Epstein's document viewer with entity highlighting (extends to audio/video/image)
+- Maintain Holmes Liquid Glass aesthetic (cream palette, glass effects, Fraunces typography)
+- **Reference code:** `DOCS/reference/epstein-network-ui/` (NetworkGraph.tsx, App.tsx, types, API patterns)
+- **Key frontend files (to create/modify):**
+  - `frontend/src/components/app/knowledge-graph.tsx` — Enhance D3.js with force simulation, radial layout, interactions
+  - `frontend/src/components/KnowledgeGraph/GraphFilterPanel.tsx` — Left panel (local to KG canvas): search, filters, domain toggles
+  - `frontend/src/components/KnowledgeGraph/EntityTimeline.tsx` — Right panel (local to KG canvas): chronological relationship timeline + citation navigation
+  - `frontend/src/components/app/SourceViewer.tsx` — Multi-media source viewer (reusable across views) — details during phase discussions
+  - `frontend/src/hooks/use-case-graph.ts` — Enhance to fetch curated KG data + support filtering
+  - `frontend/src/lib/knowledge-graph-config.ts` — Physics tuning, color palette, force parameters
+  - `frontend/src/types/knowledge-graph.ts` — Updated types for curated entity/relationship format
+
+**Exit Criteria:**
+- KG renders with D3.js force simulation using curated entity/relationship data from API
+- High-connection entities visually closer to center (radial force)
+- Clicking a node highlights it and all connected edges, opens right sidebar timeline
+- Entity timeline shows chronological relationships with source citations that navigate the source viewer
+- Source viewer panel renders document/audio/video/image content with entity highlighting
+- Left panel provides filtering by domain, keywords, entity search, density threshold
+- Graph tells a clear story: a first-time user can identify key persons, organizations, and their relationships
+- Three-panel layout (local to KG canvas) adapts to screen size
+- Fullscreen mode works
+- Performance: renders graphs up to 500 nodes smoothly
+
+---
+
+## Phase 7.3: Knowledge Graph Frontend (vis-network) — OPTIONAL
+
+**Goal:** Premium knowledge graph visualization with intelligent clustering, physics-based layout, and relationship-aware spacing — Alternative implementation using vis-network. Preserved for experimentation if D3.js approach (Phase 7.2) proves insufficient for large graphs.
+
+**Requirements:** REQ-VIS-003 (alternative approach)
+
+**Depends on:** Phase 7.1 (curated KG data), Phase 7 (KG API)
+
+**Status:** ⏳ DEFERRED
 
 **Plans:** 5 plans in 3 waves
 
 Plans:
-- [ ] 07-01-PLAN.md — DB schema: 9 new tables (KG, findings, synthesis) + Alembic migration + tsvector search
-- [ ] 07-02-PLAN.md — Pydantic schemas for KG/findings APIs + domain agent findings_text enrichment
-- [ ] 07-03-PLAN.md — KG Builder service (entity extraction, relationships, deduplication) + findings service (storage, full-text search)
-- [ ] 07-04-PLAN.md — Domain agent prompt enrichment (exhaustive citations, findings_text instructions)
-- [ ] 07-05-PLAN.md — API endpoints (KG + findings), SSE events, pipeline wiring
+- [ ] 07.3-01-PLAN.md — Shared domain colors config, API-aligned TypeScript types, KG API client, vis-network install
+- [ ] 07.3-02-PLAN.md — Core vis-network rendering: hook, physics config, data transformer, main graph component
+- [ ] 07.3-03-PLAN.md — UI chrome: filter panel, search, legend, entity detail sidebar, clustering, page wiring
 
 **Deliverables:**
-- Replace D3.js force-directed graph with vis-network (direct integration via `useRef`/`useEffect` for full control and TypeScript safety — not via stale React wrapper packages)
-- Group-based entity type clustering:
-  - Nodes assigned to groups by entity type (person, organization, location, event, document, evidence)
-  - Each group has distinct visual properties (shape, color, size, icon)
-  - Group definitions in vis-network `groups` option with per-group styling
-  - Natural spatial clustering — related entities gravitate together, unrelated push apart
-- ForceAtlas2-based physics simulation:
-  - Solver: `forceAtlas2Based` (superior clustering for investigative graphs vs barnesHut)
-  - `gravitationalConstant`: tuned per graph density (default -50, adjustable)
-  - `springLength` and `springConstant`: varied by relationship type (stronger relationships = shorter springs)
-  - `centralGravity`: low (0.01-0.05) to allow natural clustering
-  - `avoidOverlap`: enabled to prevent node collision
-  - Stabilization: 200-500 iterations with fit-after-stabilize
-- Relationship-type-based edge configuration:
-  - Edge length varies by relationship type (e.g., EMPLOYED_BY shorter than MENTIONED_IN)
-  - Edge width indicates relationship strength
-  - Edge color indicates relationship category (financial=blue, legal=purple, evidence=red)
-  - Labeled edges with relationship type
-  - Smooth curves for overlapping edges
-- Entity detail panel:
-  - Click node → detail panel with entity metadata
-  - Full citation chain (which finding, which file, exact excerpt)
-  - Connected entities list with relationship labels
-  - Source agent type badge
-- 5 toggleable layers: Evidence (red), Legal (blue), Strategy (green), Temporal (amber), Hypothesis (pink)
-- Search and highlight (find entity by name, highlight connections)
-- Fullscreen capability
-- Node scaling by degree (connection count)
-- Zoom/pan controls
-- Connected to real KG API from Phase 7 (not mock data)
+- Replace D3.js force-directed graph with vis-network (direct integration via `useRef`/`useEffect` for full TypeScript control)
+- Group-based entity type clustering with ForceAtlas2-based physics simulation
+- Relationship-type-based edge configuration (length, width, color by category)
+- Entity detail panel, 5 toggleable layers, search and highlight, fullscreen
+- Node scaling by degree, zoom/pan controls
 - Lazy clustering for graphs with >200 nodes (vis-network clustering API)
 
 **Technical Notes:**
-- vis-network integrated directly via `useRef<HTMLDivElement>` + `useEffect` pattern (full TypeScript control)
-- vis-network physics docs: https://visjs.github.io/vis-network/docs/network/physics.html
-- Physics solvers: barnesHut, forceAtlas2Based, repulsion, hierarchicalRepulsion
-- ForceAtlas2Based recommended: continuous gravity model, superior cluster formation for entity networks
-- Edge `length` property controls per-edge spring length (relationship-type-based spacing)
-- Node `group` property assigns visual cluster identity
-- `physics.stabilization.fit: true` ensures viewport fits all nodes after stabilization
+- vis-network integrated directly via `useRef<HTMLDivElement>` + `useEffect` pattern
+- ForceAtlas2Based solver for superior cluster formation
 - Dependencies: `vis-network` and `vis-data` npm packages
-- **Key frontend files (to create/modify):**
-  - `frontend/src/components/KnowledgeGraph/KnowledgeGraph.tsx` — Main vis-network component (replaces D3)
-  - `frontend/src/components/KnowledgeGraph/EntityDetailPanel.tsx` — Entity detail sidebar
-  - `frontend/src/components/KnowledgeGraph/GraphControls.tsx` — Layer toggles, search, zoom
-  - `frontend/src/components/KnowledgeGraph/GraphLegend.tsx` — Visual legend for node types
-  - `frontend/src/hooks/useKnowledgeGraph.ts` — vis-network instance management + data fetching
-  - `frontend/src/lib/knowledge-graph-config.ts` — Physics, groups, edge type configuration
-  - `frontend/src/types/knowledge-graph.ts` — Updated types for vis-network DataSet format
+- Consider only if D3.js approach (Phase 7.2) proves insufficient for >500 node graphs or if Canvas rendering is needed for performance
 
 **Exit Criteria:**
-- KG renders with vis-network using real entity/relationship data from API
-- Nodes cluster naturally by entity type group with clear spatial separation
-- Connected nodes are visually closer than unconnected ones
-- Relationship types influence edge length/spacing
-- Entity detail panel shows full metadata + citation chain back to source files
-- 5 layers toggleable
-- Search highlights entities and their connections
-- Fullscreen mode works
-- Physics simulation stabilizes within 3 seconds for graphs up to 500 nodes
-- Graph is intuitive: a first-time user can understand entity relationships at a glance
+- Same as Phase 7.2 exit criteria, using vis-network instead of D3.js
 
 ---
 
@@ -761,18 +913,11 @@ Plans:
 
 **Requirements:** REQ-AGENT-008, REQ-HYPO-001/002/003/004/005/006, REQ-WOW-001/002/003/004, REQ-VIS-004/005/006, REQ-TASK-001/002
 
-**Depends on:** Phase 7 (case_findings + KG tables populated)
+**Depends on:** Phase 7.1 (curated KG with semantic relationships), Phase 7 (case_findings + DB tables)
 
 **Status:** ⏳ NOT_STARTED
 
-**Plans:** 5 plans in 3 waves
-
-Plans:
-- [ ] 07-01-PLAN.md — DB schema: 9 new tables (KG, findings, synthesis) + Alembic migration + tsvector search
-- [ ] 07-02-PLAN.md — Pydantic schemas for KG/findings APIs + domain agent findings_text enrichment
-- [ ] 07-03-PLAN.md — KG Builder service (entity extraction, relationships, deduplication) + findings service (storage, full-text search)
-- [ ] 07-04-PLAN.md — Domain agent prompt enrichment (exhaustive citations, findings_text instructions)
-- [ ] 07-05-PLAN.md — API endpoints (KG + findings), SSE events, pipeline wiring
+**Plans:** TBD during phase planning
 
 ### Frontend Available (Yatharth, 2026-02-02)
 - ✅ Timeline view with day/week/month/year zoom, layer filtering, event cards, search (`Timeline/`)
@@ -1237,22 +1382,26 @@ Phase 1 (Foundation)
                                             │
                                             └── Phase 7 (Knowledge Storage & Domain Enrichment)
                                                     │
-                                                    ├── Phase 7.1 (KG Frontend / vis-network)
-                                                    │
-                                                    └── Phase 8 (Synthesis & Intelligence Layer)
+                                                    └── Phase 7.1 (LLM-Based KG Builder Agent)
                                                             │
-                                                            ├── Phase 8.1 (Geospatial & Map View)
+                                                            ├── Phase 7.2 (D3.js KG Frontend Enhancement)
                                                             │
-                                                            └── Phase 9 (Chat Interface)
+                                                            ├── Phase 7.3 (vis-network KG Frontend) ← DEFERRED/OPTIONAL
+                                                            │
+                                                            └── Phase 8 (Synthesis & Intelligence Layer)
                                                                     │
-                                                                    └── Phase 10 (Source Panel)
+                                                                    ├── Phase 8.1 (Geospatial & Map View)
+                                                                    │
+                                                                    └── Phase 9 (Chat Interface)
                                                                             │
-                                                                            └── Phase 11 (Corrections)
+                                                                            └── Phase 10 (Source Panel)
                                                                                     │
-                                                                                    └── Phase 12 (Demo Prep)
+                                                                                    └── Phase 11 (Corrections)
+                                                                                            │
+                                                                                            └── Phase 12 (Demo Prep)
 ```
 
-Note: Phase 7.1 can start as soon as Phase 7 KG API is ready (may overlap with Phase 7 completion). Phase 8.1 runs after Phase 8 synthesis completes. Phase 9 depends on both Phase 7 (KG tables) and Phase 8 (synthesis tables).
+Note: Phase 7.1 (KG Builder Agent) is a prerequisite for both Phase 7.2 (frontend) and Phase 8 (synthesis) — curated KG data is needed by both. Phase 7.2 and Phase 8 can run in parallel since they're independent (frontend vs backend). Phase 7.3 is deferred/optional — only if D3.js proves insufficient. Phase 8.1 runs after Phase 8 synthesis completes. Phase 9 depends on both Phase 7.1 (KG tables) and Phase 8 (synthesis tables).
 
 ---
 
@@ -1296,8 +1445,8 @@ For 2 developers working simultaneously:
 
 ---
 
-*Roadmap Version: 3.1*
-*Updated: 2026-02-07 (Phase 7 complete — 6 plans, 11 commits, 8/8 verified)*
+*Roadmap Version: 4.0*
+*Updated: 2026-02-08 (Architecture revision: LLM-based KG Builder Agent, D3.js enhancement, vis-network deferred)*
 *Phase 1 planned: 2026-01-20*
 *Phase 1.1 planned: 2026-01-23*
 *Phase 1.1 complete: 2026-01-24*
@@ -1317,3 +1466,8 @@ For 2 developers working simultaneously:
 *Architecture redesign: 2026-02-07 (Phases 7-9 restructured: KG-as-Memory, hybrid storage, programmatic KG Builder, vis-network, tool-based Chat)*
 *Phase 7 planned: 2026-02-07 (6 plans in 3 waves — revised from 5 after checker feedback)
 *Phase 7 complete: 2026-02-07 (6 plans, 11 commits, 8/8 must-haves verified)
+*Phase 7.1 (vis-network) planned: 2026-02-07 (3 plans in 3 waves — SUPERSEDED by architecture revision 2026-02-08)
+*Architecture revision: 2026-02-08 (Programmatic KG Builder → LLM-based KG Builder Agent; D3.js retained+enhanced; vis-network deferred to 7.3)
+*Phase 7.1 (LLM KG Builder) defined: 2026-02-08
+*Phase 7.2 (D3.js Enhancement) defined: 2026-02-08
+*Phase 7.3 (vis-network, optional) renumbered: 2026-02-08

@@ -1022,6 +1022,9 @@ async def run_analysis_workflow(
                 logger.exception("KG Builder failed for case=%s: %s", case_id, exc)
                 kg_entities_created = 0
                 kg_relationships_created = 0
+                # Clear poisoned session state so db.commit() below doesn't
+                # cascade-fail with PendingRollbackError and kill the pipeline.
+                await db.rollback()
                 await emit_agent_error(
                     case_id=case_id,
                     agent_type="kg_builder",

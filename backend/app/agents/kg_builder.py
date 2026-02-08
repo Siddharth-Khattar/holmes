@@ -248,26 +248,29 @@ async def write_kg_from_llm_output(
             # Use first domain for backward-compat 'domain' column
             primary_domain = entity.domains[0] if entity.domains else "unknown"
 
-            kg_entity = KgEntity(
-                case_id=case_uuid,
-                name=entity.name,
-                name_normalized=normalize_entity_name(entity.name),
-                entity_type=entity.entity_type,
-                domain=primary_domain,
-                confidence=entity.confidence,
-                properties=properties_dict,
-                context=entity.description_detailed,
-                aliases=entity.aliases if entity.aliases else None,
-                description_brief=entity.description_brief,
-                description_detailed=entity.description_detailed,
-                domains=entity.domains if entity.domains else None,
-                source_finding_ids=(
-                    entity.source_finding_ids if entity.source_finding_ids else None
-                ),
-                source_execution_id=execution_id,
-            )
-            db.add(kg_entity)
-            await db.flush()
+            # Use a savepoint so a single malformed entity doesn't poison
+            # the entire session transaction (PendingRollbackError cascade).
+            async with db.begin_nested():
+                kg_entity = KgEntity(
+                    case_id=case_uuid,
+                    name=entity.name,
+                    name_normalized=normalize_entity_name(entity.name),
+                    entity_type=entity.entity_type,
+                    domain=primary_domain,
+                    confidence=entity.confidence,
+                    properties=properties_dict,
+                    context=entity.description_detailed,
+                    aliases=entity.aliases if entity.aliases else None,
+                    description_brief=entity.description_brief,
+                    description_detailed=entity.description_detailed,
+                    domains=entity.domains if entity.domains else None,
+                    source_finding_ids=(
+                        entity.source_finding_ids if entity.source_finding_ids else None
+                    ),
+                    source_execution_id=execution_id,
+                )
+                db.add(kg_entity)
+                await db.flush()
 
             llm_id_to_db_id[entity.id] = kg_entity.id
             entities_written += 1
@@ -302,23 +305,31 @@ async def write_kg_from_llm_output(
 
             corroboration = len(rel.source_finding_ids) if rel.source_finding_ids else 1
 
-            kg_rel = KgRelationship(
-                case_id=case_uuid,
-                source_entity_id=source_db_id,
-                target_entity_id=target_db_id,
-                relationship_type=rel.relationship_type,
-                label=rel.label,
-                strength=rel.strength,
-                evidence_excerpt=rel.evidence_excerpt if rel.evidence_excerpt else None,
-                source_finding_ids=(
-                    rel.source_finding_ids if rel.source_finding_ids else None
-                ),
-                temporal_context=rel.temporal_context if rel.temporal_context else None,
-                confidence=rel.confidence,
-                corroboration_count=corroboration,
-                source_execution_id=execution_id,
-            )
-            db.add(kg_rel)
+            # Savepoint per relationship for the same reason as entities
+            async with db.begin_nested():
+                kg_rel = KgRelationship(
+                    case_id=case_uuid,
+                    source_entity_id=source_db_id,
+                    target_entity_id=target_db_id,
+                    relationship_type=rel.relationship_type,
+                    label=rel.label,
+                    strength=rel.strength,
+                    evidence_excerpt=(
+                        rel.evidence_excerpt if rel.evidence_excerpt else None
+                    ),
+                    source_finding_ids=(
+                        rel.source_finding_ids if rel.source_finding_ids else None
+                    ),
+                    temporal_context=(
+                        rel.temporal_context if rel.temporal_context else None
+                    ),
+                    confidence=rel.confidence,
+                    corroboration_count=corroboration,
+                    source_execution_id=execution_id,
+                )
+                db.add(kg_rel)
+                await db.flush()
+
             relationships_written += 1
         except Exception:
             logger.warning(
@@ -331,11 +342,10 @@ async def write_kg_from_llm_output(
                 exc_info=True,
             )
 
-    await db.flush()
-
     # Compute entity degrees after all relationships are written
-    await compute_entity_degrees(case_uuid, db)
-    await db.flush()
+    if entities_written > 0:
+        await compute_entity_degrees(case_uuid, db)
+        await db.flush()
 
     logger.info(
         "Wrote curated KG data for case=%s: %d entities, %d relationships "

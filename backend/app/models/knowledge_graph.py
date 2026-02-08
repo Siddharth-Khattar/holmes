@@ -14,12 +14,13 @@ from app.models.base import Base
 
 class KgEntity(Base):
     """
-    A knowledge graph entity extracted from domain agent output.
+    A knowledge graph entity produced by the LLM-based KG Builder agent.
 
     Entities represent named things (people, organizations, amounts, locations,
-    etc.) discovered during case analysis. The KG Builder creates these
-    programmatically from structured DomainEntity output. Soft-merge via
-    merged_into_id preserves audit trail for deduplication.
+    etc.) discovered during case analysis. The KG Builder agent reads ALL domain
+    agent outputs holistically and produces curated, deduplicated entities with
+    semantic descriptions and multi-domain tagging. Soft-merge via merged_into_id
+    preserves audit trail for deduplication.
     """
 
     __tablename__ = "kg_entities"
@@ -75,6 +76,31 @@ class KgEntity(Base):
         nullable=True,
         comment="Surrounding context from source document",
     )
+    aliases: Mapped[list | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="List of alternative names, abbreviations, or references",
+    )
+    description_brief: Mapped[str | None] = mapped_column(
+        String(200),
+        nullable=True,
+        comment="One-liner summary for graph tooltips and cards",
+    )
+    description_detailed: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="2-4 sentence synthesis from all findings mentioning this entity",
+    )
+    domains: Mapped[list | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="List of source domains (e.g. ['financial', 'legal']); authoritative multi-domain list",
+    )
+    source_finding_ids: Mapped[list | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="UUIDs of case_findings linking entity to evidence",
+    )
     source_execution_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("agent_executions.id", ondelete="SET NULL"),
@@ -119,9 +145,10 @@ class KgRelationship(Base):
     """
     A typed, weighted edge between two KgEntity nodes in the knowledge graph.
 
-    Relationships are created by the KG Builder from co-occurrence analysis
-    and agent-provided entity links. Strength (0-100) combines co-occurrence
-    frequency with entity confidence scores.
+    Relationships are created by the LLM-based KG Builder agent via semantic
+    relationship extraction from domain agent outputs. Each relationship
+    carries an evidence excerpt, temporal context, and confidence score.
+    Strength (0-100) represents the edge weight for graph visualization.
     """
 
     __tablename__ = "kg_relationships"
@@ -176,6 +203,33 @@ class KgRelationship(Base):
         JSONB,
         nullable=True,
         comment="Additional edge metadata",
+    )
+    evidence_excerpt: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Exact verbatim quote from source material supporting this relationship",
+    )
+    source_finding_ids: Mapped[list | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="UUIDs of case_findings as evidence chain for this relationship",
+    )
+    temporal_context: Mapped[str | None] = mapped_column(
+        String(200),
+        nullable=True,
+        comment="When this relationship existed or occurred (e.g. '2023-Q3')",
+    )
+    corroboration_count: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        server_default="1",
+        comment="How many agents independently found this relationship",
+    )
+    confidence: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+        server_default="0.0",
+        comment="LLM-assessed relationship confidence 0-100",
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

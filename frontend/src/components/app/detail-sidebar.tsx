@@ -44,6 +44,11 @@ function renderContent(descriptor: SidebarContentDescriptor): React.ReactNode {
           onEntitySelect={descriptor.props.onEntitySelect}
         />
       );
+    case "verdict-hypothesis":
+    case "verdict-contradiction":
+    case "verdict-gap":
+      // Detail panels for verdict items will be wired in Plan 06
+      return null;
   }
 }
 
@@ -58,6 +63,10 @@ function getCssScope(descriptor: SidebarContentDescriptor): string | undefined {
     case "knowledge-graph-evidence":
       return undefined;
     case "knowledge-graph-entity":
+      return undefined;
+    case "verdict-hypothesis":
+    case "verdict-contradiction":
+    case "verdict-gap":
       return undefined;
   }
 }

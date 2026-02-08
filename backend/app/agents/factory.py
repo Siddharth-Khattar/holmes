@@ -310,3 +310,38 @@ class AgentFactory:
                 media_resolution=types.MediaResolution.MEDIA_RESOLUTION_MEDIUM,
             ),
         )
+
+    @staticmethod
+    def create_kg_builder_agent(
+        case_id: str,
+        *,
+        model: str = MODEL_PRO,
+        publish_fn: PublishFn | None = None,
+    ) -> LlmAgent:
+        """Create a fresh KG Builder agent for a specific case.
+
+        Uses Pro model with HIGH thinking for holistic knowledge graph
+        construction from all domain agent findings. Text-only input --
+        no media resolution needed.
+
+        Args:
+            case_id: Investigation case ID.
+            model: Gemini model ID (default: Pro for complex graph reasoning).
+            publish_fn: Optional SSE publish function for real-time callbacks.
+
+        Returns:
+            A new LlmAgent instance configured for KG building.
+        """
+        from app.agents.prompts.kg_builder import KG_BUILDER_SYSTEM_PROMPT
+        from app.schemas.kg_builder import KgBuilderOutput
+
+        callbacks = create_agent_callbacks(case_id, publish_fn) if publish_fn else None
+        return _create_llm_agent(
+            name=_safe_name("kg_builder", case_id),
+            model=model,
+            instruction=KG_BUILDER_SYSTEM_PROMPT,
+            planner=create_thinking_planner("high"),
+            output_schema=KgBuilderOutput,
+            output_key="kg_builder_result",
+            callbacks=callbacks,
+        )

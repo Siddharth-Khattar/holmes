@@ -267,7 +267,7 @@ export function GraphSvg({
             height="20"
             patternUnits="userSpaceOnUse"
           >
-            <circle cx="10" cy="10" r="1" fill="rgba(138,138,130,0.1)" />
+            <circle cx="10" cy="10" r="1.2" fill="rgba(138,138,130,0.15)" />
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#kg-dot-pattern)" />

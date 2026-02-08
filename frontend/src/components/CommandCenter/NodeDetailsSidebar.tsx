@@ -3,10 +3,7 @@
 
 "use client";
 
-import { useState, type ReactNode } from "react";
 import {
-  ChevronDown,
-  ChevronUp,
   AlertTriangle,
   Brain,
   FileText,
@@ -21,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { MarkdownContent } from "@/components/ui/markdown-content";
 import {
   formatDuration,
@@ -44,65 +42,6 @@ interface NodeDetailsSidebarProps {
   agentType: AgentType | null;
   agentState: AgentState | null;
   allAgentStates?: Map<string, AgentState>;
-}
-
-// -----------------------------------------------------------------------
-// CollapsibleSection - reusable collapsible panel with color-coded border
-// -----------------------------------------------------------------------
-interface CollapsibleSectionProps {
-  title: string;
-  color: string;
-  defaultOpen?: boolean;
-  icon?: ReactNode;
-  badge?: string | number;
-  children: ReactNode;
-}
-
-function CollapsibleSection({
-  title,
-  color,
-  defaultOpen = false,
-  icon,
-  badge,
-  children,
-}: CollapsibleSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <div
-      className="border-b border-stone/10"
-      style={{
-        borderLeftWidth: 3,
-        borderLeftStyle: "solid",
-        borderLeftColor: color,
-      }}
-    >
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-stone/5 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          {icon && (
-            <span className="opacity-60" style={{ color }}>
-              {icon}
-            </span>
-          )}
-          <span className="text-xs font-medium text-stone uppercase tracking-wide">
-            {title}
-          </span>
-          {badge !== undefined && (
-            <span className="text-xs text-stone/60">({badge})</span>
-          )}
-        </div>
-        {isOpen ? (
-          <ChevronUp className="w-4 h-4 text-stone" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-stone" />
-        )}
-      </button>
-      {isOpen && <div className="px-5 pb-4 space-y-3">{children}</div>}
-    </div>
-  );
 }
 
 // -----------------------------------------------------------------------

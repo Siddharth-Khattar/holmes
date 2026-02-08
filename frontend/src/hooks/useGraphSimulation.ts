@@ -239,6 +239,16 @@ export function useGraphSimulation({
     >;
     mainGroupRef.current = mainGroup;
 
+    // -- Dot-pattern background rect inside zoom group so dots scale with zoom --
+    mainGroup
+      .append("rect")
+      .attr("class", "kg-bg-rect")
+      .attr("x", -50000)
+      .attr("y", -50000)
+      .attr("width", 100000)
+      .attr("height", 100000)
+      .attr("fill", "url(#kg-dot-pattern)");
+
     // -- Defs: drop shadow filter --
     const defs = svgSel.select<SVGDefsElement>("defs");
     // Clean up any stale glow filter from prior versions

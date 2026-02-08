@@ -286,7 +286,7 @@ export function GraphSvg({
       <svg
         ref={svgRef}
         className="w-full h-full"
-        style={{ background: "var(--color-charcoal, #1a1a1a)" }}
+        style={{ background: "var(--color-jet, #111111)" }}
         onClick={handleBackgroundClick}
       >
         {/* Static defs: dot background pattern */}
@@ -302,13 +302,7 @@ export function GraphSvg({
             <circle cx="10" cy="10" r="1.2" fill="rgba(138,138,130,0.15)" />
           </pattern>
         </defs>
-        <rect
-          className="kg-bg-rect"
-          width="100%"
-          height="100%"
-          fill="url(#kg-dot-pattern)"
-        />
-        {/* D3 renders all dynamic content (nodes, edges, labels) into the SVG via refs */}
+        {/* D3 renders background rect and all dynamic content into the SVG via refs */}
       </svg>
 
       {/* Bottom instruction bar */}

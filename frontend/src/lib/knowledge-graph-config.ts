@@ -26,6 +26,39 @@ export function getEntityColor(entityType: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Entity type tint/accent HSL pairs (CC-inspired glassy aesthetic)
+// ---------------------------------------------------------------------------
+
+/** HSL tint (dark fill) and accent (glow/border highlight) pair for gradient nodes. */
+export interface EntityTypeStyle {
+  /** HSL components: "H S% L%" for the dark tint (node background gradient). */
+  readonly tint: string;
+  /** HSL components: "H S% L%" for the bright accent (glow, border). */
+  readonly accent: string;
+}
+
+/**
+ * Tint/accent palette per entity type, inspired by Command Center's
+ * `--cc-*-tint` / `--cc-*-accent` CSS variable pattern.
+ */
+export const ENTITY_TYPE_STYLE: Record<string, EntityTypeStyle> = {
+  person: { tint: "215 45% 22%", accent: "215 70% 62%" },
+  organization: { tint: "270 35% 22%", accent: "270 60% 62%" },
+  location: { tint: "150 35% 18%", accent: "150 55% 52%" },
+  event: { tint: "0 40% 22%", accent: "0 65% 58%" },
+  asset: { tint: "175 35% 18%", accent: "175 55% 52%" },
+  financial_entity: { tint: "42 40% 20%", accent: "42 70% 58%" },
+  communication: { tint: "330 35% 22%", accent: "330 55% 58%" },
+  document: { tint: "25 40% 20%", accent: "25 65% 58%" },
+  other: { tint: "0 0% 18%", accent: "0 0% 55%" },
+};
+
+/** Returns the tint/accent style for a given entity type. */
+export function getEntityStyle(entityType: string): EntityTypeStyle {
+  return ENTITY_TYPE_STYLE[entityType.toLowerCase()] ?? ENTITY_TYPE_STYLE.other;
+}
+
+// ---------------------------------------------------------------------------
 // Entity type shape mapping
 // ---------------------------------------------------------------------------
 

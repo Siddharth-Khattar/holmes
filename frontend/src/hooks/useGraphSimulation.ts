@@ -33,9 +33,11 @@ import {
   FORCE_CONFIG,
   EDGE_STYLE,
   SVG_CONFIG,
+  ENTITY_TYPE_STYLE,
   getEntityColor,
   getEntityShape,
   getEntityIconPaths,
+  getEntityStyle,
   getNodeRadius,
 } from "@/lib/knowledge-graph-config";
 
@@ -243,24 +245,63 @@ export function useGraphSimulation({
       .attr("height", 100000)
       .attr("fill", "url(#kg-dot-pattern)");
 
-    // -- Defs: drop shadow filter --
+    // -- Defs: gradients, glow filters per entity type --
     const defs = svgSel.select<SVGDefsElement>("defs");
-    // Clean up any stale glow filter from prior versions
-    defs.select("#kg-node-glow").remove();
-    if (defs.select("#kg-node-shadow").empty()) {
+
+    // Clean up prior definitions to avoid stale duplicates
+    defs.selectAll("[id^='kg-node-']").remove();
+    defs.selectAll("[id^='kg-grad-']").remove();
+
+    // Create gradient + glow filter for each entity type
+    for (const [entityType, style] of Object.entries(ENTITY_TYPE_STYLE)) {
+      // Linear gradient: 135deg equivalent (x1=0%, y1=0%, x2=100%, y2=100%)
+      const grad = defs
+        .append("linearGradient")
+        .attr("id", `kg-grad-${entityType}`)
+        .attr("x1", "0%")
+        .attr("y1", "0%")
+        .attr("x2", "100%")
+        .attr("y2", "100%");
+      grad
+        .append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", `hsl(${style.tint})`)
+        .attr("stop-opacity", 0.75);
+      grad
+        .append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", `hsl(${style.tint})`)
+        .attr("stop-opacity", 0.35);
+
+      // Glow filter per entity type (colored by accent)
       const filter = defs
         .append("filter")
-        .attr("id", "kg-node-shadow")
+        .attr("id", `kg-node-glow-${entityType}`)
         .attr("x", "-50%")
         .attr("y", "-50%")
         .attr("width", "200%")
         .attr("height", "200%");
+      // Glow: blur the source alpha, colorize with accent
       filter
-        .append("feDropShadow")
-        .attr("dx", 2)
-        .attr("dy", 2)
-        .attr("stdDeviation", 4)
-        .attr("flood-color", "rgba(0,0,0,0.3)");
+        .append("feGaussianBlur")
+        .attr("in", "SourceAlpha")
+        .attr("stdDeviation", 3)
+        .attr("result", "blur");
+      filter
+        .append("feFlood")
+        .attr("flood-color", `hsl(${style.accent})`)
+        .attr("flood-opacity", 0.25)
+        .attr("result", "glowColor");
+      filter
+        .append("feComposite")
+        .attr("in", "glowColor")
+        .attr("in2", "blur")
+        .attr("operator", "in")
+        .attr("result", "coloredGlow");
+      // Merge glow behind the original graphic
+      const merge = filter.append("feMerge");
+      merge.append("feMergeNode").attr("in", "coloredGlow");
+      merge.append("feMergeNode").attr("in", "SourceGraphic");
     }
 
     // -- Composite edge weight: combines max strength, avg confidence, and corroboration --
@@ -367,10 +408,15 @@ export function useGraphSimulation({
       .attr("class", "kg-node")
       .style("cursor", "pointer");
 
-    // Render shapes based on entity type
+    // Render shapes with gradient fill, accent glow, and border
     nodeElements.each(function (d) {
       const g = select(this);
       const shape = getEntityShape(d.entity.entity_type);
+      const entityKey = d.entity.entity_type.toLowerCase();
+      const style = getEntityStyle(entityKey);
+      const gradientUrl = `url(#kg-grad-${entityKey in ENTITY_TYPE_STYLE ? entityKey : "other"})`;
+      const glowFilterUrl = `url(#kg-node-glow-${entityKey in ENTITY_TYPE_STYLE ? entityKey : "other"})`;
+      const strokeColor = `hsl(${style.accent} / 0.4)`;
 
       if (shape === "rect") {
         const halfW = d.radius * RECT_SIDE_RATIO * 0.5;
@@ -382,19 +428,17 @@ export function useGraphSimulation({
           .attr("height", halfH * 2)
           .attr("rx", 6)
           .attr("ry", 6)
-          .attr("fill", d.color)
-          .attr("stroke", d.color)
+          .attr("fill", gradientUrl)
+          .attr("stroke", strokeColor)
           .attr("stroke-width", 1.5)
-          .attr("stroke-opacity", 0.6)
-          .attr("filter", "url(#kg-node-shadow)");
+          .attr("filter", glowFilterUrl);
       } else {
         g.append("circle")
           .attr("r", d.radius)
-          .attr("fill", d.color)
-          .attr("stroke", d.color)
+          .attr("fill", gradientUrl)
+          .attr("stroke", strokeColor)
           .attr("stroke-width", 1.5)
-          .attr("stroke-opacity", 0.6)
-          .attr("filter", "url(#kg-node-shadow)");
+          .attr("filter", glowFilterUrl);
       }
 
       // Embed Lucide icon inside the node
@@ -409,7 +453,7 @@ export function useGraphSimulation({
         )
         .attr("fill", "none")
         .attr("stroke", "#ffffff")
-        .attr("stroke-opacity", 0.6)
+        .attr("stroke-opacity", 0.7)
         .attr("stroke-width", 2)
         .attr("stroke-linecap", "round")
         .attr("stroke-linejoin", "round");
@@ -569,7 +613,8 @@ export function useGraphSimulation({
       simulationRef.current = null;
       svgSel.on(".zoom", null);
       svgSel.selectAll("g.kg-main-group").remove();
-      defs.select("#kg-node-shadow").remove();
+      defs.selectAll("[id^='kg-node-']").remove();
+      defs.selectAll("[id^='kg-grad-']").remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entities, relationships, width, height]);

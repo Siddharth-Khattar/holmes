@@ -65,6 +65,32 @@ function truncate(text: string, maxLen: number): string {
   return text.length > maxLen ? text.slice(0, maxLen - 1) + "\u2026" : text;
 }
 
+/** Clamp tooltip position to stay within the viewport with a margin. */
+function clampTooltipPosition(
+  mouseX: number,
+  mouseY: number,
+  tooltipWidth: number,
+  tooltipHeight: number,
+): { left: number; top: number } {
+  const margin = 12;
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1920;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 1080;
+
+  let left = mouseX + margin;
+  let top = mouseY + margin;
+
+  // Flip to left side if overflowing right
+  if (left + tooltipWidth > vw - margin) {
+    left = mouseX - tooltipWidth - margin;
+  }
+  // Flip above if overflowing bottom
+  if (top + tooltipHeight > vh - margin) {
+    top = mouseY - tooltipHeight - margin;
+  }
+
+  return { left: Math.max(margin, left), top: Math.max(margin, top) };
+}
+
 /** Get display label for an entity type (capitalize + replace underscores). */
 function formatEntityType(type: string): string {
   return type
@@ -150,9 +176,12 @@ export function GraphSvg({
     edgeLabels.attr("opacity", showLabels ? 1 : 0);
   }, [currentZoomScale, internalSelectedId, edgeLabelGroupRef]);
 
-  // Keep a ref to the latest zoom scale so D3 closures can access it
+  // Keep refs to latest values so D3 closures can access current state
   const zoomScaleRef = useRef(currentZoomScale);
   zoomScaleRef.current = currentZoomScale;
+
+  const selectedEntityIdRef = useRef(selectedEntityId);
+  selectedEntityIdRef.current = selectedEntityId;
 
   // -- Tooltips (managed via React state since they're overlays, not in SVG) --
   const [nodeTooltip, setNodeTooltip] = useState<NodeTooltip | null>(null);
@@ -165,10 +194,11 @@ export function GraphSvg({
     if (!nodes || !links) return;
 
     // Node click: select entity + notify parent
+    // Use selectedEntityIdRef.current to avoid stale closure on selectedEntityId
     nodes.on("click", (_event: PointerEvent, d: ForceNode) => {
       selectEntity(d.id);
       // If clicking the already-selected entity, deselect (parent gets null)
-      onEntitySelect(d.id === selectedEntityId ? null : d.id);
+      onEntitySelect(d.id === selectedEntityIdRef.current ? null : d.id);
     });
 
     // Node hover: show tooltip
@@ -347,11 +377,13 @@ function NodeTooltipOverlay({ tooltip }: { tooltip: NodeTooltip }) {
   const { entity } = node;
   const style = getEntityStyle(entity.entity_type);
   const accentColor = `hsl(${style.accent})`;
+  // Estimate: max-w-72 = 288px, typical height ~100px
+  const pos = clampTooltipPosition(x, y, 288, 100);
 
   return (
     <div
       className="fixed z-50 pointer-events-none rounded-xl bg-jet/95 backdrop-blur-sm border border-stone/25 text-smoke shadow-[0_8px_32px_rgba(0,0,0,0.3)] max-w-72 overflow-hidden"
-      style={{ left: x + 12, top: y + 12 }}
+      style={pos}
     >
       {/* Accent stripe */}
       <div className="h-1" style={{ backgroundColor: accentColor }} />
@@ -404,11 +436,13 @@ function EdgeTooltipOverlay({ tooltip }: { tooltip: EdgeTooltip }) {
     sourceNode?.entity != null
       ? getEntityColor(sourceNode.entity.entity_type)
       : "#4b5563";
+  // Estimate: max-w-[340px], typical height ~160px
+  const pos = clampTooltipPosition(x, y, 340, 160);
 
   return (
     <div
       className="fixed z-50 pointer-events-none rounded-xl bg-jet/95 backdrop-blur-sm border border-stone/25 text-smoke shadow-[0_8px_32px_rgba(0,0,0,0.3)] max-w-[340px] overflow-hidden"
-      style={{ left: x + 12, top: y + 12 }}
+      style={pos}
     >
       {/* Accent stripe */}
       <div className="h-1" style={{ backgroundColor: accentColor }} />

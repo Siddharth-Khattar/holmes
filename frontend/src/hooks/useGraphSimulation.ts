@@ -304,16 +304,18 @@ export function useGraphSimulation({
       merge.append("feMergeNode").attr("in", "SourceGraphic");
     }
 
-    // -- Composite edge weight: combines max strength, avg confidence, and corroboration --
+    // -- Composite edge weight: combines max strength, avg confidence, and corroboration bonus --
     function computeEdgeWeight(link: ForceLink): number {
+      if (link.relationships.length === 0) return 50; // defensive fallback
+
       const maxStrength = Math.max(
         ...link.relationships.map((r) => r.strength || 0),
       );
       const avgConfidence =
         link.relationships.reduce((s, r) => s + (r.confidence ?? 50), 0) /
-        link.count;
+        link.relationships.length;
+      // +10 per corroboration (max +30), added as absolute bonus
       const corroborationBonus = Math.min(link.count * 10, 30);
-      // Blend: 60% strength, 20% confidence, 20% corroboration
       const blended =
         maxStrength * 0.6 + avgConfidence * 0.2 + corroborationBonus;
       return Math.min(blended, 100);

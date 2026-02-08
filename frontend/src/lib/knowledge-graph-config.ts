@@ -185,12 +185,6 @@ export function getNodeRadius(degree: number): number {
   return NODE_SIZE_TIERS[NODE_SIZE_TIERS.length - 1].radius;
 }
 
-/** @deprecated Kept for reference — replaced by NODE_SIZE_TIERS. */
-export const NODE_SIZE = {
-  minRadius: 16,
-  maxRadius: 40,
-} as const;
-
 // ---------------------------------------------------------------------------
 // Edge styling
 // ---------------------------------------------------------------------------

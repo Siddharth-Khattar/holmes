@@ -140,6 +140,12 @@ export function useGraphSimulation({
     undefined
   > | null>(null);
 
+  // Store width/height in refs so the main simulation effect doesn't depend on them
+  const widthRef = useRef(width);
+  const heightRef = useRef(height);
+  widthRef.current = width;
+  heightRef.current = height;
+
   const [isSimulationRunning, setIsSimulationRunning] = useState(true);
   const [currentZoomScale, setCurrentZoomScale] = useState(1);
   const manuallyStoppedRef = useRef(false);
@@ -201,7 +207,9 @@ export function useGraphSimulation({
   // -------------------------------------------------------------------------
 
   useEffect(() => {
-    if (!svgRef.current || width <= 0 || height <= 0) return;
+    const w = widthRef.current;
+    const h = heightRef.current;
+    if (!svgRef.current || w <= 0 || h <= 0) return;
     if (forceNodes.length === 0) {
       // Clear SVG if no data
       select(svgRef.current).selectAll("g.kg-main-group").remove();
@@ -213,11 +221,21 @@ export function useGraphSimulation({
     svgSel.selectAll("g.kg-main-group").remove();
 
     // -- Zoom behavior --
+    // Updates main group transform AND the background pattern transform for
+    // zoom-scaling dots without a massive rect inside the zoom group.
     const zoomBehavior = d3Zoom<SVGSVGElement, unknown>()
       .scaleExtent(SVG_CONFIG.zoomExtent)
       .on("zoom", (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
         if (mainGroupRef.current) {
           mainGroupRef.current.attr("transform", event.transform.toString());
+        }
+        // Scale the dot pattern to match zoom so dots appear to move with the graph
+        const pattern = svgSel.select<SVGPatternElement>("#kg-dot-pattern");
+        if (!pattern.empty()) {
+          pattern.attr(
+            "patternTransform",
+            `translate(${event.transform.x},${event.transform.y}) scale(${event.transform.k})`,
+          );
         }
         setCurrentZoomScale(event.transform.k);
       });
@@ -235,24 +253,14 @@ export function useGraphSimulation({
     >;
     mainGroupRef.current = mainGroup;
 
-    // -- Dot-pattern background rect inside zoom group so dots scale with zoom --
-    mainGroup
-      .append("rect")
-      .attr("class", "kg-bg-rect")
-      .attr("x", -50000)
-      .attr("y", -50000)
-      .attr("width", 100000)
-      .attr("height", 100000)
-      .attr("fill", "url(#kg-dot-pattern)");
-
-    // -- Defs: gradients, glow filters per entity type --
+    // -- Defs: gradients + single shared glow filter --
     const defs = svgSel.select<SVGDefsElement>("defs");
 
     // Clean up prior definitions to avoid stale duplicates
     defs.selectAll("[id^='kg-node-']").remove();
     defs.selectAll("[id^='kg-grad-']").remove();
 
-    // Create gradient + glow filter for each entity type
+    // Create gradient for each entity type
     for (const [entityType, style] of Object.entries(ENTITY_TYPE_STYLE)) {
       // Linear gradient: 135deg equivalent (x1=0%, y1=0%, x2=100%, y2=100%)
       const grad = defs
@@ -266,43 +274,41 @@ export function useGraphSimulation({
         .append("stop")
         .attr("offset", "0%")
         .attr("stop-color", `hsl(${style.tint})`)
-        .attr("stop-opacity", 0.75);
+        .attr("stop-opacity", 0.9);
       grad
         .append("stop")
         .attr("offset", "100%")
         .attr("stop-color", `hsl(${style.tint})`)
-        .attr("stop-opacity", 0.35);
-
-      // Glow filter per entity type (colored by accent)
-      const filter = defs
-        .append("filter")
-        .attr("id", `kg-node-glow-${entityType}`)
-        .attr("x", "-50%")
-        .attr("y", "-50%")
-        .attr("width", "200%")
-        .attr("height", "200%");
-      // Glow: blur the source alpha, colorize with accent
-      filter
-        .append("feGaussianBlur")
-        .attr("in", "SourceAlpha")
-        .attr("stdDeviation", 3)
-        .attr("result", "blur");
-      filter
-        .append("feFlood")
-        .attr("flood-color", `hsl(${style.accent})`)
-        .attr("flood-opacity", 0.25)
-        .attr("result", "glowColor");
-      filter
-        .append("feComposite")
-        .attr("in", "glowColor")
-        .attr("in2", "blur")
-        .attr("operator", "in")
-        .attr("result", "coloredGlow");
-      // Merge glow behind the original graphic
-      const merge = filter.append("feMerge");
-      merge.append("feMergeNode").attr("in", "coloredGlow");
-      merge.append("feMergeNode").attr("in", "SourceGraphic");
+        .attr("stop-opacity", 0.6);
     }
+
+    // Single shared glow filter (uses SourceGraphic color, not per-entity floods).
+    // Much cheaper than N per-type filters with feGaussianBlur each.
+    defs.selectAll("#kg-node-glow").remove();
+    const glowFilter = defs
+      .append("filter")
+      .attr("id", "kg-node-glow")
+      .attr("x", "-50%")
+      .attr("y", "-50%")
+      .attr("width", "200%")
+      .attr("height", "200%");
+    // Outer glow layer: blur the source graphic itself (preserves fill color)
+    glowFilter
+      .append("feGaussianBlur")
+      .attr("in", "SourceGraphic")
+      .attr("stdDeviation", 5)
+      .attr("result", "blur");
+    glowFilter
+      .append("feComponentTransfer")
+      .attr("in", "blur")
+      .attr("result", "dimmedBlur")
+      .append("feFuncA")
+      .attr("type", "linear")
+      .attr("slope", 0.4);
+    // Merge glow behind the original graphic
+    const merge = glowFilter.append("feMerge");
+    merge.append("feMergeNode").attr("in", "dimmedBlur");
+    merge.append("feMergeNode").attr("in", "SourceGraphic");
 
     // -- Composite edge weight: combines max strength, avg confidence, and corroboration bonus --
     function computeEdgeWeight(link: ForceLink): number {
@@ -410,15 +416,14 @@ export function useGraphSimulation({
       .attr("class", "kg-node")
       .style("cursor", "pointer");
 
-    // Render shapes with gradient fill, accent glow, and border
+    // Render shapes with gradient fill, shared glow filter, and subtle border
     nodeElements.each(function (d) {
       const g = select(this);
       const shape = getEntityShape(d.entity.entity_type);
       const entityKey = d.entity.entity_type.toLowerCase();
       const style = getEntityStyle(entityKey);
       const gradientUrl = `url(#kg-grad-${entityKey in ENTITY_TYPE_STYLE ? entityKey : "other"})`;
-      const glowFilterUrl = `url(#kg-node-glow-${entityKey in ENTITY_TYPE_STYLE ? entityKey : "other"})`;
-      const strokeColor = `hsl(${style.accent} / 0.4)`;
+      const strokeColor = `hsl(${style.accent} / 0.25)`;
 
       if (shape === "rect") {
         const halfW = d.radius * RECT_SIDE_RATIO * 0.5;
@@ -433,14 +438,14 @@ export function useGraphSimulation({
           .attr("fill", gradientUrl)
           .attr("stroke", strokeColor)
           .attr("stroke-width", 1.5)
-          .attr("filter", glowFilterUrl);
+          .attr("filter", "url(#kg-node-glow)");
       } else {
         g.append("circle")
           .attr("r", d.radius)
           .attr("fill", gradientUrl)
           .attr("stroke", strokeColor)
           .attr("stroke-width", 1.5)
-          .attr("filter", glowFilterUrl);
+          .attr("filter", "url(#kg-node-glow)");
       }
 
       // Embed Lucide icon inside the node
@@ -521,7 +526,7 @@ export function useGraphSimulation({
       ...forceNodes.map((n) => n.entity.degree),
       1,
     );
-    const maxRadius = Math.min(width, height) * 0.35;
+    const maxRadius = Math.min(w, h) * 0.35;
     const minRadius = FORCE_CONFIG.radial.minRadius;
 
     const simulation = forceSimulation<ForceNode>(forceNodes)
@@ -538,9 +543,7 @@ export function useGraphSimulation({
       )
       .force(
         "center",
-        forceCenter(width / 2, height / 2).strength(
-          FORCE_CONFIG.center.strength,
-        ),
+        forceCenter(w / 2, h / 2).strength(FORCE_CONFIG.center.strength),
       )
       .force(
         "collide",
@@ -558,8 +561,8 @@ export function useGraphSimulation({
               (d.entity.degree / maxConnections) * (maxRadius - minRadius)
             );
           },
-          width / 2,
-          height / 2,
+          w / 2,
+          h / 2,
         ).strength((d) => {
           return (
             FORCE_CONFIG.radial.strengthBase +
@@ -615,11 +618,53 @@ export function useGraphSimulation({
       simulationRef.current = null;
       svgSel.on(".zoom", null);
       svgSel.selectAll("g.kg-main-group").remove();
-      defs.selectAll("[id^='kg-node-']").remove();
+      defs.selectAll("#kg-node-glow").remove();
       defs.selectAll("[id^='kg-grad-']").remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entities, relationships, width, height]);
+  }, [entities, relationships]);
+
+  // -------------------------------------------------------------------------
+  // Separate resize effect: recenters forces without tearing down D3 elements
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    const sim = simulationRef.current;
+    if (!sim || width <= 0 || height <= 0) return;
+
+    // Update center force to new midpoint
+    sim.force(
+      "center",
+      forceCenter(width / 2, height / 2).strength(FORCE_CONFIG.center.strength),
+    );
+
+    // Update radial force center
+    const maxConnections = Math.max(
+      ...forceNodes.map((n) => n.entity.degree),
+      1,
+    );
+    const maxRadius = Math.min(width, height) * 0.35;
+    const minRadius = FORCE_CONFIG.radial.minRadius;
+    sim.force(
+      "radial",
+      forceRadial<ForceNode>(
+        (d) =>
+          maxRadius -
+          (d.entity.degree / maxConnections) * (maxRadius - minRadius),
+        width / 2,
+        height / 2,
+      ).strength((d) => {
+        return (
+          FORCE_CONFIG.radial.strengthBase +
+          (d.entity.degree / maxConnections) * FORCE_CONFIG.radial.strengthScale
+        );
+      }),
+    );
+
+    // Gently settle positions without a full restart
+    sim.alpha(0.1).restart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [width, height]);
 
   // -------------------------------------------------------------------------
   // Controls

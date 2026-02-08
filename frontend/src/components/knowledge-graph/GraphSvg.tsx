@@ -187,6 +187,13 @@ export function GraphSvg({
   const [nodeTooltip, setNodeTooltip] = useState<NodeTooltip | null>(null);
   const [edgeTooltip, setEdgeTooltip] = useState<EdgeTooltip | null>(null);
 
+  // Clear tooltips when the selected entity changes (prevents sticking when
+  // sidebar opens and the underlying D3 elements shift positions)
+  useEffect(() => {
+    setNodeTooltip(null);
+    setEdgeTooltip(null);
+  }, [selectedEntityId]);
+
   // -- Wire up click and hover handlers AFTER D3 creates elements --
   useEffect(() => {
     const nodes = nodeGroupRef.current;
@@ -265,7 +272,7 @@ export function GraphSvg({
     // Increase link hit area for easier hovering
     links.attr("stroke-linecap", "round").style("pointer-events", "stroke");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entities, relationships, dimensions.width, dimensions.height]);
+  }, [entities, relationships]);
 
   // -- Background click: deselect --
   const handleBackgroundClick = useCallback(
@@ -342,7 +349,18 @@ export function GraphSvg({
             <circle cx="10" cy="10" r="1.2" fill="rgba(138,138,130,0.15)" />
           </pattern>
         </defs>
-        {/* D3 renders background rect and all dynamic content into the SVG via refs */}
+        {/* Background rect at 100% viewport, OUTSIDE zoom group.
+            The pattern's patternTransform is updated in the zoom handler
+            so dots scale with zoom without a massive rect inside the zoom group. */}
+        <rect
+          className="kg-bg-rect"
+          x="0"
+          y="0"
+          width="100%"
+          height="100%"
+          fill="url(#kg-dot-pattern)"
+        />
+        {/* D3 renders all dynamic content into the SVG via refs */}
       </svg>
 
       {/* Bottom instruction bar */}
@@ -390,14 +408,14 @@ function NodeTooltipOverlay({ tooltip }: { tooltip: NodeTooltip }) {
 
       <div className="px-3 py-2.5">
         {/* Entity name */}
-        <div className="font-semibold text-sm text-foreground mb-1.5">
+        <div className="font-semibold text-base text-foreground mb-1.5">
           {entity.name}
         </div>
 
         {/* Type + connections as pill badges */}
         <div className="flex items-center gap-1.5 mb-1.5">
           <span
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
             style={{
               backgroundColor: `hsl(${style.tint})`,
               color: accentColor,
@@ -409,14 +427,14 @@ function NodeTooltipOverlay({ tooltip }: { tooltip: NodeTooltip }) {
             />
             {formatEntityType(entity.entity_type)}
           </span>
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-stone/10 text-stone text-[10px] font-medium">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-stone/10 text-stone text-[11px] font-medium">
             {entity.degree} connection{entity.degree !== 1 ? "s" : ""}
           </span>
         </div>
 
         {/* Description */}
         {entity.description_brief && (
-          <div className="text-xs text-stone/80 leading-relaxed line-clamp-3">
+          <div className="text-sm text-stone/80 leading-relaxed line-clamp-3">
             {truncate(entity.description_brief, 150)}
           </div>
         )}
@@ -449,10 +467,10 @@ function EdgeTooltipOverlay({ tooltip }: { tooltip: EdgeTooltip }) {
 
       <div className="px-3 py-2.5">
         {/* Relationship label */}
-        <div className="font-semibold text-sm text-foreground mb-1.5">
+        <div className="font-semibold text-base text-foreground mb-1.5">
           {primary.label}
           {link.count > 1 && (
-            <span className="text-stone/60 font-normal ml-1.5 text-xs">
+            <span className="text-stone/60 font-normal ml-1.5 text-sm">
               +{link.count - 1} more
             </span>
           )}
@@ -460,17 +478,17 @@ function EdgeTooltipOverlay({ tooltip }: { tooltip: EdgeTooltip }) {
 
         {/* Metadata pill badges */}
         <div className="flex flex-wrap items-center gap-1.5 mb-2">
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-stone/10 text-stone text-[10px] font-medium">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-stone/10 text-stone text-[11px] font-medium">
             {primary.relationship_type}
           </span>
           {primary.confidence != null && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-stone/10 text-stone text-[10px] font-medium">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-stone/10 text-stone text-[11px] font-medium">
               {primary.confidence}% confidence
             </span>
           )}
           {primary.corroboration_count != null &&
             primary.corroboration_count > 0 && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-stone/10 text-stone text-[10px] font-medium">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-stone/10 text-stone text-[11px] font-medium">
                 {primary.corroboration_count}x corroborated
               </span>
             )}
@@ -485,7 +503,7 @@ function EdgeTooltipOverlay({ tooltip }: { tooltip: EdgeTooltip }) {
 
         {/* Evidence excerpt in inset box */}
         {primary.evidence_excerpt && (
-          <div className="text-xs text-stone/60 leading-relaxed border-l-2 border-stone/20 pl-2.5 py-0.5 italic">
+          <div className="text-sm text-stone/60 leading-relaxed border-l-2 border-stone/20 pl-2.5 py-0.5 italic">
             &ldquo;{truncate(primary.evidence_excerpt, 200)}&rdquo;
           </div>
         )}

@@ -2,7 +2,7 @@
 // ABOUTME: Uses discriminated union pattern for content descriptors.
 
 import type { AgentType, AgentState } from "./command-center";
-import type { Evidence } from "./knowledge-graph";
+import type { SourceViewerContent } from "@/components/source-viewer/SourceViewerModal";
 
 // ---------------------------------------------------------------------------
 // Content Descriptors (discriminated union)
@@ -18,11 +18,11 @@ export interface CommandCenterAgentContent {
   };
 }
 
-/** Knowledge Graph evidence detail view */
+/** Knowledge Graph evidence / source viewer detail view */
 export interface KnowledgeGraphEvidenceContent {
   type: "knowledge-graph-evidence";
   props: {
-    evidence: Evidence;
+    content: SourceViewerContent;
   };
 }
 

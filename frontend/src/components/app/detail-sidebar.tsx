@@ -33,7 +33,7 @@ function renderContent(descriptor: SidebarContentDescriptor): React.ReactNode {
         />
       );
     case "knowledge-graph-evidence":
-      return <EvidenceSourcePanel evidence={descriptor.props.evidence} />;
+      return <EvidenceSourcePanel content={descriptor.props.content} />;
   }
 }
 

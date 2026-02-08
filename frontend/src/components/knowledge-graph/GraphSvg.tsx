@@ -17,7 +17,11 @@ import { Pause, Play } from "lucide-react";
 import { CanvasZoomControls } from "@/components/ui/canvas-zoom-controls";
 import { useGraphSimulation } from "@/hooks/useGraphSimulation";
 import { useGraphSelection } from "@/hooks/useGraphSelection";
-import { SVG_CONFIG } from "@/lib/knowledge-graph-config";
+import {
+  SVG_CONFIG,
+  getEntityStyle,
+  getEntityColor,
+} from "@/lib/knowledge-graph-config";
 import type {
   EntityResponse,
   RelationshipResponse,
@@ -341,30 +345,50 @@ export function GraphSvg({
 function NodeTooltipOverlay({ tooltip }: { tooltip: NodeTooltip }) {
   const { x, y, node } = tooltip;
   const { entity } = node;
+  const style = getEntityStyle(entity.entity_type);
+  const accentColor = `hsl(${style.accent})`;
 
   return (
     <div
-      className="fixed z-50 pointer-events-none px-3 py-2 rounded-lg bg-jet/95 border border-stone/20 text-smoke text-xs shadow-lg max-w-70"
+      className="fixed z-50 pointer-events-none rounded-xl bg-jet/95 backdrop-blur-sm border border-stone/25 text-smoke shadow-[0_8px_32px_rgba(0,0,0,0.3)] max-w-72 overflow-hidden"
       style={{ left: x + 12, top: y + 12 }}
     >
-      <div className="flex items-center gap-2 mb-1">
-        <span
-          className="w-2.5 h-2.5 rounded-full shrink-0"
-          style={{ backgroundColor: node.color }}
-        />
-        <span className="font-medium text-sm text-foreground">
+      {/* Accent stripe */}
+      <div className="h-1" style={{ backgroundColor: accentColor }} />
+
+      <div className="px-3 py-2.5">
+        {/* Entity name */}
+        <div className="font-semibold text-sm text-foreground mb-1.5">
           {entity.name}
-        </span>
-      </div>
-      <div className="text-stone mb-1">
-        {formatEntityType(entity.entity_type)} &middot; {entity.degree}{" "}
-        connection{entity.degree !== 1 ? "s" : ""}
-      </div>
-      {entity.description_brief && (
-        <div className="text-stone/80 leading-relaxed">
-          {truncate(entity.description_brief, 150)}
         </div>
-      )}
+
+        {/* Type + connections as pill badges */}
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
+            style={{
+              backgroundColor: `hsl(${style.tint})`,
+              color: accentColor,
+            }}
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ backgroundColor: accentColor }}
+            />
+            {formatEntityType(entity.entity_type)}
+          </span>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-stone/10 text-stone text-[10px] font-medium">
+            {entity.degree} connection{entity.degree !== 1 ? "s" : ""}
+          </span>
+        </div>
+
+        {/* Description */}
+        {entity.description_brief && (
+          <div className="text-xs text-stone/80 leading-relaxed line-clamp-3">
+            {truncate(entity.description_brief, 150)}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -374,47 +398,88 @@ function EdgeTooltipOverlay({ tooltip }: { tooltip: EdgeTooltip }) {
   const primary = link.relationships[0];
   if (!primary) return null;
 
+  // Use source entity type color for the accent stripe
+  const sourceNode = link.source as ForceNode;
+  const accentColor =
+    sourceNode?.entity != null
+      ? getEntityColor(sourceNode.entity.entity_type)
+      : "#4b5563";
+
   return (
     <div
-      className="fixed z-50 pointer-events-none px-3 py-2 rounded-lg bg-jet/95 border border-stone/20 text-smoke text-xs shadow-lg max-w-[320px]"
+      className="fixed z-50 pointer-events-none rounded-xl bg-jet/95 backdrop-blur-sm border border-stone/25 text-smoke shadow-[0_8px_32px_rgba(0,0,0,0.3)] max-w-[340px] overflow-hidden"
       style={{ left: x + 12, top: y + 12 }}
     >
-      <div className="font-medium text-sm text-foreground mb-1">
-        {primary.label}
-        {link.count > 1 && (
-          <span className="text-stone ml-1">(+{link.count - 1} more)</span>
-        )}
-      </div>
-      <div className="text-stone mb-1">
-        Type: {primary.relationship_type}
-        {primary.confidence != null && (
-          <span> &middot; Confidence: {primary.confidence}%</span>
-        )}
-        {primary.corroboration_count != null &&
-          primary.corroboration_count > 0 && (
-            <span> &middot; Corroborated: {primary.corroboration_count}x</span>
+      {/* Accent stripe */}
+      <div className="h-1" style={{ backgroundColor: accentColor }} />
+
+      <div className="px-3 py-2.5">
+        {/* Relationship label */}
+        <div className="font-semibold text-sm text-foreground mb-1.5">
+          {primary.label}
+          {link.count > 1 && (
+            <span className="text-stone/60 font-normal ml-1.5 text-xs">
+              +{link.count - 1} more
+            </span>
           )}
-      </div>
-      {primary.temporal_context && (
-        <div className="text-stone/80 mb-1">
-          {truncate(primary.temporal_context, 120)}
         </div>
-      )}
-      {primary.evidence_excerpt && (
-        <div className="text-stone/60 italic leading-relaxed">
-          &ldquo;{truncate(primary.evidence_excerpt, 200)}&rdquo;
+
+        {/* Metadata pill badges */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-stone/10 text-stone text-[10px] font-medium">
+            {primary.relationship_type}
+          </span>
+          {primary.confidence != null && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-stone/10 text-stone text-[10px] font-medium">
+              {primary.confidence}% confidence
+            </span>
+          )}
+          {primary.corroboration_count != null &&
+            primary.corroboration_count > 0 && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-stone/10 text-stone text-[10px] font-medium">
+                {primary.corroboration_count}x corroborated
+              </span>
+            )}
         </div>
-      )}
-      {link.count > 1 && (
-        <div className="mt-1.5 pt-1.5 border-t border-stone/15">
-          <div className="text-stone/70 mb-0.5">All relationships:</div>
-          {link.relationships.map((rel) => (
-            <div key={rel.id} className="text-stone/80 truncate">
-              &bull; {rel.label} ({rel.relationship_type})
+
+        {/* Temporal context */}
+        {primary.temporal_context && (
+          <div className="text-xs text-stone/70 italic mb-1.5">
+            {truncate(primary.temporal_context, 120)}
+          </div>
+        )}
+
+        {/* Evidence excerpt in inset box */}
+        {primary.evidence_excerpt && (
+          <div className="text-xs text-stone/60 leading-relaxed border-l-2 border-stone/20 pl-2.5 py-0.5 italic">
+            &ldquo;{truncate(primary.evidence_excerpt, 200)}&rdquo;
+          </div>
+        )}
+
+        {/* Multi-relationship list */}
+        {link.count > 1 && (
+          <div className="mt-2 pt-2 border-t border-stone/15">
+            <div className="text-[10px] text-stone/50 uppercase tracking-wider font-medium mb-1">
+              All relationships
             </div>
-          ))}
-        </div>
-      )}
+            {link.relationships.map((rel) => (
+              <div
+                key={rel.id}
+                className="flex items-center gap-1.5 text-xs text-stone/80 truncate mb-0.5"
+              >
+                <span
+                  className="w-1 h-1 rounded-full shrink-0"
+                  style={{
+                    backgroundColor: getEntityColor(rel.relationship_type),
+                  }}
+                />
+                {rel.label}
+                <span className="text-stone/50">({rel.relationship_type})</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

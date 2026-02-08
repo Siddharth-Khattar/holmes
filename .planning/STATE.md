@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — In progress (1/7 plans)
-**Next Plan:** 08-02 (Synthesis Agent runner + prompt + factory)
+**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — In progress (2/7 plans)
+**Next Plan:** 08-03 (Synthesis API endpoints)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -21,7 +21,7 @@
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
-| 8 | Synthesis Agent & Intelligence Layer | IN_PROGRESS | 2026-02-08 | - | Plan 01 complete (2 commits): InvestigationTask model, Case verdict columns, SynthesisOutput + 9 API response schemas |
+| 8 | Synthesis Agent & Intelligence Layer | IN_PROGRESS | 2026-02-08 | - | Plans 01-02 complete (4 commits): DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events |
 | 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -90,12 +90,14 @@
   - Task 1: InvestigationTask model (12 columns, FKs to case_hypotheses/case_contradictions/case_gaps) + Case verdict_label/verdict_summary columns + Alembic migration f8a3b2c91d40
   - Task 2: SynthesisOutput Pydantic schema (12 fields for Gemini structured output) + 9 API response schemas with model_validators (evidence merge, JSONB verdict parse)
 
+**Phase 8 Plan 02 Complete** (2026-02-09): Synthesis Agent runner + pipeline integration -- 2 tasks, 2 commits
+  - Task 1: SynthesisAgentRunner (DomainAgentRunner[SynthesisOutput] subclass, text-only input), assemble_synthesis_input() (5 data sources: case, files, findings, entities, relationships), write_synthesis_output() (6 tables + Case verdict), SYNTHESIS_SYSTEM_PROMPT (12-field output instructions + citation/quality rules), AgentFactory.create_synthesis_agent()
+  - Task 2: Pipeline Stage 8 after entity backfill (agent-started/agent-complete/agent-error SSE events), SYNTHESIS_DATA_READY event type + emit helper, non-blocking failure handling
+  - Full pipeline: Triage -> Orchestrator -> Domain -> Strategy -> HITL -> Save Findings -> KG Builder -> Entity Backfill -> Synthesis -> ANALYZED -> processing-complete
+
 **What's next:**
-- Phase 8 Plan 02: Synthesis Agent runner + prompt + AgentFactory integration
-  - SynthesisAgentRunner subclass of DomainAgentRunner[SynthesisOutput]
-  - assemble_synthesis_input() from case_findings + kg_entities + kg_relationships
-  - write_synthesis_output() to all synthesis tables + investigation_tasks
-  - SYNTHESIS_SYSTEM_PROMPT + AgentFactory.create_synthesis_agent()
+- Phase 8 Plan 03: Synthesis API endpoints (GET routes to read hypotheses, contradictions, gaps, synthesis, timeline, tasks)
+- Phase 8 Plan 04: Command Center frontend integration (SSE event handling for synthesis agent node)
 - Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
 
 ---
@@ -444,6 +446,12 @@ All frontend features need these backend endpoints:
 | Hypothesis evidence storage | Flat list in one column vs Split by role in two columns vs Both columns split by role | Both columns split by role (Option 3) | Preserves original schema intent (supporting_evidence + contradicting_evidence JSONB); API response model_validator merges into flat list with role labels |
 | Case verdict persistence | Fetch from case_synthesis JSONB vs Columns on Case model | Columns on Case model (verdict_label + verdict_summary) | Cases list page needs verdict badge without joining to case_synthesis; direct column access |
 | Synthesis schema typing | Complex nested types vs Simple Gemini-compatible types | Simple types (str/int/float/bool/list) | Gemini structured output constraints require simple types; dates as ISO 8601 strings, entity IDs as integers |
+| Synthesis agent input format | Multimodal files vs Text-only | Text-only (5 DB sources) | Domain agents already processed raw evidence; synthesis only needs pre-processed text from DB |
+| Synthesis rebuild strategy | Incremental merge vs Clear-and-rebuild | Clear-and-rebuild | Same pattern as KG Builder; delete all synthesis data per case, then insert fresh |
+| Synthesis SSE granularity | Per-item events vs Batch event | Batch event (synthesis-data-ready) | All outputs arrive atomically from single LLM call; per-item events add complexity with no UX benefit |
+| Synthesis failure handling | Block pipeline vs Non-blocking | Non-blocking | Synthesis failure emits SSE error, pipeline continues to ANALYZED status |
+| Hypothesis status derivation | User-driven vs Confidence-based | Confidence-based (>60 SUPPORTED, <40 REFUTED, else PENDING) | Auto-classification from LLM confidence scores; user can override later |
+| Pipeline terminal stage | Strategy vs Synthesis | Synthesis completion | Processing-complete now fires after Stage 8 (synthesis), not after Stage 7b (entity backfill) |
 
 ---
 
@@ -456,9 +464,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8 Plan 01 COMPLETE (2 tasks, 2 commits). Schema foundation for synthesis.
+Stopped at: Phase 8 Plan 02 COMPLETE (2 tasks, 2 commits). Synthesis agent runner + pipeline Stage 8.
 Resume file: None
-Next action: Execute Phase 8 Plan 02 (Synthesis Agent runner + prompt + factory)
+Next action: Execute Phase 8 Plan 03 (Synthesis API endpoints)
 
 ---
 

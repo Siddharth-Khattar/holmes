@@ -158,7 +158,6 @@ export function GraphSvg({
   useEffect(() => {
     const nodes = nodeGroupRef.current;
     const links = linkGroupRef.current;
-    const edgeLabels = edgeLabelGroupRef.current;
     if (!nodes || !links) return;
 
     // Node click: select entity + notify parent
@@ -190,6 +189,9 @@ export function GraphSvg({
     });
 
     // Edge hover: show tooltip + show edge label on hover
+    // Use edgeLabelGroupRef.current (always-current ref) instead of a captured
+    // variable to avoid stale closure bugs where the D3 selection from a
+    // previous render is referenced after data rebind.
     links.on("mouseenter", (event: MouseEvent, d: ForceLink) => {
       setEdgeTooltip({
         x: event.clientX,
@@ -197,8 +199,11 @@ export function GraphSvg({
         link: d,
       });
       // Show this edge's label on hover regardless of zoom
-      if (edgeLabels) {
-        edgeLabels.filter((ld: ForceLink) => ld.id === d.id).attr("opacity", 1);
+      const currentEdgeLabels = edgeLabelGroupRef.current;
+      if (currentEdgeLabels) {
+        currentEdgeLabels
+          .filter((ld: ForceLink) => ld.id === d.id)
+          .attr("opacity", 1);
       }
     });
 
@@ -213,10 +218,11 @@ export function GraphSvg({
     links.on("mouseleave", (_event: MouseEvent, d: ForceLink) => {
       setEdgeTooltip(null);
       // Restore edge label visibility based on current zoom threshold
-      if (edgeLabels) {
+      const currentEdgeLabels = edgeLabelGroupRef.current;
+      if (currentEdgeLabels) {
         const showByZoom =
           zoomScaleRef.current >= SVG_CONFIG.edgeLabelZoomThreshold;
-        edgeLabels
+        currentEdgeLabels
           .filter((ld: ForceLink) => ld.id === d.id)
           .attr("opacity", showByZoom ? 1 : 0);
       }

@@ -92,6 +92,18 @@ export function KnowledgeGraphCanvas({
     [selectedEntityId],
   );
 
+  // Stable ref for the entity select callback so the sidebar content effect
+  // doesn't re-run when handleEntitySelect changes (it changes whenever
+  // selectedEntityId changes, which would cause redundant sidebar updates).
+  const handleEntitySelectRef = useRef(handleEntitySelect);
+  handleEntitySelectRef.current = handleEntitySelect;
+
+  // Stable wrapper that always calls the latest handleEntitySelect
+  const stableEntitySelect = useCallback(
+    (entityId: string | null) => handleEntitySelectRef.current(entityId),
+    [],
+  );
+
   // -- Push entity content to app-wide DetailSidebar --
   useEffect(() => {
     if (selectedEntity) {
@@ -102,7 +114,7 @@ export function KnowledgeGraphCanvas({
           entity: selectedEntity,
           relationships: selectedEntityRelationships,
           allEntities: entities,
-          onEntitySelect: handleEntitySelect,
+          onEntitySelect: stableEntitySelect,
         },
       });
     } else {
@@ -114,7 +126,7 @@ export function KnowledgeGraphCanvas({
     entities,
     setContent,
     clearContent,
-    handleEntitySelect,
+    stableEntitySelect,
   ]);
 
   // -- Clear sidebar on unmount --

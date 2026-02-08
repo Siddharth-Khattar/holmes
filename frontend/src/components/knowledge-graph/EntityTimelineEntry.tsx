@@ -98,7 +98,7 @@ export function EntityTimelineEntry({
       >
         {/* Date column */}
         <span
-          className="text-sm font-medium text-smoke/70 mt-0.5 shrink-0 w-20 text-right truncate"
+          className="text-sm font-medium text-smoke/70 mt-0.5 shrink-0 w-20 text-right leading-tight"
           title={dateLabel}
         >
           {dateLabel}

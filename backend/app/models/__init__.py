@@ -7,6 +7,7 @@ from app.models.base import Base
 from app.models.case import Case, CaseStatus, CaseType
 from app.models.file import CaseFile, FileCategory, FileStatus
 from app.models.findings import CaseFinding
+from app.models.investigation_task import InvestigationTask
 from app.models.knowledge_graph import KgEntity, KgRelationship
 from app.models.synthesis import (
     CaseContradiction,
@@ -27,6 +28,7 @@ __all__ = [
     "CaseFinding",
     "CaseGap",
     "CaseHypothesis",
+    "InvestigationTask",
     "CaseStatus",
     "CaseSynthesis",
     "CaseType",

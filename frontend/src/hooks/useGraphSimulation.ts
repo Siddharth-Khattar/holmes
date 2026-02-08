@@ -37,7 +37,6 @@ import {
   getEntityColor,
   getEntityShape,
   getEntityIconPaths,
-  getEntityStyle,
   getNodeRadius,
 } from "@/lib/knowledge-graph-config";
 
@@ -86,6 +85,7 @@ interface UseGraphSimulationReturn {
   isSimulationRunning: boolean;
   toggleSimulation: () => void;
   resetZoom: () => void;
+  zoomToNode: (nodeId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -416,14 +416,13 @@ export function useGraphSimulation({
       .attr("class", "kg-node")
       .style("cursor", "pointer");
 
-    // Render shapes with gradient fill, shared glow filter, and subtle border
+    // Render shapes with gradient fill, no border by default (CC aesthetic).
+    // Glow is applied on hover via D3 event handlers; border on selection.
     nodeElements.each(function (d) {
       const g = select(this);
       const shape = getEntityShape(d.entity.entity_type);
       const entityKey = d.entity.entity_type.toLowerCase();
-      const style = getEntityStyle(entityKey);
       const gradientUrl = `url(#kg-grad-${entityKey in ENTITY_TYPE_STYLE ? entityKey : "other"})`;
-      const strokeColor = `hsl(${style.accent} / 0.25)`;
 
       if (shape === "rect") {
         const halfW = d.radius * RECT_SIDE_RATIO * 0.5;
@@ -436,16 +435,14 @@ export function useGraphSimulation({
           .attr("rx", 6)
           .attr("ry", 6)
           .attr("fill", gradientUrl)
-          .attr("stroke", strokeColor)
-          .attr("stroke-width", 1.5)
-          .attr("filter", "url(#kg-node-glow)");
+          .attr("stroke", "none")
+          .attr("stroke-width", 1.5);
       } else {
         g.append("circle")
           .attr("r", d.radius)
           .attr("fill", gradientUrl)
-          .attr("stroke", strokeColor)
-          .attr("stroke-width", 1.5)
-          .attr("filter", "url(#kg-node-glow)");
+          .attr("stroke", "none")
+          .attr("stroke-width", 1.5);
       }
 
       // Embed Lucide icon inside the node
@@ -693,6 +690,34 @@ export function useGraphSimulation({
       .call(zoomRef.current.transform, zoomIdentity);
   }, [svgRef]);
 
+  /** Smoothly zoom + pan so the node with `nodeId` is centered in the viewport. */
+  const zoomToNode = useCallback(
+    (nodeId: string) => {
+      if (!svgRef.current || !zoomRef.current) return;
+      const node = forceNodes.find((n) => n.id === nodeId);
+      if (!node || node.x == null || node.y == null) return;
+
+      const w = widthRef.current;
+      const h = heightRef.current;
+      if (w <= 0 || h <= 0) return;
+
+      // Zoom to ~1.5x scale, centering the node
+      const scale = 1.5;
+      const tx = w / 2 - node.x * scale;
+      const ty = h / 2 - node.y * scale;
+
+      const svgSel = select<SVGSVGElement, unknown>(svgRef.current);
+      svgSel
+        .transition()
+        .duration(600)
+        .call(
+          zoomRef.current.transform,
+          zoomIdentity.translate(tx, ty).scale(scale),
+        );
+    },
+    [svgRef, forceNodes],
+  );
+
   return {
     forceNodes,
     forceLinks,
@@ -706,5 +731,6 @@ export function useGraphSimulation({
     isSimulationRunning,
     toggleSimulation,
     resetZoom,
+    zoomToNode,
   };
 }

@@ -170,9 +170,9 @@ export function useGraphSelection({
     if (!nodes || !links || !labels) return;
 
     if (!selectedEntityId) {
-      // Restore all to defaults
-      nodes.each((d, i, elements) => {
-        setShapeStroke(elements[i], d.color, 1.5, 0.6);
+      // Restore all to defaults: no border (CC aesthetic)
+      nodes.each((_d, i, elements) => {
+        setShapeStroke(elements[i], "none", 0, 0);
       });
       nodes.attr("opacity", 1);
 
@@ -198,10 +198,10 @@ export function useGraphSelection({
         setShapeStroke(el, SELECTION_STROKE, SELECTION_STROKE_WIDTH, 1);
         g.attr("opacity", 1);
       } else if (isConnected) {
-        setShapeStroke(el, d.color, 1.5, 0.6);
+        setShapeStroke(el, "none", 0, 0);
         g.attr("opacity", 1);
       } else {
-        setShapeStroke(el, d.color, 1.5, 0.6);
+        setShapeStroke(el, "none", 0, 0);
         g.attr("opacity", DIMMED_NODE_OPACITY);
       }
     });
@@ -247,9 +247,9 @@ export function useGraphSelection({
     if (selectedEntityId) return;
 
     if (!searchMatchIds || searchMatchIds.size === 0) {
-      // Remove search highlight styling -- restore defaults
-      nodes.each((d, i, elements) => {
-        setShapeStroke(elements[i], d.color, 1.5, 0.6);
+      // Remove search highlight styling -- restore defaults (no border)
+      nodes.each((_d, i, elements) => {
+        setShapeStroke(elements[i], "none", 0, 0);
       });
       nodes.attr("opacity", 1);
 
@@ -275,7 +275,7 @@ export function useGraphSelection({
         );
         g.attr("opacity", 1);
       } else {
-        setShapeStroke(el, d.color, 1.5, 0.6);
+        setShapeStroke(el, "none", 0, 0);
         g.attr("opacity", SEARCH_DIM_NODE_OPACITY);
       }
     });

@@ -4,7 +4,7 @@
 "use client";
 
 import { usePathname, useParams } from "next/navigation";
-import { Terminal, Network, FolderOpen, Clock, Globe } from "lucide-react";
+import { Terminal, Network, FolderOpen, Clock, Globe, PenLine } from "lucide-react";
 import { SidebarTabs } from "@/components/ui/sidebar-tabs";
 
 interface CaseNavSectionProps {
@@ -17,6 +17,7 @@ const caseTabs = [
   { title: "Evidence Library", icon: FolderOpen, href: "/library" },
   { title: "Timeline", icon: Clock, href: "/timeline" },
   { title: "Geospatial", icon: Globe, href: "/geospatial" },
+  { title: "Sherlock's Diary", icon: PenLine, href: "/notebook" },
 ];
 
 export function CaseNavSection({ collapsed }: CaseNavSectionProps) {

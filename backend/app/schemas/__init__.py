@@ -51,11 +51,24 @@ from app.schemas.knowledge_graph import (
     RelationshipListResponse,
     RelationshipResponse,
 )
+from app.schemas.notes import (
+    AudioDownloadResponse,
+    GenerateMetadataRequest,
+    GenerateMetadataResponse,
+    NoteCreate,
+    NoteExportRequest,
+    NoteExportResponse,
+    NoteListResponse,
+    NoteResponse,
+    NoteType,
+    NoteUpdate,
+)
 
 __all__ = [
     "AgentExecutionCreate",
     "AgentExecutionResponse",
     "AgentExecutionUpdate",
+    "AudioDownloadResponse",
     "CaseCreate",
     "CaseListQuery",
     "CaseListResponse",
@@ -83,8 +96,17 @@ __all__ = [
     "FindingSearchRequest",
     "FindingSearchResponse",
     "FindingSearchResult",
+    "GenerateMetadataRequest",
+    "GenerateMetadataResponse",
     "GraphResponse",
     "HealthResponse",
+    "NoteCreate",
+    "NoteExportRequest",
+    "NoteExportResponse",
+    "NoteListResponse",
+    "NoteResponse",
+    "NoteType",
+    "NoteUpdate",
     "OrchestratorOutput",
     "RelationshipCreateRequest",
     "RelationshipListResponse",
@@ -95,3 +117,4 @@ __all__ = [
     "TriageFileResult",
     "TriageOutput",
 ]
+

@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-08
-**Current Phase:** 7.1 of 12 (LLM-Based KG Builder Agent) — COMPLETE (2/2 plans)
-**Next Phase:** 7.2 (D3.js KG Frontend Enhancement) → 8 (Synthesis)
+**Current Phase:** 7.2 of 12 (D3.js KG Frontend Enhancement) — IN PROGRESS (1/5 plans)
+**Next Phase:** 7.2-02 (GraphSvg D3 force canvas) → ... → 8 (Synthesis)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -19,7 +19,7 @@
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
 | 7 | Knowledge Storage & Domain Agent Enrichment | COMPLETE | 2026-02-07 | 2026-02-07 | 6 plans (11 commits), 8/8 verified: 9 DB models + migration, KG/findings schemas, KG Builder + findings service, prompt enrichment, 10 API endpoints, pipeline wiring |
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
-| 7.2 | KG Frontend (D3.js Enhancement) | NOT_STARTED | - | - | Epstein-inspired D3.js improvements |
+| 7.2 | KG Frontend (D3.js Enhancement) | IN_PROGRESS | 2026-02-08 | - | Plan 01 complete: types, config, API hook |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
@@ -58,9 +58,14 @@
   - Plan 02: KgBuilderAgentRunner with text-only input, KG_BUILDER_SYSTEM_PROMPT (8+1 entity taxonomy), AgentFactory.create_kg_builder_agent(), DB writer with clear-and-rebuild, pipeline Stage 7 replaced with LLM invocation
   - Full pipeline: Triage -> Orchestrator -> Domain -> Strategy -> HITL -> Save Findings -> LLM KG Builder -> Backfill Entity IDs -> Final
 
+**Phase 7.2 Plan 01 Complete** (2026-02-08): Foundation types, config, and API layer -- 2 tasks, 2 commits
+  - Task 1: d3-scale installed, knowledge-graph.ts rewritten with EntityResponse/RelationshipResponse/GraphResponse/ForceNode/ForceLink/GraphFilters matching backend schemas
+  - Task 2: knowledge-graph-config.ts (9 entity colors, force/node/edge/SVG config), api/graph.ts (fetchGraph with auth), use-case-graph.ts refactored to real API
+
 **What's next:**
-- Phase 7.2: D3.js KG Frontend Enhancement — Epstein-inspired layout, physics, sidebars, filtering, document excerpts
-- Phase 8: Synthesis Agent & Intelligence Layer — cross-referencing, hypotheses, contradictions, gaps, timeline
+- Phase 7.2 Plan 02: GraphSvg D3 force canvas component (decompose knowledge-graph.tsx monolith)
+- Phase 7.2 Plans 03-05: FilterPanel, EntityTimeline, SourceViewer, page integration
+- Phase 8: Synthesis Agent & Intelligence Layer
 
 ---
 
@@ -111,15 +116,17 @@
 
 ---
 
-### REQ-VIS-003: Knowledge Graph — FRONTEND_DONE
+### REQ-VIS-003: Knowledge Graph — IN_PROGRESS (Phase 7.2)
 
 | Component | File Path |
 |-----------|-----------|
 | Main visualization | `frontend/src/components/app/knowledge-graph.tsx` |
 | Evidence panel | `frontend/src/components/app/evidence-source-panel.tsx` |
-| Data hook | `frontend/src/hooks/use-case-graph.ts` |
-| Mock data | `frontend/src/lib/mock-graph-data.ts` |
-| Types | `frontend/src/types/knowledge-graph.ts` |
+| Data hook (real API) | `frontend/src/hooks/use-case-graph.ts` |
+| API client | `frontend/src/lib/api/graph.ts` |
+| Visualization config | `frontend/src/lib/knowledge-graph-config.ts` |
+| Mock data (legacy) | `frontend/src/lib/mock-graph-data.ts` |
+| Types (backend-matching) | `frontend/src/types/knowledge-graph.ts` |
 
 **Backend APIs:** All complete
 - `GET /api/cases/:caseId/graph` - Full graph visualization data
@@ -387,7 +394,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-08
-Stopped at: Completed 07.1-02-PLAN.md (KG Builder agent runner, prompt, pipeline wiring)
+Stopped at: Completed 07.2-01-PLAN.md (KG foundation types, config, API client, data hook)
 Resume file: None
 
 ---

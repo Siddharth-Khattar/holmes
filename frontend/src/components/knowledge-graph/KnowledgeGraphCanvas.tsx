@@ -1,18 +1,19 @@
-// ABOUTME: Main orchestrator for the 3-panel KG layout. Composes GraphSvg,
-// ABOUTME: FilterPanel, EntityTimeline, and SourceViewerModal with shared state flows.
+// ABOUTME: Main orchestrator for the KG layout. Composes CanvasShell, GraphSvg,
+// ABOUTME: FilterPanel, and SourceViewerModal; entity detail renders in the app-wide DetailSidebar.
 
 "use client";
 
-import { useState, useMemo, useCallback, useRef } from "react";
-import { Maximize2, Minimize2 } from "lucide-react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { Maximize2, Minimize2, Network, Hash } from "lucide-react";
 import { clsx } from "clsx";
 
+import { CanvasShell } from "@/components/ui/canvas-shell";
 import { GraphSvg } from "./GraphSvg";
 import { FilterPanel } from "./FilterPanel";
-import { EntityTimeline } from "./EntityTimeline";
 import { SourceViewerModal } from "@/components/source-viewer/SourceViewerModal";
 import type { SourceViewerContent } from "@/components/source-viewer/SourceViewerModal";
 import { useGraphFilters } from "@/hooks/useGraphFilters";
+import { useDetailSidebarDispatch } from "@/hooks";
 import type {
   EntityResponse,
   RelationshipResponse,
@@ -61,6 +62,9 @@ export function KnowledgeGraphCanvas({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // -- Detail sidebar dispatch --
+  const { setContent, clearContent } = useDetailSidebarDispatch();
+
   // -- Derived state: resolve selected entity and its relationships --
   const selectedEntity = useMemo(() => {
     if (!selectedEntityId) return null;
@@ -76,6 +80,37 @@ export function KnowledgeGraphCanvas({
     );
   }, [selectedEntityId, relationships]);
 
+  // -- Push entity content to app-wide DetailSidebar --
+  useEffect(() => {
+    if (selectedEntity) {
+      setContent({
+        type: "knowledge-graph-entity",
+        props: {
+          entityId: selectedEntity.id,
+          entity: selectedEntity,
+          relationships: selectedEntityRelationships,
+          allEntities: entities,
+        },
+      });
+    } else {
+      clearContent();
+    }
+  }, [
+    selectedEntity,
+    selectedEntityRelationships,
+    entities,
+    setContent,
+    clearContent,
+  ]);
+
+  // -- Clear sidebar on unmount --
+  useEffect(() => {
+    return () => {
+      clearContent();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // -- Event handlers --
   const handleEntitySelect = useCallback(
     (entityId: string | null) => {
@@ -88,14 +123,8 @@ export function KnowledgeGraphCanvas({
     [selectedEntityId],
   );
 
-  const handleDeselectEntity = useCallback(() => {
-    setSelectedEntityId(null);
-    setSourceViewerContent(null);
-  }, []);
-
   const handleViewSource = useCallback((content: SourceViewerContent) => {
     setSourceViewerContent(content);
-    // Right sidebar stays open -- no state change to selectedEntityId
   }, []);
 
   const toggleFullscreen = useCallback(() => {
@@ -116,82 +145,90 @@ export function KnowledgeGraphCanvas({
     setIsFilterPanelOpen((prev) => !prev);
   }, []);
 
-  // -- Suppress unused handleViewSource lint warning --
   // Source viewer wiring is in place but EntityTimelineEntry currently shows
   // "Source not yet available" (graceful degradation). handleViewSource will
   // be wired when source navigation is available.
   void handleViewSource;
 
+  // -- Header stats badges --
+  const headerRight = (
+    <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5">
+        <Network size={13} className="text-stone/60" />
+        <span className="text-xs text-stone">
+          {entities.length} entit{entities.length === 1 ? "y" : "ies"}
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <Hash size={13} className="text-stone/60" />
+        <span className="text-xs text-stone">
+          {relationships.length} relationship
+          {relationships.length === 1 ? "" : "s"}
+        </span>
+      </div>
+    </div>
+  );
+
   return (
     <div
       ref={containerRef}
       className={clsx(
-        "relative flex w-full h-full overflow-hidden",
+        "relative w-full h-full",
         isFullscreen && "fixed inset-0 z-50 bg-charcoal",
       )}
     >
-      {/* Left: Filter Panel (collapsible) */}
-      <FilterPanel
-        isOpen={isFilterPanelOpen}
-        onToggle={handleToggleFilterPanel}
-        filters={filters}
-        onToggleDomain={toggleDomain}
-        onToggleEntityType={toggleEntityType}
-        onSearchChange={setSearchQuery}
-        onKeywordChange={setKeywordFilter}
-        entityTypeCounts={entityTypeCounts}
-        domainCounts={domainCounts}
-        totalEntities={entities.length}
-        totalRelationships={relationships.length}
-      />
-
-      {/* Center: Graph area (flexes to fill remaining space) */}
-      <div className="relative flex-1 min-w-0">
-        {/* GraphSvg fills the center area */}
-        <GraphSvg
-          entities={filteredEntities}
-          relationships={filteredRelationships}
-          onEntitySelect={handleEntitySelect}
-          selectedEntityId={selectedEntityId}
-          searchMatchIds={searchMatchIds}
-        />
-
-        {/* Source viewer modal overlays graph area only (NOT the right sidebar) */}
-        {sourceViewerContent && (
-          <div className="absolute inset-0 z-30">
-            <SourceViewerModal
-              content={sourceViewerContent}
-              onClose={() => setSourceViewerContent(null)}
-              className="w-full h-full"
-            />
-          </div>
-        )}
-
-        {/* Fullscreen toggle button */}
-        <button
-          onClick={toggleFullscreen}
-          className="absolute top-4 left-4 z-20 p-2 rounded-lg bg-jet/80 border border-stone/15 text-stone hover:text-smoke transition-colors"
-          title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-        >
-          {isFullscreen ? (
-            <Minimize2 className="w-4 h-4" />
-          ) : (
-            <Maximize2 className="w-4 h-4" />
-          )}
-        </button>
-      </div>
-
-      {/* Right: Entity Timeline sidebar (appears when entity selected) */}
-      {selectedEntity && (
-        <div className="flex-none w-[380px] bg-jet border-l border-stone/15 overflow-hidden">
-          <EntityTimeline
-            entity={selectedEntity}
-            relationships={selectedEntityRelationships}
-            allEntities={entities}
-            onClose={handleDeselectEntity}
+      <CanvasShell title="Knowledge Graph" headerRight={headerRight}>
+        {/* Graph content area (relative for floating overlays) */}
+        <div className="relative w-full h-full">
+          {/* GraphSvg fills the content area */}
+          <GraphSvg
+            entities={filteredEntities}
+            relationships={filteredRelationships}
+            onEntitySelect={handleEntitySelect}
+            selectedEntityId={selectedEntityId}
+            searchMatchIds={searchMatchIds}
           />
+
+          {/* Floating filter panel (absolute inside content) */}
+          <FilterPanel
+            isOpen={isFilterPanelOpen}
+            onToggle={handleToggleFilterPanel}
+            filters={filters}
+            onToggleDomain={toggleDomain}
+            onToggleEntityType={toggleEntityType}
+            onSearchChange={setSearchQuery}
+            onKeywordChange={setKeywordFilter}
+            entityTypeCounts={entityTypeCounts}
+            domainCounts={domainCounts}
+            totalEntities={entities.length}
+            totalRelationships={relationships.length}
+          />
+
+          {/* Source viewer modal overlays graph area */}
+          {sourceViewerContent && (
+            <div className="absolute inset-0 z-30">
+              <SourceViewerModal
+                content={sourceViewerContent}
+                onClose={() => setSourceViewerContent(null)}
+                className="w-full h-full"
+              />
+            </div>
+          )}
+
+          {/* Fullscreen toggle button */}
+          <button
+            onClick={toggleFullscreen}
+            className="absolute top-4 right-4 z-20 p-2 rounded-lg bg-jet/80 border border-stone/15 text-stone hover:text-smoke transition-colors"
+            title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="w-4 h-4" />
+            ) : (
+              <Maximize2 className="w-4 h-4" />
+            )}
+          </button>
         </div>
-      )}
+      </CanvasShell>
     </div>
   );
 }

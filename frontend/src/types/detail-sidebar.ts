@@ -3,6 +3,7 @@
 
 import type { AgentType, AgentState } from "./command-center";
 import type { SourceViewerContent } from "@/components/source-viewer/SourceViewerModal";
+import type { EntityResponse, RelationshipResponse } from "./knowledge-graph";
 
 // ---------------------------------------------------------------------------
 // Content Descriptors (discriminated union)
@@ -26,10 +27,22 @@ export interface KnowledgeGraphEvidenceContent {
   };
 }
 
+/** Knowledge Graph entity detail view (replaces inline EntityTimeline) */
+export interface KnowledgeGraphEntityContent {
+  type: "knowledge-graph-entity";
+  props: {
+    entityId: string;
+    entity: EntityResponse;
+    relationships: RelationshipResponse[];
+    allEntities: EntityResponse[];
+  };
+}
+
 /** Union of all possible sidebar content descriptors */
 export type SidebarContentDescriptor =
   | CommandCenterAgentContent
-  | KnowledgeGraphEvidenceContent;
+  | KnowledgeGraphEvidenceContent
+  | KnowledgeGraphEntityContent;
 
 // ---------------------------------------------------------------------------
 // Sidebar State

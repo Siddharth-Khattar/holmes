@@ -11,6 +11,7 @@ import {
 } from "@/hooks";
 import { NodeDetailsSidebar } from "@/components/CommandCenter/NodeDetailsSidebar";
 import { EvidenceSourcePanel } from "./evidence-source-panel";
+import { KnowledgeGraphEntityPanel } from "@/components/knowledge-graph/KnowledgeGraphEntityPanel";
 import type { SidebarContentDescriptor } from "@/types/detail-sidebar";
 import { SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX } from "@/types/detail-sidebar";
 
@@ -34,6 +35,14 @@ function renderContent(descriptor: SidebarContentDescriptor): React.ReactNode {
       );
     case "knowledge-graph-evidence":
       return <EvidenceSourcePanel content={descriptor.props.content} />;
+    case "knowledge-graph-entity":
+      return (
+        <KnowledgeGraphEntityPanel
+          entity={descriptor.props.entity}
+          relationships={descriptor.props.relationships}
+          allEntities={descriptor.props.allEntities}
+        />
+      );
   }
 }
 
@@ -46,6 +55,8 @@ function getCssScope(descriptor: SidebarContentDescriptor): string | undefined {
     case "command-center-agent":
       return "command-center-scope";
     case "knowledge-graph-evidence":
+      return undefined;
+    case "knowledge-graph-entity":
       return undefined;
   }
 }

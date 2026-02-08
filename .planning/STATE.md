@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-08
-**Current Phase:** 7.2 of 12 (D3.js KG Frontend Enhancement) — IN PROGRESS (1/5 plans)
-**Next Phase:** 7.2-02 (GraphSvg D3 force canvas) → ... → 8 (Synthesis)
+**Current Phase:** 7.2 of 12 (D3.js KG Frontend Enhancement) — IN PROGRESS (2/5 plans)
+**Next Phase:** 7.2-03 (GraphSvg D3 force canvas) → ... → 8 (Synthesis)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -19,7 +19,7 @@
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
 | 7 | Knowledge Storage & Domain Agent Enrichment | COMPLETE | 2026-02-07 | 2026-02-07 | 6 plans (11 commits), 8/8 verified: 9 DB models + migration, KG/findings schemas, KG Builder + findings service, prompt enrichment, 10 API endpoints, pipeline wiring |
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
-| 7.2 | KG Frontend (D3.js Enhancement) | IN_PROGRESS | 2026-02-08 | - | Plan 01 complete: types, config, API hook |
+| 7.2 | KG Frontend (D3.js Enhancement) | IN_PROGRESS | 2026-02-08 | - | Plans 01-02 complete: types/config/API + source viewer system |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
@@ -62,9 +62,14 @@
   - Task 1: d3-scale installed, knowledge-graph.ts rewritten with EntityResponse/RelationshipResponse/GraphResponse/ForceNode/ForceLink/GraphFilters matching backend schemas
   - Task 2: knowledge-graph-config.ts (9 entity colors, force/node/edge/SVG config), api/graph.ts (fetchGraph with auth), use-case-graph.ts refactored to real API
 
+**Phase 7.2 Plan 02 Complete** (2026-02-08): Source viewer modal and media components -- 3 tasks, 3 commits
+  - Task 1: 8 media deps (react-pdf-viewer suite, pdfjs-dist, wavesurfer.js, @wavesurfer/react), SourceViewerModal shell, PdfViewer with page-navigation + search/highlight
+  - Task 2: AudioViewer (wavesurfer.js waveform + transcript), VideoViewer (HTML5 + markers), ImageViewer (zoom/pan)
+  - Task 3: evidence-source-panel refactored from 462-line mock monolith to 58-line thin wrapper, detail-sidebar types updated
+
 **What's next:**
-- Phase 7.2 Plan 02: GraphSvg D3 force canvas component (decompose knowledge-graph.tsx monolith)
-- Phase 7.2 Plans 03-05: FilterPanel, EntityTimeline, SourceViewer, page integration
+- Phase 7.2 Plan 03: GraphSvg D3 force canvas component (decompose knowledge-graph.tsx monolith)
+- Phase 7.2 Plans 04-05: FilterPanel, EntityTimeline, page integration
 - Phase 8: Synthesis Agent & Intelligence Layer
 
 ---
@@ -121,7 +126,12 @@
 | Component | File Path |
 |-----------|-----------|
 | Main visualization | `frontend/src/components/app/knowledge-graph.tsx` |
-| Evidence panel | `frontend/src/components/app/evidence-source-panel.tsx` |
+| Evidence panel (wrapper) | `frontend/src/components/app/evidence-source-panel.tsx` |
+| Source viewer modal | `frontend/src/components/source-viewer/SourceViewerModal.tsx` |
+| PDF viewer | `frontend/src/components/source-viewer/PdfViewer.tsx` |
+| Audio viewer | `frontend/src/components/source-viewer/AudioViewer.tsx` |
+| Video viewer | `frontend/src/components/source-viewer/VideoViewer.tsx` |
+| Image viewer | `frontend/src/components/source-viewer/ImageViewer.tsx` |
 | Data hook (real API) | `frontend/src/hooks/use-case-graph.ts` |
 | API client | `frontend/src/lib/api/graph.ts` |
 | Visualization config | `frontend/src/lib/knowledge-graph-config.ts` |
@@ -382,6 +392,10 @@ All frontend features need these backend endpoints:
 | KG Builder rebuild strategy | Incremental merge vs Clear-and-rebuild | Clear-and-rebuild | Clean slate every run; delete all KG data then insert curated LLM output |
 | KG Builder failure handling | Block pipeline vs Non-blocking | Non-blocking (try/except, continue) | KG Builder failure emits SSE error, pipeline continues; KG page shows empty state |
 | KG Builder media resolution | HIGH vs None | None (text-only input) | No generate_content_config needed; KG Builder receives text, not files |
+| pdfjs-dist version | Latest (5.x) vs Compatible (3.x) | 3.11.174 | @react-pdf-viewer 3.12 requires pdfjs-dist ^2.16 or ^3.0; v5 is incompatible |
+| wavesurfer.js import strategy | Static import vs Dynamic import | Dynamic import | ESM-only package; dynamic import() inside useEffect for Next.js compatibility |
+| Zoom pan reset pattern | useEffect on zoom vs Inline in zoom handlers | Inline in zoom handlers | Avoids eslint react-hooks/set-state-in-effect cascading render violation |
+| detail-sidebar Evidence type | Keep Evidence type vs Replace with SourceViewerContent | SourceViewerContent | Evidence type removed in Plan 01; SourceViewerContent is the production-quality replacement |
 
 ---
 
@@ -394,7 +408,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-08
-Stopped at: Completed 07.2-01-PLAN.md (KG foundation types, config, API client, data hook)
+Stopped at: Completed 07.2-02-PLAN.md (source viewer modal, media components, evidence-source-panel refactor)
 Resume file: None
 
 ---

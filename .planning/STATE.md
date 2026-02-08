@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — In progress (2/7 plans)
-**Next Plan:** 08-03 (Synthesis API endpoints)
+**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — In progress (3/7 plans)
+**Next Plan:** 08-04 (Command Center frontend integration)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -21,7 +21,7 @@
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
-| 8 | Synthesis Agent & Intelligence Layer | IN_PROGRESS | 2026-02-08 | - | Plans 01-02 complete (4 commits): DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events |
+| 8 | Synthesis Agent & Intelligence Layer | IN_PROGRESS | 2026-02-08 | - | Plans 01-03 complete (6 commits): DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints |
 | 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -95,9 +95,14 @@
   - Task 2: Pipeline Stage 8 after entity backfill (agent-started/agent-complete/agent-error SSE events), SYNTHESIS_DATA_READY event type + emit helper, non-blocking failure handling
   - Full pipeline: Triage -> Orchestrator -> Domain -> Strategy -> HITL -> Save Findings -> KG Builder -> Entity Backfill -> Synthesis -> ANALYZED -> processing-complete
 
+**Phase 8 Plan 03 Complete** (2026-02-09): Synthesis API endpoints -- 2 tasks, 2 commits
+  - Task 1: 6 synthesis endpoints (/synthesis, /hypotheses list+detail, /contradictions, /gaps, /tasks) with auth, sa_case() ordering, status/severity/priority/task_type filters
+  - Task 2: 2 timeline endpoints (/timeline list with dateRange+layerCounts aggregation, /timeline/{id}), TimelineApiResponseModel schema, synthesis+timeline routers registered in main.py
+  - All 8 endpoints enforce auth + case ownership following knowledge_graph.py pattern
+
 **What's next:**
-- Phase 8 Plan 03: Synthesis API endpoints (GET routes to read hypotheses, contradictions, gaps, synthesis, timeline, tasks)
 - Phase 8 Plan 04: Command Center frontend integration (SSE event handling for synthesis agent node)
+- Phase 8 Plan 05: Frontend Verdict/Timeline views consuming synthesis API endpoints
 - Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
 
 ---
@@ -269,7 +274,14 @@ All frontend features need these backend endpoints:
 | Findings | `/api/cases/:caseId/findings` | GET | HIGH | DONE |
 | Findings Search | `/api/cases/:caseId/findings/search` | GET | HIGH | DONE |
 | Finding Detail | `/api/cases/:caseId/findings/:findingId` | GET | HIGH | DONE |
-| Timeline Events | `/api/cases/:caseId/timeline/events` | GET, POST, PATCH, DELETE | MEDIUM | TODO |
+| Synthesis | `/api/cases/:caseId/synthesis` | GET | HIGH | DONE |
+| Hypotheses | `/api/cases/:caseId/hypotheses` | GET | HIGH | DONE |
+| Hypothesis Detail | `/api/cases/:caseId/hypotheses/:id` | GET | HIGH | DONE |
+| Contradictions | `/api/cases/:caseId/contradictions` | GET | HIGH | DONE |
+| Gaps | `/api/cases/:caseId/gaps` | GET | HIGH | DONE |
+| Tasks | `/api/cases/:caseId/tasks` | GET | HIGH | DONE |
+| Timeline Events | `/api/cases/:caseId/timeline` | GET | MEDIUM | DONE |
+| Timeline Event Detail | `/api/cases/:caseId/timeline/:id` | GET | MEDIUM | DONE |
 | Timeline SSE | `/api/cases/:caseId/timeline/stream` | SSE | MEDIUM | TODO |
 | Command Center SSE | `/sse/cases/:caseId/command-center/stream` | SSE | HIGH | DONE |
 | Start Analysis | `/api/cases/:caseId/analyze` | POST | HIGH | DONE |
@@ -452,6 +464,9 @@ All frontend features need these backend endpoints:
 | Synthesis failure handling | Block pipeline vs Non-blocking | Non-blocking | Synthesis failure emits SSE error, pipeline continues to ANALYZED status |
 | Hypothesis status derivation | User-driven vs Confidence-based | Confidence-based (>60 SUPPORTED, <40 REFUTED, else PENDING) | Auto-classification from LLM confidence scores; user can override later |
 | Pipeline terminal stage | Strategy vs Synthesis | Synthesis completion | Processing-complete now fires after Stage 8 (synthesis), not after Stage 7b (entity backfill) |
+| Timeline dateRange scope | Full table vs Filtered results | Filtered results | Date boundaries reflect active filters, not entire dataset |
+| Timeline layer counts | SQL GROUP BY vs Python Counter | Python Counter | Simpler code for small result sets; no extra DB query |
+| Query param alias pattern | Direct param name vs Query(alias=) | Query(alias="status") | Avoids Python reserved keyword conflicts in function signatures |
 
 ---
 
@@ -464,9 +479,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8 Plan 02 COMPLETE (2 tasks, 2 commits). Synthesis agent runner + pipeline Stage 8.
+Stopped at: Phase 8 Plan 03 COMPLETE (2 tasks, 2 commits). 8 API endpoints for synthesis + timeline.
 Resume file: None
-Next action: Execute Phase 8 Plan 03 (Synthesis API endpoints)
+Next action: Execute Phase 8 Plan 04 (Command Center frontend integration)
 
 ---
 

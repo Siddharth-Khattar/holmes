@@ -67,7 +67,7 @@ export interface GraphResponse {
 export interface ForceNode extends SimulationNodeDatum {
   id: string;
   entity: EntityResponse;
-  /** Pixel radius computed from entity degree via sqrt scale. */
+  /** Pixel radius computed from entity degree via linear scale. */
   radius: number;
   /** Hex color derived from entity_type via getEntityColor(). */
   color: string;

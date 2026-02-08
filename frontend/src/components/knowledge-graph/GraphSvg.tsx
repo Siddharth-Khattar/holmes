@@ -146,6 +146,10 @@ export function GraphSvg({
     edgeLabels.attr("opacity", showLabels ? 1 : 0);
   }, [currentZoomScale, internalSelectedId, edgeLabelGroupRef]);
 
+  // Keep a ref to the latest zoom scale so D3 closures can access it
+  const zoomScaleRef = useRef(currentZoomScale);
+  zoomScaleRef.current = currentZoomScale;
+
   // -- Tooltips (managed via React state since they're overlays, not in SVG) --
   const [nodeTooltip, setNodeTooltip] = useState<NodeTooltip | null>(null);
   const [edgeTooltip, setEdgeTooltip] = useState<EdgeTooltip | null>(null);
@@ -208,9 +212,13 @@ export function GraphSvg({
 
     links.on("mouseleave", (_event: MouseEvent, d: ForceLink) => {
       setEdgeTooltip(null);
-      // Restore edge label visibility based on zoom threshold
+      // Restore edge label visibility based on current zoom threshold
       if (edgeLabels) {
-        edgeLabels.filter((ld: ForceLink) => ld.id === d.id).attr("opacity", 0);
+        const showByZoom =
+          zoomScaleRef.current >= SVG_CONFIG.edgeLabelZoomThreshold;
+        edgeLabels
+          .filter((ld: ForceLink) => ld.id === d.id)
+          .attr("opacity", showByZoom ? 1 : 0);
       }
     });
 

@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-08
-**Current Phase:** 7.2 of 12 (D3.js KG Frontend Enhancement) — IN PROGRESS (3/5 plans)
-**Next Phase:** 7.2-04 (FilterPanel + EntityTimeline) → 07.2-05 (page integration) → 8 (Synthesis)
+**Current Phase:** 7.2 of 12 (D3.js KG Frontend Enhancement) — IN PROGRESS (4/5 plans)
+**Next Phase:** 07.2-05 (page integration) → 8 (Synthesis)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -19,7 +19,7 @@
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
 | 7 | Knowledge Storage & Domain Agent Enrichment | COMPLETE | 2026-02-07 | 2026-02-07 | 6 plans (11 commits), 8/8 verified: 9 DB models + migration, KG/findings schemas, KG Builder + findings service, prompt enrichment, 10 API endpoints, pipeline wiring |
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
-| 7.2 | KG Frontend (D3.js Enhancement) | IN_PROGRESS | 2026-02-08 | - | Plans 01-03 complete: types/config/API + source viewer system + GraphSvg D3 force canvas |
+| 7.2 | KG Frontend (D3.js Enhancement) | IN_PROGRESS | 2026-02-08 | - | Plans 01-04 complete: types/config/API + source viewer system + GraphSvg D3 force canvas + FilterPanel + EntityTimeline |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
@@ -72,9 +72,12 @@
   - Task 2: GraphSvg component (dark SVG canvas, dot pattern, zoom/pan controls, simulation toggle, node/edge tooltips, background click deselect, searchMatchIds prop)
   - Performance pattern: zero React re-renders during simulation (D3 refs only)
 
+**Phase 7.2 Plan 04 Complete** (2026-02-08): FilterPanel + EntityTimeline -- 2 tasks, 2 commits
+  - Task 1: useGraphFilters (disabled-set pattern for lint-safe state, domain/type toggles, keyword filtering, search highlighting), FilterPanel (collapsible left panel: stats, search, keyword filter, 4 domain toggles, 9 entity type toggles)
+  - Task 2: EntityTimeline (right sidebar: gradient header, date range, filter-by-entity, chronological list), EntityTimelineEntry (expandable: color-coded entities, evidence excerpt, corroboration badge, "Source not yet available" graceful degradation)
+
 **What's next:**
-- Phase 7.2 Plan 04: FilterPanel + EntityTimeline components
-- Phase 7.2 Plan 05: KnowledgeGraphCanvas integration (replaces monolith page)
+- Phase 7.2 Plan 05: KnowledgeGraphCanvas integration (replaces monolith page, wires 3-panel layout)
 - Phase 8: Synthesis Agent & Intelligence Layer
 
 ---
@@ -134,6 +137,10 @@
 | GraphSvg D3 force canvas | `frontend/src/components/knowledge-graph/GraphSvg.tsx` |
 | Force simulation hook | `frontend/src/hooks/useGraphSimulation.ts` |
 | Selection/search hook | `frontend/src/hooks/useGraphSelection.ts` |
+| Filter state hook | `frontend/src/hooks/useGraphFilters.ts` |
+| Filter panel (left) | `frontend/src/components/knowledge-graph/FilterPanel.tsx` |
+| Entity timeline (right) | `frontend/src/components/knowledge-graph/EntityTimeline.tsx` |
+| Timeline entry | `frontend/src/components/knowledge-graph/EntityTimelineEntry.tsx` |
 | Evidence panel (wrapper) | `frontend/src/components/app/evidence-source-panel.tsx` |
 | Source viewer modal | `frontend/src/components/source-viewer/SourceViewerModal.tsx` |
 | PDF viewer | `frontend/src/components/source-viewer/PdfViewer.tsx` |
@@ -408,6 +415,9 @@ All frontend features need these backend endpoints:
 | KG tooltip implementation | SVG foreignObject vs React fixed overlay | React fixed overlay | Avoids SVG clipping and z-index issues; positioned at mouse coordinates |
 | KG search vs selection visual | Same style vs Distinct styles | Distinct: coral (#E87461) for search, white (#ffffff) for selection | Two highlighting modes must be visually distinguishable |
 | KG edge label orientation | Rotated along edge vs Always horizontal | Always horizontal | Readability per CONTEXT.md specification |
+| KG filter state model | Active-set vs Disabled-set | Disabled-set pattern | ESLint react-hooks rules prohibit setState in useMemo/useEffect; inverted model avoids sync entirely |
+| KG source viewer wiring | Wire onViewSource vs Graceful degradation | Graceful degradation | source_finding_ids -> file URL chain requires backend API not available in Phase 7.2; show "Source not yet available" |
+| KG timeline relationship input | Full list + filter in component vs Pre-filtered by parent | Pre-filtered by parent | EntityTimeline receives only relationships involving selected entity; keeps component focused on display |
 
 ---
 
@@ -420,7 +430,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-08
-Stopped at: Completed 07.2-03-PLAN.md (GraphSvg D3 force canvas, useGraphSimulation, useGraphSelection)
+Stopped at: Completed 07.2-04-PLAN.md (FilterPanel + EntityTimeline sidebar components)
 Resume file: None
 
 ---

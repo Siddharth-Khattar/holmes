@@ -153,6 +153,7 @@ async def run_analysis_workflow(
         compute_agent_tasks,
         run_domain_agents_parallel,
     )
+    from app.agents.kg_builder import run_kg_builder
     from app.agents.orchestrator import run_orchestrator
     from app.agents.strategy import run_strategy
     from app.agents.triage import run_triage
@@ -167,7 +168,6 @@ async def run_analysis_workflow(
         save_findings_from_output,
         update_finding_entity_ids,
     )
-    from app.services.kg_builder import build_knowledge_graph
 
     settings = get_settings()
     session_factory = _get_sessionmaker()
@@ -965,7 +965,7 @@ async def run_analysis_workflow(
 
             await db.commit()  # Commit findings before KG building
 
-            # ---- Stage 7: Build Knowledge Graph ----
+            # ---- Stage 7: Build Knowledge Graph (LLM-based KG Builder) ----
             logger.info(
                 "Pipeline starting stage=kg_builder case=%s workflow=%s",
                 case_id,
@@ -982,24 +982,60 @@ async def run_analysis_workflow(
                     )
                 )
 
-            (
-                kg_entities_created,
-                kg_relationships_created,
-                kg_exact_merges,
-            ) = await build_knowledge_graph(
+            kg_builder_task_id = str(uuid4())
+            await emit_agent_started(
                 case_id=case_id,
-                workflow_id=workflow_id,
-                domain_results=domain_results,
-                db=db,
+                agent_type="kg_builder",
+                task_id=kg_builder_task_id,
+                file_id="",
+                file_name="knowledge-graph-builder",
             )
+
+            try:
+                kg_entities_created, kg_relationships_created = await run_kg_builder(
+                    case_id=case_id,
+                    workflow_id=workflow_id,
+                    user_id=user_id,
+                    domain_results=domain_results,
+                    db_session=db,
+                    publish_event=publish_fn,
+                )
+                await emit_agent_complete(
+                    case_id=case_id,
+                    agent_type="kg_builder",
+                    task_id=kg_builder_task_id,
+                    result={
+                        "taskId": kg_builder_task_id,
+                        "agentType": "kg_builder",
+                        "outputs": [
+                            {
+                                "type": "kg-builder-results",
+                                "data": {
+                                    "entitiesCreated": kg_entities_created,
+                                    "relationshipsCreated": kg_relationships_created,
+                                },
+                            }
+                        ],
+                    },
+                )
+            except Exception as exc:
+                logger.exception("KG Builder failed for case=%s: %s", case_id, exc)
+                kg_entities_created = 0
+                kg_relationships_created = 0
+                await emit_agent_error(
+                    case_id=case_id,
+                    agent_type="kg_builder",
+                    task_id=kg_builder_task_id,
+                    error=str(exc)[:500],
+                )
+
             await db.commit()  # Commit KG data
 
             logger.info(
-                "KG build complete case=%s entities=%d relationships=%d merges=%d",
+                "KG build complete case=%s entities=%d relationships=%d",
                 case_id,
                 kg_entities_created,
                 kg_relationships_created,
-                kg_exact_merges,
             )
 
             # ---- Stage 7b: Backfill finding-to-entity links ----

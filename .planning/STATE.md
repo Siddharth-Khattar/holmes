@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — In progress (4/7 plans)
-**Next Plan:** 08-05 (Verdict/Timeline frontend views)
+**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — In progress (5/7 plans)
+**Next Plan:** 08-06 (Command Center integration)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -21,7 +21,7 @@
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
-| 8 | Synthesis Agent & Intelligence Layer | IN_PROGRESS | 2026-02-08 | - | Plans 01-04 complete (8 commits): DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks |
+| 8 | Synthesis Agent & Intelligence Layer | IN_PROGRESS | 2026-02-08 | - | Plans 01-05 complete (10 commits): DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components |
 | 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -105,9 +105,13 @@
   - Task 2: 5 fetch functions in api/synthesis.ts using shared api client (fetchSynthesis with 404->null, fetchHypotheses, fetchContradictions, fetchGaps, fetchTasks) + 5 React Query hooks in useSynthesisData.ts with 30s stale time
   - Used shared api-client.ts instead of duplicating fetchWithAuth (consistent with useAgentExecutionDetail.ts pattern)
 
+**Phase 8 Plan 05 Complete** (2026-02-09): Verdict frontend components -- 2 tasks, 2 commits
+  - Task 1: 6 card components (VerdictSummary, KeyFindingCard, HypothesisCard, ContradictionCard, GapCard, TaskCard) with Holmes dark theme, confidence dots (red/amber/green), severity badges, side-by-side claim comparison
+  - Task 2: VerdictView main layout (6 scrollable sections with count badges, loading skeletons, empty states), 3 verdict sidebar descriptor types (VerdictHypothesisContent, VerdictContradictionContent, VerdictGapContent) added to SidebarContentDescriptor union, placeholder switch cases in detail-sidebar.tsx
+
 **What's next:**
-- Phase 8 Plan 05: Frontend Verdict/Timeline views consuming synthesis API endpoints
-- Phase 8 Plan 06: Command Center integration (synthesis agent node SSE events)
+- Phase 8 Plan 06: Command Center integration (Verdict tab toggle, synthesis agent node SSE events)
+- Phase 8 Plan 07: Timeline wiring (if applicable)
 - Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
 
 ---
@@ -475,6 +479,9 @@ All frontend features need these backend endpoints:
 | Synthesis API client pattern | Duplicate fetchWithAuth vs Shared api client | Shared api client (api-client.ts) | Consistent with useAgentExecutionDetail.ts; avoids duplicating JWT auth logic |
 | Synthesis fetch 404 handling | Throw error vs Return null | Return null for fetchSynthesis | Analysis may not have run yet; null signals empty state without error boundary |
 | React Query filter cache | Single queryKey vs Filter-inclusive queryKey | Filter params in queryKey | Different filter combinations get separate cache entries and proper invalidation |
+| React Compiler useMemo dependency | Sub-property vs Full object | Full object (`[synthesis]`) | React Compiler infers full object as dependency; `[synthesis?.key_findings_summary]` fails preserve-manual-memoization lint rule |
+| TaskCard interactivity | Clickable with onClick vs Read-only | Read-only (no onClick) | Task management (status updates, assignment) deferred; tasks are informational-only for v1 |
+| Verdict sidebar descriptor rendering | Render panel now vs Placeholder | Placeholder (return null) | Actual detail panels for verdict-hypothesis/contradiction/gap built in Plan 06 |
 
 ---
 
@@ -487,9 +494,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8 Plan 04 COMPLETE (2 tasks, 2 commits). Frontend types, API client, React Query hooks for synthesis.
+Stopped at: Phase 8 Plan 05 COMPLETE (2 tasks, 2 commits). 7 Verdict components + SidebarContentDescriptor extensions.
 Resume file: None
-Next action: Execute Phase 8 Plan 05 (Verdict/Timeline frontend views)
+Next action: Execute Phase 8 Plan 06 (Command Center integration)
 
 ---
 

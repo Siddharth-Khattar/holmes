@@ -11,6 +11,7 @@ import { clsx } from "clsx";
 import { UserMenu } from "./user-menu";
 import { ThemedLogo } from "./themed-logo";
 import { CaseNavSection } from "./case-nav-section";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface SidebarProps {
   user: {
@@ -76,25 +77,29 @@ export function Sidebar({ user }: SidebarProps) {
 
             return (
               <li key={item.href}>
-                <Link
-                  href={item.href}
-                  data-active={isActive}
-                  data-tooltip={!isExpanded ? item.label : undefined}
-                  className={clsx(
-                    "sidebar-nav-link flex items-center gap-3 px-3 py-2 rounded-lg",
-                    "transition-colors duration-150",
-                    !isExpanded && "tooltip-trigger",
-                  )}
-                  aria-current={isActive ? "page" : undefined}
-                  aria-label={item.label}
+                <Tooltip
+                  content={item.label}
+                  position="right"
+                  disabled={isExpanded}
                 >
-                  <Icon className="w-5 h-5 shrink-0" />
-                  {isExpanded && (
-                    <span className="text-sm whitespace-nowrap overflow-hidden">
-                      {item.label}
-                    </span>
-                  )}
-                </Link>
+                  <Link
+                    href={item.href}
+                    data-active={isActive}
+                    className={clsx(
+                      "sidebar-nav-link flex items-center gap-3 px-3 py-2 rounded-lg",
+                      "transition-colors duration-150",
+                    )}
+                    aria-current={isActive ? "page" : undefined}
+                    aria-label={item.label}
+                  >
+                    <Icon className="w-5 h-5 shrink-0" />
+                    {isExpanded && (
+                      <span className="text-sm whitespace-nowrap overflow-hidden">
+                        {item.label}
+                      </span>
+                    )}
+                  </Link>
+                </Tooltip>
               </li>
             );
           })}
@@ -106,27 +111,33 @@ export function Sidebar({ user }: SidebarProps) {
 
       {/* Toggle button */}
       <div className="p-2" style={{ borderTop: "1px solid var(--border)" }}>
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          data-tooltip={!isExpanded ? "Expand sidebar" : undefined}
-          className={clsx(
-            "sidebar-toggle w-full flex items-center gap-3 px-3 py-2 rounded-lg",
-            "transition-colors duration-150",
-            isExpanded ? "justify-start" : "justify-center tooltip-trigger",
-          )}
-          aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+        <Tooltip
+          content="Expand sidebar"
+          position="right"
+          disabled={isExpanded}
+          className="w-full"
         >
-          {isExpanded ? (
-            <>
-              <ChevronLeft className="w-5 h-5 shrink-0" />
-              <span className="text-sm whitespace-nowrap overflow-hidden">
-                Collapse
-              </span>
-            </>
-          ) : (
-            <ChevronRight className="w-5 h-5 shrink-0" />
-          )}
-        </button>
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className={clsx(
+              "sidebar-toggle w-full flex items-center gap-3 px-3 py-2 rounded-lg",
+              "transition-colors duration-150",
+              isExpanded ? "justify-start" : "justify-center",
+            )}
+            aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
+          >
+            {isExpanded ? (
+              <>
+                <ChevronLeft className="w-5 h-5 shrink-0" />
+                <span className="text-sm whitespace-nowrap overflow-hidden">
+                  Collapse
+                </span>
+              </>
+            ) : (
+              <ChevronRight className="w-5 h-5 shrink-0" />
+            )}
+          </button>
+        </Tooltip>
       </div>
 
       {/* User Menu at bottom */}
@@ -151,58 +162,6 @@ export function Sidebar({ user }: SidebarProps) {
         .sidebar-nav-link[data-active="false"]:hover {
           background-color: color-mix(in srgb, var(--muted) 50%, transparent);
           color: var(--foreground);
-        }
-
-        /* Tooltip styles */
-        .tooltip-trigger[data-tooltip]::after {
-          content: attr(data-tooltip);
-          position: absolute;
-          left: 100%;
-          top: 50%;
-          transform: translateY(-50%);
-          margin-left: 12px;
-          padding: 6px 12px;
-          background-color: var(--popover);
-          color: var(--popover-foreground);
-          border: 1px solid var(--border);
-          border-radius: 6px;
-          font-size: 13px;
-          font-weight: 500;
-          white-space: nowrap;
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 150ms ease-out;
-          z-index: 9999;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .tooltip-trigger[data-tooltip]:hover::after {
-          opacity: 1;
-          transition-delay: 0ms;
-        }
-
-        /* Tooltip arrow */
-        .tooltip-trigger[data-tooltip]::before {
-          content: "";
-          position: absolute;
-          left: 100%;
-          top: 50%;
-          transform: translateY(-50%);
-          margin-left: 6px;
-          width: 0;
-          height: 0;
-          border-style: solid;
-          border-width: 5px 6px 5px 0;
-          border-color: transparent var(--border) transparent transparent;
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 150ms ease-out;
-          z-index: 9999;
-        }
-
-        .tooltip-trigger[data-tooltip]:hover::before {
-          opacity: 1;
-          transition-delay: 0ms;
         }
 
         .sidebar-toggle {

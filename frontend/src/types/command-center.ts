@@ -33,6 +33,10 @@ export interface RoutingDecision {
   targetAgent: AgentType;
   reason: string;
   domainScore: number; // Confidence score 0-100 (percentage)
+  /** Routing priority assigned by the orchestrator. */
+  priority?: "high" | "medium" | "low";
+  /** Overall routing confidence (0-100). Low values may trigger HITL review. */
+  routingConfidence?: number | null;
 }
 
 export interface AgentResult {

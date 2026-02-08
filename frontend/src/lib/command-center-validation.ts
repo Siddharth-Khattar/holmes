@@ -37,6 +37,14 @@ function isValidAgentType(value: unknown): value is AgentType {
 }
 
 /**
+ * Alias map for backend agent keys that differ from the frontend AgentType names.
+ * e.g. the backend sends "kg_builder" but the frontend uses "knowledge-graph".
+ */
+const AGENT_KEY_ALIASES: Record<string, AgentType> = {
+  kg_builder: "knowledge-graph",
+};
+
+/**
  * Extracts the base AgentType from a compound agent ID (e.g. "financial_grp_0" → "financial").
  * Returns the AgentType directly if it is already a base type, or null if unrecognized.
  */
@@ -44,6 +52,10 @@ export function extractBaseAgentType(agentId: string): AgentType | null {
   // Direct match first
   if (VALID_AGENT_TYPES.includes(agentId as AgentType)) {
     return agentId as AgentType;
+  }
+  // Alias match (backend key → frontend AgentType)
+  if (agentId in AGENT_KEY_ALIASES) {
+    return AGENT_KEY_ALIASES[agentId];
   }
   // Prefix match: check if agentId starts with "<baseType>_"
   for (const baseType of VALID_AGENT_TYPES) {

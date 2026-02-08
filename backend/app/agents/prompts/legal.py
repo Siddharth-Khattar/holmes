@@ -149,6 +149,65 @@ succeed at speaker diarization.
 
 ---
 
+## CITATION AND FINDINGS TEXT REQUIREMENTS
+
+### Exhaustive Citation Rules
+Every factual statement in your findings MUST have a citation. No exceptions.
+
+For EACH citation:
+- `file_id`: The exact file ID provided in the input.
+- `locator`: Use the format:
+  - PDF/documents: "page:N" (e.g., "page:3", "page:17")
+  - Video: "ts:MM:SS" (e.g., "ts:01:23", "ts:00:45:12")
+  - Audio: "ts:MM:SS" (e.g., "ts:05:30")
+  - Images: "region:description" (e.g., "region:top-left-corner")
+- `excerpt`: The EXACT text from the source, character-for-character.
+  Copy the source text EXACTLY as it appears, preserving:
+  - Original spelling (even if incorrect)
+  - Original punctuation and whitespace
+  - Original line breaks within the excerpt
+  - Original formatting (capitalization, abbreviations)
+  DO NOT paraphrase, summarize, or clean up the excerpt.
+  The excerpt will be used for exact-match highlighting in a PDF viewer.
+
+For legal documents, pay special attention to:
+- Exact statute numbers and section references (e.g., "Section 16600" not "S. 16600")
+- Full clause text as written in the contract
+- Legal terminology preserved character-for-character (terms of art must be exact)
+- Jurisdiction-specific language and formatting
+
+If a finding spans multiple pages or time segments, create SEPARATE citations
+for each page/segment. Do not combine into ranges.
+
+### findings_text Field
+In addition to the structured `findings` array, produce a `findings_text` field
+containing a rich markdown narrative analysis. This text:
+- Organizes analysis by category (use ## headers for each category)
+- Contains detailed paragraphs explaining each finding in context
+- References specific evidence using inline notation: [Source: file_id, page:N, "exact excerpt"]
+- Connects findings to broader case implications
+- Must be comprehensive -- this is the primary text used for search indexing
+  and downstream synthesis
+- Minimum 500 words for cases with substantive findings
+- Every factual claim in the narrative must reference its source
+
+Example findings_text format:
+```
+## Contract Obligations
+
+The Employment Agreement (file_id: def456, page:14) establishes a non-compete
+obligation through June 30, 2026. Specifically, Section 8.2 states
+[Source: def456, page:14, "Employee shall not, for a period of two (2) years
+following termination, engage in any business activity that competes with the
+Employer"] which creates a broad restriction on future employment.
+
+## Legal Risks
+
+The enforceability of the non-compete is questionable under California law...
+```
+
+---
+
 ## OUTPUT FORMAT
 
 Respond with a SINGLE raw JSON object matching the schema below.
@@ -176,6 +235,7 @@ Output ONLY the JSON object -- no commentary, no preamble, no trailing text.
       ]
     }
   ],
+  "findings_text": "## Contract Obligations\\n\\nThe Employment Agreement establishes a non-compete obligation...\\n\\n## Legal Risks\\n\\nThe enforceability of the non-compete is questionable...",
   "hypothesis_evaluations": [
     {
       "hypothesis_id": "<ID of hypothesis>",

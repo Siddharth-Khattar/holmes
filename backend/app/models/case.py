@@ -107,3 +107,8 @@ class Case(Base):
     agent_executions = relationship(
         "AgentExecution", back_populates="case", cascade="all, delete-orphan"
     )
+
+    # Relationship to CaseNotes (Sherlock's Diary)
+    notes = relationship(
+        "CaseNote", back_populates="case", cascade="all, delete-orphan"
+    )

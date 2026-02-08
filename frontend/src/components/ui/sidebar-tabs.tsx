@@ -6,6 +6,7 @@
 import { useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import { clsx } from "clsx";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export interface SidebarTab {
   title: string;
@@ -39,26 +40,32 @@ export function SidebarTabs({
         const isActive = activeTab === tab.href;
 
         return (
-          <button
+          <Tooltip
             key={tab.href}
-            onClick={() => handleTabClick(tab.href)}
-            data-active={isActive}
-            data-tooltip={collapsed ? tab.title : undefined}
-            className={clsx(
-              "sidebar-tab-btn w-full flex items-center gap-3 px-3 py-2 rounded-lg",
-              "transition-colors duration-150",
-              collapsed ? "justify-center tooltip-trigger" : "justify-start",
-            )}
-            aria-label={tab.title}
-            aria-current={isActive ? "page" : undefined}
+            content={tab.title}
+            position="right"
+            disabled={!collapsed}
+            className="w-full"
           >
-            <Icon className="w-5 h-5 shrink-0" />
-            {!collapsed && (
-              <span className="text-sm whitespace-nowrap overflow-hidden">
-                {tab.title}
-              </span>
-            )}
-          </button>
+            <button
+              onClick={() => handleTabClick(tab.href)}
+              data-active={isActive}
+              className={clsx(
+                "sidebar-tab-btn w-full flex items-center gap-3 px-3 py-2 rounded-lg",
+                "transition-colors duration-150",
+                collapsed ? "justify-center" : "justify-start",
+              )}
+              aria-label={tab.title}
+              aria-current={isActive ? "page" : undefined}
+            >
+              <Icon className="w-5 h-5 shrink-0" />
+              {!collapsed && (
+                <span className="text-sm whitespace-nowrap overflow-hidden">
+                  {tab.title}
+                </span>
+              )}
+            </button>
+          </Tooltip>
         );
       })}
       <style jsx global>{`

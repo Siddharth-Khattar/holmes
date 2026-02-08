@@ -3,10 +3,7 @@
 
 "use client";
 
-import { useState, type ReactNode } from "react";
 import {
-  ChevronDown,
-  ChevronUp,
   AlertTriangle,
   Brain,
   FileText,
@@ -21,6 +18,8 @@ import {
 } from "lucide-react";
 
 import { AGENT_CONFIGS, getAgentColors } from "@/lib/command-center-config";
+import { getEntityBadgeStyle } from "@/lib/knowledge-graph-config";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { MarkdownContent } from "@/components/ui/markdown-content";
 import {
   formatDuration,
@@ -29,12 +28,12 @@ import {
   formatTime,
 } from "@/lib/formatting";
 import { ExecutionTimeline } from "@/components/CommandCenter/ExecutionTimeline";
+import { InstanceRoutingView } from "@/components/CommandCenter/InstanceRoutingView";
 import { useAgentExecutionDetail } from "@/hooks/useAgentExecutionDetail";
 import type {
   AgentType,
   AgentState,
   AgentOutput,
-  RoutingDecision,
 } from "@/types/command-center";
 
 // -----------------------------------------------------------------------
@@ -44,65 +43,6 @@ interface NodeDetailsSidebarProps {
   agentType: AgentType | null;
   agentState: AgentState | null;
   allAgentStates?: Map<string, AgentState>;
-}
-
-// -----------------------------------------------------------------------
-// CollapsibleSection - reusable collapsible panel with color-coded border
-// -----------------------------------------------------------------------
-interface CollapsibleSectionProps {
-  title: string;
-  color: string;
-  defaultOpen?: boolean;
-  icon?: ReactNode;
-  badge?: string | number;
-  children: ReactNode;
-}
-
-function CollapsibleSection({
-  title,
-  color,
-  defaultOpen = false,
-  icon,
-  badge,
-  children,
-}: CollapsibleSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <div
-      className="border-b border-stone/10"
-      style={{
-        borderLeftWidth: 3,
-        borderLeftStyle: "solid",
-        borderLeftColor: color,
-      }}
-    >
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-stone/5 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          {icon && (
-            <span className="opacity-60" style={{ color }}>
-              {icon}
-            </span>
-          )}
-          <span className="text-xs font-medium text-stone uppercase tracking-wide">
-            {title}
-          </span>
-          {badge !== undefined && (
-            <span className="text-xs text-stone/60">({badge})</span>
-          )}
-        </div>
-        {isOpen ? (
-          <ChevronUp className="w-4 h-4 text-stone" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-stone" />
-        )}
-      </button>
-      {isOpen && <div className="px-5 pb-4 space-y-3">{children}</div>}
-    </div>
-  );
 }
 
 // -----------------------------------------------------------------------
@@ -145,6 +85,8 @@ function statusLabel(status: AgentState["status"]): string {
 interface AgentSectionsProps {
   agentState: AgentState;
   outputData?: Record<string, unknown> | null;
+  /** All agent instance states — only needed by OrchestratorSections for instance routing view. */
+  allAgentStates?: Map<string, AgentState>;
 }
 
 /** Triage-specific sections: domain scores, entities, complexity */
@@ -250,7 +192,11 @@ function TriageSections({ agentState, outputData }: AgentSectionsProps) {
 }
 
 /** Orchestrator-specific sections: routing summary, file routing table, warnings, file groups */
-function OrchestratorSections({ agentState, outputData }: AgentSectionsProps) {
+function OrchestratorSections({
+  agentState,
+  outputData,
+  allAgentStates,
+}: AgentSectionsProps) {
   const result = agentState.lastResult;
   if (!result) return null;
 
@@ -294,55 +240,10 @@ function OrchestratorSections({ agentState, outputData }: AgentSectionsProps) {
           icon={<Network className="w-3.5 h-3.5" />}
           badge={result.routingDecisions.length}
         >
-          <div className="overflow-x-auto">
-            <table
-              className="w-full text-xs"
-              aria-label="File routing decisions"
-            >
-              <thead>
-                <tr className="border-b border-stone/15">
-                  <th
-                    scope="col"
-                    className="text-left py-2 pr-2 text-stone font-medium"
-                  >
-                    File
-                  </th>
-                  <th
-                    scope="col"
-                    className="text-left py-2 px-2 text-stone font-medium"
-                  >
-                    Agent
-                  </th>
-                  <th
-                    scope="col"
-                    className="text-right py-2 pl-2 text-stone font-medium"
-                  >
-                    Score
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.routingDecisions.map(
-                  (decision: RoutingDecision, idx: number) => (
-                    <tr key={idx} className="border-b border-stone/5">
-                      <td
-                        className="py-2 pr-2 text-smoke truncate max-w-[120px]"
-                        title={decision.fileId}
-                      >
-                        {decision.fileName || decision.fileId}
-                      </td>
-                      <td className="py-2 px-2 text-[hsl(var(--cc-accent))]">
-                        {decision.targetAgent}
-                      </td>
-                      <td className="py-2 pl-2 text-right text-stone">
-                        {Math.round(decision.domainScore)}%
-                      </td>
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
-          </div>
+          <InstanceRoutingView
+            decisions={result.routingDecisions}
+            agentStates={allAgentStates ?? new Map()}
+          />
         </CollapsibleSection>
       )}
 
@@ -596,13 +497,13 @@ function KnowledgeGraphSections({ agentState }: AgentSectionsProps) {
                   key={idx}
                   className="text-xs text-smoke flex items-center gap-1.5"
                 >
-                  <span className="truncate max-w-[80px]">{rel.source}</span>
+                  <span className="truncate max-w-20">{rel.source}</span>
                   <span className="text-stone">--</span>
                   <span className="text-[hsl(var(--cc-accent))]">
                     {rel.type}
                   </span>
                   <span className="text-stone">--&gt;</span>
-                  <span className="truncate max-w-[80px]">{rel.target}</span>
+                  <span className="truncate max-w-20">{rel.target}</span>
                 </div>
               ))}
             </div>
@@ -653,20 +554,9 @@ function domainHue(domain: string): number {
   return hues[domain] ?? 180;
 }
 
-/** Badge for entity type */
+/** Badge for entity type — uses shared color source from knowledge-graph-config. */
 function EntityBadge({ name, type }: { name: string; type: string }) {
-  const typeColors: Record<string, { bg: string; text: string }> = {
-    person: { bg: "hsl(200 50% 30% / 0.2)", text: "hsl(200 60% 65%)" },
-    org: { bg: "hsl(140 40% 30% / 0.2)", text: "hsl(140 50% 60%)" },
-    date: { bg: "hsl(30 50% 30% / 0.2)", text: "hsl(30 60% 65%)" },
-    location: { bg: "hsl(270 40% 30% / 0.2)", text: "hsl(270 50% 65%)" },
-    amount: { bg: "hsl(60 40% 30% / 0.2)", text: "hsl(60 50% 65%)" },
-    legal_term: { bg: "hsl(220 40% 30% / 0.2)", text: "hsl(220 50% 65%)" },
-  };
-  const colors = typeColors[type] ?? {
-    bg: "hsl(0 0% 30% / 0.2)",
-    text: "hsl(0 0% 65%)",
-  };
+  const colors = getEntityBadgeStyle(type);
 
   return (
     <span
@@ -949,7 +839,7 @@ export function NodeDetailsSidebar({
         >
           {thinkingTraces ? (
             <div
-              className="p-3 rounded-lg text-sm leading-relaxed break-words"
+              className="p-3 rounded-lg text-sm leading-relaxed wrap-break-word"
               style={{
                 background: "hsl(var(--cc-accent) / 0.05)",
                 borderLeft: "3px solid hsl(var(--cc-accent) / 0.3)",
@@ -1075,6 +965,7 @@ export function NodeDetailsSidebar({
           <OrchestratorSections
             agentState={agentState}
             outputData={outputData}
+            allAgentStates={allAgentStates}
           />
         )}
         {isDomainAgent && (
@@ -1141,37 +1032,6 @@ export function NodeDetailsSidebar({
                 </pre>
               </div>
             ))}
-
-            {/* Routing decisions inline (from AgentDetailsPanel pattern) */}
-            {result.routingDecisions && result.routingDecisions.length > 0 && (
-              <div>
-                <div className="text-xs text-stone mb-2 mt-2">
-                  Routing Decisions
-                </div>
-                <div className="space-y-2">
-                  {result.routingDecisions.map(
-                    (decision: RoutingDecision, idx: number) => (
-                      <div
-                        key={idx}
-                        className="p-3 rounded-lg bg-jet/50 border border-stone/10"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-smoke font-medium">
-                            &rarr; {decision.targetAgent}
-                          </span>
-                          <span className="text-xs text-[hsl(var(--cc-accent))]">
-                            {Math.round(decision.domainScore)}%
-                          </span>
-                        </div>
-                        <div className="text-xs text-stone">
-                          {decision.reason}
-                        </div>
-                      </div>
-                    ),
-                  )}
-                </div>
-              </div>
-            )}
           </CollapsibleSection>
         )}
 

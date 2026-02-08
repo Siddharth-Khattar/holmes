@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+// SUPERSEDED: This example referenced the old hook system (useCluster, useForceSimulation, etc.)
+// which has been replaced by the decomposed component system (GraphSvg, FilterPanel, etc.).
+// Preserved for reference.
 /**
  * INTEGRATION EXAMPLE: Knowledge Graph with All Hooks
  *

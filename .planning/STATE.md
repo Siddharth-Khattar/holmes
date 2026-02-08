@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-06
-**Current Phase:** 6 of 12 (Domain Agents) — COMPLETE
-**Next Phase:** 7 (Synthesis & Knowledge Graph)
+**Last Updated:** 2026-02-08
+**Current Phase:** 7.2 of 12 (D3.js KG Frontend Enhancement) — ✅ COMPLETE (5/5 plans + 28 polish commits)
+**Next Phase:** 8 (Synthesis Agent & Intelligence Layer)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -17,8 +17,12 @@
 | 4.1 | Agent Decision Tree Revamp | COMPLETE | 2026-02-04 | 2026-02-04 | 4 plans (18 commits): deps/config, DecisionNode/Sidebar, ReactFlow canvas, muted palette/FileRoutingEdge/page-level sidebar |
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
-| 7 | Synthesis & Knowledge Graph | FRONTEND_DONE | - | - | Backend agents + APIs needed |
-| 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
+| 7 | Knowledge Storage & Domain Agent Enrichment | COMPLETE | 2026-02-07 | 2026-02-07 | 6 plans (11 commits), 8/8 verified: 9 DB models + migration, KG/findings schemas, KG Builder + findings service, prompt enrichment, 10 API endpoints, pipeline wiring |
+| 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
+| 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
+| 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
+| 8 | Synthesis Agent & Intelligence Layer | NOT_STARTED | - | - | |
+| 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
@@ -31,43 +35,64 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 6 Complete** (2026-02-06): Domain Agents — 5 plans (14 commits) + 21 post-plan commits (35 total)
-  - **Plans 01-05** (initial implementation):
-    - Plan 01: Domain output schemas (8 Pydantic models), factory methods, CONFIDENCE_THRESHOLD, video-aware content builder
-    - Plan 02: 4 domain agent system prompts (8-11K chars) with entity taxonomies, hypothesis evaluation
-    - Plan 03: Financial, Legal, Evidence agent modules + file-group parallel runner with compute_agent_tasks
-    - Plan 04: Strategy agent with dual-input content prep (own files + domain summaries)
-    - Plan 05: Pipeline wiring (Triage → Orchestrator → Domain → Strategy → HITL → Complete), compound SSE identifiers
-  - **Post-plan refactoring** (commits c21343e → 9daa3e9):
-    - DomainAgentRunner Template Method base class extracted; all 4 domain agents migrated to it
-    - `extract_structured_json` generic parser added to parsing.py (replaces per-agent parse functions)
-    - `_build_standard_content()` extracted into DomainAgentRunner for shared content prep
-    - Magic numbers consolidated into Settings config
-    - asyncio fire-and-forget, exception narrowing, type safety improvements
-  - **Per-agent routing HITL** (commits 37dca4b → c591422):
-    - Routing confidence scoring with per-agent-type HITL thresholds
-    - Per-agent rejection (reject one agent, keep others) via batch confirmation modal
-    - Atomic batch confirmation with asyncio.gather for parallel HITL requests
-    - Strategy agent standalone execution with HITL support
-    - Orchestrator routing bias and confidence guidance strengthened in prompt
-  - **Production hardening** (commits b8bd937 → 603875a):
-    - Orchestrator execution committed to DB before domain agent launch (avoids FK issues)
-    - Exception catching in domain agent runner for SSE error emission
-    - lastResult included in state snapshot for refresh resilience
-    - lastResult merge in handleAgentComplete and handleStateSnapshot to preserve accumulated data
-    - DomainEntity.metadata changed to dict[str, str] for Gemini structured output compliance
-    - Dedicated thinking traces section added to AgentDetailsPanel
-  - **Pipeline bugfixes from live testing** (commits b4d8160 → bce0258):
-    - compute_agent_tasks: covered_pairs tracking (file_id, agent_type) instead of grouped_file_ids to dispatch per-file routing to additional agents
-    - Strategy agent gated on orchestrator routing decision (no longer runs unconditionally)
-    - Thinking-text parts excluded from JSON parsing (skip part.thought=True in extract_structured_json)
-    - Triage parser consolidated into extract_structured_json (DRY)
-    - DomainEntity.metadata changed to list[MetadataEntry] for structured output compliance
-    - Routing decisions flattened to one card per (file, agent) pair in both live SSE and state snapshots
-    - JSON thinking traces normalized to readable text via format_thinking_traces()
+- **Phase 7 Complete** (2026-02-07): Knowledge Storage & Domain Agent Enrichment — 6 plans, 11 commits, 8/8 verified
+  - Plan 01: 9 SQLAlchemy models (KgEntity, KgRelationship, CaseFinding, CaseHypothesis, CaseContradiction, CaseGap, CaseSynthesis, TimelineEvent, Location) + Alembic migration with tsvector GIN indexes
+  - Plan 02: 15 Pydantic API schemas (KG + findings) + findings_text added to all 4 domain output models
+  - Plan 03: KG Builder service (entity extraction, co-occurrence relationships, exact+fuzzy dedup, degree computation) + Findings service (storage, tsvector search, pagination)
+  - Plan 04: Citation enrichment in all 4 domain agent prompts (exact excerpts, timestamp locators, findings_text narrative)
+  - Plan 05: 10 API endpoints (7 KG CRUD + 3 findings) registered in main.py
+  - Plan 06: 3 SSE event types + pipeline wiring (Save Findings → Build KG → Backfill Entity IDs)
+  - Full pipeline: Triage → Orchestrator → Domain → Strategy → HITL → Save Findings → Build KG → Backfill Entity IDs → Final
+
+**Architecture revision (2026-02-08):**
+- Programmatic KG Builder replaced with LLM-based KG Builder Agent (Approach 4)
+  - Research: Microsoft GraphRAG, KGGen (NeurIPS '25), LINK-KG, Epstein Doc Explorer all validate LLM-based KG construction
+  - Root cause of poor graph quality: co-occurrence relationships + zero entity filtering + granular entity types
+  - LLM agent sees ALL domain outputs holistically → cross-domain connections + semantic relationships + natural dedup
+- D3.js retained as primary graph library (not replaced by vis-network)
+  - Epstein Doc Explorer proves D3.js force simulation produces excellent investigative graphs
+  - vis-network deferred to optional Phase 7.3
+- New phase structure: 7.1 (LLM KG Builder) → 7.2 (D3.js Enhancement) → 7.3 (vis-network, optional)
+
+**Phase 7.1 Complete** (2026-02-08): LLM-Based KG Builder Agent -- 2 plans, 4 commits
+  - Plan 01: Alembic migration adding 10 new nullable columns + KgBuilderOutput Pydantic schemas with integer ID cross-referencing
+  - Plan 02: KgBuilderAgentRunner with text-only input, KG_BUILDER_SYSTEM_PROMPT (8+1 entity taxonomy), AgentFactory.create_kg_builder_agent(), DB writer with clear-and-rebuild, pipeline Stage 7 replaced with LLM invocation
+  - Full pipeline: Triage -> Orchestrator -> Domain -> Strategy -> HITL -> Save Findings -> LLM KG Builder -> Backfill Entity IDs -> Final
+
+**Phase 7.2 Plan 01 Complete** (2026-02-08): Foundation types, config, and API layer -- 2 tasks, 2 commits
+  - Task 1: d3-scale installed, knowledge-graph.ts rewritten with EntityResponse/RelationshipResponse/GraphResponse/ForceNode/ForceLink/GraphFilters matching backend schemas
+  - Task 2: knowledge-graph-config.ts (9 entity colors, force/node/edge/SVG config), api/graph.ts (fetchGraph with auth), use-case-graph.ts refactored to real API
+
+**Phase 7.2 Plan 02 Complete** (2026-02-08): Source viewer modal and media components -- 3 tasks, 3 commits
+  - Task 1: 8 media deps (react-pdf-viewer suite, pdfjs-dist, wavesurfer.js, @wavesurfer/react), SourceViewerModal shell, PdfViewer with page-navigation + search/highlight
+  - Task 2: AudioViewer (wavesurfer.js waveform + transcript), VideoViewer (HTML5 + markers), ImageViewer (zoom/pan)
+  - Task 3: evidence-source-panel refactored from 462-line mock monolith to 58-line thin wrapper, detail-sidebar types updated
+
+**Phase 7.2 Plan 03 Complete** (2026-02-08): GraphSvg D3 force canvas -- 2 tasks, 2 commits
+  - Task 1: useGraphSimulation (5 forces, sqrt-scaled nodes, radial centrality, edge deduplication, D3 ref-based tick updates) + useGraphSelection (selection highlighting + search match highlighting in separate useEffects)
+  - Task 2: GraphSvg component (dark SVG canvas, dot pattern, zoom/pan controls, simulation toggle, node/edge tooltips, background click deselect, searchMatchIds prop)
+  - Performance pattern: zero React re-renders during simulation (D3 refs only)
+
+**Phase 7.2 Plan 04 Complete** (2026-02-08): FilterPanel + EntityTimeline -- 2 tasks, 2 commits
+  - Task 1: useGraphFilters (disabled-set pattern for lint-safe state, domain/type toggles, keyword filtering, search highlighting), FilterPanel (collapsible left panel: stats, search, keyword filter, 4 domain toggles, 9 entity type toggles)
+  - Task 2: EntityTimeline (right sidebar: gradient header, date range, filter-by-entity, chronological list), EntityTimelineEntry (expandable: color-coded entities, evidence excerpt, corroboration badge, "Source not yet available" graceful degradation)
+
+**Phase 7.2 Plan 05 Complete** (2026-02-08): KnowledgeGraphCanvas integration + 4 rounds visual polish -- 29 commits
+  - Core: KnowledgeGraphCanvas 3-panel orchestrator (CanvasShell + GraphSvg + FilterPanel + SourceViewerModal), page rewrite with real API data
+  - Round 1 (8 commits): CanvasShell/CollapsibleSection shared components, entity detail in app-wide DetailSidebar, floating FilterPanel, node shapes + icons, edge label disclosure, font normalization
+  - Round 2 (6 commits): dot-pattern zoom scaling, tiered node sizing, composite edge weight, glassy node gradients, glass-blur tooltips, QC fixes (stale closure, tooltip overflow)
+  - Round 3 (8 commits): simulation lifecycle stabilized on resize (no teardown), zoom performance (removed 100k rect), vibrant node colors, unified entity badge styling (CC + KG), sidebar text contrast, click-to-navigate connected entities, QC fix (callback ref stabilization), agent key alias (kg_builder)
+  - Round 4 (6 commits): timeline text smoke colors for readability, CC-style borderless nodes with ambient glow, zoom-to-node on sidebar click, forceSelect sync for sidebar-triggered selection highlighting, date label sizing
+  - **Source viewer NOT wired:** source_finding_ids → file URL chain requires backend API. Deferred to Phase 10.
+  - Full summary: `.planning/phases/07.2-kg-frontend-d3-enhancement/07.2-05-SUMMARY.md`
 
 **What's next:**
-- Phase 7: Synthesis & Knowledge Graph (Synthesis Agent, KG Agent, hypothesis system, entity resolution, connect to existing frontend)
+- Phase 8: Synthesis Agent & Intelligence Layer
+  - Synthesis Agent reads two DB sources: (1) `case_findings` from domain agents + strategy, (2) curated `kg_entities`/`kg_relationships` from LLM KG Builder
+  - Pipeline Stage 8: after LLM KG Builder + Entity Backfill → Synthesis → [Geospatial if locations]
+  - Populates: case_hypotheses, case_contradictions, case_gaps, case_synthesis, timeline_events
+  - Frontend integration: connect Timeline, Hypothesis, Contradictions, Gaps panels to real API data
+- Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
 
 ---
 
@@ -118,21 +143,43 @@
 
 ---
 
-### REQ-VIS-003: Knowledge Graph — FRONTEND_DONE
+### REQ-VIS-003: Knowledge Graph — COMPLETE (Source viewer wiring deferred to Phase 10)
 
 | Component | File Path |
 |-----------|-----------|
-| Main visualization | `frontend/src/components/app/knowledge-graph.tsx` |
-| Evidence panel | `frontend/src/components/app/evidence-source-panel.tsx` |
-| Data hook | `frontend/src/hooks/use-case-graph.ts` |
-| Mock data | `frontend/src/lib/mock-graph-data.ts` |
-| Types | `frontend/src/types/knowledge-graph.ts` |
+| **Canvas orchestrator** | `frontend/src/components/knowledge-graph/KnowledgeGraphCanvas.tsx` |
+| GraphSvg D3 force canvas | `frontend/src/components/knowledge-graph/GraphSvg.tsx` |
+| Entity detail panel (DetailSidebar) | `frontend/src/components/knowledge-graph/KnowledgeGraphEntityPanel.tsx` |
+| Force simulation hook | `frontend/src/hooks/useGraphSimulation.ts` |
+| Selection/search hook | `frontend/src/hooks/useGraphSelection.ts` |
+| Filter state hook | `frontend/src/hooks/useGraphFilters.ts` |
+| Filter panel (floating left) | `frontend/src/components/knowledge-graph/FilterPanel.tsx` |
+| Entity timeline (in DetailSidebar) | `frontend/src/components/knowledge-graph/EntityTimeline.tsx` |
+| Timeline entry | `frontend/src/components/knowledge-graph/EntityTimelineEntry.tsx` |
+| Canvas shell (shared UI) | `frontend/src/components/ui/canvas-shell.tsx` |
+| Collapsible section (shared UI) | `frontend/src/components/ui/collapsible-section.tsx` |
+| Source viewer modal | `frontend/src/components/source-viewer/SourceViewerModal.tsx` |
+| PDF viewer | `frontend/src/components/source-viewer/PdfViewer.tsx` |
+| Audio viewer | `frontend/src/components/source-viewer/AudioViewer.tsx` |
+| Video viewer | `frontend/src/components/source-viewer/VideoViewer.tsx` |
+| Image viewer | `frontend/src/components/source-viewer/ImageViewer.tsx` |
+| Data hook (real API) | `frontend/src/hooks/use-case-graph.ts` |
+| API client | `frontend/src/lib/api/graph.ts` |
+| Visualization config + badge styles | `frontend/src/lib/knowledge-graph-config.ts` |
+| Detail sidebar types | `frontend/src/types/detail-sidebar.ts` |
+| Detail sidebar dispatch | `frontend/src/components/app/detail-sidebar.tsx` |
+| Types (backend-matching) | `frontend/src/types/knowledge-graph.ts` |
+| Main visualization (legacy, superseded) | `frontend/src/components/app/knowledge-graph.tsx` |
+| Mock data (legacy, superseded) | `frontend/src/lib/mock-graph-data.ts` |
 
-**Backend APIs Needed:**
-- `GET /api/cases/:caseId/graph`
-- `POST /api/cases/:caseId/entities`
-- `POST /api/cases/:caseId/relationships`
-- `PATCH/DELETE /api/cases/:caseId/entities/:entityId`
+**Backend APIs:** All complete
+- `GET /api/cases/:caseId/graph` - Full graph visualization data
+- `GET /api/cases/:caseId/entities` - List entities with filters
+- `POST /api/cases/:caseId/entities` - Create entity
+- `PATCH /api/cases/:caseId/entities/:entityId` - Update entity
+- `DELETE /api/cases/:caseId/entities/:entityId` - Delete entity
+- `GET /api/cases/:caseId/relationships` - List relationships with filters
+- `POST /api/cases/:caseId/relationships` - Create relationship
 
 ---
 
@@ -210,9 +257,12 @@ All frontend features need these backend endpoints:
 | File Download | `/api/cases/:caseId/files/:fileId/download` | GET | HIGH | DONE |
 | File SSE | `/sse/cases/:caseId/files` | SSE | HIGH | DONE |
 | Chat | `/api/chat` | POST | HIGH | TODO |
-| Knowledge Graph | `/api/cases/:caseId/graph` | GET | HIGH | TODO |
-| KG Entities | `/api/cases/:caseId/entities` | POST, PATCH, DELETE | MEDIUM | TODO |
-| KG Relationships | `/api/cases/:caseId/relationships` | POST | MEDIUM | TODO |
+| Knowledge Graph | `/api/cases/:caseId/graph` | GET | HIGH | DONE |
+| KG Entities | `/api/cases/:caseId/entities` | GET, POST, PATCH, DELETE | MEDIUM | DONE |
+| KG Relationships | `/api/cases/:caseId/relationships` | GET, POST | MEDIUM | DONE |
+| Findings | `/api/cases/:caseId/findings` | GET | HIGH | DONE |
+| Findings Search | `/api/cases/:caseId/findings/search` | GET | HIGH | DONE |
+| Finding Detail | `/api/cases/:caseId/findings/:findingId` | GET | HIGH | DONE |
 | Timeline Events | `/api/cases/:caseId/timeline/events` | GET, POST, PATCH, DELETE | MEDIUM | TODO |
 | Timeline SSE | `/api/cases/:caseId/timeline/stream` | SSE | MEDIUM | TODO |
 | Command Center SSE | `/sse/cases/:caseId/command-center/stream` | SSE | HIGH | DONE |
@@ -249,7 +299,8 @@ All frontend features need these backend endpoints:
 | Streaming | WebSocket vs SSE | SSE | Simpler, sufficient for unidirectional updates, auto-reconnect |
 | Auth | NextAuth vs Better Auth | Better Auth | Modern, TypeScript-first, good PostgreSQL integration |
 | Hypothesis system | Integrated in KG vs Separate view | Separate view | Cleaner UX, fullscreen capability, complements contradiction/gap detection |
-| Graph library | D3.js vs vis-network | **D3.js** | Chosen by Yatharth during implementation |
+| Graph library | D3.js vs vis-network | **D3.js (enhanced)** | D3.js retained and enhanced with Epstein-inspired physics/layout; vis-network deferred to optional Phase 7.3 |
+| KG Builder approach | Programmatic vs LLM-based | **LLM-based (Approach 4)** | Research validates: co-occurrence relationships are fundamentally insufficient; LLM agent sees all findings holistically for cross-domain connections + semantic relationships + natural dedup |
 | Map API | Mapbox vs alternatives | Mapbox (tentative) | Evaluate alternatives during implementation |
 | Geospatial agent | Part of pipeline vs Post-synthesis | Post-synthesis utility | Autonomous when location data exists, on-demand via chat |
 | Entity taxonomy | Core types only vs Full domain-specific | Full adoption | Better knowledge graph quality, domain-appropriate metadata |
@@ -359,6 +410,33 @@ All frontend features need these backend endpoints:
 | SSE pre-emission source | Inline file-group iteration vs compute_agent_tasks | compute_agent_tasks from domain_runner | Single source of truth; SSE events always match actual execution tasks |
 | Pipeline terminal stage | Orchestrator vs Strategy | Strategy completion | Strategy runs after parallel domain agents; marks pipeline as "complete" |
 | Pipeline failure scope | All failures fatal vs Pipeline-level only | Pipeline-level only (triage/orchestrator/pipeline) | Partial domain agent failures are expected and non-fatal |
+| KG entity/relationship metadata column | `metadata` vs `properties` | `properties` | SQLAlchemy reserves `metadata` attribute on DeclarativeBase; renamed to `properties` for JSONB column |
+| tsvector mapping | SQLAlchemy column vs Raw SQL generated column | Raw SQL in migration | Avoids Alembic autogenerate phantom diffs (Pitfall 6); queries use func.to_tsvector() directly |
+| findings_text backward compat | Required vs Optional (default=None) | Optional (default=None) | Existing agent_executions.output_data records lack this field; optional avoids breaking deserialization |
+| Citation excerpt enforcement | Schema-required vs Prompt-enforced | Prompt-enforced (schema stays optional) | Field type stays str|None for backward compat; description documents char-for-char requirement |
+| v1 search implementation | PG tsvector vs Vertex AI vector search | PG tsvector | v1 uses built-in PG full-text search; Vertex AI vector search deferred to Phase 9 |
+| Entity dedup scope | Per-domain vs Cross-domain | Cross-domain (grouped by entity_type only) | Per CONTEXT.md decision; allows merging same entity found by different agents |
+| Fuzzy match handling | Auto-merge vs Flag for LLM | Flag for LLM (>=85% ratio) | Avoids incorrect merges; deferred to Phase 8 LLM resolution |
+| Findings text enrichment | Description only vs Description + findings_text | Append findings_text when available | Richer searchable text without losing original description |
+| Findings search route ordering | Before /{finding_id} vs After | Before /{finding_id} | Prevents FastAPI treating "search" as UUID path param |
+| KG API data access | Direct model queries vs Service layer | Direct model queries | Simple CRUD doesn't need service abstraction; findings uses service for complex search |
+| EntityCreateRequest metadata mapping | Direct field vs Renamed | metadata -> properties | Schema field "metadata" maps to DB column "properties" (SQLAlchemy reserved attribute) |
+| KG Builder entity cross-referencing | Name matching vs Integer IDs | Integer IDs (1, 2, 3...) | Eliminates name-matching inconsistencies; LLM assigns sequential IDs, mapped to DB UUIDs during write |
+| KG Builder input format | Multimodal files vs Text-only | Text-only (findings + entities + case description) | Domain agents already processed raw evidence; KG Builder only needs pre-processed text |
+| KG Builder rebuild strategy | Incremental merge vs Clear-and-rebuild | Clear-and-rebuild | Clean slate every run; delete all KG data then insert curated LLM output |
+| KG Builder failure handling | Block pipeline vs Non-blocking | Non-blocking (try/except, continue) | KG Builder failure emits SSE error, pipeline continues; KG page shows empty state |
+| KG Builder media resolution | HIGH vs None | None (text-only input) | No generate_content_config needed; KG Builder receives text, not files |
+| pdfjs-dist version | Latest (5.x) vs Compatible (3.x) | 3.11.174 | @react-pdf-viewer 3.12 requires pdfjs-dist ^2.16 or ^3.0; v5 is incompatible |
+| wavesurfer.js import strategy | Static import vs Dynamic import | Dynamic import | ESM-only package; dynamic import() inside useEffect for Next.js compatibility |
+| Zoom pan reset pattern | useEffect on zoom vs Inline in zoom handlers | Inline in zoom handlers | Avoids eslint react-hooks/set-state-in-effect cascading render violation |
+| detail-sidebar Evidence type | Keep Evidence type vs Replace with SourceViewerContent | SourceViewerContent | Evidence type removed in Plan 01; SourceViewerContent is the production-quality replacement |
+| D3 .each() ESLint pattern | this-aliasing vs select(elements[i]) | select(elements[i]) | Arrow fn with third arg of .each() avoids @typescript-eslint/no-this-alias violation |
+| KG tooltip implementation | SVG foreignObject vs React fixed overlay | React fixed overlay | Avoids SVG clipping and z-index issues; positioned at mouse coordinates |
+| KG search vs selection visual | Same style vs Distinct styles | Distinct: coral (#E87461) for search, white (#ffffff) for selection | Two highlighting modes must be visually distinguishable |
+| KG edge label orientation | Rotated along edge vs Always horizontal | Always horizontal | Readability per CONTEXT.md specification |
+| KG filter state model | Active-set vs Disabled-set | Disabled-set pattern | ESLint react-hooks rules prohibit setState in useMemo/useEffect; inverted model avoids sync entirely |
+| KG source viewer wiring | Wire onViewSource vs Graceful degradation | Graceful degradation | source_finding_ids -> file URL chain requires backend API not available in Phase 7.2; show "Source not yet available" |
+| KG timeline relationship input | Full list + filter in component vs Pre-filtered by parent | Pre-filtered by parent | EntityTimeline receives only relationships involving selected entity; keeps component focused on display |
 
 ---
 
@@ -370,9 +448,10 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-06
-Stopped at: Phase 6 complete (35 commits, verified 10/10 + 21 post-plan hardening/bugfix commits); ready to begin Phase 7 (Synthesis & Knowledge Graph)
+Last session: 2026-02-08
+Stopped at: Phase 7.2 COMPLETE (all 5 plans + 28 polish commits, 46 total). Source viewer deferred to Phase 10.
 Resume file: None
+Next action: Begin Phase 8 (Synthesis Agent & Intelligence Layer)
 
 ---
 

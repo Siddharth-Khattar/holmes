@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+// @ts-nocheck
+// SUPERSEDED: Event emitter for the old knowledge-graph.tsx monolith.
+// No longer used by the decomposed component system. Preserved for reference.
 import { GraphEvent } from "@/types/knowledge-graph";
 
 export class GraphEventEmitter {

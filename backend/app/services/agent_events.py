@@ -37,6 +37,9 @@ class AgentEventType(str, Enum):
     CONFIRMATION_RESOLVED = "confirmation-resolved"
     CONFIRMATION_BATCH_REQUIRED = "confirmation-batch-required"
     CONFIRMATION_BATCH_RESOLVED = "confirmation-batch-resolved"
+    FINDING_COMMITTED = "finding-committed"
+    KG_ENTITY_ADDED = "kg-entity-added"
+    KG_RELATIONSHIP_ADDED = "kg-relationship-added"
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +164,10 @@ async def publish_agent_event(
     if "type" not in data_to_send:
         data_to_send["type"] = event_type.value
 
-    event: SSEEvent = {"event": event_type.value, "data": json.dumps(data_to_send)}
+    event: SSEEvent = {
+        "event": event_type.value,
+        "data": json.dumps(data_to_send),
+    }
     _event_buffer[case_id].append(event)
     subscribers = _agent_subscribers.get(case_id, [])
     for queue in subscribers:
@@ -505,6 +511,96 @@ async def emit_confirmation_batch_resolved(
     )
 
 
+async def emit_finding_committed(
+    case_id: str,
+    finding_id: str,
+    agent_type: str,
+    title: str,
+) -> None:
+    """Emit a finding-committed event when a CaseFinding is persisted.
+
+    Fires after each finding is saved to case_findings, enabling the
+    frontend to show real-time finding accumulation during pipeline execution.
+
+    Args:
+        case_id: UUID string of the case.
+        finding_id: UUID string of the saved CaseFinding.
+        agent_type: Domain agent type that produced the finding.
+        title: Finding title for display.
+    """
+    await publish_agent_event(
+        case_id,
+        AgentEventType.FINDING_COMMITTED,
+        {
+            "type": AgentEventType.FINDING_COMMITTED.value,
+            "findingId": finding_id,
+            "agentType": agent_type,
+            "title": title,
+        },
+    )
+
+
+async def emit_kg_entity_added(
+    case_id: str,
+    entity_id: str,
+    entity_name: str,
+    entity_type: str,
+) -> None:
+    """Emit a kg-entity-added event when a KgEntity is created.
+
+    Fires after each entity is persisted to the knowledge graph,
+    enabling real-time graph visualization updates.
+
+    Args:
+        case_id: UUID string of the case.
+        entity_id: UUID string of the created KgEntity.
+        entity_name: Display name of the entity.
+        entity_type: Domain-specific entity type.
+    """
+    await publish_agent_event(
+        case_id,
+        AgentEventType.KG_ENTITY_ADDED,
+        {
+            "type": AgentEventType.KG_ENTITY_ADDED.value,
+            "entityId": entity_id,
+            "entityName": entity_name,
+            "entityType": entity_type,
+        },
+    )
+
+
+async def emit_kg_relationship_added(
+    case_id: str,
+    relationship_id: str,
+    source_entity_name: str,
+    target_entity_name: str,
+    relationship_type: str,
+) -> None:
+    """Emit a kg-relationship-added event when a KgRelationship is created.
+
+    Fires after each relationship is persisted, enabling the frontend
+    to animate new edges on the knowledge graph in real-time.
+
+    Args:
+        case_id: UUID string of the case.
+        relationship_id: UUID string of the created KgRelationship.
+        source_entity_name: Display name of the source entity.
+        target_entity_name: Display name of the target entity.
+        relationship_type: Type of the relationship edge.
+    """
+    await publish_agent_event(
+        case_id,
+        AgentEventType.KG_RELATIONSHIP_ADDED,
+        {
+            "type": AgentEventType.KG_RELATIONSHIP_ADDED.value,
+            "relationshipId": relationship_id,
+            "sourceEntityName": source_entity_name,
+            "targetEntityName": target_entity_name,
+            "relationshipType": relationship_type,
+        },
+    )
+
+
 # ---------------------------------------------------------------------------
 # Shared AgentResult builder
 # ---------------------------------------------------------------------------
@@ -539,7 +635,9 @@ def build_execution_metadata(
         "inputTokens": execution.input_tokens or 0,
         "outputTokens": execution.output_tokens or 0,
         "durationMs": duration_ms or 0,
-        "startedAt": execution.started_at.isoformat() if execution.started_at else None,
+        "startedAt": (
+            execution.started_at.isoformat() if execution.started_at else None
+        ),
         "completedAt": (
             execution.completed_at.isoformat() if execution.completed_at else None
         ),
@@ -583,10 +681,10 @@ def build_agent_result(
             {
                 "type": "triage-results",
                 "data": {
-                    "fileCount": len(file_results)
-                    if isinstance(file_results, list)
-                    else 0,
-                    "groupings": len(groupings) if isinstance(groupings, list) else 0,
+                    "fileCount": (
+                        len(file_results) if isinstance(file_results, list) else 0
+                    ),
+                    "groupings": (len(groupings) if isinstance(groupings, list) else 0),
                 },
             }
         ]
@@ -597,9 +695,9 @@ def build_agent_result(
             {
                 "type": "routing-decisions",
                 "data": {
-                    "routingCount": len(decisions)
-                    if isinstance(decisions, list)
-                    else 0,
+                    "routingCount": (
+                        len(decisions) if isinstance(decisions, list) else 0
+                    ),
                     "parallelAgents": output.get("parallel_agents", []),
                     "researchTriggered": (output.get("research_trigger") or {}).get(
                         "should_trigger", False
@@ -627,6 +725,8 @@ def build_agent_result(
                             "targetAgent": agent,
                             "reason": rd.get("reasoning", ""),
                             "domainScore": score,
+                            "priority": rd.get("priority", "medium"),
+                            "routingConfidence": rd.get("routing_confidence"),
                         }
                     )
             result["routingDecisions"] = routing_decisions_camel
@@ -637,7 +737,9 @@ def build_agent_result(
             {
                 "type": "strategy-findings",
                 "data": {
-                    "findingCount": len(findings) if isinstance(findings, list) else 0,
+                    "findingCount": (
+                        len(findings) if isinstance(findings, list) else 0
+                    ),
                 },
             }
         ]
@@ -665,8 +767,10 @@ def build_agent_result(
             {
                 "type": f"{agent_name}-findings",
                 "data": {
-                    "findingCount": len(findings) if isinstance(findings, list) else 0,
-                    "entityCount": len(entities) if isinstance(entities, list) else 0,
+                    "findingCount": (
+                        len(findings) if isinstance(findings, list) else 0
+                    ),
+                    "entityCount": (len(entities) if isinstance(entities, list) else 0),
                     "groupLabel": group_label,
                 },
             }

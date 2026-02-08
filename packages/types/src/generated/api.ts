@@ -779,6 +779,164 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cases/{case_id}/graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get full knowledge graph for a case
+         * @description Return all non-merged entities and all relationships for the case.
+         *
+         *     This endpoint provides the complete graph data needed by the frontend
+         *     vis-network visualization.
+         */
+        get: operations["get_graph_api_cases__case_id__graph_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List entities with optional filtering
+         * @description List non-merged entities with optional type, domain, and name filters.
+         */
+        get: operations["list_entities_api_cases__case_id__entities_get"];
+        put?: never;
+        /**
+         * Create a new entity
+         * @description Manually create a knowledge graph entity.
+         */
+        post: operations["create_entity_api_cases__case_id__entities_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/entities/{entity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete an entity
+         * @description Hard-delete an entity and cascade-delete its relationships.
+         */
+        delete: operations["delete_entity_api_cases__case_id__entities__entity_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update an entity
+         * @description Update fields on an existing entity. Only provided (non-None) fields are changed.
+         */
+        patch: operations["update_entity_api_cases__case_id__entities__entity_id__patch"];
+        trace?: never;
+    };
+    "/api/cases/{case_id}/relationships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List relationships with optional filtering
+         * @description List relationships in a case with optional entity and type filters.
+         */
+        get: operations["list_relationships_api_cases__case_id__relationships_get"];
+        put?: never;
+        /**
+         * Create a new relationship
+         * @description Manually create a relationship between two entities in the same case.
+         */
+        post: operations["create_relationship_api_cases__case_id__relationships_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/findings/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Full-text search across case findings
+         * @description Search findings using PostgreSQL full-text search (tsvector).
+         *
+         *     Results are ranked by relevance. The search uses plainto_tsquery
+         *     for safe parsing of the query string.
+         */
+        get: operations["search_findings_endpoint_api_cases__case_id__findings_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/findings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List findings with optional filtering
+         * @description List findings for a case with optional agent_type and category filters.
+         */
+        get: operations["list_findings_endpoint_api_cases__case_id__findings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/findings/{finding_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a single finding by ID
+         * @description Retrieve a single finding by ID, scoped to the case.
+         */
+        get: operations["get_finding_api_cases__case_id__findings__finding_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1416,6 +1574,202 @@ export interface components {
             expires_in: number;
         };
         /**
+         * EntityCreateRequest
+         * @description Request body for creating a new knowledge graph entity.
+         */
+        EntityCreateRequest: {
+            /**
+             * Name
+             * @description Entity name
+             */
+            name: string;
+            /**
+             * Entity Type
+             * @description Domain-specific entity type
+             */
+            entity_type: string;
+            /**
+             * Domain
+             * @description Source domain (financial, legal, evidence, strategy)
+             */
+            domain: string;
+            /**
+             * Confidence
+             * @description Confidence score 0-100
+             * @default 50
+             */
+            confidence: number;
+            /**
+             * Metadata
+             * @description Domain-specific metadata key-value pairs
+             */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Context
+             * @description Surrounding context from source document
+             */
+            context?: string | null;
+        };
+        /**
+         * EntityListResponse
+         * @description Paginated list of entities.
+         */
+        EntityListResponse: {
+            /**
+             * Entities
+             * @description List of entities
+             */
+            entities: components["schemas"]["EntityResponse"][];
+            /**
+             * Total
+             * @description Total number of entities matching query
+             */
+            total: number;
+        };
+        /**
+         * EntityResponse
+         * @description API response model for a single knowledge graph entity.
+         */
+        EntityResponse: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Entity ID
+             */
+            id: string;
+            /**
+             * Case Id
+             * Format: uuid
+             * @description Case this entity belongs to
+             */
+            case_id: string;
+            /**
+             * Name
+             * @description Original entity name as extracted
+             */
+            name: string;
+            /**
+             * Name Normalized
+             * @description Lowercase, stripped name for dedup matching
+             */
+            name_normalized: string;
+            /**
+             * Entity Type
+             * @description Domain-specific type (e.g. 'monetary_amount', 'statute', 'alias')
+             */
+            entity_type: string;
+            /**
+             * Domain
+             * @description Source domain agent (financial, legal, evidence, strategy)
+             */
+            domain: string;
+            /**
+             * Confidence
+             * @description Agent-assessed confidence 0-100
+             */
+            confidence: number;
+            /**
+             * Properties
+             * @description Domain-specific metadata key-value pairs
+             */
+            properties?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Context
+             * @description Surrounding context from source document
+             */
+            context?: string | null;
+            /**
+             * Aliases
+             * @description Alternative names/references
+             */
+            aliases?: string[] | null;
+            /**
+             * Description Brief
+             * @description One-liner summary for tooltips
+             */
+            description_brief?: string | null;
+            /**
+             * Description Detailed
+             * @description Multi-sentence synthesis from findings
+             */
+            description_detailed?: string | null;
+            /**
+             * Domains
+             * @description All domains this entity appears in
+             */
+            domains?: string[] | null;
+            /**
+             * Source Finding Ids
+             * @description Finding IDs linking entity to evidence
+             */
+            source_finding_ids?: string[] | null;
+            /**
+             * Source Execution Id
+             * @description Agent execution that produced this entity
+             */
+            source_execution_id?: string | null;
+            /**
+             * Source Finding Index
+             * @description Index within the finding's entity list for traceability
+             */
+            source_finding_index?: number | null;
+            /**
+             * Merged Into Id
+             * @description If set, this entity was soft-merged into another entity
+             */
+            merged_into_id?: string | null;
+            /**
+             * Merge Count
+             * @description Number of other entities merged into this one
+             * @default 0
+             */
+            merge_count: number;
+            /**
+             * Degree
+             * @description Connection count for node sizing in graph visualization
+             * @default 0
+             */
+            degree: number;
+            /**
+             * Created At
+             * Format: date-time
+             * @description When the entity was created
+             */
+            created_at: string;
+        };
+        /**
+         * EntityUpdateRequest
+         * @description Request body for updating an existing knowledge graph entity.
+         */
+        EntityUpdateRequest: {
+            /**
+             * Name
+             * @description Updated entity name
+             */
+            name?: string | null;
+            /**
+             * Entity Type
+             * @description Updated entity type
+             */
+            entity_type?: string | null;
+            /**
+             * Metadata
+             * @description Updated metadata key-value pairs
+             */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Context
+             * @description Updated surrounding context
+             */
+            context?: string | null;
+        };
+        /**
          * ErrorResponse
          * @description Standard error response format for API errors.
          * @example {
@@ -1736,6 +2090,181 @@ export interface components {
              */
             detailed: string;
         };
+        /**
+         * FindingCitation
+         * @description Citation reference stored alongside a finding in the database.
+         *
+         *     Mirrors the agent Citation schema but represents the DB-stored format
+         *     with file_id, locator, and excerpt fields.
+         */
+        FindingCitation: {
+            /**
+             * File Id
+             * @description ID of the source file
+             */
+            file_id: string;
+            /**
+             * Locator
+             * @description Exact location within the file. Format: 'page:3', 'ts:01:23:45', 'region:x,y,w,h'
+             */
+            locator: string;
+            /**
+             * Excerpt
+             * @description Exact character-for-character excerpt from the source material. Must be preserved in original format for PDF.js search highlighting.
+             */
+            excerpt?: string | null;
+        };
+        /**
+         * FindingListResponse
+         * @description Paginated list of findings for a case.
+         */
+        FindingListResponse: {
+            /**
+             * Findings
+             * @description List of findings
+             */
+            findings: components["schemas"]["FindingResponse"][];
+            /**
+             * Total
+             * @description Total number of findings matching query
+             */
+            total: number;
+        };
+        /**
+         * FindingResponse
+         * @description API response model for a single case finding.
+         */
+        FindingResponse: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Finding ID
+             */
+            id: string;
+            /**
+             * Case Id
+             * Format: uuid
+             * @description Case this finding belongs to
+             */
+            case_id: string;
+            /**
+             * Workflow Id
+             * Format: uuid
+             * @description Analysis workflow that produced this finding
+             */
+            workflow_id: string;
+            /**
+             * Agent Type
+             * @description Source agent (financial, legal, evidence, strategy)
+             */
+            agent_type: string;
+            /**
+             * Agent Execution Id
+             * @description Agent execution that produced this finding
+             */
+            agent_execution_id?: string | null;
+            /**
+             * File Group Label
+             * @description Group label for multi-file agent runs
+             */
+            file_group_label?: string | null;
+            /**
+             * Category
+             * @description Finding category (e.g. 'suspicious_transaction', 'contract_clause')
+             */
+            category: string;
+            /**
+             * Title
+             * @description Concise finding title
+             */
+            title: string;
+            /**
+             * Finding Text
+             * @description Full finding description with analysis
+             */
+            finding_text: string;
+            /**
+             * Confidence
+             * @description Agent-assessed confidence 0-100
+             */
+            confidence: number;
+            /**
+             * Citations
+             * @description Citation references to source material
+             */
+            citations?: components["schemas"]["FindingCitation"][] | null;
+            /**
+             * Entity Ids
+             * @description IDs of kg_entities linked to this finding
+             */
+            entity_ids?: string[] | null;
+            /**
+             * Created At
+             * Format: date-time
+             * @description When the finding was created
+             */
+            created_at: string;
+        };
+        /**
+         * FindingSearchResponse
+         * @description Response for a full-text search across case findings.
+         */
+        FindingSearchResponse: {
+            /**
+             * Results
+             * @description Search results ranked by relevance
+             */
+            results: components["schemas"]["FindingSearchResult"][];
+            /**
+             * Query
+             * @description Original search query
+             */
+            query: string;
+            /**
+             * Total
+             * @description Total number of matching results
+             */
+            total: number;
+        };
+        /**
+         * FindingSearchResult
+         * @description A single search result containing a finding and its relevance score.
+         */
+        FindingSearchResult: {
+            /** @description The matching finding */
+            finding: components["schemas"]["FindingResponse"];
+            /**
+             * Relevance Score
+             * @description Full-text search relevance score
+             */
+            relevance_score: number;
+        };
+        /**
+         * GraphResponse
+         * @description Full knowledge graph data for a case, containing all entities and relationships.
+         */
+        GraphResponse: {
+            /**
+             * Entities
+             * @description All entities in the graph
+             */
+            entities: components["schemas"]["EntityResponse"][];
+            /**
+             * Relationships
+             * @description All relationships in the graph
+             */
+            relationships: components["schemas"]["RelationshipResponse"][];
+            /**
+             * Entity Count
+             * @description Total number of entities
+             */
+            entity_count: number;
+            /**
+             * Relationship Count
+             * @description Total number of relationships
+             */
+            relationship_count: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1827,6 +2356,151 @@ export interface components {
              * @description Concerns, edge cases, or caveats noted during routing
              */
             warnings?: string[];
+        };
+        /**
+         * RelationshipCreateRequest
+         * @description Request body for creating a new knowledge graph relationship.
+         */
+        RelationshipCreateRequest: {
+            /**
+             * Source Entity Id
+             * Format: uuid
+             * @description Source entity of the edge
+             */
+            source_entity_id: string;
+            /**
+             * Target Entity Id
+             * Format: uuid
+             * @description Target entity of the edge
+             */
+            target_entity_id: string;
+            /**
+             * Relationship Type
+             * @description Edge type
+             */
+            relationship_type: string;
+            /**
+             * Label
+             * @description Human-readable edge label for graph display
+             */
+            label: string;
+            /**
+             * Strength
+             * @description Edge weight 0-100
+             * @default 50
+             */
+            strength: number;
+            /**
+             * Metadata
+             * @description Additional edge metadata
+             */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /**
+         * RelationshipListResponse
+         * @description Paginated list of relationships.
+         */
+        RelationshipListResponse: {
+            /**
+             * Relationships
+             * @description List of relationships
+             */
+            relationships: components["schemas"]["RelationshipResponse"][];
+            /**
+             * Total
+             * @description Total number of relationships matching query
+             */
+            total: number;
+        };
+        /**
+         * RelationshipResponse
+         * @description API response model for a single knowledge graph relationship.
+         */
+        RelationshipResponse: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Relationship ID
+             */
+            id: string;
+            /**
+             * Case Id
+             * Format: uuid
+             * @description Case this relationship belongs to
+             */
+            case_id: string;
+            /**
+             * Source Entity Id
+             * Format: uuid
+             * @description Source entity of the edge
+             */
+            source_entity_id: string;
+            /**
+             * Target Entity Id
+             * Format: uuid
+             * @description Target entity of the edge
+             */
+            target_entity_id: string;
+            /**
+             * Relationship Type
+             * @description Edge type (e.g. 'associated_with', 'owns', 'sent_to')
+             */
+            relationship_type: string;
+            /**
+             * Label
+             * @description Human-readable edge label for graph display
+             */
+            label: string;
+            /**
+             * Strength
+             * @description Edge weight 0-100, combining co-occurrence and confidence
+             */
+            strength: number;
+            /**
+             * Source Execution Id
+             * @description Agent execution that produced this relationship
+             */
+            source_execution_id?: string | null;
+            /**
+             * Properties
+             * @description Additional edge metadata
+             */
+            properties?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Evidence Excerpt
+             * @description Exact source quote supporting this relationship
+             */
+            evidence_excerpt?: string | null;
+            /**
+             * Source Finding Ids
+             * @description Finding IDs as evidence chain
+             */
+            source_finding_ids?: string[] | null;
+            /**
+             * Temporal Context
+             * @description When relationship existed/occurred
+             */
+            temporal_context?: string | null;
+            /**
+             * Corroboration Count
+             * @description How many agents found this relationship
+             */
+            corroboration_count?: number | null;
+            /**
+             * Confidence
+             * @description LLM-assessed relationship confidence 0-100
+             */
+            confidence?: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             * @description When the relationship was created
+             */
+            created_at: string;
         };
         /**
          * ResearchTrigger
@@ -3421,6 +4095,351 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_graph_api_cases__case_id__graph_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GraphResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_entities_api_cases__case_id__entities_get: {
+        parameters: {
+            query?: {
+                entity_type?: string | null;
+                domain?: string | null;
+                /** @description Name search (ILIKE) */
+                search?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_entity_api_cases__case_id__entities_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_entity_api_cases__case_id__entities__entity_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_entity_api_cases__case_id__entities__entity_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                entity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntityUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntityResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_relationships_api_cases__case_id__relationships_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by entity (source or target) */
+                entity_id?: string | null;
+                relationship_type?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationshipListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_relationship_api_cases__case_id__relationships_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RelationshipCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RelationshipResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_findings_endpoint_api_cases__case_id__findings_search_get: {
+        parameters: {
+            query: {
+                /** @description Search query */
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_findings_endpoint_api_cases__case_id__findings_get: {
+        parameters: {
+            query?: {
+                agent_type?: string | null;
+                category?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_finding_api_cases__case_id__findings__finding_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                finding_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FindingResponse"];
                 };
             };
             /** @description Validation Error */

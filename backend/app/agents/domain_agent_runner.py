@@ -192,7 +192,7 @@ class DomainAgentRunner[OutputT: BaseModel]:
         context_injection: str | None = None,
         stage_suffix: str = "",
         **kwargs: object,
-    ) -> OutputT | None:
+    ) -> tuple[OutputT | None, UUID | None]:
         """Execute the domain agent with Pro-to-Flash fallback.
 
         Args:
@@ -209,7 +209,9 @@ class DomainAgentRunner[OutputT: BaseModel]:
             **kwargs: Additional keyword arguments passed to _prepare_content.
 
         Returns:
-            Parsed output model, or None on failure.
+            Tuple of (parsed_output_or_None, execution_id_or_None).
+            execution_id is always set once the execution record is created,
+            even if the agent fails to produce output.
         """
         agent_name = self.get_agent_name()
         settings = get_settings()
@@ -358,7 +360,7 @@ class DomainAgentRunner[OutputT: BaseModel]:
                 len(files),
                 stage_suffix,
             )
-            return output
+            return (output, execution_id)
 
         except Exception as exc:
             logger.exception(
@@ -374,7 +376,7 @@ class DomainAgentRunner[OutputT: BaseModel]:
             # Flush (not rollback) so the FAILED execution record is preserved
             # for audit. The caller (run_domain_agents_parallel) commits.
             await db_session.flush()
-            return None
+            return (None, execution_id)
 
     # -- Private: model attempt loop ------------------------------------------
 

@@ -307,12 +307,12 @@ function NodeTooltipOverlay({ tooltip }: { tooltip: NodeTooltip }) {
 
   return (
     <div
-      className="fixed z-50 pointer-events-none px-3 py-2 rounded-lg bg-jet/95 border border-stone/20 text-smoke text-xs shadow-lg max-w-[280px]"
+      className="fixed z-50 pointer-events-none px-3 py-2 rounded-lg bg-jet/95 border border-stone/20 text-smoke text-xs shadow-lg max-w-70"
       style={{ left: x + 12, top: y + 12 }}
     >
       <div className="flex items-center gap-2 mb-1">
         <span
-          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+          className="w-2.5 h-2.5 rounded-full shrink-0"
           style={{ backgroundColor: node.color }}
         />
         <span className="font-medium text-sm text-foreground">

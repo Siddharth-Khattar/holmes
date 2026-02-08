@@ -33,7 +33,7 @@
 | 7.1 | LLM-Based KG Builder Agent | Replace programmatic KG Builder with LLM agent for curated entities + semantic relationships | REQ-AGENT-009 (revised) | ✅ COMPLETE |
 | 7.2 | Knowledge Graph Frontend (D3.js Enhancement) | Improve D3.js graph with Epstein-inspired layout, physics, sidebars, filtering, document excerpts | REQ-VIS-003 | ✅ COMPLETE |
 | 7.3 | Knowledge Graph Frontend (vis-network) — OPTIONAL | Premium vis-network graph visualization (preserved for experimentation) | REQ-VIS-003 (alternative) | ⏳ DEFERRED |
-| 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ⏳ NOT_STARTED |
+| 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ⏳ PLANNED |
 | 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ⏳ NOT_STARTED |
 | 9 | Chat Interface & Research | Multi-source tool-based Q&A, research/discovery, context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
 | 10 | Source Panel & Agent Flow Polish | Source viewers, citation navigation, task panel, narrative generation | REQ-SOURCE-*, REQ-VIS-*, REQ-TASK-003-007 | 🟡 FRONTEND_DONE |
@@ -954,9 +954,16 @@ Plans:
 
 **Depends on:** Phase 7.1 (curated KG with semantic relationships), Phase 7 (case_findings + DB tables)
 
-**Status:** ⏳ NOT_STARTED
+**Status:** ⏳ PLANNED
 
-**Plans:** TBD during phase planning
+**Plans:** 5 plans in 3 waves
+
+Plans:
+- [ ] 08-01-PLAN.md — DB schema (InvestigationTask model, Case verdict columns, Alembic migration, Pydantic schemas)
+- [ ] 08-02-PLAN.md — Synthesis Agent (runner, prompt, factory, input assembly, output writer, pipeline Stage 8)
+- [ ] 08-03-PLAN.md — Backend API endpoints (synthesis, hypotheses, contradictions, gaps, tasks, timeline)
+- [ ] 08-04-PLAN.md — Frontend Verdict view (tab toggle, verdict cards, DetailSidebar panels, hooks)
+- [ ] 08-05-PLAN.md — Frontend Timeline wiring + Case header verdict badge
 
 ### Frontend Available (Yatharth, 2026-02-02)
 - ✅ Timeline view with day/week/month/year zoom, layer filtering, event cards, search (`Timeline/`)

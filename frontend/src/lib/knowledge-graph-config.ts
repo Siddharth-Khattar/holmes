@@ -128,9 +128,31 @@ export const FORCE_CONFIG = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Node sizing
+// Node sizing (discrete tiers by connection degree)
 // ---------------------------------------------------------------------------
 
+export interface NodeSizeTier {
+  readonly maxDegree: number;
+  readonly radius: number;
+  readonly label: string;
+}
+
+/** Discrete node size tiers: isolated=small, moderate=medium, hubs=large. */
+export const NODE_SIZE_TIERS: readonly NodeSizeTier[] = [
+  { maxDegree: 1, radius: 18, label: "small" },
+  { maxDegree: 3, radius: 26, label: "medium" },
+  { maxDegree: Infinity, radius: 36, label: "large" },
+] as const;
+
+/** Look up the node radius for a given connection degree using discrete tiers. */
+export function getNodeRadius(degree: number): number {
+  for (const tier of NODE_SIZE_TIERS) {
+    if (degree <= tier.maxDegree) return tier.radius;
+  }
+  return NODE_SIZE_TIERS[NODE_SIZE_TIERS.length - 1].radius;
+}
+
+/** @deprecated Kept for reference — replaced by NODE_SIZE_TIERS. */
 export const NODE_SIZE = {
   minRadius: 16,
   maxRadius: 40,

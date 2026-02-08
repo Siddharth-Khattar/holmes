@@ -20,7 +20,7 @@ import {
 } from "d3-zoom";
 import { select, type Selection } from "d3-selection";
 import { drag as d3Drag } from "d3-drag";
-import { scaleLinear, scalePow } from "d3-scale";
+import { scalePow } from "d3-scale";
 import "d3-transition";
 
 import type {
@@ -31,12 +31,12 @@ import type {
 } from "@/types/knowledge-graph";
 import {
   FORCE_CONFIG,
-  NODE_SIZE,
   EDGE_STYLE,
   SVG_CONFIG,
   getEntityColor,
   getEntityShape,
   getEntityIconPaths,
+  getNodeRadius,
 } from "@/lib/knowledge-graph-config";
 
 // ---------------------------------------------------------------------------
@@ -149,16 +149,10 @@ export function useGraphSimulation({
   const forceNodes = useMemo<ForceNode[]>(() => {
     if (entities.length === 0) return [];
 
-    const maxDegree = Math.max(...entities.map((e) => e.degree), 1);
-    const radiusScale = scaleLinear()
-      .domain([0, maxDegree])
-      .range([NODE_SIZE.minRadius, NODE_SIZE.maxRadius])
-      .clamp(true);
-
     return entities.map((entity) => ({
       id: entity.id,
       entity,
-      radius: radiusScale(entity.degree),
+      radius: getNodeRadius(entity.degree),
       color: getEntityColor(entity.entity_type),
     }));
   }, [entities]);

@@ -1683,6 +1683,31 @@ export interface components {
              */
             context?: string | null;
             /**
+             * Aliases
+             * @description Alternative names/references
+             */
+            aliases?: string[] | null;
+            /**
+             * Description Brief
+             * @description One-liner summary for tooltips
+             */
+            description_brief?: string | null;
+            /**
+             * Description Detailed
+             * @description Multi-sentence synthesis from findings
+             */
+            description_detailed?: string | null;
+            /**
+             * Domains
+             * @description All domains this entity appears in
+             */
+            domains?: string[] | null;
+            /**
+             * Source Finding Ids
+             * @description Finding IDs linking entity to evidence
+             */
+            source_finding_ids?: string[] | null;
+            /**
              * Source Execution Id
              * @description Agent execution that produced this entity
              */
@@ -2445,6 +2470,31 @@ export interface components {
             properties?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Evidence Excerpt
+             * @description Exact source quote supporting this relationship
+             */
+            evidence_excerpt?: string | null;
+            /**
+             * Source Finding Ids
+             * @description Finding IDs as evidence chain
+             */
+            source_finding_ids?: string[] | null;
+            /**
+             * Temporal Context
+             * @description When relationship existed/occurred
+             */
+            temporal_context?: string | null;
+            /**
+             * Corroboration Count
+             * @description How many agents found this relationship
+             */
+            corroboration_count?: number | null;
+            /**
+             * Confidence
+             * @description LLM-assessed relationship confidence 0-100
+             */
+            confidence?: number | null;
             /**
              * Created At
              * Format: date-time

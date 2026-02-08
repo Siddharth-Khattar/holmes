@@ -31,6 +31,21 @@ class EntityResponse(BaseModel):
     context: str | None = Field(
         default=None, description="Surrounding context from source document"
     )
+    aliases: list[str] | None = Field(
+        default=None, description="Alternative names/references"
+    )
+    description_brief: str | None = Field(
+        default=None, description="One-liner summary for tooltips"
+    )
+    description_detailed: str | None = Field(
+        default=None, description="Multi-sentence synthesis from findings"
+    )
+    domains: list[str] | None = Field(
+        default=None, description="All domains this entity appears in"
+    )
+    source_finding_ids: list[str] | None = Field(
+        default=None, description="Finding IDs linking entity to evidence"
+    )
     source_execution_id: UUID | None = Field(
         default=None, description="Agent execution that produced this entity"
     )
@@ -126,6 +141,24 @@ class RelationshipResponse(BaseModel):
     )
     properties: dict[str, object] | None = Field(
         default=None, description="Additional edge metadata"
+    )
+    evidence_excerpt: str | None = Field(
+        default=None,
+        description="Exact source quote supporting this relationship",
+    )
+    source_finding_ids: list[str] | None = Field(
+        default=None, description="Finding IDs as evidence chain"
+    )
+    temporal_context: str | None = Field(
+        default=None, description="When relationship existed/occurred"
+    )
+    corroboration_count: int | None = Field(
+        default=None,
+        description="How many agents found this relationship",
+    )
+    confidence: float | None = Field(
+        default=None,
+        description="LLM-assessed relationship confidence 0-100",
     )
     created_at: datetime = Field(..., description="When the relationship was created")
 

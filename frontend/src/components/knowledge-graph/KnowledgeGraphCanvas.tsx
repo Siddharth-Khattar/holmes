@@ -53,6 +53,12 @@ export function KnowledgeGraphCanvas({
   // -- Panel visibility --
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  // Entity to zoom-to (set when navigating from sidebar; counter forces re-zoom on same entity)
+  const [focusEntity, setFocusEntity] = useState<{
+    id: string;
+    seq: number;
+  } | null>(null);
+  const focusSeqRef = useRef(0);
 
   // -- Source viewer --
   const [sourceViewerContent, setSourceViewerContent] =
@@ -98,9 +104,16 @@ export function KnowledgeGraphCanvas({
   const handleEntitySelectRef = useRef(handleEntitySelect);
   handleEntitySelectRef.current = handleEntitySelect;
 
-  // Stable wrapper that always calls the latest handleEntitySelect
-  const stableEntitySelect = useCallback(
-    (entityId: string | null) => handleEntitySelectRef.current(entityId),
+  // Sidebar callback: select entity AND zoom the graph to center on it
+  const handleSidebarEntitySelect = useCallback((entityId: string) => {
+    handleEntitySelectRef.current(entityId);
+    focusSeqRef.current += 1;
+    setFocusEntity({ id: entityId, seq: focusSeqRef.current });
+  }, []);
+  const stableSidebarEntitySelectRef = useRef(handleSidebarEntitySelect);
+  stableSidebarEntitySelectRef.current = handleSidebarEntitySelect;
+  const stableSidebarEntitySelect = useCallback(
+    (entityId: string) => stableSidebarEntitySelectRef.current(entityId),
     [],
   );
 
@@ -114,7 +127,7 @@ export function KnowledgeGraphCanvas({
           entity: selectedEntity,
           relationships: selectedEntityRelationships,
           allEntities: entities,
-          onEntitySelect: stableEntitySelect,
+          onEntitySelect: stableSidebarEntitySelect,
         },
       });
     } else {
@@ -126,7 +139,7 @@ export function KnowledgeGraphCanvas({
     entities,
     setContent,
     clearContent,
-    stableEntitySelect,
+    stableSidebarEntitySelect,
   ]);
 
   // -- Clear sidebar on unmount --
@@ -201,6 +214,7 @@ export function KnowledgeGraphCanvas({
             onEntitySelect={handleEntitySelect}
             selectedEntityId={selectedEntityId}
             searchMatchIds={searchMatchIds}
+            focusEntityId={focusEntity?.id ?? null}
           />
 
           {/* Floating filter panel (absolute inside content) */}

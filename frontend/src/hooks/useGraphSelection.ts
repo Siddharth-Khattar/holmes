@@ -26,6 +26,12 @@ const SEARCH_DIM_NODE_OPACITY = 0.3;
 const SEARCH_DIM_EDGE_OPACITY = 0.2;
 const SEARCH_DIM_LABEL_OPACITY = 0.3;
 
+/**
+ * CSS selector that targets the primary shape element in a node group.
+ * Nodes may contain either a <circle> or <rect> depending on entity type.
+ */
+const NODE_SHAPE_SELECTOR = "circle, rect";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -50,7 +56,7 @@ interface UseGraphSelectionProps {
     unknown
   > | null>;
   edgeLabelGroupRef: RefObject<Selection<
-    SVGTextElement,
+    SVGGElement,
     ForceLink,
     SVGGElement,
     unknown
@@ -80,6 +86,24 @@ function linkConnectsTo(link: ForceLink, entityId: string): boolean {
       ? link.target
       : (link.target as ForceNode).id;
   return sourceId === entityId || targetId === entityId;
+}
+
+/**
+ * Update stroke properties on the first shape child (circle or rect) of a node <g> element.
+ * Operates directly on the DOM element to avoid D3 Selection generic variance issues.
+ */
+function setShapeStroke(
+  gElement: SVGGElement,
+  stroke: string,
+  strokeWidth: number,
+  strokeOpacity: number,
+): void {
+  const shape = gElement.querySelector(NODE_SHAPE_SELECTOR);
+  if (shape) {
+    shape.setAttribute("stroke", stroke);
+    shape.setAttribute("stroke-width", String(strokeWidth));
+    shape.setAttribute("stroke-opacity", String(strokeOpacity));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -147,11 +171,9 @@ export function useGraphSelection({
 
     if (!selectedEntityId) {
       // Restore all to defaults
-      nodes
-        .select("circle")
-        .attr("stroke", (d: ForceNode) => d.color)
-        .attr("stroke-width", 1.5)
-        .attr("stroke-opacity", 0.6);
+      nodes.each((d, i, elements) => {
+        setShapeStroke(elements[i], d.color, 1.5, 0.6);
+      });
       nodes.attr("opacity", 1);
 
       links
@@ -160,33 +182,26 @@ export function useGraphSelection({
 
       labels.attr("opacity", 1);
 
-      edgeLabels?.attr("opacity", 1);
+      // Edge labels return to default (zoom-based visibility handled elsewhere)
+      edgeLabels?.attr("opacity", 0);
       return;
     }
 
     // Highlight selected node + connected subgraph
     nodes.each((d, i, elements) => {
-      const g = select(elements[i]);
+      const el = elements[i];
+      const g = select(el);
       const isSelected = d.id === selectedEntityId;
       const isConnected = connectedEntityIds.has(d.id);
 
       if (isSelected) {
-        g.select("circle")
-          .attr("stroke", SELECTION_STROKE)
-          .attr("stroke-width", SELECTION_STROKE_WIDTH)
-          .attr("stroke-opacity", 1);
+        setShapeStroke(el, SELECTION_STROKE, SELECTION_STROKE_WIDTH, 1);
         g.attr("opacity", 1);
       } else if (isConnected) {
-        g.select("circle")
-          .attr("stroke", d.color)
-          .attr("stroke-width", 1.5)
-          .attr("stroke-opacity", 0.6);
+        setShapeStroke(el, d.color, 1.5, 0.6);
         g.attr("opacity", 1);
       } else {
-        g.select("circle")
-          .attr("stroke", d.color)
-          .attr("stroke-width", 1.5)
-          .attr("stroke-opacity", 0.6);
+        setShapeStroke(el, d.color, 1.5, 0.6);
         g.attr("opacity", DIMMED_NODE_OPACITY);
       }
     });
@@ -210,8 +225,9 @@ export function useGraphSelection({
       return connectedEntityIds.has(d.id) ? 1 : DIMMED_LABEL_OPACITY;
     });
 
+    // When a node is selected, show labels on connected edges
     edgeLabels?.attr("opacity", (d: ForceLink) => {
-      if (!selectedEntityId) return 1;
+      if (!selectedEntityId) return 0;
       return linkConnectsTo(d, selectedEntityId) ? 1 : DIMMED_LABEL_OPACITY;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -227,16 +243,14 @@ export function useGraphSelection({
     const labels = labelGroupRef.current;
     if (!nodes || !links || !labels) return;
 
-    // If selection is active, selection effect takes priority — skip search overlay
+    // If selection is active, selection effect takes priority -- skip search overlay
     if (selectedEntityId) return;
 
     if (!searchMatchIds || searchMatchIds.size === 0) {
-      // Remove search highlight styling — restore defaults
-      nodes
-        .select("circle")
-        .attr("stroke", (d: ForceNode) => d.color)
-        .attr("stroke-width", 1.5)
-        .attr("stroke-opacity", 0.6);
+      // Remove search highlight styling -- restore defaults
+      nodes.each((d, i, elements) => {
+        setShapeStroke(elements[i], d.color, 1.5, 0.6);
+      });
       nodes.attr("opacity", 1);
 
       links
@@ -249,19 +263,19 @@ export function useGraphSelection({
 
     // Apply search highlight: matching nodes get accent glow ring, non-matching dim
     nodes.each((d, i, elements) => {
-      const g = select(elements[i]);
+      const el = elements[i];
+      const g = select(el);
 
       if (searchMatchIds.has(d.id)) {
-        g.select("circle")
-          .attr("stroke", SEARCH_HIGHLIGHT_STROKE)
-          .attr("stroke-width", SEARCH_HIGHLIGHT_STROKE_WIDTH)
-          .attr("stroke-opacity", 1);
+        setShapeStroke(
+          el,
+          SEARCH_HIGHLIGHT_STROKE,
+          SEARCH_HIGHLIGHT_STROKE_WIDTH,
+          1,
+        );
         g.attr("opacity", 1);
       } else {
-        g.select("circle")
-          .attr("stroke", d.color)
-          .attr("stroke-width", 1.5)
-          .attr("stroke-opacity", 0.6);
+        setShapeStroke(el, d.color, 1.5, 0.6);
         g.attr("opacity", SEARCH_DIM_NODE_OPACITY);
       }
     });

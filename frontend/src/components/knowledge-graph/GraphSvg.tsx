@@ -17,6 +17,7 @@ import { Pause, Play } from "lucide-react";
 import { CanvasZoomControls } from "@/components/ui/canvas-zoom-controls";
 import { useGraphSimulation } from "@/hooks/useGraphSimulation";
 import { useGraphSelection } from "@/hooks/useGraphSelection";
+import { SVG_CONFIG } from "@/lib/knowledge-graph-config";
 import type {
   EntityResponse,
   RelationshipResponse,
@@ -109,6 +110,7 @@ export function GraphSvg({
     linkGroupRef,
     labelGroupRef,
     edgeLabelGroupRef,
+    currentZoomScale,
     isSimulationRunning,
     toggleSimulation,
     resetZoom,
@@ -122,14 +124,27 @@ export function GraphSvg({
   });
 
   // -- Selection + search highlighting --
-  const { selectEntity } = useGraphSelection({
-    nodeGroupRef,
-    linkGroupRef,
-    labelGroupRef,
-    edgeLabelGroupRef,
-    forceLinks,
-    searchMatchIds,
-  });
+  const { selectedEntityId: internalSelectedId, selectEntity } =
+    useGraphSelection({
+      nodeGroupRef,
+      linkGroupRef,
+      labelGroupRef,
+      edgeLabelGroupRef,
+      forceLinks,
+      searchMatchIds,
+    });
+
+  // -- Progressive edge label disclosure (zoom threshold) --
+  useEffect(() => {
+    const edgeLabels = edgeLabelGroupRef.current;
+    if (!edgeLabels) return;
+
+    // If a node is selected, selection effect handles visibility
+    if (internalSelectedId) return;
+
+    const showLabels = currentZoomScale >= SVG_CONFIG.edgeLabelZoomThreshold;
+    edgeLabels.attr("opacity", showLabels ? 1 : 0);
+  }, [currentZoomScale, internalSelectedId, edgeLabelGroupRef]);
 
   // -- Tooltips (managed via React state since they're overlays, not in SVG) --
   const [nodeTooltip, setNodeTooltip] = useState<NodeTooltip | null>(null);
@@ -139,6 +154,7 @@ export function GraphSvg({
   useEffect(() => {
     const nodes = nodeGroupRef.current;
     const links = linkGroupRef.current;
+    const edgeLabels = edgeLabelGroupRef.current;
     if (!nodes || !links) return;
 
     // Node click: select entity + notify parent
@@ -169,13 +185,17 @@ export function GraphSvg({
       setNodeTooltip(null);
     });
 
-    // Edge hover: show tooltip
+    // Edge hover: show tooltip + show edge label on hover
     links.on("mouseenter", (event: MouseEvent, d: ForceLink) => {
       setEdgeTooltip({
         x: event.clientX,
         y: event.clientY,
         link: d,
       });
+      // Show this edge's label on hover regardless of zoom
+      if (edgeLabels) {
+        edgeLabels.filter((ld: ForceLink) => ld.id === d.id).attr("opacity", 1);
+      }
     });
 
     links.on("mousemove", (event: MouseEvent, d: ForceLink) => {
@@ -186,8 +206,12 @@ export function GraphSvg({
       });
     });
 
-    links.on("mouseleave", () => {
+    links.on("mouseleave", (_event: MouseEvent, d: ForceLink) => {
       setEdgeTooltip(null);
+      // Restore edge label visibility based on zoom threshold
+      if (edgeLabels) {
+        edgeLabels.filter((ld: ForceLink) => ld.id === d.id).attr("opacity", 0);
+      }
     });
 
     // Increase link hit area for easier hovering
@@ -202,7 +226,7 @@ export function GraphSvg({
       const target = event.target as Element;
       if (
         target.tagName === "svg" ||
-        target.tagName === "rect" ||
+        target.classList.contains("kg-bg-rect") ||
         target.classList.contains("kg-main-group")
       ) {
         selectEntity(null);
@@ -270,7 +294,12 @@ export function GraphSvg({
             <circle cx="10" cy="10" r="1.2" fill="rgba(138,138,130,0.15)" />
           </pattern>
         </defs>
-        <rect width="100%" height="100%" fill="url(#kg-dot-pattern)" />
+        <rect
+          className="kg-bg-rect"
+          width="100%"
+          height="100%"
+          fill="url(#kg-dot-pattern)"
+        />
         {/* D3 renders all dynamic content (nodes, edges, labels) into the SVG via refs */}
       </svg>
 

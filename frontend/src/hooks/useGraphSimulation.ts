@@ -20,7 +20,7 @@ import {
 } from "d3-zoom";
 import { select, type Selection } from "d3-selection";
 import { drag as d3Drag } from "d3-drag";
-import { scalePow } from "d3-scale";
+import { scaleLinear, scalePow } from "d3-scale";
 import "d3-transition";
 
 import type {
@@ -35,6 +35,8 @@ import {
   EDGE_STYLE,
   SVG_CONFIG,
   getEntityColor,
+  getEntityShape,
+  getEntityIconPaths,
 } from "@/lib/knowledge-graph-config";
 
 // ---------------------------------------------------------------------------
@@ -72,16 +74,24 @@ interface UseGraphSimulationReturn {
     unknown
   > | null>;
   edgeLabelGroupRef: RefObject<Selection<
-    SVGTextElement,
+    SVGGElement,
     ForceLink,
     SVGGElement,
     unknown
   > | null>;
   zoomRef: RefObject<ZoomBehavior<SVGSVGElement, unknown> | null>;
+  currentZoomScale: number;
   isSimulationRunning: boolean;
   toggleSimulation: () => void;
   resetZoom: () => void;
 }
+
+// ---------------------------------------------------------------------------
+// Constants for rect sizing
+// ---------------------------------------------------------------------------
+
+/** Ratio of rect half-width to equivalent circle radius for visual area balance. */
+const RECT_SIDE_RATIO = 1.6;
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -115,7 +125,7 @@ export function useGraphSimulation({
     unknown
   > | null>(null);
   const edgeLabelGroupRef = useRef<Selection<
-    SVGTextElement,
+    SVGGElement,
     ForceLink,
     SVGGElement,
     unknown
@@ -129,6 +139,7 @@ export function useGraphSimulation({
   > | null>(null);
 
   const [isSimulationRunning, setIsSimulationRunning] = useState(true);
+  const [currentZoomScale, setCurrentZoomScale] = useState(1);
   const manuallyStoppedRef = useRef(false);
 
   // -------------------------------------------------------------------------
@@ -139,8 +150,7 @@ export function useGraphSimulation({
     if (entities.length === 0) return [];
 
     const maxDegree = Math.max(...entities.map((e) => e.degree), 1);
-    const radiusScale = scalePow()
-      .exponent(0.5)
+    const radiusScale = scaleLinear()
       .domain([0, maxDegree])
       .range([NODE_SIZE.minRadius, NODE_SIZE.maxRadius])
       .clamp(true);
@@ -213,6 +223,7 @@ export function useGraphSimulation({
         if (mainGroupRef.current) {
           mainGroupRef.current.attr("transform", event.transform.toString());
         }
+        setCurrentZoomScale(event.transform.k);
       });
     svgSel.call(zoomBehavior);
     zoomRef.current = zoomBehavior;
@@ -228,23 +239,24 @@ export function useGraphSimulation({
     >;
     mainGroupRef.current = mainGroup;
 
-    // -- Defs: glow filter --
+    // -- Defs: drop shadow filter --
     const defs = svgSel.select<SVGDefsElement>("defs");
-    if (defs.select("#kg-node-glow").empty()) {
+    // Clean up any stale glow filter from prior versions
+    defs.select("#kg-node-glow").remove();
+    if (defs.select("#kg-node-shadow").empty()) {
       const filter = defs
         .append("filter")
-        .attr("id", "kg-node-glow")
+        .attr("id", "kg-node-shadow")
         .attr("x", "-50%")
         .attr("y", "-50%")
         .attr("width", "200%")
         .attr("height", "200%");
       filter
-        .append("feGaussianBlur")
-        .attr("stdDeviation", "4")
-        .attr("result", "coloredBlur");
-      const merge = filter.append("feMerge");
-      merge.append("feMergeNode").attr("in", "coloredBlur");
-      merge.append("feMergeNode").attr("in", "SourceGraphic");
+        .append("feDropShadow")
+        .attr("dx", 2)
+        .attr("dy", 2)
+        .attr("stdDeviation", 4)
+        .attr("flood-color", "rgba(0,0,0,0.3)");
     }
 
     // -- Stroke width scale for edge strength (0-100 -> minWidth to maxWidth) --
@@ -273,20 +285,34 @@ export function useGraphSimulation({
       unknown
     >;
 
-    // -- Edge label group --
+    // -- Edge label group (each label is a <g> with <rect> bg + <text>) --
     const edgeLabelGroup = mainGroup
       .append("g")
       .attr("class", "kg-edge-labels");
     const edgeLabelElements = edgeLabelGroup
-      .selectAll<SVGTextElement, ForceLink>("text")
+      .selectAll<SVGGElement, ForceLink>("g.kg-edge-label")
       .data(forceLinks, (d: ForceLink) => d.id)
-      .join("text")
+      .join("g")
+      .attr("class", "kg-edge-label")
+      .style("pointer-events", "none")
+      .style("user-select", "none")
+      // Start hidden -- progressive disclosure logic controls visibility
+      .attr("opacity", 0);
+
+    // Background pill behind edge label text
+    edgeLabelElements
+      .append("rect")
+      .attr("fill", "rgba(5,5,5,0.7)")
+      .attr("rx", 3)
+      .attr("ry", 3);
+
+    // Edge label text
+    edgeLabelElements
+      .append("text")
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "central")
       .attr("fill", "#8A8A82")
-      .attr("font-size", 9)
-      .style("pointer-events", "none")
-      .style("user-select", "none")
+      .attr("font-size", SVG_CONFIG.edgeLabelFontSize)
       .text((d) => {
         const primaryLabel = d.relationships[0]?.label ?? "";
         if (d.count > 1) {
@@ -294,14 +320,29 @@ export function useGraphSimulation({
         }
         return primaryLabel;
       });
-    edgeLabelGroupRef.current = edgeLabelElements as unknown as Selection<
-      SVGTextElement,
+
+    // Size the background rects to fit the text
+    edgeLabelElements.each(function () {
+      const g = select(this);
+      const textEl = g.select<SVGTextElement>("text").node();
+      if (textEl) {
+        const bbox = textEl.getBBox();
+        g.select("rect")
+          .attr("x", bbox.x - 4)
+          .attr("y", bbox.y - 2)
+          .attr("width", bbox.width + 8)
+          .attr("height", bbox.height + 4);
+      }
+    });
+
+    edgeLabelGroupRef.current = edgeLabelElements as Selection<
+      SVGGElement,
       ForceLink,
       SVGGElement,
       unknown
     >;
 
-    // -- Node group (each node is a <g> containing circle) --
+    // -- Node group (each node is a <g> containing shape + icon) --
     const nodeGroup = mainGroup.append("g").attr("class", "kg-nodes");
     const nodeElements = nodeGroup
       .selectAll<SVGGElement, ForceNode>("g.kg-node")
@@ -310,15 +351,57 @@ export function useGraphSimulation({
       .attr("class", "kg-node")
       .style("cursor", "pointer");
 
-    // Circle within each node group
-    nodeElements
-      .append("circle")
-      .attr("r", (d) => d.radius)
-      .attr("fill", (d) => d.color)
-      .attr("stroke", (d) => d.color)
-      .attr("stroke-width", 1.5)
-      .attr("stroke-opacity", 0.6)
-      .attr("filter", "url(#kg-node-glow)");
+    // Render shapes based on entity type
+    nodeElements.each(function (d) {
+      const g = select(this);
+      const shape = getEntityShape(d.entity.entity_type);
+
+      if (shape === "rect") {
+        const halfW = d.radius * RECT_SIDE_RATIO * 0.5;
+        const halfH = d.radius * 0.9;
+        g.append("rect")
+          .attr("x", -halfW)
+          .attr("y", -halfH)
+          .attr("width", halfW * 2)
+          .attr("height", halfH * 2)
+          .attr("rx", 6)
+          .attr("ry", 6)
+          .attr("fill", d.color)
+          .attr("stroke", d.color)
+          .attr("stroke-width", 1.5)
+          .attr("stroke-opacity", 0.6)
+          .attr("filter", "url(#kg-node-shadow)");
+      } else {
+        g.append("circle")
+          .attr("r", d.radius)
+          .attr("fill", d.color)
+          .attr("stroke", d.color)
+          .attr("stroke-width", 1.5)
+          .attr("stroke-opacity", 0.6)
+          .attr("filter", "url(#kg-node-shadow)");
+      }
+
+      // Embed Lucide icon inside the node
+      const iconPaths = getEntityIconPaths(d.entity.entity_type);
+      const iconSize = d.radius * 0.5; // icon occupies ~50% of radius
+      const iconScale = iconSize / 12; // Lucide viewBox is 24x24, so 12 = half
+      const iconGroup = g
+        .append("g")
+        .attr(
+          "transform",
+          `translate(${-12 * iconScale},${-12 * iconScale}) scale(${iconScale})`,
+        )
+        .attr("fill", "none")
+        .attr("stroke", "#ffffff")
+        .attr("stroke-opacity", 0.6)
+        .attr("stroke-width", 2)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-linejoin", "round");
+
+      for (const pathD of iconPaths) {
+        iconGroup.append("path").attr("d", pathD);
+      }
+    });
 
     nodeGroupRef.current = nodeElements as Selection<
       SVGGElement,
@@ -436,21 +519,13 @@ export function useGraphSimulation({
         .attr("x2", (d) => ((d.target as ForceNode).x ?? 0).toString())
         .attr("y2", (d) => ((d.target as ForceNode).y ?? 0).toString());
 
-      edgeLabelGroupRef.current
-        ?.attr(
-          "x",
-          (d) =>
-            (((d.source as ForceNode).x ?? 0) +
-              ((d.target as ForceNode).x ?? 0)) /
-            2,
-        )
-        .attr(
-          "y",
-          (d) =>
-            (((d.source as ForceNode).y ?? 0) +
-              ((d.target as ForceNode).y ?? 0)) /
-            2,
-        );
+      edgeLabelGroupRef.current?.attr("transform", (d) => {
+        const sx = (d.source as ForceNode).x ?? 0;
+        const sy = (d.source as ForceNode).y ?? 0;
+        const tx = (d.target as ForceNode).x ?? 0;
+        const ty = (d.target as ForceNode).y ?? 0;
+        return `translate(${(sx + tx) / 2},${(sy + ty) / 2})`;
+      });
 
       nodeGroupRef.current?.attr(
         "transform",
@@ -478,8 +553,7 @@ export function useGraphSimulation({
       simulationRef.current = null;
       svgSel.on(".zoom", null);
       svgSel.selectAll("g.kg-main-group").remove();
-      // Remove the glow filter if we created it
-      defs.select("#kg-node-glow").remove();
+      defs.select("#kg-node-shadow").remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entities, relationships, width, height]);
@@ -520,6 +594,7 @@ export function useGraphSimulation({
     labelGroupRef,
     edgeLabelGroupRef,
     zoomRef,
+    currentZoomScale,
     isSimulationRunning,
     toggleSimulation,
     resetZoom,

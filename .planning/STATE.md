@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-08
-**Current Phase:** 7.2 of 12 (D3.js KG Frontend Enhancement) — IN PROGRESS (2/5 plans)
-**Next Phase:** 7.2-03 (GraphSvg D3 force canvas) → ... → 8 (Synthesis)
+**Current Phase:** 7.2 of 12 (D3.js KG Frontend Enhancement) — IN PROGRESS (3/5 plans)
+**Next Phase:** 7.2-04 (FilterPanel + EntityTimeline) → 07.2-05 (page integration) → 8 (Synthesis)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -19,7 +19,7 @@
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
 | 7 | Knowledge Storage & Domain Agent Enrichment | COMPLETE | 2026-02-07 | 2026-02-07 | 6 plans (11 commits), 8/8 verified: 9 DB models + migration, KG/findings schemas, KG Builder + findings service, prompt enrichment, 10 API endpoints, pipeline wiring |
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
-| 7.2 | KG Frontend (D3.js Enhancement) | IN_PROGRESS | 2026-02-08 | - | Plans 01-02 complete: types/config/API + source viewer system |
+| 7.2 | KG Frontend (D3.js Enhancement) | IN_PROGRESS | 2026-02-08 | - | Plans 01-03 complete: types/config/API + source viewer system + GraphSvg D3 force canvas |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
@@ -67,9 +67,14 @@
   - Task 2: AudioViewer (wavesurfer.js waveform + transcript), VideoViewer (HTML5 + markers), ImageViewer (zoom/pan)
   - Task 3: evidence-source-panel refactored from 462-line mock monolith to 58-line thin wrapper, detail-sidebar types updated
 
+**Phase 7.2 Plan 03 Complete** (2026-02-08): GraphSvg D3 force canvas -- 2 tasks, 2 commits
+  - Task 1: useGraphSimulation (5 forces, sqrt-scaled nodes, radial centrality, edge deduplication, D3 ref-based tick updates) + useGraphSelection (selection highlighting + search match highlighting in separate useEffects)
+  - Task 2: GraphSvg component (dark SVG canvas, dot pattern, zoom/pan controls, simulation toggle, node/edge tooltips, background click deselect, searchMatchIds prop)
+  - Performance pattern: zero React re-renders during simulation (D3 refs only)
+
 **What's next:**
-- Phase 7.2 Plan 03: GraphSvg D3 force canvas component (decompose knowledge-graph.tsx monolith)
-- Phase 7.2 Plans 04-05: FilterPanel, EntityTimeline, page integration
+- Phase 7.2 Plan 04: FilterPanel + EntityTimeline components
+- Phase 7.2 Plan 05: KnowledgeGraphCanvas integration (replaces monolith page)
 - Phase 8: Synthesis Agent & Intelligence Layer
 
 ---
@@ -125,7 +130,10 @@
 
 | Component | File Path |
 |-----------|-----------|
-| Main visualization | `frontend/src/components/app/knowledge-graph.tsx` |
+| Main visualization (legacy) | `frontend/src/components/app/knowledge-graph.tsx` |
+| GraphSvg D3 force canvas | `frontend/src/components/knowledge-graph/GraphSvg.tsx` |
+| Force simulation hook | `frontend/src/hooks/useGraphSimulation.ts` |
+| Selection/search hook | `frontend/src/hooks/useGraphSelection.ts` |
 | Evidence panel (wrapper) | `frontend/src/components/app/evidence-source-panel.tsx` |
 | Source viewer modal | `frontend/src/components/source-viewer/SourceViewerModal.tsx` |
 | PDF viewer | `frontend/src/components/source-viewer/PdfViewer.tsx` |
@@ -396,6 +404,10 @@ All frontend features need these backend endpoints:
 | wavesurfer.js import strategy | Static import vs Dynamic import | Dynamic import | ESM-only package; dynamic import() inside useEffect for Next.js compatibility |
 | Zoom pan reset pattern | useEffect on zoom vs Inline in zoom handlers | Inline in zoom handlers | Avoids eslint react-hooks/set-state-in-effect cascading render violation |
 | detail-sidebar Evidence type | Keep Evidence type vs Replace with SourceViewerContent | SourceViewerContent | Evidence type removed in Plan 01; SourceViewerContent is the production-quality replacement |
+| D3 .each() ESLint pattern | this-aliasing vs select(elements[i]) | select(elements[i]) | Arrow fn with third arg of .each() avoids @typescript-eslint/no-this-alias violation |
+| KG tooltip implementation | SVG foreignObject vs React fixed overlay | React fixed overlay | Avoids SVG clipping and z-index issues; positioned at mouse coordinates |
+| KG search vs selection visual | Same style vs Distinct styles | Distinct: coral (#E87461) for search, white (#ffffff) for selection | Two highlighting modes must be visually distinguishable |
+| KG edge label orientation | Rotated along edge vs Always horizontal | Always horizontal | Readability per CONTEXT.md specification |
 
 ---
 
@@ -408,7 +420,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-08
-Stopped at: Completed 07.2-02-PLAN.md (source viewer modal, media components, evidence-source-panel refactor)
+Stopped at: Completed 07.2-03-PLAN.md (GraphSvg D3 force canvas, useGraphSimulation, useGraphSelection)
 Resume file: None
 
 ---

@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — In progress (3/7 plans)
-**Next Plan:** 08-04 (Command Center frontend integration)
+**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — In progress (4/7 plans)
+**Next Plan:** 08-05 (Verdict/Timeline frontend views)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -21,7 +21,7 @@
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
-| 8 | Synthesis Agent & Intelligence Layer | IN_PROGRESS | 2026-02-08 | - | Plans 01-03 complete (6 commits): DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints |
+| 8 | Synthesis Agent & Intelligence Layer | IN_PROGRESS | 2026-02-08 | - | Plans 01-04 complete (8 commits): DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks |
 | 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -100,9 +100,14 @@
   - Task 2: 2 timeline endpoints (/timeline list with dateRange+layerCounts aggregation, /timeline/{id}), TimelineApiResponseModel schema, synthesis+timeline routers registered in main.py
   - All 8 endpoints enforce auth + case ownership following knowledge_graph.py pattern
 
+**Phase 8 Plan 04 Complete** (2026-02-09): Synthesis frontend data layer -- 2 tasks, 2 commits
+  - Task 1: 11 TypeScript interfaces in synthesis.ts matching backend Pydantic Category B schemas (SynthesisEvidenceItem, HypothesisResponse, ContradictionResponse, GapResponse, TaskResponse, SynthesisResponse, VerdictResponse, KeyFindingResponse, TimelineEventResponse, TimelineApiResponse)
+  - Task 2: 5 fetch functions in api/synthesis.ts using shared api client (fetchSynthesis with 404->null, fetchHypotheses, fetchContradictions, fetchGaps, fetchTasks) + 5 React Query hooks in useSynthesisData.ts with 30s stale time
+  - Used shared api-client.ts instead of duplicating fetchWithAuth (consistent with useAgentExecutionDetail.ts pattern)
+
 **What's next:**
-- Phase 8 Plan 04: Command Center frontend integration (SSE event handling for synthesis agent node)
 - Phase 8 Plan 05: Frontend Verdict/Timeline views consuming synthesis API endpoints
+- Phase 8 Plan 06: Command Center integration (synthesis agent node SSE events)
 - Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
 
 ---
@@ -467,6 +472,9 @@ All frontend features need these backend endpoints:
 | Timeline dateRange scope | Full table vs Filtered results | Filtered results | Date boundaries reflect active filters, not entire dataset |
 | Timeline layer counts | SQL GROUP BY vs Python Counter | Python Counter | Simpler code for small result sets; no extra DB query |
 | Query param alias pattern | Direct param name vs Query(alias=) | Query(alias="status") | Avoids Python reserved keyword conflicts in function signatures |
+| Synthesis API client pattern | Duplicate fetchWithAuth vs Shared api client | Shared api client (api-client.ts) | Consistent with useAgentExecutionDetail.ts; avoids duplicating JWT auth logic |
+| Synthesis fetch 404 handling | Throw error vs Return null | Return null for fetchSynthesis | Analysis may not have run yet; null signals empty state without error boundary |
+| React Query filter cache | Single queryKey vs Filter-inclusive queryKey | Filter params in queryKey | Different filter combinations get separate cache entries and proper invalidation |
 
 ---
 
@@ -479,9 +487,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8 Plan 03 COMPLETE (2 tasks, 2 commits). 8 API endpoints for synthesis + timeline.
+Stopped at: Phase 8 Plan 04 COMPLETE (2 tasks, 2 commits). Frontend types, API client, React Query hooks for synthesis.
 Resume file: None
-Next action: Execute Phase 8 Plan 04 (Command Center frontend integration)
+Next action: Execute Phase 8 Plan 05 (Verdict/Timeline frontend views)
 
 ---
 

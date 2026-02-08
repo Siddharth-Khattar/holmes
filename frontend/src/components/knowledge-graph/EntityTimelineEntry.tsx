@@ -97,13 +97,13 @@ export function EntityTimelineEntry({
         )}
       >
         {/* Date column */}
-        <span className="text-[10px] text-stone/60 mt-0.5 shrink-0 w-16 text-right">
+        <span className="text-xs text-stone/60 mt-0.5 shrink-0 w-16 text-right">
           {dateLabel}
         </span>
 
         {/* Relationship description */}
         <div className="flex-1 min-w-0">
-          <div className="text-xs leading-relaxed">
+          <div className="text-sm leading-relaxed">
             <span className="font-medium" style={{ color: sourceColor }}>
               {sourceName}
             </span>
@@ -115,7 +115,7 @@ export function EntityTimelineEntry({
             </span>
           </div>
           {connectedEntity && (
-            <span className="text-[10px] text-stone/40 mt-0.5 block">
+            <span className="text-xs text-stone/40 mt-0.5 block">
               {formatEntityType(connectedEntity.entity_type)}
             </span>
           )}
@@ -133,7 +133,7 @@ export function EntityTimelineEntry({
           {/* Temporal context badge */}
           {relationship.temporal_context && (
             <div className="mb-2">
-              <span className="inline-block text-[10px] px-2 py-0.5 rounded bg-charcoal/40 text-stone/60 border border-stone/8">
+              <span className="inline-block text-xs px-2 py-0.5 rounded bg-charcoal/40 text-stone/60 border border-stone/8">
                 {relationship.temporal_context}
               </span>
             </div>
@@ -143,7 +143,7 @@ export function EntityTimelineEntry({
           <div className="rounded-lg bg-charcoal/30 border border-stone/10 p-3">
             {/* Evidence excerpt */}
             {hasEvidence && (
-              <p className="text-xs text-stone/70 leading-relaxed mb-2 italic">
+              <p className="text-sm text-stone/70 leading-relaxed mb-2 italic">
                 &ldquo;{relationship.evidence_excerpt}&rdquo;
               </p>
             )}
@@ -152,14 +152,14 @@ export function EntityTimelineEntry({
             {hasCorroboration && (
               <div className="flex items-center gap-1.5 mb-2">
                 <Shield size={12} className="text-emerald-500/70" />
-                <span className="text-[10px] text-emerald-400/80">
+                <span className="text-xs text-emerald-400/80">
                   Corroborated by {relationship.corroboration_count} agents
                 </span>
               </div>
             )}
 
             {/* Confidence + relationship type */}
-            <div className="flex items-center gap-3 text-[10px] text-stone/50">
+            <div className="flex items-center gap-3 text-xs text-stone/50">
               {relationship.confidence != null && (
                 <span>Confidence: {relationship.confidence}%</span>
               )}
@@ -169,7 +169,7 @@ export function EntityTimelineEntry({
             {/* View source (graceful degradation) */}
             <div className="mt-2 pt-2 border-t border-stone/8">
               <span
-                className="inline-flex items-center gap-1.5 text-[10px] text-stone/35 cursor-not-allowed"
+                className="inline-flex items-center gap-1.5 text-xs text-stone/35 cursor-not-allowed"
                 title="Full source navigation will be available in a future update"
               >
                 <FileSearch size={12} />

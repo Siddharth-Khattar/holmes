@@ -165,7 +165,7 @@ export const NODE_SIZE = {
 export const EDGE_STYLE = {
   defaultColor: "#4b5563",
   selectedColor: "#ffffff",
-  minWidth: 1,
+  minWidth: 1.5,
   maxWidth: 6,
   defaultOpacity: 0.6,
   dimmedOpacity: 0.15,

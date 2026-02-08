@@ -263,7 +263,22 @@ export function useGraphSimulation({
         .attr("flood-color", "rgba(0,0,0,0.3)");
     }
 
-    // -- Stroke width scale for edge strength (0-100 -> minWidth to maxWidth) --
+    // -- Composite edge weight: combines max strength, avg confidence, and corroboration --
+    function computeEdgeWeight(link: ForceLink): number {
+      const maxStrength = Math.max(
+        ...link.relationships.map((r) => r.strength || 0),
+      );
+      const avgConfidence =
+        link.relationships.reduce((s, r) => s + (r.confidence ?? 50), 0) /
+        link.count;
+      const corroborationBonus = Math.min(link.count * 10, 30);
+      // Blend: 60% strength, 20% confidence, 20% corroboration
+      const blended =
+        maxStrength * 0.6 + avgConfidence * 0.2 + corroborationBonus;
+      return Math.min(blended, 100);
+    }
+
+    // -- Stroke width scale (sqrt for perceptual balance) --
     const strengthScale = scalePow()
       .exponent(0.5)
       .domain([0, 100])
@@ -277,10 +292,7 @@ export function useGraphSimulation({
       .data(forceLinks, (d: ForceLink) => d.id)
       .join("line")
       .attr("stroke", EDGE_STYLE.defaultColor)
-      .attr("stroke-width", (d) => {
-        const primaryStrength = d.relationships[0]?.strength ?? 50;
-        return strengthScale(primaryStrength);
-      })
+      .attr("stroke-width", (d) => strengthScale(computeEdgeWeight(d)))
       .attr("stroke-opacity", EDGE_STYLE.defaultOpacity);
     linkGroupRef.current = linkElements as unknown as Selection<
       SVGLineElement,

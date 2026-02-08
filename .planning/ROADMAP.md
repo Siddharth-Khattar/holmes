@@ -968,8 +968,11 @@ Plans:
 
 **Deliverables:**
 - Synthesis Agent implementation (LLM, Gemini Pro, `thinking_level="high"`):
-  - Input: ALL case_findings from PostgreSQL for the case (rich markdown findings with citations)
-  - Additional context: entity summary from KG tables, file metadata, case description
+  - **Input Assembly (two-source DB read pattern):**
+    1. **Domain agent findings** (via `case_findings` table): ALL rows for the case's workflow — each contains `finding_text` (rich markdown with inline citations), `citations` (JSONB with file_id + locator + exact_excerpt), `agent_type` (financial/legal/evidence/strategy), `category`, `confidence`. These are the outputs from all domain agents + strategy agent, saved to DB in pipeline Stage 6 (Save Findings).
+    2. **Curated knowledge graph** (via `kg_entities` + `kg_relationships` tables): Entities with `name`, `entity_type`, `description_brief`, `description_detailed`, `aliases`, `domains`, `source_finding_ids` — and relationships with `label`, `relationship_type`, `evidence_excerpt`, `temporal_context`, `source_finding_ids`, `confidence`. These are the curated outputs from the LLM KG Builder Agent (pipeline Stage 7), which reads ALL domain outputs holistically.
+    3. **Case metadata**: `cases.name`, `cases.description`, `cases.case_type`
+    4. **File metadata**: `case_files.original_filename`, file type, upload date (for cross-referencing citations)
   - Gemini 3 Pro with 1M context window (sufficient: ~100-150K tokens for 50-file cases)
   - Output (SynthesisOutput Pydantic model):
     a. `hypotheses: list[Hypothesis]` — Case hypotheses with initial confidence + supporting/contradicting evidence
@@ -985,8 +988,9 @@ Plans:
 - Store results in dedicated synthesis tables (schema from Phase 7 migrations):
   - case_hypotheses, case_contradictions, case_gaps, case_synthesis, timeline_events
 - Pipeline wiring:
-  - Triggered after domain agents + KG Builder complete
-  - Reads case_findings via SQL (not through LLM session state — fresh stage-isolated session)
+  - New Stage 8 in the pipeline, triggered after LLM KG Builder (Stage 7) + Entity Backfill (Stage 7b) complete
+  - Reads `case_findings` + `kg_entities` + `kg_relationships` via SQL (not through LLM session state — fresh stage-isolated session)
+  - Both data sources populated by earlier pipeline stages: findings from domain agents (Stage 6), KG from LLM KG Builder (Stage 7)
   - Stores all outputs via dedicated storage services
   - Triggers Geospatial Agent (Phase 8.1) if `has_location_data == True`
 - SSE events:
@@ -1015,12 +1019,13 @@ Plans:
   - Stored in investigation_tasks table
 
 **Known Issues to Resolve (from `.planning/MINOR_ISSUES.md`):**
-- **MI-003**: Fuzzy entity deduplication produces false positives on numeric/temporal values (e.g., `$5,000` vs `$50,000` flagged at 88% similarity). Fix: add type-aware matching in `kg_builder.py:deduplicate_entities()` before fuzzy comparison — parse numeric entity types semantically instead of string-matching. Must be fixed before synthesis consumes fuzzy flags.
+- ~~**MI-003**: Fuzzy entity deduplication~~ — **RESOLVED by Phase 7.1**: The programmatic KG Builder (with fuzzy dedup) was replaced by the LLM-based KG Builder Agent, which uses a clear-and-rebuild strategy with natural LLM deduplication. No fuzzy matching exists anymore.
 - **MI-004**: Pipeline summary log mixes triage entity count + domain entity count as `entities=N`, confusingly alongside `kg_entities=M`. Fix: rename or separate the counters in `pipeline.py` for clarity.
 
 **Technical Notes:**
 - Synthesis Agent runs in fresh stage-isolated ADK session (consistent with existing pattern)
-- Input is TEXT from PostgreSQL (case_findings.finding_text), NOT multimodal file content
+- Input is TEXT from PostgreSQL (case_findings + kg_entities + kg_relationships), NOT multimodal file content
+- Synthesis reads the outputs of ALL agents that ran for this workflow: domain agent findings (financial, legal, evidence) + strategy findings are in case_findings; the curated entity/relationship graph from LLM KG Builder is in kg_entities/kg_relationships
 - 1M context window handles even large cases comfortably (~100-150K tokens for 50-file case)
 - Cost estimate: ~$0.10-0.15 per synthesis run at Gemini Pro rates
 - Synthesis prompt: "Every contradiction must cite exact source excerpts from both sides"
@@ -1028,7 +1033,8 @@ Plans:
 - Timeline events are a natural byproduct of chronological cross-referencing (no separate timeline agent)
 - Synthesis is a BATCH operation, runs once per analysis pipeline
 - All synthesis outputs reference back to case_findings IDs and kg_entity IDs for traceability
-- Pipeline becomes: Triage → Orchestrator → Domain Agents → [KG Builder + findings storage] → Synthesis → [Geospatial if locations]
+- Full pipeline: Triage → Orchestrator → Domain Agents (parallel) → Strategy (sequential) → HITL → Save Findings → LLM KG Builder → Backfill Entity IDs → **Synthesis** → [Geospatial if locations] → Final
+- `investigation_tasks` table does NOT exist yet — must be created in Phase 8 (new model + Alembic migration) if task generation is included, or deferred
 - **Key files to create:**
   - `backend/app/agents/synthesis/` — Synthesis agent module (agent, prompts, schemas)
   - `backend/app/services/synthesis_service.py` — Storage service for synthesis outputs

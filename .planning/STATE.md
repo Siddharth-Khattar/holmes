@@ -21,7 +21,8 @@
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
-| 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
+| 8 | Synthesis Agent & Intelligence Layer | NOT_STARTED | - | - | |
+| 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
@@ -87,6 +88,10 @@
 
 **What's next:**
 - Phase 8: Synthesis Agent & Intelligence Layer
+  - Synthesis Agent reads two DB sources: (1) `case_findings` from domain agents + strategy, (2) curated `kg_entities`/`kg_relationships` from LLM KG Builder
+  - Pipeline Stage 8: after LLM KG Builder + Entity Backfill → Synthesis → [Geospatial if locations]
+  - Populates: case_hypotheses, case_contradictions, case_gaps, case_synthesis, timeline_events
+  - Frontend integration: connect Timeline, Hypothesis, Contradictions, Gaps panels to real API data
 - Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
 
 ---

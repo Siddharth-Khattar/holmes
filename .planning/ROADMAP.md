@@ -791,6 +791,15 @@ Research (Microsoft GraphRAG, KGGen NeurIPS 2025, LINK-KG, Epstein Doc Explorer)
 
 **Status:** ⏳ NOT_STARTED
 
+**Plans:** 5 plans in 3 waves
+
+Plans:
+- [ ] 07.2-01-PLAN.md — Foundation: types rewrite, entity color config, force params, API client, data hook
+- [ ] 07.2-02-PLAN.md — Source viewer: modal shell + PDF/audio/video/image sub-components
+- [ ] 07.2-03-PLAN.md — D3 graph canvas: GraphSvg, simulation hook (5 forces, D3 refs), selection hook
+- [ ] 07.2-04-PLAN.md — Panels: FilterPanel (domain/type/search), EntityTimeline sidebar, filter hook
+- [ ] 07.2-05-PLAN.md — Integration: KnowledgeGraphCanvas orchestrator, page rewrite, fullscreen, polish
+
 **Reference:** `DOCS/reference/epstein-network-ui/` — Epstein Doc Explorer frontend code (layout, physics, interactions). Adapt patterns to Holmes design system and use case.
 
 **Deliverables:**
@@ -1480,3 +1489,4 @@ For 2 developers working simultaneously:
 *Phase 7.1 (LLM KG Builder) complete: 2026-02-08 (2 plans, 6 commits, 8/8 must-haves verified)
 *Phase 7.2 (D3.js Enhancement) defined: 2026-02-08
 *Phase 7.3 (vis-network, optional) renumbered: 2026-02-08
+*Phase 7.2 (D3.js Enhancement) planned: 2026-02-08 (5 plans in 3 waves)

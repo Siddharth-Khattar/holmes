@@ -26,6 +26,7 @@ def normalize_entity_name(name: str) -> str:
     return stripped.translate(str.maketrans("", "", string.punctuation))
 
 
+# DEPRECATED: Replaced by LLM-based KG Builder agent (Phase 7.1). Kept for reference.
 async def extract_entities_from_output(
     output: DomainAgentOutput,
     agent_type: str,
@@ -105,6 +106,7 @@ async def extract_entities_from_output(
     return entities_to_create
 
 
+# DEPRECATED: Replaced by LLM-based KG Builder agent (Phase 7.1). Kept for reference.
 async def build_relationships_from_findings(
     output: DomainAgentOutput,
     agent_type: str,
@@ -195,6 +197,7 @@ async def build_relationships_from_findings(
     return relationships
 
 
+# DEPRECATED: Replaced by LLM-based KG Builder agent (Phase 7.1). Kept for reference.
 async def deduplicate_entities(
     case_id: UUID,
     db: AsyncSession,
@@ -352,6 +355,7 @@ async def compute_entity_degrees(
     )
 
 
+# DEPRECATED: Replaced by LLM-based KG Builder agent (Phase 7.1). Kept for reference.
 async def build_knowledge_graph(
     case_id: str,
     workflow_id: str,

@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-08
-**Current Phase:** 7 of 12 (Knowledge Storage & Domain Agent Enrichment) — COMPLETE
-**Next Phase:** 7.1 (LLM-Based KG Builder Agent) → 7.2 (D3.js KG Frontend Enhancement) → 8 (Synthesis)
+**Current Phase:** 7.1 of 12 (LLM-Based KG Builder Agent) — COMPLETE (2/2 plans)
+**Next Phase:** 7.2 (D3.js KG Frontend Enhancement) → 8 (Synthesis)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -18,7 +18,7 @@
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
 | 7 | Knowledge Storage & Domain Agent Enrichment | COMPLETE | 2026-02-07 | 2026-02-07 | 6 plans (11 commits), 8/8 verified: 9 DB models + migration, KG/findings schemas, KG Builder + findings service, prompt enrichment, 10 API endpoints, pipeline wiring |
-| 7.1 | LLM-Based KG Builder Agent | NOT_STARTED | - | - | Replaces programmatic KG Builder with LLM agent |
+| 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
 | 7.2 | KG Frontend (D3.js Enhancement) | NOT_STARTED | - | - | Epstein-inspired D3.js improvements |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
@@ -53,8 +53,12 @@
   - vis-network deferred to optional Phase 7.3
 - New phase structure: 7.1 (LLM KG Builder) → 7.2 (D3.js Enhancement) → 7.3 (vis-network, optional)
 
+**Phase 7.1 Complete** (2026-02-08): LLM-Based KG Builder Agent -- 2 plans, 4 commits
+  - Plan 01: Alembic migration adding 10 new nullable columns + KgBuilderOutput Pydantic schemas with integer ID cross-referencing
+  - Plan 02: KgBuilderAgentRunner with text-only input, KG_BUILDER_SYSTEM_PROMPT (8+1 entity taxonomy), AgentFactory.create_kg_builder_agent(), DB writer with clear-and-rebuild, pipeline Stage 7 replaced with LLM invocation
+  - Full pipeline: Triage -> Orchestrator -> Domain -> Strategy -> HITL -> Save Findings -> LLM KG Builder -> Backfill Entity IDs -> Final
+
 **What's next:**
-- Phase 7.1: LLM-Based KG Builder Agent — replace programmatic KG Builder with LLM agent for curated entities + semantic relationships
 - Phase 7.2: D3.js KG Frontend Enhancement — Epstein-inspired layout, physics, sidebars, filtering, document excerpts
 - Phase 8: Synthesis Agent & Intelligence Layer — cross-referencing, hypotheses, contradictions, gaps, timeline
 
@@ -366,6 +370,11 @@ All frontend features need these backend endpoints:
 | Findings search route ordering | Before /{finding_id} vs After | Before /{finding_id} | Prevents FastAPI treating "search" as UUID path param |
 | KG API data access | Direct model queries vs Service layer | Direct model queries | Simple CRUD doesn't need service abstraction; findings uses service for complex search |
 | EntityCreateRequest metadata mapping | Direct field vs Renamed | metadata -> properties | Schema field "metadata" maps to DB column "properties" (SQLAlchemy reserved attribute) |
+| KG Builder entity cross-referencing | Name matching vs Integer IDs | Integer IDs (1, 2, 3...) | Eliminates name-matching inconsistencies; LLM assigns sequential IDs, mapped to DB UUIDs during write |
+| KG Builder input format | Multimodal files vs Text-only | Text-only (findings + entities + case description) | Domain agents already processed raw evidence; KG Builder only needs pre-processed text |
+| KG Builder rebuild strategy | Incremental merge vs Clear-and-rebuild | Clear-and-rebuild | Clean slate every run; delete all KG data then insert curated LLM output |
+| KG Builder failure handling | Block pipeline vs Non-blocking | Non-blocking (try/except, continue) | KG Builder failure emits SSE error, pipeline continues; KG page shows empty state |
+| KG Builder media resolution | HIGH vs None | None (text-only input) | No generate_content_config needed; KG Builder receives text, not files |
 
 ---
 
@@ -378,7 +387,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-08
-Stopped at: Architecture revision complete (Phases 7.1-7.3 restructured); ready to begin Phase 7.1 (LLM KG Builder Agent)
+Stopped at: Completed 07.1-02-PLAN.md (KG Builder agent runner, prompt, pipeline wiring)
 Resume file: None
 
 ---

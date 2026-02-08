@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-08
-**Current Phase:** 7.2 of 12 (D3.js KG Frontend Enhancement) — ✅ COMPLETE (5/5 plans + 28 polish commits)
-**Next Phase:** 8 (Synthesis Agent & Intelligence Layer)
+**Last Updated:** 2026-02-09
+**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — In progress (1/7 plans)
+**Next Plan:** 08-02 (Synthesis Agent runner + prompt + factory)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -21,7 +21,7 @@
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
-| 8 | Synthesis Agent & Intelligence Layer | NOT_STARTED | - | - | |
+| 8 | Synthesis Agent & Intelligence Layer | IN_PROGRESS | 2026-02-08 | - | Plan 01 complete (2 commits): InvestigationTask model, Case verdict columns, SynthesisOutput + 9 API response schemas |
 | 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -86,12 +86,16 @@
   - **Source viewer NOT wired:** source_finding_ids → file URL chain requires backend API. Deferred to Phase 10.
   - Full summary: `.planning/phases/07.2-kg-frontend-d3-enhancement/07.2-05-SUMMARY.md`
 
+**Phase 8 Plan 01 Complete** (2026-02-08): Synthesis schema foundation -- 2 tasks, 2 commits
+  - Task 1: InvestigationTask model (12 columns, FKs to case_hypotheses/case_contradictions/case_gaps) + Case verdict_label/verdict_summary columns + Alembic migration f8a3b2c91d40
+  - Task 2: SynthesisOutput Pydantic schema (12 fields for Gemini structured output) + 9 API response schemas with model_validators (evidence merge, JSONB verdict parse)
+
 **What's next:**
-- Phase 8: Synthesis Agent & Intelligence Layer
-  - Synthesis Agent reads two DB sources: (1) `case_findings` from domain agents + strategy, (2) curated `kg_entities`/`kg_relationships` from LLM KG Builder
-  - Pipeline Stage 8: after LLM KG Builder + Entity Backfill → Synthesis → [Geospatial if locations]
-  - Populates: case_hypotheses, case_contradictions, case_gaps, case_synthesis, timeline_events
-  - Frontend integration: connect Timeline, Hypothesis, Contradictions, Gaps panels to real API data
+- Phase 8 Plan 02: Synthesis Agent runner + prompt + AgentFactory integration
+  - SynthesisAgentRunner subclass of DomainAgentRunner[SynthesisOutput]
+  - assemble_synthesis_input() from case_findings + kg_entities + kg_relationships
+  - write_synthesis_output() to all synthesis tables + investigation_tasks
+  - SYNTHESIS_SYSTEM_PROMPT + AgentFactory.create_synthesis_agent()
 - Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
 
 ---
@@ -437,6 +441,9 @@ All frontend features need these backend endpoints:
 | KG filter state model | Active-set vs Disabled-set | Disabled-set pattern | ESLint react-hooks rules prohibit setState in useMemo/useEffect; inverted model avoids sync entirely |
 | KG source viewer wiring | Wire onViewSource vs Graceful degradation | Graceful degradation | source_finding_ids -> file URL chain requires backend API not available in Phase 7.2; show "Source not yet available" |
 | KG timeline relationship input | Full list + filter in component vs Pre-filtered by parent | Pre-filtered by parent | EntityTimeline receives only relationships involving selected entity; keeps component focused on display |
+| Hypothesis evidence storage | Flat list in one column vs Split by role in two columns vs Both columns split by role | Both columns split by role (Option 3) | Preserves original schema intent (supporting_evidence + contradicting_evidence JSONB); API response model_validator merges into flat list with role labels |
+| Case verdict persistence | Fetch from case_synthesis JSONB vs Columns on Case model | Columns on Case model (verdict_label + verdict_summary) | Cases list page needs verdict badge without joining to case_synthesis; direct column access |
+| Synthesis schema typing | Complex nested types vs Simple Gemini-compatible types | Simple types (str/int/float/bool/list) | Gemini structured output constraints require simple types; dates as ISO 8601 strings, entity IDs as integers |
 
 ---
 
@@ -448,10 +455,10 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-08
-Stopped at: Phase 7.2 COMPLETE (all 5 plans + 28 polish commits, 46 total). Source viewer deferred to Phase 10.
+Last session: 2026-02-09
+Stopped at: Phase 8 Plan 01 COMPLETE (2 tasks, 2 commits). Schema foundation for synthesis.
 Resume file: None
-Next action: Begin Phase 8 (Synthesis Agent & Intelligence Layer)
+Next action: Execute Phase 8 Plan 02 (Synthesis Agent runner + prompt + factory)
 
 ---
 

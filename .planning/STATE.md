@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-08
-**Current Phase:** 7 of 12 (Knowledge Storage & Domain Agent Enrichment) — COMPLETE
-**Next Phase:** 7.1 (LLM-Based KG Builder Agent) → 7.2 (D3.js KG Frontend Enhancement) → 8 (Synthesis)
+**Current Phase:** 7.1 of 12 (LLM-Based KG Builder Agent) — IN PROGRESS (1/2 plans)
+**Next Phase:** 7.2 (D3.js KG Frontend Enhancement) → 8 (Synthesis)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -18,7 +18,7 @@
 | 5 | Agent Flow | COMPLETE | 2026-02-04 | 2026-02-05 | SSE pipeline complete; HITL infra built but verification deferred to Phase 6+ |
 | 6 | Domain Agents | COMPLETE | 2026-02-06 | 2026-02-06 | 5 plans (14 commits) + 21 post-plan commits (35 total): refactoring, routing HITL, production hardening, live-testing bugfixes |
 | 7 | Knowledge Storage & Domain Agent Enrichment | COMPLETE | 2026-02-07 | 2026-02-07 | 6 plans (11 commits), 8/8 verified: 9 DB models + migration, KG/findings schemas, KG Builder + findings service, prompt enrichment, 10 API endpoints, pipeline wiring |
-| 7.1 | LLM-Based KG Builder Agent | NOT_STARTED | - | - | Replaces programmatic KG Builder with LLM agent |
+| 7.1 | LLM-Based KG Builder Agent | IN_PROGRESS | 2026-02-08 | - | Plan 01/02 complete: schema evolution + Pydantic schemas |
 | 7.2 | KG Frontend (D3.js Enhancement) | NOT_STARTED | - | - | Epstein-inspired D3.js improvements |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Intelligence Layer & Geospatial | NOT_STARTED | - | - | |
@@ -53,8 +53,14 @@
   - vis-network deferred to optional Phase 7.3
 - New phase structure: 7.1 (LLM KG Builder) → 7.2 (D3.js Enhancement) → 7.3 (vis-network, optional)
 
+**Phase 7.1 Plan 01 complete** (2026-02-08): Schema evolution + Pydantic schemas -- 2 plans, 2 commits
+  - Alembic migration adding 10 new nullable columns (5 entity, 5 relationship)
+  - KgBuilderOutput/KgBuilderEntity/KgBuilderRelationship Pydantic schemas with integer ID cross-referencing
+  - EntityResponse and RelationshipResponse updated with new optional fields
+  - Frontend API types regenerated
+
 **What's next:**
-- Phase 7.1: LLM-Based KG Builder Agent — replace programmatic KG Builder with LLM agent for curated entities + semantic relationships
+- Phase 7.1 Plan 02: KG Builder agent runner, prompt, DB writer, pipeline wiring
 - Phase 7.2: D3.js KG Frontend Enhancement — Epstein-inspired layout, physics, sidebars, filtering, document excerpts
 - Phase 8: Synthesis Agent & Intelligence Layer — cross-referencing, hypotheses, contradictions, gaps, timeline
 
@@ -366,6 +372,7 @@ All frontend features need these backend endpoints:
 | Findings search route ordering | Before /{finding_id} vs After | Before /{finding_id} | Prevents FastAPI treating "search" as UUID path param |
 | KG API data access | Direct model queries vs Service layer | Direct model queries | Simple CRUD doesn't need service abstraction; findings uses service for complex search |
 | EntityCreateRequest metadata mapping | Direct field vs Renamed | metadata -> properties | Schema field "metadata" maps to DB column "properties" (SQLAlchemy reserved attribute) |
+| KG Builder entity cross-referencing | Name matching vs Integer IDs | Integer IDs (1, 2, 3...) | Eliminates name-matching inconsistencies; LLM assigns sequential IDs, mapped to DB UUIDs during write |
 
 ---
 
@@ -378,7 +385,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-08
-Stopped at: Architecture revision complete (Phases 7.1-7.3 restructured); ready to begin Phase 7.1 (LLM KG Builder Agent)
+Stopped at: Completed 07.1-01-PLAN.md (schema evolution + Pydantic schemas)
 Resume file: None
 
 ---

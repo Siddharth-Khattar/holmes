@@ -30,7 +30,7 @@
 | 5 | Agent Flow | Real-time visualization, SSE streaming, HITL dialogs | REQ-VIS-001/001a/002, REQ-INF-004 | ✅ COMPLETE |
 | 6 | Domain Agents | Financial, Legal, Strategy, Evidence agents, Entity taxonomy, Hypothesis evaluation | REQ-AGENT-003/004/005/006/007c/007d/007h, REQ-HYPO-002/003 | ✅ COMPLETE |
 | 7 | Knowledge Storage & Domain Agent Enrichment | DB schema, enriched citations, KG Builder, findings storage, KG API | REQ-AGENT-009, REQ-STORE-001/002, REQ-AGENT-003-006 (enrichment) | ✅ COMPLETE |
-| 7.1 | LLM-Based KG Builder Agent | Replace programmatic KG Builder with LLM agent for curated entities + semantic relationships | REQ-AGENT-009 (revised) | ⏳ NOT_STARTED |
+| 7.1 | LLM-Based KG Builder Agent | Replace programmatic KG Builder with LLM agent for curated entities + semantic relationships | REQ-AGENT-009 (revised) | ⏳ PLANNED |
 | 7.2 | Knowledge Graph Frontend (D3.js Enhancement) | Improve D3.js graph with Epstein-inspired layout, physics, sidebars, filtering, document excerpts | REQ-VIS-003 | ⏳ NOT_STARTED |
 | 7.3 | Knowledge Graph Frontend (vis-network) — OPTIONAL | Premium vis-network graph visualization (preserved for experimentation) | REQ-VIS-003 (alternative) | ⏳ DEFERRED |
 | 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ⏳ NOT_STARTED |
@@ -681,7 +681,13 @@ Plans:
 
 **Depends on:** Phase 7 (case_findings + raw entities stored, KG API endpoints exist)
 
-**Status:** ⏳ NOT_STARTED
+**Status:** ⏳ PLANNED
+
+**Plans:** 2 plans in 2 waves
+
+Plans:
+- [ ] 07.1-01-PLAN.md — DB schema evolution (Alembic migration, ORM columns) + Pydantic schemas (LLM output + API response)
+- [ ] 07.1-02-PLAN.md — KG Builder agent (runner, factory, prompt, input assembly, DB write) + pipeline wiring
 
 **Context / Why This Change:**
 The Phase 7 programmatic KG Builder produces low-quality graphs because:
@@ -1468,6 +1474,6 @@ For 2 developers working simultaneously:
 *Phase 7 complete: 2026-02-07 (6 plans, 11 commits, 8/8 must-haves verified)
 *Phase 7.1 (vis-network) planned: 2026-02-07 (3 plans in 3 waves — SUPERSEDED by architecture revision 2026-02-08)
 *Architecture revision: 2026-02-08 (Programmatic KG Builder → LLM-based KG Builder Agent; D3.js retained+enhanced; vis-network deferred to 7.3)
-*Phase 7.1 (LLM KG Builder) defined: 2026-02-08
+*Phase 7.1 (LLM KG Builder) planned: 2026-02-08 (2 plans in 2 waves)
 *Phase 7.2 (D3.js Enhancement) defined: 2026-02-08
 *Phase 7.3 (vis-network, optional) renumbered: 2026-02-08

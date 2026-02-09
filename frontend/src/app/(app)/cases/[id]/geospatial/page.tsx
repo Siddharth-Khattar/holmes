@@ -107,8 +107,13 @@ export default function GeospatialPage() {
       <div className="flex-1">
         {status?.status === "complete" && locations.length > 0 ? (
           <GeospatialMap
+            caseId={caseId}
             landmarks={locations}
             paths={[]} // Phase 8.1 v1: paths not exposed yet
+            onViewSource={(fileId, locator) => {
+              console.log("View source:", fileId, locator);
+              // Phase 10: Integrate with Source Panel
+            }}
           />
         ) : (
           <div className="flex h-full items-center justify-center">

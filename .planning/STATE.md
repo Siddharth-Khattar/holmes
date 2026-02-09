@@ -1,7 +1,7 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 8.1 of 12 (Geospatial Agent & Map View) — COMPLETE (4/4 plans)
+**Current Phase:** 8.1 of 12 (Geospatial Agent & Map View) — COMPLETE (5/5 plans)
 **Next Phase:** 9 (Chat Interface)
 **Current Milestone:** M1 - Holmes v1.0
 
@@ -22,7 +22,7 @@
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
-| 8.1 | Geospatial Agent & Map View | COMPLETE | 2026-02-09 | 2026-02-09 | 4 plans (4 commits): GeocodingService, GeospatialAgentRunner + pipeline Stage 9, 6 REST API endpoints, frontend API client + hook + trigger UI |
+| 8.1 | Geospatial Agent & Map View | COMPLETE | 2026-02-09 | 2026-02-09 | 5 plans (5 commits): GeocodingService, GeospatialAgentRunner + pipeline Stage 9, 6 REST API endpoints, frontend API client + hook + trigger UI, enhanced detail panel with 4 sections |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
@@ -159,16 +159,25 @@
   - LocationResponse → Landmark transformation in hook layer
   - Mock data completely removed from geospatial page
 
-**Phase 8.1 COMPLETE** (2026-02-09): Geospatial Agent & Map View -- 4 plans, 4 commits (34 min total)
+**Phase 8.1 Plan 05 Complete** (2026-02-09): Geospatial Map Detail Panel Enhancement -- 1 plan, 1 commit (4 min)
+  - Enhanced GeospatialMap with 4-section detail panel: Events, Citations, Temporal Analysis, Related Entities
+  - fetchLocationDetail API integration on marker click with loading states
+  - Citations section displays file name, locator, excerpt with View button (Phase 10 integration point)
+  - Temporal Analysis shows date range from temporal_associations JSONB field
+  - Related Entities displays entity UUIDs (names deferred to Phase 10)
+  - Lazy detail loading pattern: fetch on marker click, not during initial map render
+
+**Phase 8.1 COMPLETE** (2026-02-09): Geospatial Agent & Map View -- 5 plans, 5 commits (38 min total)
   - Backend: GeocodingService (forward/reverse/batch with caching), GeospatialAgentRunner (Flash model, auto-geocoding), 6 REST API endpoints
-  - Frontend: API client + useGeospatialData hook, trigger UI with status tracking, Button/Alert reusable components
-  - Full user flow: Generate button → 3-second polling → location extraction + geocoding → map display
-  - Known limitations: Paths not rendered (v1), no SSE streaming (polling-based), event details not wired to map popups
+  - Frontend: API client + useGeospatialData hook, trigger UI with status tracking, Button/Alert reusable components, enhanced detail panel with 4 sections
+  - Full user flow: Generate button → 3-second polling → location extraction + geocoding → map display → click marker → detailed evidence context
+  - Known limitations: Paths not rendered (v1), no SSE streaming (polling-based), entity names not resolved (UUIDs only)
 
 **What's next:**
 - Phase 9 (Chat Interface) -- backend API needed (tools: query_kg, search_findings, get_hypotheses, run_domain_agent)
 - Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
-- Phase 10 can wire Geospatial citations to source viewer
+- Phase 10 must wire Geospatial citations to Source Viewer (View buttons already in place)
+- Phase 10 can add entity name resolution to Geospatial Related Entities section
 
 ---
 
@@ -566,6 +575,9 @@ All frontend features need these backend endpoints:
 | Geospatial polling interval | 1s vs 3s vs 5s | 3-second polling | Balance between responsiveness and API load during generation |
 | Geospatial refresh confirmation | Direct action vs Confirmation | Confirmation (click twice) | Prevents accidental deletion + regeneration of expensive analysis |
 | UI component creation | Inline styles vs Reusable components | Reusable Button/Alert components | Benefits entire codebase; consistent UI patterns |
+| Geospatial detail loading | Upfront vs Lazy on-demand | Lazy on marker click | LocationResponse list lightweight (coordinates+counts); detail API heavy (full events/citations arrays); faster initial render |
+| Geospatial entity display | Resolve names vs Show IDs | Show UUIDs only | Entity name resolution requires additional API or preloading; deferred to Phase 10 with KG navigation |
+| Citation excerpt quotes | Literal vs HTML entities | &ldquo; / &rdquo; entities | React react/no-unescaped-entities lint rule rejects literal quotes in JSX text |
 
 ---
 
@@ -578,7 +590,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8.1 COMPLETE (4/4 plans, 4 commits, 34 min total). Geospatial agent + frontend integration complete.
+Stopped at: Phase 8.1 COMPLETE (5/5 plans, 5 commits, 38 min total). Geospatial agent + frontend integration + detail panel complete.
 Resume file: None
 Next action: Phase 9 (Chat Interface Backend)
 

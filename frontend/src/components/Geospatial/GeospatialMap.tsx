@@ -17,6 +17,8 @@ import {
   MapPin,
   Navigation,
   Building2,
+  Calendar,
+  Link2,
 } from "lucide-react";
 import { clsx } from "clsx";
 import type {
@@ -24,6 +26,10 @@ import type {
   GeospatialPath,
   MapView,
 } from "@/types/geospatial.types";
+import {
+  fetchLocationDetail,
+  type LocationDetailResponse,
+} from "@/lib/api/geospatial";
 
 interface PlaceInfo {
   name?: string;
@@ -36,8 +42,10 @@ interface PlaceInfo {
 }
 
 interface GeospatialMapProps {
+  caseId: string;
   landmarks: Landmark[];
   paths: GeospatialPath[];
+  onViewSource?: (fileId: string, locator: string) => void;
 }
 
 // Landmark type colors
@@ -49,17 +57,15 @@ const LANDMARK_COLORS: Record<string, string> = {
   other: "#8A8A82",
 };
 
-// Layer colors
-const LAYER_COLORS = {
-  evidence: "#4A90E2",
-  legal: "#7B68EE",
-  strategy: "#50C878",
-};
-
 // Map type IDs for Google Maps
 type GoogleMapTypeId = "roadmap" | "satellite" | "hybrid" | "terrain";
 
-export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
+export function GeospatialMap({
+  caseId,
+  landmarks,
+  paths,
+  onViewSource,
+}: GeospatialMapProps) {
   const [mapView, setMapView] = useState<MapView>("2d");
   const [selectedLandmark, setSelectedLandmark] = useState<Landmark | null>(
     null,
@@ -71,6 +77,9 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
   );
   const [placeInfo, setPlaceInfo] = useState<PlaceInfo | null>(null);
   const [loadingPlaceInfo, setLoadingPlaceInfo] = useState(false);
+  const [selectedLocationDetail, setSelectedLocationDetail] =
+    useState<LocationDetailResponse | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   // Get API key from environment
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -166,12 +175,24 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
 
   // Handle landmark click
   const handleLandmarkClick = useCallback(
-    (landmark: Landmark) => {
+    async (landmark: Landmark) => {
       setSelectedLandmark(landmark);
       setPlaceInfo(null);
+      setSelectedLocationDetail(null);
       fetchPlaceInfo(landmark);
+
+      // Fetch full location detail
+      try {
+        setLoadingDetail(true);
+        const detail = await fetchLocationDetail(caseId, landmark.id);
+        setSelectedLocationDetail(detail);
+      } catch (error) {
+        console.error("Failed to fetch location detail:", error);
+      } finally {
+        setLoadingDetail(false);
+      }
     },
-    [fetchPlaceInfo],
+    [caseId, fetchPlaceInfo],
   );
 
   // Close dialog
@@ -185,18 +206,6 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
     setStreetViewLandmark(landmark);
     setShowStreetView(true);
   }, []);
-
-  // Format timestamp
-  const formatTimestamp = (date: Date) => {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).format(date);
-  };
 
   // If no API key, show error
   if (!apiKey) {
@@ -578,77 +587,184 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
                 </div>
               )}
 
-              {/* Events */}
+              {/* Content */}
               <div className="px-6 py-4">
-                <h3
-                  className="text-sm font-semibold mb-4"
-                  style={{ color: "var(--foreground)" }}
-                >
-                  Events at this Location ({selectedLandmark.events.length})
-                </h3>
-                <div className="space-y-4">
-                  {selectedLandmark.events.map((event) => (
-                    <div
-                      key={event.id}
-                      className="p-4 rounded-lg"
-                      style={{
-                        backgroundColor: "var(--muted)",
-                        border: `2px solid ${LAYER_COLORS[event.layer]}40`,
-                      }}
-                    >
-                      {/* Event header */}
-                      <div className="flex items-start justify-between mb-2">
-                        <h4
-                          className="font-semibold text-sm"
-                          style={{ color: "var(--foreground)" }}
+                {/* Section 1: Events at this Location */}
+                <div className="mb-6">
+                  <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Events at this Location (
+                    {selectedLocationDetail?.events.length || 0})
+                  </h4>
+                  {loadingDetail ? (
+                    <p className="text-xs text-neutral-400">
+                      Loading events...
+                    </p>
+                  ) : selectedLocationDetail &&
+                    selectedLocationDetail.events.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedLocationDetail.events.map((event, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3"
                         >
-                          {event.title}
-                        </h4>
-                        <span
-                          className="px-2 py-0.5 rounded text-xs font-medium uppercase"
-                          style={{
-                            backgroundColor: `${LAYER_COLORS[event.layer]}20`,
-                            color: LAYER_COLORS[event.layer],
-                          }}
-                        >
-                          {event.layer}
-                        </span>
-                      </div>
-
-                      {/* Event description */}
-                      <p
-                        className="text-sm mb-3"
-                        style={{ color: "var(--muted-foreground)" }}
-                      >
-                        {event.description}
-                      </p>
-
-                      {/* Event metadata */}
-                      <div
-                        className="flex items-center gap-4 text-xs"
-                        style={{ color: "var(--muted-foreground)" }}
-                      >
-                        <div className="flex items-center gap-1">
-                          <Clock size={12} />
-                          <span>{formatTimestamp(event.timestamp)}</span>
-                        </div>
-                        {event.confidence !== undefined && (
-                          <div>
-                            Confidence: {(event.confidence * 100).toFixed(0)}%
+                          <p className="text-sm font-medium text-neutral-200">
+                            {event.event_title}
+                          </p>
+                          <p className="mt-1 text-xs text-neutral-400">
+                            {event.event_description}
+                          </p>
+                          <div className="mt-2 flex items-center gap-4 text-xs text-neutral-500">
+                            <span>
+                              {new Date(event.timestamp).toLocaleString()}
+                            </span>
+                            <span className="capitalize">
+                              Layer: {event.layer}
+                            </span>
+                            <span>
+                              Confidence: {(event.confidence * 100).toFixed(0)}%
+                            </span>
                           </div>
-                        )}
-                        {event.sourceDocuments &&
-                          event.sourceDocuments.length > 0 && (
-                            <div className="flex items-center gap-1">
-                              <FileText size={12} />
-                              <span>
-                                {event.sourceDocuments.length} source(s)
-                              </span>
-                            </div>
-                          )}
-                      </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : (
+                    <p className="text-xs text-neutral-500">
+                      No events at this location
+                    </p>
+                  )}
+                </div>
+
+                {/* Section 2: Citations */}
+                <div className="mb-6">
+                  <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Citations ({selectedLocationDetail?.citations.length || 0})
+                  </h4>
+                  {loadingDetail ? (
+                    <p className="text-xs text-neutral-400">
+                      Loading citations...
+                    </p>
+                  ) : selectedLocationDetail &&
+                    selectedLocationDetail.citations.length > 0 ? (
+                    <div className="space-y-3">
+                      {selectedLocationDetail.citations.map((citation, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="text-xs font-medium text-neutral-300">
+                                {citation.file_name || "Source Document"}
+                              </p>
+                              <p className="mt-1 text-xs text-neutral-500">
+                                {citation.locator}
+                              </p>
+                            </div>
+                            {onViewSource && (
+                              <button
+                                onClick={() =>
+                                  onViewSource(
+                                    citation.file_id,
+                                    citation.locator,
+                                  )
+                                }
+                                className="text-xs text-primary-400 hover:text-primary-300"
+                              >
+                                View
+                              </button>
+                            )}
+                          </div>
+                          <div className="mt-2 rounded bg-neutral-950/50 p-2">
+                            <p className="text-xs italic text-neutral-400">
+                              &ldquo;{citation.excerpt}&rdquo;
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-neutral-500">
+                      No citations available
+                    </p>
+                  )}
+                </div>
+
+                {/* Section 3: Temporal Analysis */}
+                <div className="mb-6">
+                  <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
+                    <Clock className="mr-2 h-4 w-4" />
+                    Temporal Analysis
+                  </h4>
+                  {loadingDetail ? (
+                    <p className="text-xs text-neutral-400">
+                      Loading temporal data...
+                    </p>
+                  ) : selectedLocationDetail?.temporal_associations ? (
+                    <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3">
+                      <p className="text-xs text-neutral-400">
+                        Location was relevant during:
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-neutral-200">
+                        {selectedLocationDetail.temporal_associations.start
+                          ? new Date(
+                              selectedLocationDetail.temporal_associations
+                                .start,
+                            ).toLocaleDateString()
+                          : "Unknown start"}
+                        {" → "}
+                        {selectedLocationDetail.temporal_associations.end
+                          ? new Date(
+                              selectedLocationDetail.temporal_associations.end,
+                            ).toLocaleDateString()
+                          : "Unknown end"}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-neutral-500">
+                      No temporal data available
+                    </p>
+                  )}
+                </div>
+
+                {/* Section 4: Related Entities */}
+                <div>
+                  <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
+                    <Link2 className="mr-2 h-4 w-4" />
+                    Related Entities (
+                    {selectedLocationDetail?.source_entity_ids.length || 0})
+                  </h4>
+                  {loadingDetail ? (
+                    <p className="text-xs text-neutral-400">
+                      Loading entities...
+                    </p>
+                  ) : selectedLocationDetail &&
+                    selectedLocationDetail.source_entity_ids.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedLocationDetail.source_entity_ids.map(
+                        (entityId) => (
+                          <div
+                            key={entityId}
+                            className="flex items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900/50 p-2"
+                          >
+                            <div className="h-2 w-2 rounded-full bg-primary-500" />
+                            <p className="text-xs text-neutral-300">
+                              {entityId}
+                            </p>
+                            {/* Phase 10: Add click handler to navigate to KG filtered by entity */}
+                          </div>
+                        ),
+                      )}
+                      <p className="mt-2 text-xs text-neutral-500">
+                        Click entity to view in Knowledge Graph (Phase 10)
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-neutral-500">
+                      No related entities
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

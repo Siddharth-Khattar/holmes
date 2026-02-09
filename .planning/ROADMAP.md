@@ -33,7 +33,7 @@
 | 7.1 | LLM-Based KG Builder Agent | Replace programmatic KG Builder with LLM agent for curated entities + semantic relationships | REQ-AGENT-009 (revised) | ✅ COMPLETE |
 | 7.2 | Knowledge Graph Frontend (D3.js Enhancement) | Improve D3.js graph with Epstein-inspired layout, physics, sidebars, filtering, document excerpts | REQ-VIS-003 | ✅ COMPLETE |
 | 7.3 | Knowledge Graph Frontend (vis-network) — OPTIONAL | Premium vis-network graph visualization (preserved for experimentation) | REQ-VIS-003 (alternative) | ⏳ DEFERRED |
-| 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ⏳ PLANNED |
+| 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ✅ COMPLETE |
 | 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ⏳ NOT_STARTED |
 | 9 | Chat Interface & Research | Multi-source tool-based Q&A, research/discovery, context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
 | 10 | Source Panel & Agent Flow Polish | Source viewers, citation navigation, task panel, narrative generation | REQ-SOURCE-*, REQ-VIS-*, REQ-TASK-003-007 | 🟡 FRONTEND_DONE |
@@ -956,7 +956,7 @@ Plans:
 
 **Status:** ✅ COMPLETE (2026-02-09)
 
-**Plans:** 7 plans in 3 waves — all complete
+**Plans:** 7 plans in 3 waves — all complete, plus 3 post-completion bugfix commits
 
 Plans:
 - [x] 08-01-PLAN.md — DB schema (InvestigationTask model, Case verdict columns, Alembic migration, Pydantic schemas)
@@ -966,6 +966,11 @@ Plans:
 - [x] 08-05-PLAN.md — Frontend Verdict card components + VerdictView layout
 - [x] 08-06-PLAN.md — Frontend DetailSidebar panels + Command Center tab toggle + SSE wiring
 - [x] 08-07-PLAN.md — Frontend Timeline wiring + Case header verdict badge + backend CaseResponse schema
+
+Post-completion fixes:
+- [x] Gemini schema compat: replaced `dict[str, str]` with `CrossModalLink` typed model (Gemini rejects `additionalProperties`)
+- [x] Pipeline crash: `CaseFile.content_type` → `CaseFile.mime_type`, timeline date string→datetime parsing, Timeline hydration/scroll-position warnings
+- [x] Gap entity display: prompt changed from position indices to UUIDs, `RelatedEntity` model with batch resolution in API, entity name + type badge in sidebar; KG agent event routing fixed (`_extract_agent_type` rsplit for multi-word prefixes)
 
 ### Frontend Available (Yatharth, 2026-02-02)
 - ✅ Timeline view with day/week/month/year zoom, layer filtering, event cards, search (`Timeline/`)

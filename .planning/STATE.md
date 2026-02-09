@@ -21,7 +21,7 @@
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
-| 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits): DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges |
+| 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
 | 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -117,10 +117,13 @@
   - Task 1: Timeline wired to real synthesis API data (mock fallback removed), "financial" layer added to TimelineLayer/LAYER_CONFIG/filters/eventProcessors, JWT auth in timeline API client, backend-to-frontend field transformation (event_date->date), event type category badge on cards
   - Task 2: Backend CaseResponse schema + verdict_label/verdict_summary fields, VerdictLabel type in frontend, verdict badge in case header (Conclusive/Substantial/Inconclusive) with summary subtitle, verdict badge in CaseCard (grid+list), "Pending Analysis" badge for READY cases without verdict
 
-**Phase 8 COMPLETE** (2026-02-09): Synthesis Agent & Intelligence Layer -- 7 plans, 16 commits
+**Phase 8 COMPLETE** (2026-02-09): Synthesis Agent & Intelligence Layer -- 7 plans, 16 commits + 3 bugfix commits
   - Full pipeline: Triage -> Orchestrator -> Domain -> Strategy -> HITL -> Save Findings -> KG Builder -> Entity Backfill -> Synthesis -> ANALYZED -> processing-complete
   - Backend: 9 DB models, Alembic migration, SynthesisAgentRunner, 8 API endpoints (synthesis + timeline), SSE synthesis-data-ready event
   - Frontend: 11 TypeScript interfaces, 5 API functions, 5 React Query hooks, VerdictView (6 sections), 3 detail panels, CC tab toggle, timeline wired to real API, verdict badges in case header + list
+  - Post-fix 1: `CrossModalLink` typed model replaces `dict[str, str]` (Gemini rejects `additionalProperties` in JSON Schema)
+  - Post-fix 2: `CaseFile.mime_type` (was `.content_type`), timeline date string→datetime parsing, Timeline ref hydration + scroll-position warnings
+  - Post-fix 3: Gap entity display uses actual UUIDs (not position indices), `RelatedEntity` model with batch resolution in gaps API, entity name + type badge in GapDetailPanel; `_extract_agent_type` uses rsplit for multi-word prefixes (kg_builder → "kg" bug)
 
 **What's next:**
 - Phase 8.1 (Geospatial Agent & Map View) -- if location data detected by synthesis
@@ -505,6 +508,10 @@ All frontend features need these backend endpoints:
 | Verdict badge priority | Always show status vs Verdict replaces status | Verdict replaces status when present | Verdict is more informative than READY status; "Pending Analysis" fills the gap between READY and verdict |
 | CaseCard badge logic | Inline conditional vs resolveBadge() helper | resolveBadge() helper | Reusable across grid and list modes; single source of truth for badge resolution |
 | Financial layer color | New unique color vs Reuse existing | Teal (#45B5AA) | Consistent with asset entity color in knowledge-graph-config.ts; matches financial domain identity |
+| Gemini schema dict types | `dict[str, str]` vs typed Pydantic model | `CrossModalLink` typed model | Gemini API rejects `additionalProperties` in JSON Schema; explicit fields required |
+| Gap entity referencing | Position indices (0,1,2) vs Entity UUIDs | Entity UUIDs | Position indices are meaningless after storage; UUIDs enable resolution to names/types |
+| Gap entity API resolution | Raw IDs vs Enriched objects | Batch-resolved `RelatedEntity` (id, name, entity_type) | Single DB query resolves all UUIDs; frontend displays human-readable names + type badges |
+| Agent type extraction | `split("_", 1)` vs `rsplit("_", 1)` | `rsplit("_", 1)` | Multi-word prefixes like `kg_builder` need right-split to preserve full prefix before case ID suffix |
 
 ---
 
@@ -517,7 +524,7 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8 COMPLETE (7/7 plans, 16 commits). Timeline wired to real API, verdict badges in case header + list.
+Stopped at: Phase 8 COMPLETE (7/7 plans, 19 commits total). All post-completion bugfixes applied and committed.
 Resume file: None
 Next action: Phase 8.1 (Geospatial Agent) or Phase 9 (Chat Interface backend)
 

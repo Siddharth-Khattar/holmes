@@ -10,7 +10,6 @@ import {
   setCachedTimelineData,
 } from "@/lib/cache/timelineCache";
 import { PERFORMANCE_CONFIG } from "@/constants/timeline.constants";
-import { generateMockTimelineResponse } from "@/lib/mock-timeline-data";
 
 export function useTimelineData(caseId: string, filters: TimelineFilters) {
   const queryClient = useQueryClient();
@@ -28,59 +27,18 @@ export function useTimelineData(caseId: string, filters: TimelineFilters) {
         return cached.data;
       }
 
-      try {
-        // Fetch from API
-        const data = await timelineApi.getTimelineEvents(caseId, filters);
+      // Fetch from API
+      const data = await timelineApi.getTimelineEvents(caseId, filters);
 
-        // Validate response
-        if (!data || !Array.isArray(data.events)) {
-          throw new Error("Invalid timeline data received");
-        }
-
-        // Update cache
-        setCachedTimelineData(caseId, filters, data);
-
-        return data;
-      } catch (error) {
-        // Fallback to mock data if API fails
-        console.warn("Timeline API failed, using mock data:", error);
-        const mockData = generateMockTimelineResponse(caseId);
-
-        // Apply filters to mock data
-        let filteredEvents = mockData.events;
-
-        if (filters.layers && filters.layers.length > 0) {
-          filteredEvents = filteredEvents.filter((e) =>
-            filters.layers.includes(e.layer),
-          );
-        }
-
-        if (filters.searchQuery) {
-          const query = filters.searchQuery.toLowerCase();
-          filteredEvents = filteredEvents.filter(
-            (e) =>
-              e.title.toLowerCase().includes(query) ||
-              e.description?.toLowerCase().includes(query),
-          );
-        }
-
-        if (filters.minConfidence) {
-          filteredEvents = filteredEvents.filter(
-            (e) => e.confidence >= filters.minConfidence!,
-          );
-        }
-
-        const response: TimelineApiResponse = {
-          ...mockData,
-          events: filteredEvents,
-          totalCount: filteredEvents.length,
-        };
-
-        // Cache mock data
-        setCachedTimelineData(caseId, filters, response);
-
-        return response;
+      // Validate response
+      if (!data || !Array.isArray(data.events)) {
+        throw new Error("Invalid timeline data received");
       }
+
+      // Update cache
+      setCachedTimelineData(caseId, filters, data);
+
+      return data;
     },
     staleTime: PERFORMANCE_CONFIG.CACHE_TTL,
     gcTime: PERFORMANCE_CONFIG.CACHE_TTL * 2,

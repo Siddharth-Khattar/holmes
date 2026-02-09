@@ -408,6 +408,11 @@ class Location(Base):
         nullable=True,
         comment="Type of location (e.g. 'address', 'city', 'building')",
     )
+    citations: Mapped[list | None] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="Source citations [{file_id, locator, excerpt}]",
+    )
     source_entity_ids: Mapped[list | None] = mapped_column(
         JSONB,
         nullable=True,

@@ -32,6 +32,7 @@ import type {
   ConfirmationBatchRequiredEvent,
   ConfirmationBatchResolvedEvent,
   ToolCalledEvent,
+  SynthesisDataReadyEvent,
 } from "@/types/command-center";
 
 /** Maximum number of completed tasks retained in processingHistory per agent instance. */
@@ -123,6 +124,8 @@ export interface UseAgentStatesReturn {
   pendingBatchConfirmations: ConfirmationBatchRequiredEvent[];
   removePendingConfirmation: (taskId: string) => void;
   removePendingBatchConfirmation: (batchId: string) => void;
+  /** True when the synthesis agent has completed and all synthesis data is available. */
+  synthesisReady: boolean;
   isConnected: boolean;
   isReconnecting: boolean;
 }
@@ -147,6 +150,7 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
   const [pendingBatchConfirmations, setPendingBatchConfirmations] = useState<
     ConfirmationBatchRequiredEvent[]
   >([]);
+  const [synthesisReady, setSynthesisReady] = useState(false);
 
   // Persist agent states to sessionStorage on every state change.
   // Bridges the gap for agents whose execution records haven't been
@@ -163,6 +167,7 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     setLastProcessingSummary(null);
     setPendingConfirmations([]);
     setPendingBatchConfirmations([]);
+    setSynthesisReady(false);
   }, [caseId]);
 
   // Listen for analysis-reset events from the AnalysisTrigger component
@@ -594,6 +599,21 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
 
         return next;
       });
+
+      // Detect synthesis completion from the snapshot. If the synthesis agent
+      // has a "completed" status, mark synthesisReady so the Verdict tab
+      // activates on reconnect / initial page load.
+      for (const [agentName, agentData] of Object.entries(e.agents)) {
+        if (
+          agentName === "synthesis" &&
+          typeof agentData === "object" &&
+          agentData !== null &&
+          agentData.status === "completed"
+        ) {
+          setSynthesisReady(true);
+          break;
+        }
+      }
     },
     [caseId],
   );
@@ -645,6 +665,15 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     );
   }, []);
 
+  const handleSynthesisDataReady = useCallback(
+    (_event: CommandCenterSSEEvent) => {
+      const _e = _event as SynthesisDataReadyEvent;
+      void _e; // counts available if needed in future
+      setSynthesisReady(true);
+    },
+    [],
+  );
+
   const handleToolCalled = useCallback((event: CommandCenterSSEEvent) => {
     const e = event as ToolCalledEvent;
     const instanceId = e.agentType;
@@ -695,6 +724,7 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     onConfirmationBatchRequired: handleConfirmationBatchRequired,
     onConfirmationBatchResolved: handleConfirmationBatchResolved,
     onToolCalled: handleToolCalled,
+    onSynthesisDataReady: handleSynthesisDataReady,
   });
 
   return {
@@ -704,6 +734,7 @@ export function useAgentStates(caseId: string): UseAgentStatesReturn {
     pendingBatchConfirmations,
     removePendingConfirmation,
     removePendingBatchConfirmation,
+    synthesisReady,
     isConnected,
     isReconnecting,
   };

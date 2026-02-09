@@ -14,6 +14,7 @@ import type {
   ConfirmationBatchRequiredEvent,
   ConfirmationBatchResolvedEvent,
   ToolCalledEvent,
+  SynthesisDataReadyEvent,
   AgentType,
 } from "@/types/command-center";
 
@@ -25,6 +26,7 @@ const VALID_AGENT_TYPES: AgentType[] = [
   "strategy",
   "evidence",
   "knowledge-graph",
+  "synthesis",
 ];
 
 /**
@@ -463,6 +465,24 @@ function validateConfirmationBatchResolvedEvent(
 }
 
 /**
+ * Validates synthesis-data-ready event
+ */
+function validateSynthesisDataReadyEvent(
+  data: unknown,
+): data is SynthesisDataReadyEvent {
+  if (typeof data !== "object" || data === null) return false;
+
+  const event = data as Record<string, unknown>;
+
+  return (
+    event.type === "synthesis-data-ready" &&
+    typeof event.caseId === "string" &&
+    typeof event.counts === "object" &&
+    event.counts !== null
+  );
+}
+
+/**
  * Validates tool-called event
  */
 function validateToolCalledEvent(data: unknown): data is ToolCalledEvent {
@@ -568,6 +588,13 @@ export function validateCommandCenterEvent(
         return data as ToolCalledEvent;
       }
       console.warn("Invalid tool-called event", data);
+      return null;
+
+    case "synthesis-data-ready":
+      if (validateSynthesisDataReadyEvent(data)) {
+        return data as SynthesisDataReadyEvent;
+      }
+      console.warn("Invalid synthesis-data-ready event", data);
       return null;
 
     default:

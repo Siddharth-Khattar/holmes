@@ -186,7 +186,7 @@ export function EvidencePreviewModal({
             onClick={handleBackdropClick}
           >
             <div
-              className="bg-background border border-warm-gray/15 dark:border-stone/15 rounded-xl shadow-2xl overflow-hidden flex flex-col"
+              className="bg-(--card) border border-(--border) rounded-xl shadow-2xl overflow-hidden flex flex-col"
               style={{
                 width: config.width,
                 height: config.height,

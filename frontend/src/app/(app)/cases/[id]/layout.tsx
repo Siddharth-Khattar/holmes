@@ -6,7 +6,7 @@ import { clsx } from "clsx";
 
 import { api, ApiError } from "@/lib/api-client";
 import { onCaseDataChanged } from "@/lib/case-events";
-import type { Case, CaseStatus } from "@/types/case";
+import type { Case, CaseStatus, VerdictLabel } from "@/types/case";
 import { Chatbot } from "@/components/app/chatbot";
 import { AnalysisTrigger } from "@/components/app/analysis-trigger";
 
@@ -32,6 +32,19 @@ const statusConfig: Record<
   ERROR: {
     label: "Error",
     className: "bg-red-500/20 text-red-600 dark:text-red-400",
+  },
+};
+
+/** Verdict badge colors keyed by evidence strength label. */
+const verdictConfig: Record<VerdictLabel, { className: string }> = {
+  Conclusive: {
+    className: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+  },
+  Substantial: {
+    className: "bg-amber-500/20 text-amber-600 dark:text-amber-400",
+  },
+  Inconclusive: {
+    className: "bg-stone-500/20 text-stone-500 dark:text-stone-400",
   },
 };
 
@@ -114,14 +127,25 @@ export default function CaseLayout({
   }
 
   const status = statusConfig[caseData.status];
+  const verdict = caseData.verdict_label
+    ? verdictConfig[caseData.verdict_label]
+    : null;
+
+  // Show verdict badge when synthesis is complete, "Pending Analysis" when
+  // case has been processed (READY) but no verdict yet, otherwise status badge
+  const hasAnalysisRun = caseData.latest_workflow_id !== null;
+  const showVerdictBadge = verdict !== null && verdict !== undefined;
+  const showPendingAnalysis =
+    !showVerdictBadge && hasAnalysisRun && caseData.status === "READY";
 
   return (
     <div
-      className="min-h-screen"
+      className="flex h-full flex-col"
       style={{ backgroundColor: "var(--background)" }}
     >
-      <div className="px-6 pt-4 pb-6 lg:px-8">
-        {/* Case header: title, status, and analysis trigger */}
+      {/* Case header — fixed height, never shrinks */}
+      <div className="shrink-0 px-6 pt-4 lg:px-8">
+        {/* Case header: title, badge, and analysis trigger */}
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2.5">
             <h1
@@ -130,25 +154,54 @@ export default function CaseLayout({
             >
               {caseData.name}
             </h1>
-            <span
-              className={clsx(
-                "px-2.5 py-1 rounded-full text-xs font-medium",
-                status.className,
-              )}
-              style={status.style}
-            >
-              {status.label}
-            </span>
+
+            {showVerdictBadge && verdict ? (
+              <span
+                className={clsx(
+                  "px-2.5 py-1 rounded-full text-xs font-medium",
+                  verdict.className,
+                )}
+              >
+                {caseData.verdict_label}
+              </span>
+            ) : showPendingAnalysis ? (
+              <span
+                className="px-2.5 py-1 rounded-full text-xs font-medium text-(--muted-foreground)"
+                style={{ backgroundColor: "var(--muted)" }}
+              >
+                Pending Analysis
+              </span>
+            ) : (
+              <span
+                className={clsx(
+                  "px-2.5 py-1 rounded-full text-xs font-medium",
+                  status.className,
+                )}
+                style={status.style}
+              >
+                {status.label}
+              </span>
+            )}
           </div>
 
           <AnalysisTrigger
             caseId={caseData.id}
             caseStatus={caseData.status}
             fileCount={caseData.file_count}
-            hasAnalysis={caseData.latest_workflow_id !== null}
+            hasAnalysis={hasAnalysisRun}
             onAnalysisStarted={handleAnalysisStarted}
           />
         </div>
+
+        {/* Verdict summary as subtitle (when synthesis is complete) */}
+        {caseData.verdict_summary && (
+          <p
+            className="max-w-2xl text-sm mb-2 truncate"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            {caseData.verdict_summary}
+          </p>
+        )}
 
         {/* Case description */}
         {caseData.description && (
@@ -159,8 +212,10 @@ export default function CaseLayout({
             {caseData.description}
           </p>
         )}
+      </div>
 
-        {/* Page Content */}
+      {/* Page content — fills remaining height, scrolls internally */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 lg:px-8">
         {children}
       </div>
 

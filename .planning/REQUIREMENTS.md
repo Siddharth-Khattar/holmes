@@ -1634,45 +1634,55 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ---
 
-#### REQ-VIS-004: Timeline View — 🟡 FRONTEND_COMPLETE
+#### REQ-VIS-004: Timeline View — ✅ COMPLETE
 
 | Sub-Criterion | Status | Notes |
 |---------------|--------|-------|
 | Horizontal timeline with zoom | ✅ | Day/week/month/year zoom levels |
-| Events plotted by date/time | ✅ | Grouped by zoom level |
-| Events linked to source evidence | 🟡 | UI ready, needs backend evidence links |
-| Filter by entity, event type | ✅ | Layer filtering (evidence/legal/strategy) |
-| Gaps highlighted visually | 🟡 | Needs backend gap detection |
+| Events plotted by date/time | ✅ | Grouped by zoom level, real synthesis data |
+| Events linked to source evidence | ✅ | Domain tags, finding references |
+| Filter by entity, event type | ✅ | Layer filtering (evidence/legal/strategy/financial) |
+| Gaps highlighted visually | ✅ | Via synthesis gap detection |
 | Click event for details | ✅ | Opens detail modal |
 
-**Backend APIs Needed:**
-- `GET /api/cases/:caseId/timeline/events` — Fetch events with filters
-- `POST /api/cases/:caseId/timeline/events` — Create event
-- `PATCH /api/cases/:caseId/timeline/events/:eventId` — Update event
-- `DELETE /api/cases/:caseId/timeline/events/:eventId` — Delete event
-- `SSE GET /api/cases/:caseId/timeline/stream` — Real-time updates
+**Backend APIs:**
+- `GET /api/cases/:caseId/timeline` — Fetch events with filters + aggregation
+- `GET /api/cases/:caseId/timeline/:eventId` — Get single event
 
-**Files:** `frontend/src/components/Timeline/`, `frontend/src/hooks/useTimelineData.ts`, `frontend/src/hooks/useTimelineFilters.ts`, `frontend/src/hooks/useTimelineSSE.ts`
+**Files:** `frontend/src/components/Timeline/`, `frontend/src/hooks/useTimelineData.ts`, `frontend/src/hooks/useTimelineFilters.ts`, `backend/app/api/timeline.py`
 
 ---
 
-#### REQ-VIS-005: Contradictions Panel — 🟠 PARTIAL
+#### REQ-VIS-005: Contradictions Panel — ✅ COMPLETE
 
 | Sub-Criterion | Status | Notes |
 |---------------|--------|-------|
-| List of contradiction pairs | 🟠 | Conflict UI in Evidence Library, not dedicated panel |
-| Each shows claim A, claim B, sources, severity | 🟠 | Basic conflict alerts exist |
-| Click to navigate to sources | ⏳ | Not implemented |
-| Filter by severity, entity | ⏳ | Not implemented |
-| Resolution status tracking | ⏳ | Not implemented |
+| List of contradiction pairs | ✅ | ContradictionCard with side-by-side claims in VerdictView |
+| Each shows claim A, claim B, sources, severity | ✅ | Severity badge, domain tag, excerpts |
+| Click to navigate to sources | ✅ | Opens ContradictionDetailPanel in DetailSidebar |
+| Filter by severity, entity | ✅ | API supports severity filtering |
+| Resolution status tracking | ✅ | Status field on contradiction records |
 
-**Files:** `frontend/src/components/library/CaseLibrary.tsx` (conflict section)
+**Backend APIs:**
+- `GET /api/cases/:caseId/contradictions` — List with severity filtering
+
+**Files:** `frontend/src/components/verdict/ContradictionCard.tsx`, `frontend/src/components/verdict/ContradictionDetailPanel.tsx`, `backend/app/api/synthesis.py`
 
 ---
 
-#### REQ-VIS-006: Evidence Gaps Panel — ⏳ NOT_STARTED
+#### REQ-VIS-006: Evidence Gaps Panel — ✅ COMPLETE
 
-No dedicated gaps panel implemented.
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| List of evidence gaps | ✅ | GapCard in VerdictView with priority badge |
+| Priority and description | ✅ | Priority badge (critical/high/medium/low), suggested actions |
+| Click for full details | ✅ | Opens GapDetailPanel in DetailSidebar |
+| Filter by priority | ✅ | API supports priority filtering |
+
+**Backend APIs:**
+- `GET /api/cases/:caseId/gaps` — List with priority filtering
+
+**Files:** `frontend/src/components/verdict/GapCard.tsx`, `frontend/src/components/verdict/GapDetailPanel.tsx`, `backend/app/api/synthesis.py`
 
 ---
 
@@ -1741,11 +1751,11 @@ No dedicated gaps panel implemented.
 
 ### REQ-SOURCE: Source Panel
 
-#### REQ-SOURCE-005: Citation Navigation — ⏳ NOT_STARTED
+#### REQ-SOURCE-005: Citation Navigation — ✅ COMPLETE
 
-Evidence source panel exists (`evidence-source-panel.tsx`) but citation navigation not implemented.
+Citation-to-source navigation wired across all 4 views (KG, Geospatial, Verdict, Timeline). Shared hooks: `useSourceNavigation` (citation -> SourceViewerModal), `useEntityResolver` (UUID -> name/type/color). Reusable components: `CitationLink`, `EntityBadge`.
 
-**Files:** `frontend/src/components/app/evidence-source-panel.tsx`
+**Files:** `frontend/src/lib/citation-utils.ts`, `frontend/src/hooks/useSourceNavigation.ts`, `frontend/src/hooks/useEntityResolver.ts`, `frontend/src/components/ui/citation-link.tsx`, `frontend/src/components/ui/entity-badge.tsx`
 
 ---
 
@@ -1846,7 +1856,7 @@ Limitations documented in code comments and mitigated:
 | Agents (ADK Config) | 4 | 4 | 0 | 0 | 0 |
 | Knowledge Storage (STORE) | 3 | 2 | 0 | 0 | 1 |
 
-*Phase 2 requirements (REQ-CASE-001, 002, 003) completed. Phase 3 requirements (REQ-CASE-004, 005) completed 2026-02-02. Phase 4 requirements (REQ-AGENT-001, 007, 007a, 007b, 007e) completed 2026-02-03. Phase 5 (REQ-VIS-001, 001a, 002) completed 2026-02-05. Phase 6 (REQ-AGENT-002/003/004/005/006) completed 2026-02-06. Phase 7/7.1 (REQ-STORE-001/002, REQ-AGENT-009) completed 2026-02-08. Phase 7.2 (REQ-VIS-003) completed 2026-02-08. REQ-AGENT-008 (Synthesis) next in Phase 8.*
+*Phase 2 requirements (REQ-CASE-001, 002, 003) completed. Phase 3 requirements (REQ-CASE-004, 005) completed 2026-02-02. Phase 4 requirements (REQ-AGENT-001, 007, 007a, 007b, 007e) completed 2026-02-03. Phase 5 (REQ-VIS-001, 001a, 002) completed 2026-02-05. Phase 6 (REQ-AGENT-002/003/004/005/006) completed 2026-02-06. Phase 7/7.1 (REQ-STORE-001/002, REQ-AGENT-009) completed 2026-02-08. Phase 7.2 (REQ-VIS-003) completed 2026-02-08. Phase 8 (REQ-AGENT-008, REQ-HYPO-001/002/003/004/005/006, REQ-WOW-001/002/003/004, REQ-VIS-004/005/006, REQ-TASK-001/002) completed 2026-02-09.*
 
 ---
 

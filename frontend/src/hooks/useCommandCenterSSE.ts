@@ -16,7 +16,8 @@ type SSEEventType =
   | "confirmation-resolved"
   | "confirmation-batch-required"
   | "confirmation-batch-resolved"
-  | "tool-called";
+  | "tool-called"
+  | "synthesis-data-ready";
 
 interface UseCommandCenterSSEOptions {
   enabled?: boolean;
@@ -31,6 +32,7 @@ interface UseCommandCenterSSEOptions {
   onConfirmationBatchRequired?: (event: CommandCenterSSEEvent) => void;
   onConfirmationBatchResolved?: (event: CommandCenterSSEEvent) => void;
   onToolCalled?: (event: CommandCenterSSEEvent) => void;
+  onSynthesisDataReady?: (event: CommandCenterSSEEvent) => void;
 }
 
 export function useCommandCenterSSE(
@@ -50,6 +52,7 @@ export function useCommandCenterSSE(
     onConfirmationBatchRequired,
     onConfirmationBatchResolved,
     onToolCalled,
+    onSynthesisDataReady,
   } = options;
 
   const [isConnected, setIsConnected] = useState(false);
@@ -77,6 +80,7 @@ export function useCommandCenterSSE(
         "confirmation-batch-required": onConfirmationBatchRequired,
         "confirmation-batch-resolved": onConfirmationBatchResolved,
         "tool-called": onToolCalled,
+        "synthesis-data-ready": onSynthesisDataReady,
       }) as Record<
         SSEEventType,
         ((event: CommandCenterSSEEvent) => void) | undefined
@@ -93,6 +97,7 @@ export function useCommandCenterSSE(
       onConfirmationBatchRequired,
       onConfirmationBatchResolved,
       onToolCalled,
+      onSynthesisDataReady,
     ],
   );
 

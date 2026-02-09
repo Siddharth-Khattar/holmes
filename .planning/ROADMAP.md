@@ -33,15 +33,15 @@
 | 7.1 | LLM-Based KG Builder Agent | Replace programmatic KG Builder with LLM agent for curated entities + semantic relationships | REQ-AGENT-009 (revised) | ✅ COMPLETE |
 | 7.2 | Knowledge Graph Frontend (D3.js Enhancement) | Improve D3.js graph with Epstein-inspired layout, physics, sidebars, filtering, document excerpts | REQ-VIS-003 | ✅ COMPLETE |
 | 7.3 | Knowledge Graph Frontend (vis-network) — OPTIONAL | Premium vis-network graph visualization (preserved for experimentation) | REQ-VIS-003 (alternative) | ⏳ DEFERRED |
-| 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ⏳ NOT_STARTED |
-| 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ⏳ NOT_STARTED |
+| 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ✅ COMPLETE |
+| 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ✅ COMPLETE |
 | 9 | Chat Interface & Research | Multi-source tool-based Q&A, research/discovery, context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
-| 10 | Source Panel & Agent Flow Polish | Source viewers, citation navigation, task panel, narrative generation | REQ-SOURCE-*, REQ-VIS-*, REQ-TASK-003-007 | 🟡 FRONTEND_DONE |
+| 10 | Source Panel & Entity Resolution | Citation-to-source wiring, entity name resolution across all views | REQ-SOURCE-* | ✅ COMPLETE |
 | 11 | Corrections & Refinement | Error flagging, Verification, Regeneration | REQ-CORR-* | ⏳ NOT_STARTED |
 | 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i | ⏳ NOT_STARTED |
 
 > **Status Legend:** ✅ COMPLETE | 🟡 FRONTEND_DONE (backend pending) | ⏳ NOT_STARTED | ⏳ PLANNED
-> **Note:** Phase 6 complete (2026-02-06, 35 commits). Architecture redesigned 2026-02-07: Phases 7-9 restructured with KG-as-Memory pattern, hybrid storage (PG + Vector), programmatic KG Builder, Synthesis Agent, tool-based Chat Agent. Architecture revised 2026-02-08: Programmatic KG Builder replaced with LLM-based KG Builder Agent (Approach 4); D3.js retained and enhanced (Epstein-inspired); vis-network deferred to optional Phase 7.3.
+> **Note:** Phase 10 complete (2026-02-09). Citation-to-source navigation wired across all 4 views (KG, Geospatial, Verdict, Timeline) with shared hooks and entity resolution. Known issues: PDF viewer has rendering bugs, audio viewer untested. Architecture revised 2026-02-08: Programmatic KG Builder replaced with LLM-based KG Builder Agent (Approach 4); D3.js retained and enhanced (Epstein-inspired); vis-network deferred to optional Phase 7.3.
 
 **Post-MVP:**
 | Phase | Name | Focus | Requirements |
@@ -954,9 +954,23 @@ Plans:
 
 **Depends on:** Phase 7.1 (curated KG with semantic relationships), Phase 7 (case_findings + DB tables)
 
-**Status:** ⏳ NOT_STARTED
+**Status:** ✅ COMPLETE (2026-02-09)
 
-**Plans:** TBD during phase planning
+**Plans:** 7 plans in 3 waves — all complete, plus 3 post-completion bugfix commits
+
+Plans:
+- [x] 08-01-PLAN.md — DB schema (InvestigationTask model, Case verdict columns, Alembic migration, Pydantic schemas)
+- [x] 08-02-PLAN.md — Synthesis Agent (runner, prompt, factory, input assembly, output writer, pipeline Stage 8)
+- [x] 08-03-PLAN.md — Backend API endpoints (synthesis, hypotheses, contradictions, gaps, tasks, timeline)
+- [x] 08-04-PLAN.md — Frontend types, API client, React Query hooks for synthesis data
+- [x] 08-05-PLAN.md — Frontend Verdict card components + VerdictView layout
+- [x] 08-06-PLAN.md — Frontend DetailSidebar panels + Command Center tab toggle + SSE wiring
+- [x] 08-07-PLAN.md — Frontend Timeline wiring + Case header verdict badge + backend CaseResponse schema
+
+Post-completion fixes:
+- [x] Gemini schema compat: replaced `dict[str, str]` with `CrossModalLink` typed model (Gemini rejects `additionalProperties`)
+- [x] Pipeline crash: `CaseFile.content_type` → `CaseFile.mime_type`, timeline date string→datetime parsing, Timeline hydration/scroll-position warnings
+- [x] Gap entity display: prompt changed from position indices to UUIDs, `RelatedEntity` model with batch resolution in API, entity name + type badge in sidebar; KG agent event routing fixed (`_extract_agent_type` rsplit for multi-word prefixes)
 
 ### Frontend Available (Yatharth, 2026-02-02)
 - ✅ Timeline view with day/week/month/year zoom, layer filtering, event cards, search (`Timeline/`)
@@ -1057,75 +1071,93 @@ Plans:
 
 ---
 
-## Phase 8.1: Geospatial Agent & Map View
+## Phase 8.1: Geospatial Agent & Map View (On-Demand)
 
-**Goal:** Location intelligence: extract, enrich, geocode locations and visualize movement patterns on interactive map.
+**Goal:** On-demand geospatial intelligence: user-triggered extraction, geocoding, and visualization of location-based case evidence with citations.
 
 **Requirements:** REQ-GEO-001 through REQ-GEO-011
 
-**Depends on:** Phase 8 (Synthesis triggers Geospatial when `has_location_data == True`)
+**Depends on:** Phase 8 (Synthesis data: hypotheses, contradictions, gaps, timeline)
 
-**Status:** ⏳ NOT_STARTED
+**Status:** ⏳ PLANNED
 
-**Plans:** 5 plans in 3 waves
+**Plans:** 5 plans in 5 waves
 
 Plans:
-- [ ] 07-01-PLAN.md — DB schema: 9 new tables (KG, findings, synthesis) + Alembic migration + tsvector search
-- [ ] 07-02-PLAN.md — Pydantic schemas for KG/findings APIs + domain agent findings_text enrichment
-- [ ] 07-03-PLAN.md — KG Builder service (entity extraction, relationships, deduplication) + findings service (storage, full-text search)
-- [ ] 07-04-PLAN.md — Domain agent prompt enrichment (exhaustive citations, findings_text instructions)
-- [ ] 07-05-PLAN.md — API endpoints (KG + findings), SSE events, pipeline wiring
+- [ ] 08.1-01-PLAN.md — Geocoding service (googlemaps library + caching)
+- [ ] 08.1-02-PLAN.md — Geospatial Agent (runner + prompt + schemas + pipeline integration)
+- [ ] 08.1-03-PLAN.md — Locations API (6 endpoints: generate, status, list, detail, paths, delete)
+- [ ] 08.1-04-PLAN.md — Frontend data hook + trigger UI (useGeospatialData + status banner + generate/refresh buttons)
+- [ ] 08.1-05-PLAN.md — Location detail panel enhancement (citations, temporal analysis, related entities)
 
 **Deliverables:**
 - Geospatial Agent implementation (LLM with tools):
-  - Triggered by Synthesis Agent when `has_location_data == True`
-  - Extracts and enriches location entities from synthesis findings
-  - Disambiguates ambiguous place names
-  - Geocodes locations to coordinates via mapping API
-  - Detects movement patterns and spatial relationships
-  - Flags locations needing satellite imagery analysis
+  - **On-demand execution** (user-triggered from Geospatial tab, NOT auto-triggered)
+  - Accesses synthesis outputs, domain findings, KG entities, timeline events from DB
+  - Extracts location references (addresses, place names, coordinates)
+  - Disambiguates ambiguous place names using context
+  - Geocodes locations to coordinates via Google Maps Geocoding API
+  - Detects movement patterns and temporal-spatial relationships
+  - Categorizes locations by type (crime_scene, witness_location, evidence_location, suspect_location, other)
+  - Associates events with locations (what happened where, when)
+  - **Citation-based**: every location must have source file_id + page/timestamp + excerpt
   - Gemini 3 Pro with `thinking_level="medium"`
   - Inline Pro-to-Flash fallback
-- Geocoding integration:
-  - Mapbox or Google Maps Geocoding API
+- Geocoding Service (`backend/app/services/geocoding_service.py`):
+  - Google Maps Geocoding API integration
   - Address → coordinates resolution
   - Reverse geocoding for coordinate-only locations
+  - Caching to avoid redundant API calls
+- Locations API endpoints (`backend/app/api/locations.py`):
+  - `POST /api/cases/:caseId/geospatial/generate` — Trigger geospatial analysis (on-demand)
+  - `GET /api/cases/:caseId/geospatial/status` — Check if analysis exists + status
+  - `GET /api/cases/:caseId/locations` — All locations with coordinates, types, events
+  - `GET /api/cases/:caseId/locations/:locationId` — Location detail with citations
+  - `DELETE /api/cases/:caseId/geospatial` — Clear geospatial data (for regeneration)
+- Locations table population (schema exists from Phase 7):
+  - name, coordinates {lat, lng}, location_type, source_entity_ids, temporal_associations
+  - Hybrid storage: DB persistence + regeneration capability
 - Movement pattern detection:
-  - Connect locations showing movement over time
-  - Route visualization (dashed for inferred, solid for confirmed)
-  - Anomaly detection for unusual patterns
-- Locations table population (schema from Phase 7):
-  - name, coordinates, location_type, source entities, temporal associations
-- Google Earth Engine integration (if API approved):
-  - Historical imagery retrieval
-  - Change detection between dates
-  - Thumbnail generation
-- Map View tab (frontend):
-  - Interactive map component (Mapbox GL JS or alternative)
-  - Location markers styled by type
-  - Route visualization for movement patterns
-  - Click interactions for location details
-  - Fullscreen capability
-- SSE events: `LOCATION_ENRICHED`, `GEOSPATIAL_COMPLETE`
-- Map API endpoints:
-  - `GET /api/cases/:caseId/locations` — All locations with coordinates
-  - `GET /api/cases/:caseId/locations/:locationId` — Location detail with temporal data
+  - Connect locations showing movement over time (using timeline + temporal_associations)
+  - GeospatialPath generation (from → to, with timestamps)
+  - Route type classification (confirmed vs inferred based on evidence)
+- Frontend enhancements (GeospatialMap component):
+  - **"Generate Geospatial Intelligence" button** (triggers POST /geospatial/generate)
+  - **Status indicator** (not generated / generating / complete)
+  - **Refresh button** (regenerate analysis after new evidence added)
+  - Replace mock data with real API data
+  - Color-coded location markers by type
+  - Movement paths visualization (solid for confirmed, dashed for inferred)
+  - Click interactions → detailed intelligence panel
+  - Intelligence panel shows: location name, type, events at location, citations, temporal associations
+  - Basic filtering (by location type, date range)
+- SSE events: `GEOSPATIAL_GENERATING`, `LOCATION_ENRICHED`, `GEOSPATIAL_COMPLETE`
 
 **Technical Notes:**
-- Geospatial Agent is a POST-SYNTHESIS utility, not part of the main domain analysis pipeline
-- Earth Engine API approval may take days/weeks — geocoding works without it
-- Map component should be lazy-loaded (heavy dependency)
+- Geospatial Agent is an **on-demand** utility, triggered only when user requests it
+- Storage is **hybrid**: results stored in DB (persistent), but can be regenerated
+- Agent reads from: case_findings, case_synthesis, case_hypotheses, timeline_events, kg_entities, kg_relationships
+- Google Maps API already integrated in frontend (GeospatialMap uses it)
+- Map component already exists with Google Maps — replace mock data, add trigger UI
 - **Key files to create:**
-  - `backend/app/agents/geospatial/` — Geospatial agent module
-  - `backend/app/services/geocoding_service.py` — Geocoding API integration
+  - `backend/app/agents/geospatial.py` — Geospatial agent (follows synthesis.py pattern)
+  - `backend/app/agents/prompts/geospatial.py` — Agent system prompt
+  - `backend/app/services/geocoding_service.py` — Geocoding API wrapper
   - `backend/app/api/locations.py` — Location API endpoints
+  - `backend/app/schemas/geospatial.py` — Pydantic schemas for geospatial output
+- **Key files to modify:**
+  - `frontend/src/app/(app)/cases/[id]/geospatial/page.tsx` — Add trigger button, replace mock data
+  - `frontend/src/components/Geospatial/GeospatialMap.tsx` — Enhanced props for events + citations
 
 **Exit Criteria:**
-- Locations extracted and geocoded from case findings
-- Movement patterns detected and visualized on map
-- Map View tab functional with real location data
-- Location markers clickable with detail panel
-- Geospatial Agent triggered automatically when synthesis detects location data
+- User can trigger geospatial analysis from Geospatial tab
+- Locations extracted and geocoded from case data (synthesis + findings + KG + timeline)
+- Locations stored in DB with citations (file_id, page/timestamp, excerpt)
+- Movement patterns detected and stored as paths
+- Map View displays real location data with color-coded markers
+- Location markers clickable → detail panel with events, citations, temporal data
+- Regeneration capability (user can refresh analysis)
+- No auto-triggering (purely on-demand)
 
 ---
 
@@ -1220,78 +1252,61 @@ Plans:
 
 ---
 
-## Phase 10: Agent Flow & Source Panel
+## Phase 10: Source Panel & Entity Resolution
 
-**Goal:** Full-featured source viewers, Agent Flow refinements, and task panel.
+**Goal:** Wire citation-to-source navigation across all views and resolve all entity IDs to human-readable names with type badges.
 
-**Requirements:** REQ-SOURCE-001 (complete), REQ-SOURCE-002 (complete), REQ-SOURCE-003 (complete), REQ-SOURCE-004 (complete), REQ-VIS-001, REQ-VIS-001a, REQ-VIS-002, REQ-VIS-004, REQ-VIS-007, REQ-WOW-004, REQ-TASK-003, REQ-TASK-004, REQ-TASK-005, REQ-TASK-006, REQ-TASK-007
+**Requirements:** REQ-SOURCE-001 (complete), REQ-SOURCE-002 (complete), REQ-SOURCE-003 (complete), REQ-SOURCE-004 (complete)
 
-**Status:** 🟡 FRONTEND_DONE (Timeline) — Source viewers + Task Panel pending
+**Status:** ✅ COMPLETE (2026-02-09)
 
-### Frontend Completed (Yatharth, 2026-02-02)
-- ✅ Timeline view with events (`Timeline/`)
-  - Day/week/month/year zoom levels
-  - Layer filtering (evidence/legal/strategy)
-  - Event cards with click-to-detail
-  - Search with debouncing
-  - SSE hooks ready (`useTimelineSSE.ts`)
-  - React Query with caching (`useTimelineData.ts`)
-  - Skeleton loading states
-  - Framer Motion animations
-- ✅ Evidence source panel exists (`evidence-source-panel.tsx`)
+**Plans:** 3 plans in 3 waves
 
-### Backend Work Remaining
-- ⏳ Timeline API endpoints (CRUD + SSE stream)
-- ⏳ PDF viewer with excerpt highlighting
-- ⏳ Video player with timestamp markers
-- ⏳ Audio player with waveform and transcript sync
-- ⏳ Image viewer with bounding box annotations
-- ⏳ Citation navigation (click → exact location)
-- ⏳ Narrative generation (executive summary, detailed)
-- ⏳ Export as PDF/DOCX
-- ⏳ Agent Flow refinements (most items)
-- ⏳ Investigation Task Panel (all items)
+Plans:
+- [x] 10-01-PLAN.md -- Shared utilities: citation-utils, useSourceNavigation hook, useEntityResolver hook, CitationLink + EntityBadge components
+- [x] 10-02-PLAN.md -- Wire KG entity panel, EntityTimelineEntry, and Geospatial detail panel
+- [x] 10-03-PLAN.md -- Wire Verdict detail panels (hypothesis, contradiction, gap) and Timeline event cards
+
+**Scope (narrowed from original Phase 10 via CONTEXT.md):**
+- **Track 1 -- Source Viewer Wiring:** Connect citations across ALL views to open SourceViewerModal with real source files at exact page/timestamp locations. Components already built in Phase 7.2 (SourceViewerModal, PdfViewer, AudioViewer, VideoViewer, ImageViewer); only the data pipeline needs wiring.
+- **Track 2 -- Entity Name Resolution:** Resolve ALL entity integer IDs and UUIDs to human-readable names + type badges across every view (KG, Geospatial, Verdict, Timeline).
+
+**Deferred (out of scope for this phase):**
+- Agent Flow refinements (thinking overlay, task badges, time-scrubbing, playback, pause/resume, fullscreen)
+- Investigation Task Panel
+- Narrative generation (executive summary, reports)
+- PDF/DOCX export
+- Image bounding box annotations
+- Audio transcript sync highlighting
 
 **Deliverables:**
-- **KG Source Viewer wiring (deferred from Phase 7.2):** Wire `source_finding_ids` → `case_findings` → `agent_executions` → `case_files` → signed download URL chain so that clicking "View source" in KG EntityTimelineEntry opens the SourceViewerModal with the actual document/audio/video/image content. Components already built in Phase 7.2 (SourceViewerModal, PdfViewer, AudioViewer, VideoViewer, ImageViewer); only the data pipeline needs wiring.
-- PDF viewer with excerpt highlighting
-- Video player with timestamp markers
-- Audio player with waveform and transcript sync
-- Image viewer with bounding box annotations
-- Citation navigation (click → exact location)
-- ~~Timeline view with events~~ ✅
-- Narrative generation (executive summary, detailed)
-- Export as PDF/DOCX
-- **Agent Flow refinements:**
-  - ~~ReactFlow agent pipeline visualization~~ ✅ (@xyflow/react + dagre, done in Phase 4.1)
-  - ~~Custom node components per agent type~~ ✅ (DecisionNode, FileGroupNode, Phase 4.1)
-  - ~~Agent color coding~~ ✅ (muted palette, Phase 4.1)
-  - **Task count badges on agent nodes** (pending)
-  - Thinking overlay with streaming thoughts
-  - Interactive time-scrubbing
-  - Pause/resume workflow
-  - Workflow playback with speed control
-  - Frontend confirmation dialogs for sensitive operations
-  - Fullscreen mode
-- **Investigation Task Panel:** (all pending)
+- Shared useSourceNavigation hook: citation {file_id, locator, excerpt} -> SourceViewerContent with signed URL
+- Shared useEntityResolver hook: entity UUID -> {name, entity_type, color} via cached graph data
+- citation-utils.ts: locator parser (page:N, ts:HH:MM:SS, region:x,y,w,h), category-to-viewer mapper
+- Reusable CitationLink and EntityBadge UI components
+- KG entity panel: source finding IDs clickable -> opens SourceViewerModal
+- EntityTimelineEntry: "View source evidence" replaces "Source not yet available"
+- Geospatial detail panel: citations open SourceViewerModal, entity IDs show resolved names + type badges
+- Verdict hypothesis evidence items clickable -> two-hop finding -> citation -> source navigation
+- Verdict contradiction source excerpts clickable
+- Verdict gap entity badges use consistent getEntityColor styling
+- Timeline event card source count expandable with clickable source links
 
 **Technical Notes:**
-- PDF: react-pdf or pdf.js
-- Audio: wavesurfer.js
-- Video: native HTML5 with custom controls
-- ~~Timeline: D3.js or vis-timeline~~ → Custom React implementation ✅
-- Narrative: Gemini generates from Synthesis output
-- **Task count badges update in real-time via SSE**
-- **Frontend files:** `frontend/src/components/Timeline/`, `frontend/src/hooks/useTimelineData.ts`, `frontend/src/hooks/useTimelineFilters.ts`, `frontend/src/hooks/useTimelineSSE.ts`
+- Frontend-only phase: no new backend endpoints needed (all data accessible via existing APIs)
+- Two-hop resolution for findings: finding_id -> GET /findings/:id -> citations[] -> file_id -> signed URL
+- Entity resolution via cached graph data: GET /graph returns all entities, cached per case session
+- File metadata cached via React Query (staleTime: 5 min)
+- Signed URLs cached via existing useFileUrlCache hook (1h cache, 24h expiry)
+- Race condition prevention via request counter ref in useSourceNavigation
+- PDF highlight: first 100 chars of excerpt for search match reliability
 
 **Exit Criteria:**
-- All source types viewable with full features
-- Citations navigate to exact locations
-- ~~Timeline shows chronological events~~ ✅
-- Narrative generation works with citations
-- **Task panel shows pending investigation tasks**
-- **Task count badges visible on agent nodes**
-- **Task completion workflow functional**
+- Citations clickable from ALL views: KG entity panel, KG timeline entry, Verdict (hypothesis/contradiction), Geospatial detail, Timeline cards
+- Clicking any citation opens SourceViewerModal at correct page/timestamp with excerpt highlighting
+- Entity IDs resolved to human-readable names + type badges in Geospatial and across all views
+- No "Source not yet available" placeholders remain in KG views
+- All type checking and build pass
 
 ---
 
@@ -1520,3 +1535,4 @@ For 2 developers working simultaneously:
 *Phase 7.3 (vis-network, optional) renumbered: 2026-02-08
 *Phase 7.2 (D3.js Enhancement) planned: 2026-02-08 (5 plans in 3 waves)
 *Phase 7.2 (D3.js Enhancement) complete: 2026-02-08 (5 plans + 28 post-plan polish, 46 total commits; source viewer deferred to Phase 10)
+*Phase 10 planned: 2026-02-09 (3 plans in 2 waves -- source viewer wiring + entity resolution)

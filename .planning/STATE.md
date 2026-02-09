@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-08
-**Current Phase:** 7.2 of 12 (D3.js KG Frontend Enhancement) — ✅ COMPLETE (5/5 plans + 28 polish commits)
-**Next Phase:** 8 (Synthesis Agent & Intelligence Layer)
+**Last Updated:** 2026-02-09
+**Current Phase:** 10 of 12 (Source Panel & Entity Resolution) — COMPLETE (3/3 plans)
+**Next Phase:** 11 (Corrections & Refinement)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -21,10 +21,10 @@
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
-| 8 | Synthesis Agent & Intelligence Layer | NOT_STARTED | - | - | |
-| 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
+| 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
+| 8.1 | Geospatial Agent & Map View | COMPLETE | 2026-02-09 | 2026-02-09 | 5 plans (5 commits): GeocodingService, GeospatialAgentRunner + pipeline Stage 9, 6 REST API endpoints, frontend API client + hook + trigger UI, enhanced detail panel with 4 sections |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
-| 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
+| 10 | Source Panel & Entity Resolution | COMPLETE | 2026-02-09 | 2026-02-09 | 3 plans (9 commits), 9/9 verified: shared citation utils + hooks, KG + Geospatial source wiring + entity resolution, Verdict + Timeline citation navigation |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
 | 12 | Demo Preparation | NOT_STARTED | - | - | |
 
@@ -35,7 +35,21 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 7 Complete** (2026-02-07): Knowledge Storage & Domain Agent Enrichment — 6 plans, 11 commits, 8/8 verified
+- **Phase 10 COMPLETE** (2026-02-09): Source Panel & Entity Resolution -- 3 plans, 9 commits, 9/9 verified
+  - Plan 01: Shared foundation (citation-utils, useSourceNavigation, useEntityResolver, CitationLink, EntityBadge)
+  - Plan 02: KG entity panel source docs clickable, EntityTimelineEntry "View source evidence", Geospatial entity resolution + citation-to-source
+  - Plan 03: Verdict hypothesis/contradiction evidence clickable, GapDetailPanel EntityBadge, Timeline expandable citation list
+  - All 4 target views have functional citation-to-source navigation: KG, Geospatial, Verdict, Timeline
+
+- **Phase 8.1 Complete** (2026-02-09): Geospatial Agent & Map View — 5 plans, 15 commits, 15/15 verified
+  - Plan 01: GeocodingService with Google Maps API integration (forward/reverse/batch geocoding + in-memory caching)
+  - Plan 02: GeospatialAgentRunner (text-only input from 6 DB sources, Flash model, pipeline Stage 9, auto-geocoding)
+  - Plan 03: 6 REST API endpoints (POST /generate, GET /status, GET /locations, GET /locations/:id, GET /paths, DELETE)
+  - Plan 04: Frontend API client + useGeospatialData hook + trigger UI (Generate/Refresh buttons, status banner, 3-second polling)
+  - Plan 05: Enhanced GeospatialMap with 4-section detail panel (Events, Citations, Temporal Analysis, Related Entities)
+  - Full pipeline: Triage → Orchestrator → Domain → Strategy → HITL → Save Findings → KG Builder → Entity Backfill → Synthesis → Geospatial (on-demand) → Final
+
+**Phase 7 Complete** (2026-02-07): Knowledge Storage & Domain Agent Enrichment — 6 plans, 11 commits, 8/8 verified
   - Plan 01: 9 SQLAlchemy models (KgEntity, KgRelationship, CaseFinding, CaseHypothesis, CaseContradiction, CaseGap, CaseSynthesis, TimelineEvent, Location) + Alembic migration with tsvector GIN indexes
   - Plan 02: 15 Pydantic API schemas (KG + findings) + findings_text added to all 4 domain output models
   - Plan 03: KG Builder service (entity extraction, co-occurrence relationships, exact+fuzzy dedup, degree computation) + Findings service (storage, tsvector search, pagination)
@@ -86,13 +100,98 @@
   - **Source viewer NOT wired:** source_finding_ids → file URL chain requires backend API. Deferred to Phase 10.
   - Full summary: `.planning/phases/07.2-kg-frontend-d3-enhancement/07.2-05-SUMMARY.md`
 
+**Phase 8 Plan 01 Complete** (2026-02-08): Synthesis schema foundation -- 2 tasks, 2 commits
+  - Task 1: InvestigationTask model (12 columns, FKs to case_hypotheses/case_contradictions/case_gaps) + Case verdict_label/verdict_summary columns + Alembic migration f8a3b2c91d40
+  - Task 2: SynthesisOutput Pydantic schema (12 fields for Gemini structured output) + 9 API response schemas with model_validators (evidence merge, JSONB verdict parse)
+
+**Phase 8 Plan 02 Complete** (2026-02-09): Synthesis Agent runner + pipeline integration -- 2 tasks, 2 commits
+  - Task 1: SynthesisAgentRunner (DomainAgentRunner[SynthesisOutput] subclass, text-only input), assemble_synthesis_input() (5 data sources: case, files, findings, entities, relationships), write_synthesis_output() (6 tables + Case verdict), SYNTHESIS_SYSTEM_PROMPT (12-field output instructions + citation/quality rules), AgentFactory.create_synthesis_agent()
+  - Task 2: Pipeline Stage 8 after entity backfill (agent-started/agent-complete/agent-error SSE events), SYNTHESIS_DATA_READY event type + emit helper, non-blocking failure handling
+  - Full pipeline: Triage -> Orchestrator -> Domain -> Strategy -> HITL -> Save Findings -> KG Builder -> Entity Backfill -> Synthesis -> ANALYZED -> processing-complete
+
+**Phase 8 Plan 03 Complete** (2026-02-09): Synthesis API endpoints -- 2 tasks, 2 commits
+  - Task 1: 6 synthesis endpoints (/synthesis, /hypotheses list+detail, /contradictions, /gaps, /tasks) with auth, sa_case() ordering, status/severity/priority/task_type filters
+  - Task 2: 2 timeline endpoints (/timeline list with dateRange+layerCounts aggregation, /timeline/{id}), TimelineApiResponseModel schema, synthesis+timeline routers registered in main.py
+  - All 8 endpoints enforce auth + case ownership following knowledge_graph.py pattern
+
+**Phase 8 Plan 04 Complete** (2026-02-09): Synthesis frontend data layer -- 2 tasks, 2 commits
+  - Task 1: 11 TypeScript interfaces in synthesis.ts matching backend Pydantic Category B schemas (SynthesisEvidenceItem, HypothesisResponse, ContradictionResponse, GapResponse, TaskResponse, SynthesisResponse, VerdictResponse, KeyFindingResponse, TimelineEventResponse, TimelineApiResponse)
+  - Task 2: 5 fetch functions in api/synthesis.ts using shared api client (fetchSynthesis with 404->null, fetchHypotheses, fetchContradictions, fetchGaps, fetchTasks) + 5 React Query hooks in useSynthesisData.ts with 30s stale time
+  - Used shared api-client.ts instead of duplicating fetchWithAuth (consistent with useAgentExecutionDetail.ts pattern)
+
+**Phase 8 Plan 05 Complete** (2026-02-09): Verdict frontend components -- 2 tasks, 2 commits
+  - Task 1: 6 card components (VerdictSummary, KeyFindingCard, HypothesisCard, ContradictionCard, GapCard, TaskCard) with Holmes dark theme, confidence dots (red/amber/green), severity badges, side-by-side claim comparison
+  - Task 2: VerdictView main layout (6 scrollable sections with count badges, loading skeletons, empty states), 3 verdict sidebar descriptor types (VerdictHypothesisContent, VerdictContradictionContent, VerdictGapContent) added to SidebarContentDescriptor union, placeholder switch cases in detail-sidebar.tsx
+
+**Phase 8 Plan 06 Complete** (2026-02-09): Command Center integration -- 2 tasks, 2 commits
+  - Task 1: 3 verdict detail panels (HypothesisDetailPanel, ContradictionDetailPanel, GapDetailPanel) wired into DetailSidebar via SidebarContentDescriptor union
+  - Task 2: "synthesis" added to AgentType union + validation + config + CSS vars, SynthesisDataReadyEvent SSE handling, synthesisReady state in useAgentStates (SSE event + state-snapshot detection), CC page tab toggle (Agent Flow / Verdict) with URL param persistence + disabled state with pulse indicator, React Query cache invalidation on synthesis-data-ready
+
+**Phase 8 Plan 07 Complete** (2026-02-09): Timeline wiring + verdict badges -- 2 tasks, 2 commits
+  - Task 1: Timeline wired to real synthesis API data (mock fallback removed), "financial" layer added to TimelineLayer/LAYER_CONFIG/filters/eventProcessors, JWT auth in timeline API client, backend-to-frontend field transformation (event_date->date), event type category badge on cards
+  - Task 2: Backend CaseResponse schema + verdict_label/verdict_summary fields, VerdictLabel type in frontend, verdict badge in case header (Conclusive/Substantial/Inconclusive) with summary subtitle, verdict badge in CaseCard (grid+list), "Pending Analysis" badge for READY cases without verdict
+
+**Phase 8 COMPLETE** (2026-02-09): Synthesis Agent & Intelligence Layer -- 7 plans, 16 commits + 3 bugfix commits
+  - Full pipeline: Triage -> Orchestrator -> Domain -> Strategy -> HITL -> Save Findings -> KG Builder -> Entity Backfill -> Synthesis -> ANALYZED -> processing-complete
+  - Backend: 9 DB models, Alembic migration, SynthesisAgentRunner, 8 API endpoints (synthesis + timeline), SSE synthesis-data-ready event
+  - Frontend: 11 TypeScript interfaces, 5 API functions, 5 React Query hooks, VerdictView (6 sections), 3 detail panels, CC tab toggle, timeline wired to real API, verdict badges in case header + list
+  - Post-fix 1: `CrossModalLink` typed model replaces `dict[str, str]` (Gemini rejects `additionalProperties` in JSON Schema)
+  - Post-fix 2: `CaseFile.mime_type` (was `.content_type`), timeline date string→datetime parsing, Timeline ref hydration + scroll-position warnings
+  - Post-fix 3: Gap entity display uses actual UUIDs (not position indices), `RelatedEntity` model with batch resolution in gaps API, entity name + type badge in GapDetailPanel; `_extract_agent_type` uses rsplit for multi-word prefixes (kg_builder → "kg" bug)
+
+**Phase 8.1 Plan 01 Complete** (2026-02-09): Geocoding Service Foundation -- 2 tasks, 2 commits
+  - Task 1: googlemaps>=4.10.0 dependency added and installed
+  - Task 2: GeocodingService class with forward/reverse/batch geocoding, in-memory caching, async interface via asyncio.to_thread
+  - Capabilities: address → {lat, lng}, {lat, lng} → address, batch geocoding with concurrent execution
+  - Error handling: Returns None on failure, logs warnings, caches failed results to avoid redundant API calls
+  - Type checking passes with googlemaps type ignores for incomplete library stubs
+
+**Phase 8.1 Plan 02 Complete** (2026-02-09): Geospatial Agent Implementation -- 2 tasks, 2 commits (6 min)
+  - Task 1: GeospatialOutput schema (Citation, EventAtLocation, LocationOutput, PathOutput) + GEOSPATIAL_SYSTEM_PROMPT (8-section structure)
+  - Task 2: GeospatialAgentRunner subclass (text-only input from 6 DB sources), write_geospatial_output (clear-and-rebuild + auto-geocoding), Pipeline Stage 9 integration
+  - Flash model with medium thinking for cost efficiency
+  - SSE geospatial-complete event emitted after location data committed
+  - Non-blocking pipeline failure (geospatial failure logs warning, doesn't crash pipeline)
+  - Adapts to existing Location schema (coordinates/temporal_associations JSONB)
+
+**Phase 8.1 Plan 03 Complete** (2026-02-09): Locations API Endpoints -- 2 tasks, 2 commits (7 min)
+  - Task 1: 6 REST endpoints in locations.py (POST generate, GET status, GET list, GET detail, GET paths, DELETE)
+  - Task 2: Router registration in main.py
+  - All endpoints enforce auth via CurrentUser + case ownership via _get_user_case helper
+  - Async task spawning with asyncio.create_task for non-blocking generation
+  - SSE events: emit_agent_started + emit_geospatial_complete
+  - Adapted response structure to actual Location schema (coordinates JSONB, temporal_associations JSONB)
+  - Detail endpoint extracts events and temporal periods from temporal_associations JSONB
+  - Type checking passes (pyright 0 errors)
+
+**Phase 8.1 Plan 04 Complete** (2026-02-09): Geospatial Frontend Integration -- 2 tasks, 2 commits (12 min)
+  - Task 1: geospatial.ts API client (5 functions: status, generate, locations, detail, delete), useGeospatialData hook with polling
+  - Task 2: Geospatial page updated with trigger UI (status banner, generate/refresh buttons), Button/Alert components created
+  - Status banner state machine: not_started → generating → complete
+  - 3-second polling interval during generation until status becomes "complete"
+  - Refresh button with confirmation pattern (click twice to execute)
+  - LocationResponse → Landmark transformation in hook layer
+  - Mock data completely removed from geospatial page
+
+**Phase 8.1 Plan 05 Complete** (2026-02-09): Geospatial Map Detail Panel Enhancement -- 1 plan, 1 commit (4 min)
+  - Enhanced GeospatialMap with 4-section detail panel: Events, Citations, Temporal Analysis, Related Entities
+  - fetchLocationDetail API integration on marker click with loading states
+  - Citations section displays file name, locator, excerpt with View button (Phase 10 integration point)
+  - Temporal Analysis shows date range from temporal_associations JSONB field
+  - Related Entities displays entity UUIDs (names deferred to Phase 10)
+  - Lazy detail loading pattern: fetch on marker click, not during initial map render
+
+**Phase 8.1 COMPLETE** (2026-02-09): Geospatial Agent & Map View -- 5 plans, 5 commits (38 min total)
+  - Backend: GeocodingService (forward/reverse/batch with caching), GeospatialAgentRunner (Flash model, auto-geocoding), 6 REST API endpoints
+  - Frontend: API client + useGeospatialData hook, trigger UI with status tracking, Button/Alert reusable components, enhanced detail panel with 4 sections
+  - Full user flow: Generate button → 3-second polling → location extraction + geocoding → map display → click marker → detailed evidence context
+  - Known limitations: Paths not rendered (v1), no SSE streaming (polling-based), entity names not resolved (UUIDs only)
+
 **What's next:**
-- Phase 8: Synthesis Agent & Intelligence Layer
-  - Synthesis Agent reads two DB sources: (1) `case_findings` from domain agents + strategy, (2) curated `kg_entities`/`kg_relationships` from LLM KG Builder
-  - Pipeline Stage 8: after LLM KG Builder + Entity Backfill → Synthesis → [Geospatial if locations]
-  - Populates: case_hypotheses, case_contradictions, case_gaps, case_synthesis, timeline_events
-  - Frontend integration: connect Timeline, Hypothesis, Contradictions, Gaps panels to real API data
-- Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
+- Phase 11 (Corrections & Refinement) -- polish, bug fixes, integration testing
+- Phase 12 (Demo Preparation) -- demo scenarios, sample data, walkthrough
+- Phase 9 (Chat Interface) -- backend API + tool integration still needed
+- Chat message citations deferred to Phase 9+ (backend does not yet produce structured citations)
 
 ---
 
@@ -143,7 +242,7 @@
 
 ---
 
-### REQ-VIS-003: Knowledge Graph — COMPLETE (Source viewer wiring deferred to Phase 10)
+### REQ-VIS-003: Knowledge Graph — COMPLETE (Source viewer wired in Phase 10 Plan 02)
 
 | Component | File Path |
 |-----------|-----------|
@@ -183,7 +282,7 @@
 
 ---
 
-### REQ-VIS-004: Timeline — FRONTEND_DONE
+### REQ-VIS-004: Timeline — COMPLETE (SSE streaming deferred)
 
 | Component | File Path |
 |-----------|-----------|
@@ -201,11 +300,12 @@
 | Mock data | `frontend/src/lib/mock-timeline-data.ts` |
 | Types | `frontend/src/types/timeline.types.ts` |
 
-**Backend APIs Needed:**
-- `GET /api/cases/:caseId/timeline/events`
-- `POST /api/cases/:caseId/timeline/events`
-- `PATCH/DELETE /api/cases/:caseId/timeline/events/:eventId`
-- `SSE GET /api/cases/:caseId/timeline/stream`
+**Backend APIs:**
+- `GET /api/cases/:caseId/timeline` - List events with filters + aggregation (DONE)
+- `GET /api/cases/:caseId/timeline/:id` - Get single event (DONE)
+- `POST /api/cases/:caseId/timeline/events` - Create event (TODO)
+- `PATCH/DELETE /api/cases/:caseId/timeline/events/:eventId` - Update/delete (TODO)
+- `SSE GET /api/cases/:caseId/timeline/stream` - Real-time updates (TODO)
 
 ---
 
@@ -263,7 +363,14 @@ All frontend features need these backend endpoints:
 | Findings | `/api/cases/:caseId/findings` | GET | HIGH | DONE |
 | Findings Search | `/api/cases/:caseId/findings/search` | GET | HIGH | DONE |
 | Finding Detail | `/api/cases/:caseId/findings/:findingId` | GET | HIGH | DONE |
-| Timeline Events | `/api/cases/:caseId/timeline/events` | GET, POST, PATCH, DELETE | MEDIUM | TODO |
+| Synthesis | `/api/cases/:caseId/synthesis` | GET | HIGH | DONE |
+| Hypotheses | `/api/cases/:caseId/hypotheses` | GET | HIGH | DONE |
+| Hypothesis Detail | `/api/cases/:caseId/hypotheses/:id` | GET | HIGH | DONE |
+| Contradictions | `/api/cases/:caseId/contradictions` | GET | HIGH | DONE |
+| Gaps | `/api/cases/:caseId/gaps` | GET | HIGH | DONE |
+| Tasks | `/api/cases/:caseId/tasks` | GET | HIGH | DONE |
+| Timeline Events | `/api/cases/:caseId/timeline` | GET | MEDIUM | DONE |
+| Timeline Event Detail | `/api/cases/:caseId/timeline/:id` | GET | MEDIUM | DONE |
 | Timeline SSE | `/api/cases/:caseId/timeline/stream` | SSE | MEDIUM | TODO |
 | Command Center SSE | `/sse/cases/:caseId/command-center/stream` | SSE | HIGH | DONE |
 | Start Analysis | `/api/cases/:caseId/analyze` | POST | HIGH | DONE |
@@ -437,6 +544,73 @@ All frontend features need these backend endpoints:
 | KG filter state model | Active-set vs Disabled-set | Disabled-set pattern | ESLint react-hooks rules prohibit setState in useMemo/useEffect; inverted model avoids sync entirely |
 | KG source viewer wiring | Wire onViewSource vs Graceful degradation | Graceful degradation | source_finding_ids -> file URL chain requires backend API not available in Phase 7.2; show "Source not yet available" |
 | KG timeline relationship input | Full list + filter in component vs Pre-filtered by parent | Pre-filtered by parent | EntityTimeline receives only relationships involving selected entity; keeps component focused on display |
+| Hypothesis evidence storage | Flat list in one column vs Split by role in two columns vs Both columns split by role | Both columns split by role (Option 3) | Preserves original schema intent (supporting_evidence + contradicting_evidence JSONB); API response model_validator merges into flat list with role labels |
+| Case verdict persistence | Fetch from case_synthesis JSONB vs Columns on Case model | Columns on Case model (verdict_label + verdict_summary) | Cases list page needs verdict badge without joining to case_synthesis; direct column access |
+| Synthesis schema typing | Complex nested types vs Simple Gemini-compatible types | Simple types (str/int/float/bool/list) | Gemini structured output constraints require simple types; dates as ISO 8601 strings, entity IDs as integers |
+| Synthesis agent input format | Multimodal files vs Text-only | Text-only (5 DB sources) | Domain agents already processed raw evidence; synthesis only needs pre-processed text from DB |
+| Synthesis rebuild strategy | Incremental merge vs Clear-and-rebuild | Clear-and-rebuild | Same pattern as KG Builder; delete all synthesis data per case, then insert fresh |
+| Synthesis SSE granularity | Per-item events vs Batch event | Batch event (synthesis-data-ready) | All outputs arrive atomically from single LLM call; per-item events add complexity with no UX benefit |
+| Synthesis failure handling | Block pipeline vs Non-blocking | Non-blocking | Synthesis failure emits SSE error, pipeline continues to ANALYZED status |
+| Hypothesis status derivation | User-driven vs Confidence-based | Confidence-based (>60 SUPPORTED, <40 REFUTED, else PENDING) | Auto-classification from LLM confidence scores; user can override later |
+| Pipeline terminal stage | Strategy vs Synthesis | Synthesis completion | Processing-complete now fires after Stage 8 (synthesis), not after Stage 7b (entity backfill) |
+| Timeline dateRange scope | Full table vs Filtered results | Filtered results | Date boundaries reflect active filters, not entire dataset |
+| Timeline layer counts | SQL GROUP BY vs Python Counter | Python Counter | Simpler code for small result sets; no extra DB query |
+| Query param alias pattern | Direct param name vs Query(alias=) | Query(alias="status") | Avoids Python reserved keyword conflicts in function signatures |
+| Synthesis API client pattern | Duplicate fetchWithAuth vs Shared api client | Shared api client (api-client.ts) | Consistent with useAgentExecutionDetail.ts; avoids duplicating JWT auth logic |
+| Synthesis fetch 404 handling | Throw error vs Return null | Return null for fetchSynthesis | Analysis may not have run yet; null signals empty state without error boundary |
+| React Query filter cache | Single queryKey vs Filter-inclusive queryKey | Filter params in queryKey | Different filter combinations get separate cache entries and proper invalidation |
+| React Compiler useMemo dependency | Sub-property vs Full object | Full object (`[synthesis]`) | React Compiler infers full object as dependency; `[synthesis?.key_findings_summary]` fails preserve-manual-memoization lint rule |
+| TaskCard interactivity | Clickable with onClick vs Read-only | Read-only (no onClick) | Task management (status updates, assignment) deferred; tasks are informational-only for v1 |
+| Verdict sidebar descriptor rendering | Render panel now vs Placeholder | Placeholder (return null) | Actual detail panels for verdict-hypothesis/contradiction/gap built in Plan 06 |
+| Synthesis AgentType registration | String comparison vs Union member | Union member ("synthesis" added to AgentType) | Type-safe handling across validation, config, and color systems; backend sends agentType: "synthesis" |
+| Synthesis readiness detection | SSE-only vs Dual (SSE + API fallback) | Dual: SSE synthesisReady + useSynthesis API data | SSE for live sessions; API fallback for page reload after analysis completes |
+| Synthesis cache invalidation | Polling vs SSE-triggered | SSE-triggered (on synthesis-data-ready) | Immediate cache invalidation when synthesis completes; no polling overhead |
+| CC tab toggle state | React state only vs URL search params | URL search params (?tab=verdict) | Deep-linkable, survives page refresh, shareable |
+| Timeline Zod datetime validation | Strict z.string().datetime() vs Relaxed z.string() | Relaxed z.string() | Backend sends ISO dates without timezone offset; strict validation rejects valid dates |
+| Timeline field transformation | Frontend adapts to backend vs Backend adapts to frontend | Frontend transformBackendEvent() | Centralized mapping (event_date->date, case_id->caseId) in API client; backend schema unchanged |
+| Verdict badge priority | Always show status vs Verdict replaces status | Verdict replaces status when present | Verdict is more informative than READY status; "Pending Analysis" fills the gap between READY and verdict |
+| CaseCard badge logic | Inline conditional vs resolveBadge() helper | resolveBadge() helper | Reusable across grid and list modes; single source of truth for badge resolution |
+| Financial layer color | New unique color vs Reuse existing | Teal (#45B5AA) | Consistent with asset entity color in knowledge-graph-config.ts; matches financial domain identity |
+| Gemini schema dict types | `dict[str, str]` vs typed Pydantic model | `CrossModalLink` typed model | Gemini API rejects `additionalProperties` in JSON Schema; explicit fields required |
+| Gap entity referencing | Position indices (0,1,2) vs Entity UUIDs | Entity UUIDs | Position indices are meaningless after storage; UUIDs enable resolution to names/types |
+| Gap entity API resolution | Raw IDs vs Enriched objects | Batch-resolved `RelatedEntity` (id, name, entity_type) | Single DB query resolves all UUIDs; frontend displays human-readable names + type badges |
+| Agent type extraction | `split("_", 1)` vs `rsplit("_", 1)` | `rsplit("_", 1)` | Multi-word prefixes like `kg_builder` need right-split to preserve full prefix before case ID suffix |
+| Geocoding library | googlemaps vs geopy vs requests | googlemaps (official Google client) | Official client with built-in rate limiting, retry logic, production-tested reliability |
+| Geocoding caching | In-memory vs Redis | In-memory for v1 | Simple implementation, sufficient for single-instance deployment; can upgrade to Redis in Phase 9 |
+| Geocoding error handling | Raise exceptions vs Return None | Return None on failure | Graceful degradation allows partial results; agent can mark unmappable locations |
+| Geocoding async pattern | Sync client vs asyncio.to_thread wrapper | asyncio.to_thread wrapper | googlemaps library is synchronous; asyncio.to_thread provides non-blocking async interface |
+| Geospatial agent model | Flash vs Pro | Flash with medium thinking | Location extraction less complex than synthesis; Flash provides cost efficiency |
+| Geospatial Location schema | Add columns vs Adapt to existing | Adapt to existing JSONB | Location model has coordinates/temporal_associations JSONB; no migration needed |
+| Geospatial entity IDs | UUID mapping vs Integer storage | Integer storage | LLM outputs 1,2,3..., stored as-is; UUID resolution deferred to Phase 8.2 or 9 |
+| Geospatial pipeline failure | Blocking vs Non-blocking | Non-blocking | Geospatial optional; failure logs warning, emits error SSE, pipeline continues |
+| Geospatial confidence scale | Percentages vs 0.0-1.0 | 0.0-1.0 scale | Consistent with synthesis agent; avoids 0-1 vs 0-100 confusion |
+| Locations API async pattern | Blocking vs Async task spawn | Async task spawn (asyncio.create_task) | Non-blocking 202 response; SSE events for progress updates |
+| Locations API Query params | Old FastAPI vs Annotated | Annotated[type, Query(...)] = default | Modern FastAPI pattern; avoids syntax errors with dependency injection |
+| Geospatial polling interval | 1s vs 3s vs 5s | 3-second polling | Balance between responsiveness and API load during generation |
+| Geospatial refresh confirmation | Direct action vs Confirmation | Confirmation (click twice) | Prevents accidental deletion + regeneration of expensive analysis |
+| UI component creation | Inline styles vs Reusable components | Reusable Button/Alert components | Benefits entire codebase; consistent UI patterns |
+| Geospatial detail loading | Upfront vs Lazy on-demand | Lazy on marker click | LocationResponse list lightweight (coordinates+counts); detail API heavy (full events/citations arrays); faster initial render |
+| Geospatial entity display | Resolve names vs Show IDs | Show UUIDs only | Entity name resolution requires additional API or preloading; deferred to Phase 10 with KG navigation |
+| Citation excerpt quotes | Literal vs HTML entities | &ldquo; / &rdquo; entities | React react/no-unescaped-entities lint rule rejects literal quotes in JSX text |
+| File lookup map pattern | useRef vs useMemo | useMemo derived from React Query data | React Compiler's react-hooks/refs rule forbids ref mutation during render; useMemo is the correct pattern for derived data |
+| Entity resolution caching | Dedicated endpoint vs Graph endpoint | Graph endpoint (fetchGraph) | All entities already returned by /graph; 5-min stale time cache; avoids new backend endpoint |
+| Unresolved entity fallback | Throw error vs Graceful degradation | Graceful fallback (Unknown Entity, type=other) | Missing entities should not crash UI; fallback allows partial resolution |
+| PDF highlight excerpt length | Full excerpt vs Truncated | Truncated to 100 chars | Shorter text matches more reliably in @react-pdf-viewer/search plugin |
+| KG Canvas caseId passing | useParams inside vs Prop from page | Prop from page | Keeps canvas component decoupled from routing; page is the routing boundary |
+| KG source navigation callback stability | Direct callback vs Stable ref pattern | Stable ref pattern (openFromFindingRef) | Prevents sidebar content effect re-triggering on every openFromFinding recreation |
+| Geospatial file name lookup type | Map<string, string> vs Record<string, string> | Record<string, string> | Map import from @vis.gl/react-google-maps shadows global Map constructor |
+| Geospatial source navigation | Prop-based (onViewSource) vs Self-contained hook | Self-contained useSourceNavigation hook | Component manages its own SourceViewerModal portal; no prop drilling |
+| SourceViewerModal layering in geospatial | Same z-index as dialog vs Higher | z-[60] above z-50 dialog | Source viewer must appear above the detail dialog without closing it |
+| Verdict source navigation wiring | Direct hook in panels vs Callback threading | Callback threading via sidebar descriptors | Detail panels render inside DetailSidebar without caseId access; callback threaded from page through VerdictView -> descriptor props |
+| Timeline citation source | event.sourceIds vs event.metadata.citations | event.metadata.citations | sourceIds contains entity UUIDs (misnamed); metadata.citations has actual file refs (file_id, locator, excerpt) |
+| Timeline citation UX | Modal with all citations vs Expandable list | Expandable list in card | Progressive disclosure; click count to expand, click individual citation to open SourceViewerModal |
+
+---
+
+## Known Issues
+
+- **PDF Viewer**: Has rendering/display bugs (identified during Phase 10 testing)
+- **Audio Viewer**: Not yet tested with real data; may have issues
 
 ---
 
@@ -448,10 +622,10 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-08
-Stopped at: Phase 7.2 COMPLETE (all 5 plans + 28 polish commits, 46 total). Source viewer deferred to Phase 10.
+Last session: 2026-02-09
+Stopped at: Phase 10 COMPLETE (3/3 plans, 9 commits, 9/9 verified). Source panel & entity resolution across all views.
 Resume file: None
-Next action: Begin Phase 8 (Synthesis Agent & Intelligence Layer)
+Next action: Phase 11 (Corrections & Refinement)
 
 ---
 

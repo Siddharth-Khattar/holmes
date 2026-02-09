@@ -1,7 +1,8 @@
 // ABOUTME: Hook for caching signed file URLs to avoid regenerating them repeatedly
 // ABOUTME: URLs are cached for 1 hour (well before the 24h expiration)
+// ABOUTME: Persists cache to localStorage to survive page reloads
 
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 
 interface CachedUrl {
   url: string;
@@ -14,18 +15,65 @@ interface UrlCache {
 }
 
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
+const STORAGE_KEY = "holmes_file_url_cache";
+
+// Module-level cache to share state between hook instances and avoid frequent localStorage reads
+let memoryCache: UrlCache | null = null;
+
+function getMemoryCache(): UrlCache {
+  if (memoryCache) return memoryCache;
+
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const item = localStorage.getItem(STORAGE_KEY);
+    if (item) {
+      memoryCache = JSON.parse(item);
+      // Prune expired items on load
+      const now = Date.now();
+      let changed = false;
+      Object.keys(memoryCache!).forEach((key) => {
+        const entry = memoryCache![key];
+        if (now - entry.timestamp > CACHE_DURATION) {
+          delete memoryCache![key];
+          changed = true;
+        }
+      });
+      if (changed) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(memoryCache));
+      }
+    } else {
+      memoryCache = {};
+    }
+  } catch (e) {
+    console.warn("Failed to load cache from localStorage", e);
+    memoryCache = {};
+  }
+
+  return memoryCache!;
+}
+
+function saveToStorage(cache: UrlCache) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cache));
+  } catch (e) {
+    console.warn("Failed to save cache to localStorage", e);
+  }
+}
 
 export function useFileUrlCache() {
-  const cacheRef = useRef<UrlCache>({});
-
   const getCacheKey = useCallback((caseId: string, fileId: string) => {
     return `${caseId}:${fileId}`;
   }, []);
 
   const getCachedUrl = useCallback(
     (caseId: string, fileId: string): string | null => {
+      const cache = getMemoryCache();
       const key = getCacheKey(caseId, fileId);
-      const cached = cacheRef.current[key];
+      const cached = cache[key];
 
       if (!cached) return null;
 
@@ -38,7 +86,8 @@ export function useFileUrlCache() {
       }
 
       // Cache expired, remove it
-      delete cacheRef.current[key];
+      delete cache[key];
+      saveToStorage(cache);
       return null;
     },
     [getCacheKey],
@@ -51,24 +100,37 @@ export function useFileUrlCache() {
       url: string,
       expiresIn: number = 86400,
     ) => {
+      const cache = getMemoryCache();
       const key = getCacheKey(caseId, fileId);
-      cacheRef.current[key] = {
+      cache[key] = {
         url,
         timestamp: Date.now(),
         expiresIn,
       };
+      saveToStorage(cache);
     },
     [getCacheKey],
   );
 
   const clearCache = useCallback(() => {
-    cacheRef.current = {};
+    memoryCache = {};
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {
+        console.warn("Failed to clear cache from localStorage", e);
+      }
+    }
   }, []);
 
   const clearCacheForFile = useCallback(
     (caseId: string, fileId: string) => {
+      const cache = getMemoryCache();
       const key = getCacheKey(caseId, fileId);
-      delete cacheRef.current[key];
+      if (cache[key]) {
+        delete cache[key];
+        saveToStorage(cache);
+      }
     },
     [getCacheKey],
   );

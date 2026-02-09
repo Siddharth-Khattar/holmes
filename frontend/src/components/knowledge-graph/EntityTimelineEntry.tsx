@@ -24,6 +24,8 @@ interface EntityTimelineEntryProps {
   connectedEntity: EntityResponse | null;
   /** Whether this is the "source" side of the relationship (selectedEntity is source). */
   isSource: boolean;
+  /** Callback to view source evidence for a set of finding IDs. */
+  onViewSource?: (findingIds: string[]) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -57,6 +59,7 @@ export function EntityTimelineEntry({
   selectedEntity,
   connectedEntity,
   isSource,
+  onViewSource,
 }: EntityTimelineEntryProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -169,15 +172,28 @@ export function EntityTimelineEntry({
               <span>Type: {relationship.relationship_type}</span>
             </div>
 
-            {/* View source (graceful degradation) */}
+            {/* View source */}
             <div className="mt-2 pt-2 border-t border-stone/20">
-              <span
-                className="inline-flex items-center gap-1.5 text-xs text-stone/70 cursor-not-allowed"
-                title="Full source navigation will be available in a future update"
-              >
-                <FileSearch size={12} />
-                Source not yet available
-              </span>
+              {relationship.source_finding_ids &&
+              relationship.source_finding_ids.length > 0 &&
+              onViewSource ? (
+                <button
+                  type="button"
+                  onClick={() => onViewSource(relationship.source_finding_ids!)}
+                  className="inline-flex items-center gap-1.5 text-xs text-stone hover:text-smoke cursor-pointer transition-colors"
+                >
+                  <FileSearch size={12} />
+                  View source evidence
+                </button>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1.5 text-xs text-stone/70 cursor-not-allowed"
+                  title="No source citations available for this relationship"
+                >
+                  <FileSearch size={12} />
+                  Source not yet available
+                </span>
+              )}
             </div>
           </div>
         </div>

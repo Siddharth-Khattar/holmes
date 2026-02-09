@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useRef } from "react";
 import { Viewer, Worker } from "@react-pdf-viewer/core";
 import { pageNavigationPlugin } from "@react-pdf-viewer/page-navigation";
 import { searchPlugin } from "@react-pdf-viewer/search";
@@ -35,24 +35,16 @@ export function PdfViewer({
   initialPage,
   highlightKeyword,
 }: PdfViewerProps) {
-  // Create plugin instances once (stable across renders)
-  const pageNavInstance = useMemo(() => pageNavigationPlugin(), []);
-  const searchInstance = useMemo(
-    () =>
-      searchPlugin({
-        // Pre-set keyword if provided at mount time
-        keyword: highlightKeyword
-          ? { keyword: highlightKeyword, matchCase: false, wholeWords: false }
-          : undefined,
-      }),
-    // Re-create search plugin only when keyword changes to trigger fresh highlight
-    [highlightKeyword],
-  );
+  // Plugin factories are called at the top level of the component body.
+  // They internally register React hooks, so they MUST NOT be wrapped in
+  // useState, useMemo, useEffect, or any other hook. The library manages
+  // instance identity across renders internally.
+  const pageNavInstance = pageNavigationPlugin();
+  const searchInstance = searchPlugin();
 
-  const plugins = useMemo(
-    () => [pageNavInstance, searchInstance],
-    [pageNavInstance, searchInstance],
-  );
+  // Stable plugins array via ref to avoid recreating on every render
+  const pluginsRef = useRef([pageNavInstance, searchInstance]);
+  pluginsRef.current = [pageNavInstance, searchInstance];
 
   // Jump to page when initialPage changes (convert 1-indexed to 0-indexed)
   useEffect(() => {
@@ -63,7 +55,9 @@ export function PdfViewer({
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [initialPage, pageNavInstance]);
+    // pageNavInstance changes identity every render but jumpToPage is stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPage]);
 
   // Highlight keyword when it changes
   useEffect(() => {
@@ -80,14 +74,16 @@ export function PdfViewer({
     } else {
       searchInstance.clearHighlights();
     }
-  }, [highlightKeyword, searchInstance]);
+    // searchInstance changes identity every render but highlight/clear are stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightKeyword]);
 
   return (
     <div className="h-full w-full pdf-viewer-container">
       <Worker workerUrl={PDFJS_WORKER_URL}>
         <Viewer
           fileUrl={fileUrl}
-          plugins={plugins}
+          plugins={pluginsRef.current}
           theme="dark"
           defaultScale={1}
           renderLoader={(percentages: number) => (

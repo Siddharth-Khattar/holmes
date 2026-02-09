@@ -24,6 +24,7 @@ dependencies = [
     "pydub>=0.25.0",
     "rapidfuzz>=3.14.3",
     "reportlab>=4.4.9",
+    "googlemaps>=4.10.0",
 ]
 
 [dependency-groups]

@@ -204,6 +204,7 @@ jobs:
             NEXT_PUBLIC_API_URL=${{ steps.backend-url.outputs.url }}
             NEXT_PUBLIC_VIDEO_URL=https://storage.googleapis.com/${{ vars.GCP_PROJECT_ID }}-media/video.mp4
             NEXT_PUBLIC_APP_URL=${{ steps.frontend-url.outputs.url }}
+            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ vars.GOOGLE_MAPS_API_KEY }}
           cache-from: |
             type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:cache-${{ github.ref_name }}
             type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:cache-main

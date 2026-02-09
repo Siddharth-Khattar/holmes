@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 // Layer system
-export const TimelineLayerSchema = z.enum(["evidence", "legal", "strategy"]);
+export const TimelineLayerSchema = z.enum([
+  "evidence",
+  "legal",
+  "strategy",
+  "financial",
+]);
 export type TimelineLayer = z.infer<typeof TimelineLayerSchema>;
 
 // Zoom levels
@@ -14,15 +19,16 @@ export const TimelineEventSchema = z.object({
   caseId: z.string().uuid(),
   title: z.string().min(1).max(200),
   description: z.string().max(2000).optional(),
-  date: z.string().datetime(), // ISO 8601 format
+  date: z.string(), // ISO 8601 format (may lack timezone offset from backend)
   layer: TimelineLayerSchema,
-  sourceIds: z.array(z.string().uuid()).default([]),
-  entityIds: z.array(z.string().uuid()).default([]),
+  sourceIds: z.array(z.string()).default([]),
+  entityIds: z.array(z.string()).default([]),
   confidence: z.number().min(0).max(1).default(0.8),
   isUserCorrected: z.boolean().default(false),
+  eventType: z.string().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 });
 
 export type TimelineEvent = z.infer<typeof TimelineEventSchema>;
@@ -32,10 +38,10 @@ export const TimelineApiResponseSchema = z.object({
   events: z.array(TimelineEventSchema),
   totalCount: z.number(),
   dateRange: z.object({
-    earliest: z.string().datetime(),
-    latest: z.string().datetime(),
+    earliest: z.string(),
+    latest: z.string(),
   }),
-  layerCounts: z.record(TimelineLayerSchema, z.number()),
+  layerCounts: z.record(z.string(), z.number()),
   pagination: z
     .object({
       limit: z.number(),

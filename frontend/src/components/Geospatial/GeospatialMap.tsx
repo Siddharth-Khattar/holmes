@@ -1,7 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any -- Google Maps global typings use any */
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   APIProvider,
   Map,
@@ -16,26 +17,30 @@ import {
   FileText,
   MapPin,
   Navigation,
-  Building2,
+  Calendar,
+  Link2,
+  ChevronDown,
+  Loader2,
 } from "lucide-react";
 import { clsx } from "clsx";
+import { useQuery } from "@tanstack/react-query";
 import type {
   Landmark,
   GeospatialPath,
   MapView,
 } from "@/types/geospatial.types";
-
-interface PlaceInfo {
-  name?: string;
-  address?: string;
-  phone?: string;
-  rating?: number;
-  types?: string[];
-  website?: string;
-  photos?: unknown[];
-}
+import {
+  fetchLocationDetail,
+  type LocationDetailResponse,
+} from "@/lib/api/geospatial";
+import { useSourceNavigation } from "@/hooks/useSourceNavigation";
+import { useEntityResolver } from "@/hooks/useEntityResolver";
+import { EntityBadge } from "@/components/ui/entity-badge";
+import { SourceViewerModal } from "@/components/source-viewer/SourceViewerModal";
+import { listFiles } from "@/lib/api/files";
 
 interface GeospatialMapProps {
+  caseId: string;
   landmarks: Landmark[];
   paths: GeospatialPath[];
 }
@@ -49,17 +54,14 @@ const LANDMARK_COLORS: Record<string, string> = {
   other: "#8A8A82",
 };
 
-// Layer colors
-const LAYER_COLORS = {
-  evidence: "#4A90E2",
-  legal: "#7B68EE",
-  strategy: "#50C878",
-};
-
 // Map type IDs for Google Maps
 type GoogleMapTypeId = "roadmap" | "satellite" | "hybrid" | "terrain";
 
-export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
+export function GeospatialMap({
+  caseId,
+  landmarks,
+  paths,
+}: GeospatialMapProps) {
   const [mapView, setMapView] = useState<MapView>("2d");
   const [selectedLandmark, setSelectedLandmark] = useState<Landmark | null>(
     null,
@@ -69,8 +71,40 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
   const [streetViewLandmark, setStreetViewLandmark] = useState<Landmark | null>(
     null,
   );
-  const [placeInfo, setPlaceInfo] = useState<PlaceInfo | null>(null);
-  const [loadingPlaceInfo, setLoadingPlaceInfo] = useState(false);
+  const [selectedLocationDetail, setSelectedLocationDetail] =
+    useState<LocationDetailResponse | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [legendExpanded, setLegendExpanded] = useState(true);
+
+  // Source navigation for opening citations in the source viewer
+  const {
+    openSource,
+    sourceContent: geoSourceContent,
+    closeSource: geoCloseSource,
+    isLoading: sourceLoading,
+  } = useSourceNavigation(caseId);
+
+  // Entity resolution for displaying entity names instead of UUIDs
+  const { resolveEntities, isLoading: entitiesLoading } =
+    useEntityResolver(caseId);
+
+  // File list for resolving citation file_id to original_filename
+  const { data: filesData } = useQuery({
+    queryKey: ["case-files", caseId],
+    queryFn: () => listFiles(caseId, 1, 100),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!caseId,
+  });
+
+  const fileNameById = useMemo(() => {
+    const lookup: Record<string, string> = {};
+    if (filesData?.files) {
+      for (const file of filesData.files) {
+        lookup[file.id] = file.original_filename;
+      }
+    }
+    return lookup;
+  }, [filesData]);
 
   // Get API key from environment
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -90,94 +124,29 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
   // Map type based on view
   const mapTypeId: GoogleMapTypeId = mapView === "3d" ? "satellite" : "roadmap";
 
-  // Fetch place information using Places API
-  const fetchPlaceInfo = useCallback(
-    async (landmark: Landmark) => {
-      if (!apiKey) return;
-
-      // Check if Google Maps API is loaded
-      if (
-        typeof window === "undefined" ||
-        !(window as any).google?.maps?.places
-      ) {
-        console.warn("Google Maps Places API not loaded yet");
-        setLoadingPlaceInfo(false);
-        return;
-      }
-
-      setLoadingPlaceInfo(true);
-      try {
-        const googleMaps = (window as any).google.maps;
-
-        // Use Places API to get nearby place information
-        const service = new googleMaps.places.PlacesService(
-          document.createElement("div"),
-        );
-
-        const request = {
-          location: new googleMaps.LatLng(
-            landmark.location.lat,
-            landmark.location.lng,
-          ),
-          radius: 50, // 50 meters radius
-        };
-
-        service.nearbySearch(request, (results: any, status: any) => {
-          if (
-            status === googleMaps.places.PlacesServiceStatus.OK &&
-            results &&
-            results[0]
-          ) {
-            const place = results[0];
-
-            // Get detailed place information
-            service.getDetails(
-              { placeId: place.place_id! },
-              (placeDetails: any, detailsStatus: any) => {
-                if (
-                  detailsStatus === googleMaps.places.PlacesServiceStatus.OK
-                ) {
-                  setPlaceInfo({
-                    name: placeDetails?.name,
-                    address: placeDetails?.formatted_address,
-                    phone: placeDetails?.formatted_phone_number,
-                    rating: placeDetails?.rating,
-                    types: placeDetails?.types,
-                    website: placeDetails?.website,
-                    photos: placeDetails?.photos?.slice(0, 3),
-                  });
-                }
-                setLoadingPlaceInfo(false);
-              },
-            );
-          } else {
-            setPlaceInfo(null);
-            setLoadingPlaceInfo(false);
-          }
-        });
-      } catch (error) {
-        console.error("Error fetching place info:", error);
-        setPlaceInfo(null);
-        setLoadingPlaceInfo(false);
-      }
-    },
-    [apiKey],
-  );
-
   // Handle landmark click
   const handleLandmarkClick = useCallback(
-    (landmark: Landmark) => {
+    async (landmark: Landmark) => {
       setSelectedLandmark(landmark);
-      setPlaceInfo(null);
-      fetchPlaceInfo(landmark);
+      setSelectedLocationDetail(null);
+
+      // Fetch full location detail from backend
+      try {
+        setLoadingDetail(true);
+        const detail = await fetchLocationDetail(caseId, landmark.id);
+        setSelectedLocationDetail(detail);
+      } catch (error) {
+        console.error("Failed to fetch location detail:", error);
+      } finally {
+        setLoadingDetail(false);
+      }
     },
-    [fetchPlaceInfo],
+    [caseId],
   );
 
   // Close dialog
   const handleBackdropClick = useCallback(() => {
     setSelectedLandmark(null);
-    setPlaceInfo(null);
   }, []);
 
   // Open Street View
@@ -185,18 +154,6 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
     setStreetViewLandmark(landmark);
     setShowStreetView(true);
   }, []);
-
-  // Format timestamp
-  const formatTimestamp = (date: Date) => {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).format(date);
-  };
 
   // If no API key, show error
   if (!apiKey) {
@@ -240,7 +197,7 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
         willChange: mapView === "3d" ? "transform" : "auto",
       }}
     >
-      <APIProvider apiKey={apiKey} libraries={["places"]}>
+      <APIProvider apiKey={apiKey}>
         {/* Main Map */}
         {!showStreetView && (
           <Map
@@ -254,6 +211,8 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
             tilt={mapView === "3d" ? 30 : 0}
             heading={mapView === "3d" ? 0 : 0}
             options={{
+              // Hide default map type control (we have a custom toggle)
+              mapTypeControl: false,
               // Performance optimizations
               renderingType: mapView === "3d" ? "RASTER" : "VECTOR",
               isFractionalZoomEnabled: false,
@@ -309,6 +268,9 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
 
             {/* Render paths as polylines */}
             <PathsOverlay paths={paths} landmarks={landmarks} />
+
+            {/* Auto-fit map bounds to show all landmarks */}
+            <FitBoundsToLandmarks landmarks={landmarks} />
           </Map>
         )}
 
@@ -336,8 +298,8 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
             className={clsx(
               "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2",
               mapView === "2d"
-                ? "text-[var(--foreground)]"
-                : "text-[var(--muted-foreground)]",
+                ? "text-(--foreground)"
+                : "text-(--muted-foreground)",
             )}
             style={{
               backgroundColor:
@@ -352,8 +314,8 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
             className={clsx(
               "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2",
               mapView === "3d"
-                ? "text-[var(--foreground)]"
-                : "text-[var(--muted-foreground)]",
+                ? "text-(--foreground)"
+                : "text-(--muted-foreground)",
             )}
             style={{
               backgroundColor:
@@ -367,296 +329,401 @@ export function GeospatialMap({ landmarks, paths }: GeospatialMapProps) {
 
         {/* Legend */}
         <div
-          className="absolute bottom-4 left-4 p-4 rounded-lg shadow-lg max-w-xs z-10"
+          className="absolute bottom-4 left-4 rounded-lg shadow-lg z-10 overflow-hidden"
           style={{
             backgroundColor: "var(--card)",
             border: "1px solid var(--border)",
           }}
         >
-          <h3
-            className="text-sm font-semibold mb-3"
+          <button
+            onClick={() => setLegendExpanded((prev) => !prev)}
+            className="w-full flex items-center justify-between px-4 py-2.5 transition-colors"
             style={{ color: "var(--foreground)" }}
-          >
-            Landmark Types
-          </h3>
-          <div className="space-y-2">
-            {Object.entries(LANDMARK_COLORS).map(([type, color]) => (
-              <div key={type} className="flex items-center gap-2">
-                <div
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: color }}
-                />
-                <span
-                  className="text-xs capitalize"
-                  style={{ color: "var(--muted-foreground)" }}
-                >
-                  {type.replace("_", " ")}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Landmark Detail Dialog */}
-        {selectedLandmark && (
-          <div
-            className="absolute inset-0 flex items-center justify-center p-4 z-20"
-            style={{
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(4px)",
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--muted)";
             }}
-            onClick={handleBackdropClick}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+            }}
           >
-            <div
-              className="relative max-w-2xl w-full max-h-[80vh] overflow-y-auto rounded-xl shadow-2xl"
+            <span className="text-sm font-semibold">Landmark Types</span>
+            <ChevronDown
+              size={16}
+              className="transition-transform duration-200"
               style={{
-                backgroundColor: "var(--card)",
-                border: "1px solid var(--border)",
+                color: "var(--muted-foreground)",
+                transform: legendExpanded ? "rotate(0deg)" : "rotate(180deg)",
               }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div
-                className="sticky top-0 px-6 py-4 flex items-start justify-between"
-                style={{
-                  backgroundColor: "var(--card)",
-                  borderBottom: "1px solid var(--border)",
-                }}
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center"
-                      style={{
-                        backgroundColor: LANDMARK_COLORS[selectedLandmark.type],
-                      }}
-                    >
-                      <MapPin size={18} color="white" />
-                    </div>
-                    <h2
-                      className="text-xl font-bold"
-                      style={{ color: "var(--foreground)" }}
-                    >
-                      {selectedLandmark.name}
-                    </h2>
-                  </div>
-                  <p
-                    className="text-sm capitalize mb-3"
+            />
+          </button>
+          {legendExpanded && (
+            <div className="px-4 pb-3 space-y-2">
+              {Object.entries(LANDMARK_COLORS).map(([type, color]) => (
+                <div key={type} className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span
+                    className="text-xs capitalize"
                     style={{ color: "var(--muted-foreground)" }}
                   >
-                    {selectedLandmark.type.replace("_", " ")}
-                  </p>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleOpenStreetView(selectedLandmark)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
-                      style={{
-                        backgroundColor: "var(--muted)",
-                        color: "var(--foreground)",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "var(--accent)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "var(--muted)";
-                      }}
-                    >
-                      <Navigation size={14} />
-                      Street View
-                    </button>
-                  </div>
+                    {type.replace("_", " ")}
+                  </span>
                 </div>
-                <button
-                  onClick={() => setSelectedLandmark(null)}
-                  className="p-2 rounded-lg transition-colors"
-                  style={{ color: "var(--muted-foreground)" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "var(--muted)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  }}
-                >
-                  <X size={20} />
-                </button>
-              </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-              {/* Place Information from Places API */}
-              {loadingPlaceInfo && (
+        {/* Landmark Detail Dialog — portaled to body to escape transform containing block */}
+        {selectedLandmark &&
+          createPortal(
+            <div
+              className="fixed inset-0 flex items-center justify-center p-4 z-50"
+              style={{
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                backdropFilter: "blur(4px)",
+              }}
+              onClick={handleBackdropClick}
+            >
+              <div
+                className="relative max-w-2xl w-full max-h-[80vh] overflow-y-auto rounded-xl shadow-2xl"
+                style={{
+                  backgroundColor: "var(--card)",
+                  border: "1px solid var(--border)",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
                 <div
-                  className="px-6 py-4"
-                  style={{ borderBottom: "1px solid var(--border)" }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Building2
-                      size={16}
-                      style={{ color: "var(--muted-foreground)" }}
-                    />
-                    <span
-                      className="text-sm"
-                      style={{ color: "var(--muted-foreground)" }}
-                    >
-                      Loading location information...
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {placeInfo && (
-                <div
-                  className="px-6 py-4"
+                  className="sticky top-0 px-6 py-4 flex items-start justify-between"
                   style={{
-                    backgroundColor: "var(--muted)",
+                    backgroundColor: "var(--card)",
                     borderBottom: "1px solid var(--border)",
                   }}
                 >
-                  <div className="flex items-start gap-3">
-                    <Building2
-                      size={20}
-                      style={{ color: "var(--foreground)" }}
-                    />
-                    <div className="flex-1">
-                      <h3
-                        className="font-semibold text-sm mb-2"
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center"
+                        style={{
+                          backgroundColor:
+                            LANDMARK_COLORS[selectedLandmark.type],
+                        }}
+                      >
+                        <MapPin size={18} color="white" />
+                      </div>
+                      <h2
+                        className="text-xl font-bold"
                         style={{ color: "var(--foreground)" }}
                       >
-                        Location Information
-                      </h3>
-                      {placeInfo.name && (
-                        <p
-                          className="text-sm mb-1"
-                          style={{ color: "var(--foreground)" }}
-                        >
-                          <strong>Name:</strong> {placeInfo.name}
-                        </p>
-                      )}
-                      {placeInfo.address && (
-                        <p
-                          className="text-sm mb-1"
-                          style={{ color: "var(--muted-foreground)" }}
-                        >
-                          <strong>Address:</strong> {placeInfo.address}
-                        </p>
-                      )}
-                      {placeInfo.phone && (
-                        <p
-                          className="text-sm mb-1"
-                          style={{ color: "var(--muted-foreground)" }}
-                        >
-                          <strong>Phone:</strong> {placeInfo.phone}
-                        </p>
-                      )}
-                      {placeInfo.rating && (
-                        <p
-                          className="text-sm mb-1"
-                          style={{ color: "var(--muted-foreground)" }}
-                        >
-                          <strong>Rating:</strong> {placeInfo.rating} ⭐
-                        </p>
-                      )}
-                      {placeInfo.website && (
-                        <p
-                          className="text-sm"
-                          style={{ color: "var(--muted-foreground)" }}
-                        >
-                          <strong>Website:</strong>{" "}
-                          <a
-                            href={placeInfo.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline"
-                            style={{ color: "var(--primary)" }}
-                          >
-                            Visit
-                          </a>
-                        </p>
-                      )}
+                        {selectedLandmark.name}
+                      </h2>
+                    </div>
+                    <p
+                      className="text-sm capitalize mb-3"
+                      style={{ color: "var(--muted-foreground)" }}
+                    >
+                      {selectedLandmark.type.replace("_", " ")}
+                    </p>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleOpenStreetView(selectedLandmark)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                        style={{
+                          backgroundColor: "var(--muted)",
+                          color: "var(--foreground)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor =
+                            "var(--accent)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor =
+                            "var(--muted)";
+                        }}
+                      >
+                        <Navigation size={14} />
+                        Street View
+                      </button>
                     </div>
                   </div>
+                  <button
+                    onClick={() => setSelectedLandmark(null)}
+                    className="p-2 rounded-lg transition-colors"
+                    style={{ color: "var(--muted-foreground)" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "var(--muted)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                    }}
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
-              )}
 
-              {/* Events */}
-              <div className="px-6 py-4">
-                <h3
-                  className="text-sm font-semibold mb-4"
-                  style={{ color: "var(--foreground)" }}
-                >
-                  Events at this Location ({selectedLandmark.events.length})
-                </h3>
-                <div className="space-y-4">
-                  {selectedLandmark.events.map((event) => (
-                    <div
-                      key={event.id}
-                      className="p-4 rounded-lg"
-                      style={{
-                        backgroundColor: "var(--muted)",
-                        border: `2px solid ${LAYER_COLORS[event.layer]}40`,
-                      }}
-                    >
-                      {/* Event header */}
-                      <div className="flex items-start justify-between mb-2">
-                        <h4
-                          className="font-semibold text-sm"
-                          style={{ color: "var(--foreground)" }}
-                        >
-                          {event.title}
-                        </h4>
-                        <span
-                          className="px-2 py-0.5 rounded text-xs font-medium uppercase"
-                          style={{
-                            backgroundColor: `${LAYER_COLORS[event.layer]}20`,
-                            color: LAYER_COLORS[event.layer],
-                          }}
-                        >
-                          {event.layer}
-                        </span>
-                      </div>
-
-                      {/* Event description */}
-                      <p
-                        className="text-sm mb-3"
-                        style={{ color: "var(--muted-foreground)" }}
-                      >
-                        {event.description}
+                {/* Content */}
+                <div className="px-6 py-4">
+                  {/* Section 1: Events at this Location */}
+                  <div className="mb-6">
+                    <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Events at this Location (
+                      {selectedLocationDetail?.events.length || 0})
+                    </h4>
+                    {loadingDetail ? (
+                      <p className="text-xs text-neutral-400">
+                        Loading events...
                       </p>
-
-                      {/* Event metadata */}
-                      <div
-                        className="flex items-center gap-4 text-xs"
-                        style={{ color: "var(--muted-foreground)" }}
-                      >
-                        <div className="flex items-center gap-1">
-                          <Clock size={12} />
-                          <span>{formatTimestamp(event.timestamp)}</span>
-                        </div>
-                        {event.confidence !== undefined && (
-                          <div>
-                            Confidence: {(event.confidence * 100).toFixed(0)}%
-                          </div>
-                        )}
-                        {event.sourceDocuments &&
-                          event.sourceDocuments.length > 0 && (
-                            <div className="flex items-center gap-1">
-                              <FileText size={12} />
+                    ) : selectedLocationDetail &&
+                      selectedLocationDetail.events.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedLocationDetail.events.map((event, idx) => (
+                          <div
+                            key={idx}
+                            className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3"
+                          >
+                            <p className="text-sm font-medium text-neutral-200">
+                              {event.title}
+                            </p>
+                            <p className="mt-1 text-xs text-neutral-400">
+                              {event.description}
+                            </p>
+                            <div className="mt-2 flex items-center gap-4 text-xs text-neutral-500">
                               <span>
-                                {event.sourceDocuments.length} source(s)
+                                {new Date(event.timestamp).toLocaleString()}
+                              </span>
+                              <span className="capitalize">
+                                Layer: {event.layer}
+                              </span>
+                              <span>
+                                Confidence:{" "}
+                                {(event.confidence * 100).toFixed(0)}%
                               </span>
                             </div>
-                          )}
+                          </div>
+                        ))}
                       </div>
-                    </div>
-                  ))}
+                    ) : (
+                      <p className="text-xs text-neutral-500">
+                        No events at this location
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Section 2: Citations */}
+                  <div className="mb-6">
+                    <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Citations ({selectedLocationDetail?.citations.length || 0}
+                      )
+                    </h4>
+                    {loadingDetail ? (
+                      <p className="text-xs text-neutral-400">
+                        Loading citations...
+                      </p>
+                    ) : selectedLocationDetail &&
+                      selectedLocationDetail.citations.length > 0 ? (
+                      <div className="space-y-3">
+                        {selectedLocationDetail.citations.map(
+                          (citation, idx) => (
+                            <div
+                              key={idx}
+                              className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <p className="text-xs font-medium text-neutral-300">
+                                    {fileNameById[citation.file_id] ??
+                                      "Source Document"}
+                                  </p>
+                                  <p className="mt-1 text-xs text-neutral-500">
+                                    {citation.locator}
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() =>
+                                    openSource({
+                                      file_id: citation.file_id,
+                                      locator: citation.locator,
+                                      excerpt: citation.excerpt,
+                                    })
+                                  }
+                                  disabled={sourceLoading}
+                                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                  {sourceLoading ? (
+                                    <span className="inline-flex items-center gap-1">
+                                      <Loader2
+                                        size={10}
+                                        className="animate-spin"
+                                      />
+                                      Opening...
+                                    </span>
+                                  ) : (
+                                    "View"
+                                  )}
+                                </button>
+                              </div>
+                              <div className="mt-2 rounded bg-neutral-950/50 p-2">
+                                <p className="text-xs italic text-neutral-400">
+                                  &ldquo;{citation.excerpt}&rdquo;
+                                </p>
+                              </div>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-neutral-500">
+                        No citations available
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Section 3: Temporal Analysis */}
+                  <div className="mb-6">
+                    <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
+                      <Clock className="mr-2 h-4 w-4" />
+                      Temporal Analysis
+                    </h4>
+                    {loadingDetail ? (
+                      <p className="text-xs text-neutral-400">
+                        Loading temporal data...
+                      </p>
+                    ) : selectedLocationDetail?.temporal_period ? (
+                      <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3">
+                        <p className="text-xs text-neutral-400">
+                          Location was relevant during:
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-neutral-200">
+                          {selectedLocationDetail.temporal_period.start
+                            ? new Date(
+                                selectedLocationDetail.temporal_period.start,
+                              ).toLocaleDateString()
+                            : "Unknown start"}
+                          {" → "}
+                          {selectedLocationDetail.temporal_period.end
+                            ? new Date(
+                                selectedLocationDetail.temporal_period.end,
+                              ).toLocaleDateString()
+                            : "Unknown end"}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-neutral-500">
+                        No temporal data available
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Section 4: Related Entities */}
+                  <div>
+                    <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
+                      <Link2 className="mr-2 h-4 w-4" />
+                      Related Entities (
+                      {selectedLocationDetail?.source_entity_ids.length || 0})
+                    </h4>
+                    {loadingDetail ? (
+                      <p className="text-xs text-neutral-400">
+                        Loading entities...
+                      </p>
+                    ) : selectedLocationDetail &&
+                      selectedLocationDetail.source_entity_ids.length > 0 ? (
+                      <div className="space-y-2">
+                        {entitiesLoading ? (
+                          <p className="text-xs text-neutral-400">
+                            Resolving entities...
+                          </p>
+                        ) : (
+                          resolveEntities(
+                            selectedLocationDetail.source_entity_ids,
+                          ).map((entity) => (
+                            <EntityBadge
+                              key={entity.id}
+                              name={entity.name}
+                              entityType={entity.entity_type}
+                              color={entity.color}
+                            />
+                          ))
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-neutral-500">
+                        No related entities
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body,
+          )}
+
+        {/* Source viewer modal — portaled to body above detail dialog */}
+        {geoSourceContent &&
+          createPortal(
+            <div
+              className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+              style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+              onClick={geoCloseSource}
+            >
+              <div
+                className="w-full max-w-5xl h-[85vh]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <SourceViewerModal
+                  content={geoSourceContent}
+                  onClose={geoCloseSource}
+                  className="w-full h-full"
+                />
+              </div>
+            </div>,
+            document.body,
+          )}
       </APIProvider>
     </div>
   );
+}
+
+// Auto-fits map viewport to contain all landmarks with padding
+const BOUNDS_PADDING = 60;
+
+function FitBoundsToLandmarks({ landmarks }: { landmarks: Landmark[] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (
+      !map ||
+      landmarks.length === 0 ||
+      typeof window === "undefined" ||
+      !(window as any).google?.maps
+    )
+      return;
+
+    const googleMaps = (window as any).google.maps;
+    const bounds = new googleMaps.LatLngBounds();
+
+    for (const landmark of landmarks) {
+      bounds.extend(landmark.location);
+    }
+
+    // For a single landmark, set center + reasonable zoom instead of fitBounds
+    // (fitBounds on a single point zooms to max)
+    if (landmarks.length === 1) {
+      map.setCenter(landmarks[0].location);
+      map.setZoom(15);
+      return;
+    }
+
+    map.fitBounds(bounds, BOUNDS_PADDING);
+  }, [map, landmarks]);
+
+  return null;
 }
 
 // Component to render paths as polylines

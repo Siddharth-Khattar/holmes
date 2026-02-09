@@ -12,6 +12,9 @@ import {
 import { NodeDetailsSidebar } from "@/components/CommandCenter/NodeDetailsSidebar";
 import { EvidenceSourcePanel } from "./evidence-source-panel";
 import { KnowledgeGraphEntityPanel } from "@/components/knowledge-graph/KnowledgeGraphEntityPanel";
+import { HypothesisDetailPanel } from "@/components/verdict/HypothesisDetailPanel";
+import { ContradictionDetailPanel } from "@/components/verdict/ContradictionDetailPanel";
+import { GapDetailPanel } from "@/components/verdict/GapDetailPanel";
 import type { SidebarContentDescriptor } from "@/types/detail-sidebar";
 import { SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX } from "@/types/detail-sidebar";
 
@@ -38,12 +41,32 @@ function renderContent(descriptor: SidebarContentDescriptor): React.ReactNode {
     case "knowledge-graph-entity":
       return (
         <KnowledgeGraphEntityPanel
+          caseId={descriptor.props.caseId}
           entity={descriptor.props.entity}
           relationships={descriptor.props.relationships}
           allEntities={descriptor.props.allEntities}
           onEntitySelect={descriptor.props.onEntitySelect}
+          onViewFinding={descriptor.props.onViewFinding}
         />
       );
+    case "verdict-hypothesis":
+      return (
+        <HypothesisDetailPanel
+          caseId={descriptor.props.caseId}
+          hypothesis={descriptor.props.hypothesis}
+          onViewFinding={descriptor.props.onViewFinding}
+        />
+      );
+    case "verdict-contradiction":
+      return (
+        <ContradictionDetailPanel
+          caseId={descriptor.props.caseId}
+          contradiction={descriptor.props.contradiction}
+          onViewFinding={descriptor.props.onViewFinding}
+        />
+      );
+    case "verdict-gap":
+      return <GapDetailPanel gap={descriptor.props.gap} />;
   }
 }
 
@@ -58,6 +81,10 @@ function getCssScope(descriptor: SidebarContentDescriptor): string | undefined {
     case "knowledge-graph-evidence":
       return undefined;
     case "knowledge-graph-entity":
+      return undefined;
+    case "verdict-hypothesis":
+    case "verdict-contradiction":
+    case "verdict-gap":
       return undefined;
   }
 }

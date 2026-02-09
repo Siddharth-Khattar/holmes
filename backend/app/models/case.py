@@ -79,6 +79,16 @@ class Case(Base):
         PG_UUID(as_uuid=True),
         nullable=True,
     )
+    verdict_label: Mapped[str | None] = mapped_column(
+        String(30),
+        nullable=True,
+        comment="Conclusive/Substantial/Inconclusive",
+    )
+    verdict_summary: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="One-line case summary from synthesis",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=text("now()"),

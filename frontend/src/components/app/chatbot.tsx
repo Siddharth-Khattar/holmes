@@ -25,9 +25,11 @@ import { clsx } from "clsx";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useQuery } from "@tanstack/react-query";
 import { useChatbot } from "@/hooks/useChatbot";
 import { useSourceNavigation } from "@/hooks/useSourceNavigation";
 import { SourceViewerModal } from "@/components/source-viewer/SourceViewerModal";
+import { listFiles } from "@/lib/api/files";
 import type { ChatMessage, ChatCitation, ToolActivity } from "@/types/chatbot";
 
 // ---------------------------------------------------------------------------
@@ -61,10 +63,61 @@ function humanizeToolName(toolName: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Citation regex pattern: matches [[file_id|locator|label]] markers
+// Citation regex: matches multiple citation formats the LLM may produce
 // ---------------------------------------------------------------------------
 
-const CITATION_PATTERN = "\\[\\[([a-f0-9-]+)\\|([^|]*)\\|([^\\]]+)\\]\\]";
+// UUID pattern used across all citation formats
+const UUID = "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}";
+
+// Combined pattern matches (in order of specificity):
+//   [[uuid|locator|label]]  -- full double-bracket citation
+//   [[uuid|locator]]        -- double-bracket without label
+//   [[uuid]]                -- double-bracket UUID only
+//   [uuid|locator|label]    -- single-bracket full citation
+//   [uuid|locator]          -- single-bracket without label
+//   [uuid]                  -- single-bracket UUID only
+const CITATION_PATTERN = `(?:\\[\\[(${UUID})\\|([^|\\]]*)\\|([^\\]]+)\\]\\])|(?:\\[\\[(${UUID})\\|([^\\]]+)\\]\\])|(?:\\[\\[(${UUID})\\]\\])|(?:\\[(${UUID})\\|([^|\\]]*)\\|([^\\]]+)\\])|(?:\\[(${UUID})\\|([^\\]]+)\\])|(?:\\[(${UUID})\\])`;
+
+/** File name resolver function signature for label fallback. */
+type FileNameResolver = (fileId: string) => string | undefined;
+
+/**
+ * Parses a regex match into a ChatCitation, normalizing across all
+ * supported citation formats. Uses fileNameResolver as fallback for
+ * missing labels.
+ */
+function matchToCitation(
+  match: RegExpExecArray,
+  resolveFileName: FileNameResolver,
+): ChatCitation {
+  // Groups 1-3: [[uuid|locator|label]]
+  if (match[1]) {
+    return { file_id: match[1], locator: match[2], label: match[3] };
+  }
+  // Groups 4-5: [[uuid|locator]]
+  if (match[4]) {
+    const label = resolveFileName(match[4]) ?? "Source";
+    return { file_id: match[4], locator: match[5], label };
+  }
+  // Group 6: [[uuid]]
+  if (match[6]) {
+    const label = resolveFileName(match[6]) ?? "Source";
+    return { file_id: match[6], locator: "", label };
+  }
+  // Groups 7-9: [uuid|locator|label]
+  if (match[7]) {
+    return { file_id: match[7], locator: match[8], label: match[9] };
+  }
+  // Groups 10-11: [uuid|locator]
+  if (match[10]) {
+    const label = resolveFileName(match[10]) ?? "Source";
+    return { file_id: match[10], locator: match[11], label };
+  }
+  // Group 12: [uuid]
+  const fileId = match[12];
+  const label = resolveFileName(fileId) ?? "Source";
+  return { file_id: fileId, locator: "", label };
+}
 
 // ---------------------------------------------------------------------------
 // ChatMessageContent -- renders markdown with inline citation chips
@@ -74,6 +127,8 @@ interface ChatMessageContentProps {
   content: string;
   citations?: ChatCitation[];
   onCitationClick: (citation: ChatCitation) => void;
+  /** Resolves a file_id to a display name for citations missing a label. */
+  resolveFileName: FileNameResolver;
 }
 
 /**
@@ -83,6 +138,7 @@ interface ChatMessageContentProps {
 function ChatMessageContent({
   content,
   onCitationClick,
+  resolveFileName,
 }: ChatMessageContentProps) {
   // Split content into segments: text parts and citation parts
   const segments = useMemo(() => {
@@ -107,11 +163,7 @@ function ChatMessageContent({
       // Add the citation
       result.push({
         type: "citation",
-        citation: {
-          file_id: match[1],
-          locator: match[2],
-          label: match[3],
-        },
+        citation: matchToCitation(match, resolveFileName),
       });
       lastIndex = match.index + match[0].length;
     }
@@ -122,7 +174,7 @@ function ChatMessageContent({
     }
 
     return result;
-  }, [content]);
+  }, [content, resolveFileName]);
 
   // If no citations found, render the whole content as markdown
   if (segments.length === 1 && segments[0].type === "text") {
@@ -285,7 +337,7 @@ function ToolActivitySection({
   activities,
   isStreaming,
 }: ToolActivitySectionProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   if (activities.length === 0 || !isStreaming) return null;
 
@@ -382,6 +434,22 @@ export function Chatbot({
   // Source navigation for citation clicks
   const { openSource, sourceContent, closeSource } = useSourceNavigation(
     caseId ?? "",
+  );
+
+  // File list for resolving citation labels when the LLM omits them
+  const { data: filesData } = useQuery({
+    queryKey: ["case-files", caseId],
+    queryFn: () => listFiles(caseId ?? "", 1, 100),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!caseId,
+  });
+
+  const resolveFileName: FileNameResolver = useCallback(
+    (fileId: string) => {
+      const file = filesData?.files?.find((f) => f.id === fileId);
+      return file?.original_filename;
+    },
+    [filesData],
   );
 
   // Window dragging state
@@ -695,6 +763,7 @@ export function Chatbot({
                         message={message}
                         onCitationClick={handleCitationClick}
                         onRetry={handleRetry}
+                        resolveFileName={resolveFileName}
                       />
                     ))}
 
@@ -853,12 +922,15 @@ interface MessageBubbleProps {
   message: ChatMessage;
   onCitationClick: (citation: ChatCitation) => void;
   onRetry: () => void;
+  /** Resolves a file_id to a display name for citations missing a label. */
+  resolveFileName: FileNameResolver;
 }
 
 function MessageBubble({
   message,
   onCitationClick,
   onRetry,
+  resolveFileName,
 }: MessageBubbleProps) {
   // Error messages
   if (message.role === "error") {
@@ -937,7 +1009,12 @@ function MessageBubble({
     );
   }
 
-  // Assistant messages
+  // Assistant messages: hide the bubble entirely while streaming with no content
+  // to avoid a "double bubble" (empty timestamp bubble + separate streaming indicator).
+  if (message.isStreaming && !message.content) {
+    return null;
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -974,8 +1051,9 @@ function MessageBubble({
             content={message.content}
             citations={message.citations}
             onCitationClick={onCitationClick}
+            resolveFileName={resolveFileName}
           />
-        ) : message.isStreaming ? null : (
+        ) : (
           <p className="text-sm opacity-60 italic">No response</p>
         )}
 

@@ -848,44 +848,9 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                               )}
                             </>
                           ) : isImage && imageRedactionResult ? (
-                            <>
-                              <span className="text-muted-foreground">
-                                Censored{" "}
-                                <span className="font-semibold text-foreground">
-                                  {imageRedactionResult.segments_censored}
-                                </span>{" "}
-                                {imageRedactionResult.segments_censored === 1
-                                  ? "segment"
-                                  : "segments"}
-                              </span>
-                              <span className="text-muted-foreground ml-2">
-                                ({imageRedactionResult.segments_found} found)
-                              </span>
-                              {imageRedactionResult.categories_selected.length >
-                                0 && (
-                                  <span className="text-muted-foreground ml-2">
-                                    •{" "}
-                                    {imageRedactionResult.categories_selected.join(
-                                      ", ",
-                                    )}
-                                  </span>
-                                )}
-                            </>
+                            null
                           ) : isVideo && videoRedactionResult ? (
-                            <>
-                              <span className="text-muted-foreground">
-                                Censored{" "}
-                                <span className="font-semibold text-foreground">
-                                  {videoRedactionResult.segments_censored}
-                                </span>{" "}
-                                {videoRedactionResult.segments_censored === 1
-                                  ? "segment"
-                                  : "segments"}
-                              </span>
-                              <span className="text-muted-foreground ml-2">
-                                ({videoRedactionResult.segments_found} found)
-                              </span>
-                            </>
+                            null
                           ) : isAudio && audioRedactionResult ? (
                             <>
                               <span className="text-muted-foreground">

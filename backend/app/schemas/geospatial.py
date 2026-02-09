@@ -32,6 +32,10 @@ class LocationOutput(BaseModel):
     """A single location extracted from case data."""
 
     name: str = Field(description="Location name or address")
+    geocodable_address: str = Field(
+        default="",
+        description="Real-world address or place name that Google Maps can resolve (e.g., 'Claymore, Sydney, NSW, Australia')",
+    )
     latitude: float | None = Field(
         default=None, description="Geocoded latitude (-90 to 90)"
     )

@@ -390,7 +390,7 @@ class AgentFactory:
     ) -> LlmAgent:
         """Create a fresh Geospatial Agent for a specific case.
 
-        Uses Flash model (cost efficiency) with MEDIUM thinking for location
+        Uses Flash model (cost efficiency) with HIGH thinking for location
         extraction and geospatial analysis. Text-only input -- no media
         resolution needed.
 
@@ -410,7 +410,7 @@ class AgentFactory:
             name=_safe_name("geospatial", case_id),
             model=model,
             instruction=GEOSPATIAL_SYSTEM_PROMPT,
-            planner=create_thinking_planner("medium"),
+            planner=create_thinking_planner("high"),
             output_schema=GeospatialOutput,
             output_key="geospatial_result",
             callbacks=callbacks,

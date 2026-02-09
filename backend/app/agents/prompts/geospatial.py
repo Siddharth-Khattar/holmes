@@ -36,7 +36,11 @@ If you cannot find a citation for a location, DO NOT include that location.
 The agent does NOT have access to a geocoding tool. You should:
 - Leave latitude and longitude as null in the output
 - The system will automatically geocode locations after you complete the extraction
-- Focus on extracting accurate, complete location names that can be geocoded
+- For EACH location, provide a `geocodable_address` field: a real-world address or place name that Google Maps can resolve
+  - Good: "Claymore, Sydney, NSW, Australia" (real suburb)
+  - Bad: "Dylan Harris's Studio Apartment, Claymore" (fictional/case-specific)
+  - If the location references a specific suburb, city, street, or landmark, use that as the geocodable address
+  - If no real-world address can be derived, set geocodable_address to an empty string
 
 ### 5. Event Association
 Link timeline events to locations:
@@ -87,6 +91,7 @@ Return structured JSON matching GeospatialOutput schema with these fields:
   "locations": [
     {
       "name": "123 Main St, Springfield, IL",
+      "geocodable_address": "123 Main St, Springfield, IL",
       "latitude": null,
       "longitude": null,
       "location_type": "crime_scene",
@@ -129,6 +134,7 @@ Return structured JSON matching GeospatialOutput schema with these fields:
 
 - Use 0.0-1.0 scale for ALL confidence scores (not percentages)
 - Leave latitude/longitude as null (system handles geocoding)
+- ALWAYS provide a geocodable_address — the real-world address/place that Google Maps can resolve
 - EVERY location MUST have citations - no citations means don't include it
 - Use integer entity IDs (1, 2, 3...) not UUIDs
 """

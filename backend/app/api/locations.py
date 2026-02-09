@@ -3,12 +3,11 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Annotated
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +16,7 @@ from app.database import get_db
 from app.models import Case
 from app.models.synthesis import Location
 from app.services.agent_events import (
+    emit_agent_error,
     emit_agent_started,
     emit_geospatial_complete,
 )
@@ -24,6 +24,10 @@ from app.services.agent_events import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/cases/{case_id}", tags=["geospatial"])
+
+# In-memory tracking for in-flight geospatial generation tasks.
+# Follows the same single-instance in-memory pattern as SSE event buffers.
+_generating_cases: set[str] = set()
 
 
 async def _get_user_case(
@@ -57,6 +61,7 @@ async def _get_user_case(
 async def generate_geospatial_intelligence(
     case_id: UUID,
     current_user: CurrentUser,
+    background_tasks: BackgroundTasks,
     db: Annotated[AsyncSession, Depends(get_db)],
     force: Annotated[
         bool, Query(description="Force regeneration even if exists")
@@ -64,8 +69,9 @@ async def generate_geospatial_intelligence(
 ):
     """Trigger on-demand geospatial analysis.
 
-    Spawns Geospatial Agent async task. Returns immediately with 202 Accepted.
-    Frontend should subscribe to SSE for progress updates.
+    Schedules a background task with its own DB session (following the
+    pipeline pattern). Returns immediately with 202 Accepted.
+    Frontend polls GET /geospatial/status for progress.
     """
     # Verify case ownership
     await _get_user_case(db, case_id, current_user.id)
@@ -83,34 +89,53 @@ async def generate_geospatial_intelligence(
                 "location_count": existing_count,
             }
 
-    # Spawn async task (non-blocking)
-    from app.agents.geospatial import run_geospatial
-
-    workflow_id = UUID(
-        "00000000-0000-0000-0000-000000000000"
-    )  # TODO: get from request or generate
-
-    async def run_task():
-        async with db.begin_nested():
-            # Geospatial agent doesn't process individual files, so use empty values
-            await emit_agent_started(
-                str(case_id), "geospatial", str(case_id), "", "geospatial-analysis"
-            )
-            try:
-                counts = await run_geospatial(
-                    case_id=str(case_id),
-                    workflow_id=workflow_id,
-                    user_id=current_user.id,
-                    db_session=db,
-                )
-                await emit_geospatial_complete(str(case_id), counts)
-            except Exception as e:
-                logger.error(f"Geospatial generation failed: {e}", exc_info=True)
-                raise
-
-    asyncio.create_task(run_task())
+    # Schedule background task (uses its own DB session, not the request session)
+    workflow_id = uuid4()
+    background_tasks.add_task(
+        _run_geospatial_background,
+        case_id=str(case_id),
+        workflow_id=workflow_id,
+        user_id=current_user.id,
+    )
 
     return {"status": "generating", "case_id": str(case_id)}
+
+
+async def _run_geospatial_background(
+    case_id: str,
+    workflow_id: UUID,
+    user_id: str,
+) -> None:
+    """Background task that runs geospatial analysis with its own DB session.
+
+    Follows the pipeline pattern: creates an independent session from the
+    session factory so it is decoupled from the request lifecycle.
+    """
+    from app.agents.geospatial import run_geospatial
+    from app.database import _get_sessionmaker
+
+    task_id = str(uuid4())
+    session_factory = _get_sessionmaker()
+
+    _generating_cases.add(case_id)
+    await emit_agent_started(case_id, "geospatial", task_id, "", "geospatial-analysis")
+
+    async with session_factory() as db:
+        try:
+            counts = await run_geospatial(
+                case_id=case_id,
+                workflow_id=workflow_id,
+                user_id=user_id,
+                db_session=db,
+            )
+            await db.commit()
+            await emit_geospatial_complete(case_id, counts)
+        except Exception as e:
+            logger.error("Geospatial generation failed: %s", e, exc_info=True)
+            await db.rollback()
+            await emit_agent_error(case_id, "geospatial", task_id, str(e)[:500])
+        finally:
+            _generating_cases.discard(case_id)
 
 
 @router.get("/geospatial/status")
@@ -122,6 +147,14 @@ async def get_geospatial_status(
     """Check if geospatial analysis exists and its status."""
     # Verify case ownership
     await _get_user_case(db, case_id, current_user.id)
+
+    # Check if generation is in progress
+    if str(case_id) in _generating_cases:
+        return {
+            "exists": False,
+            "status": "generating",
+            "location_count": 0,
+        }
 
     # Check if locations exist
     count_stmt = select(func.count(Location.id)).where(Location.case_id == case_id)
@@ -254,6 +287,7 @@ async def get_location_detail(
         "coordinates": location.coordinates,
         "location_type": location.location_type,
         "events": events,
+        "citations": location.citations or [],
         "temporal_period": temporal_period,
         "source_entity_ids": location.source_entity_ids or [],
     }

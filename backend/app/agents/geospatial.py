@@ -131,11 +131,11 @@ async def assemble_geospatial_input(case_id: str, db: AsyncSession) -> str:
     sections.append(f"\n# DOMAIN FINDINGS ({len(findings)} findings)")
     for finding in findings:
         sections.append(
-            f"[FINDING:{finding.id}] Agent: {finding.agent_type} | Domain: {finding.domain}"
+            f"[FINDING:{finding.id}] Agent: {finding.agent_type} | Category: {finding.category}"
         )
-        if finding.findings_text:
+        if finding.finding_text:
             # Truncate to 500 chars
-            text = finding.findings_text[:500]
+            text = finding.finding_text[:500]
             sections.append(f"  Text: {text}...")
 
     logger.info(
@@ -172,14 +172,24 @@ async def write_geospatial_output(
     await db.flush()
 
     # Step 2: Geocode any locations missing coordinates
+    # Prefer geocodable_address (real-world address) over name (may be case-specific)
     for loc in output.locations:
         if loc.latitude is None or loc.longitude is None:
-            coords = await geocoding_service.geocode_address(loc.name)
+            # Try geocodable_address first, then fall back to name
+            address = loc.geocodable_address.strip() if loc.geocodable_address else ""
+            if address:
+                coords = await geocoding_service.geocode_address(address)
+            else:
+                coords = None
+
+            # Fall back to name if geocodable_address failed
+            if not coords and address != loc.name:
+                coords = await geocoding_service.geocode_address(loc.name)
+
             if coords:
                 loc.latitude = coords["lat"]
                 loc.longitude = coords["lng"]
             else:
-                # Add to unmappable list if geocoding failed
                 if loc.name not in output.unmappable_locations:
                     output.unmappable_locations.append(loc.name)
 
@@ -239,6 +249,18 @@ async def write_geospatial_output(
         if loc.source_entity_ids:
             source_entity_ids_list = loc.source_entity_ids
 
+        # Build citations JSONB from LLM output
+        citations_list = None
+        if loc.citations:
+            citations_list = [
+                {
+                    "file_id": c.file_id,
+                    "locator": c.locator,
+                    "excerpt": c.excerpt,
+                }
+                for c in loc.citations
+            ]
+
         # Create location record
         location_record = Location(
             case_id=case_uuid,
@@ -246,6 +268,7 @@ async def write_geospatial_output(
             name=loc.name,
             coordinates=coordinates,
             location_type=loc.location_type,
+            citations=citations_list,
             source_entity_ids=source_entity_ids_list,
             temporal_associations=temporal_associations,
         )

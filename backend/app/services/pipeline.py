@@ -21,7 +21,6 @@ from app.services.agent_events import (
     emit_agent_error,
     emit_agent_started,
     emit_finding_committed,
-    emit_geospatial_complete,
     emit_processing_complete,
     emit_synthesis_data_ready,
 )
@@ -1130,76 +1129,8 @@ async def run_analysis_workflow(
                 synthesis_counts,
             )
 
-            # ---- Stage 9: Geospatial Agent (if synthesis detected locations) ----
-            logger.info(
-                "Pipeline starting stage=geospatial case=%s workflow=%s",
-                case_id,
-                workflow_id,
-            )
-            geospatial_task_id = str(uuid4())
-            await emit_agent_started(
-                case_id=case_id,
-                agent_type="geospatial",
-                task_id=geospatial_task_id,
-                file_id="",
-                file_name="geospatial-agent",
-            )
-
-            geospatial_counts: dict[str, int] = {}
-            try:
-                from app.agents.geospatial import run_geospatial
-
-                geospatial_counts = await run_geospatial(
-                    case_id=case_id,
-                    workflow_id=UUID(workflow_id),
-                    user_id=user_id,
-                    db_session=db,
-                    publish_event=publish_fn,
-                )
-                await emit_agent_complete(
-                    case_id=case_id,
-                    agent_type="geospatial",
-                    task_id=geospatial_task_id,
-                    result={
-                        "taskId": geospatial_task_id,
-                        "agentType": "geospatial",
-                        "outputs": [
-                            {
-                                "type": "geospatial-results",
-                                "data": geospatial_counts,
-                            }
-                        ],
-                    },
-                )
-            except Exception as exc:
-                logger.warning(
-                    "Geospatial agent failed for case=%s: %s (non-blocking)",
-                    case_id,
-                    exc,
-                    exc_info=True,
-                )
-                await db.rollback()
-                await emit_agent_error(
-                    case_id=case_id,
-                    agent_type="geospatial",
-                    task_id=geospatial_task_id,
-                    error=str(exc)[:500],
-                )
-
-            await db.commit()  # Commit geospatial data
-
-            # Emit geospatial-complete AFTER commit
-            if geospatial_counts:
-                await emit_geospatial_complete(
-                    case_id=case_id,
-                    counts=geospatial_counts,
-                )
-
-            logger.info(
-                "Geospatial complete case=%s counts=%s",
-                case_id,
-                geospatial_counts,
-            )
+            # Geospatial agent is on-demand only (triggered from Geospatial tab).
+            # Not part of the automatic pipeline.
 
             # ---- Final: Update file statuses to ANALYZED ----
             await db.execute(

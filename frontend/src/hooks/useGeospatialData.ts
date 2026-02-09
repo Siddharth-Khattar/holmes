@@ -10,32 +10,16 @@ import {
   generateGeospatialIntelligence,
   deleteGeospatialData,
   type GeospatialStatus,
-  type LocationResponse,
 } from "@/lib/api/geospatial";
 import type { Landmark } from "@/types/geospatial.types";
 
 export function useGeospatialData(caseId: string) {
   const [status, setStatus] = useState<GeospatialStatus | null>(null);
   const [locations, setLocations] = useState<Landmark[]>([]);
+  const [unmappableLocations, setUnmappableLocations] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Transform API location to frontend Landmark type
-  const transformLocation = (loc: LocationResponse): Landmark => ({
-    id: loc.id,
-    name: loc.name,
-    location: loc.coordinates
-      ? { lat: loc.coordinates.lat, lng: loc.coordinates.lng }
-      : { lat: 0, lng: 0 }, // Fallback for unmappable locations
-    type: loc.location_type as
-      | "crime_scene"
-      | "witness_location"
-      | "evidence_location"
-      | "suspect_location"
-      | "other",
-    events: [], // Will be populated from detail endpoint if needed
-  });
 
   // Fetch status and locations
   const fetchData = useCallback(async () => {
@@ -50,10 +34,30 @@ export function useGeospatialData(caseId: string) {
       // If complete, fetch locations
       if (statusData.exists && statusData.status === "complete") {
         const locationsData = await fetchLocations(caseId);
-        const transformedLocations = locationsData.map(transformLocation);
-        setLocations(transformedLocations);
+
+        // Split into mappable (have coordinates) and unmappable
+        const mappable: Landmark[] = [];
+        const unmappable: string[] = [];
+
+        for (const loc of locationsData) {
+          if (loc.coordinates) {
+            mappable.push({
+              id: loc.id,
+              name: loc.name,
+              location: { lat: loc.coordinates.lat, lng: loc.coordinates.lng },
+              type: loc.location_type as Landmark["type"],
+              events: [],
+            });
+          } else {
+            unmappable.push(loc.name);
+          }
+        }
+
+        setLocations(mappable);
+        setUnmappableLocations(unmappable);
       } else {
         setLocations([]);
+        setUnmappableLocations([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch data");
@@ -71,16 +75,40 @@ export function useGeospatialData(caseId: string) {
         setError(null);
         await generateGeospatialIntelligence(caseId, force);
         setStatus({ exists: true, status: "generating", location_count: 0 });
-        // Poll for completion
+
+        // Poll for completion. Backend returns "generating" while in-flight,
+        // "complete" when done, or "not_started" if the task failed.
+        let attempts = 0;
+        const maxAttempts = 60; // 3s * 60 = 3min timeout
         const pollInterval = setInterval(async () => {
-          const statusData = await fetchGeospatialStatus(caseId);
-          setStatus(statusData);
-          if (statusData.status === "complete") {
+          attempts++;
+          try {
+            const statusData = await fetchGeospatialStatus(caseId);
+            setStatus(statusData);
+
+            if (statusData.status === "complete") {
+              clearInterval(pollInterval);
+              setGenerating(false);
+              await fetchData();
+            } else if (statusData.status === "not_started") {
+              // Backend task finished without writing locations (error path)
+              clearInterval(pollInterval);
+              setGenerating(false);
+              setError(
+                "Geospatial analysis failed. Check backend logs for details.",
+              );
+            } else if (attempts >= maxAttempts) {
+              clearInterval(pollInterval);
+              setGenerating(false);
+              setError("Geospatial analysis timed out after 3 minutes.");
+            }
+            // "generating" → keep polling
+          } catch {
             clearInterval(pollInterval);
             setGenerating(false);
-            await fetchData();
+            setError("Lost connection while checking analysis status.");
           }
-        }, 3000); // Poll every 3 seconds
+        }, 3000);
       } catch (err) {
         setError(
           err instanceof Error
@@ -114,6 +142,7 @@ export function useGeospatialData(caseId: string) {
   return {
     status,
     locations,
+    unmappableLocations,
     loading,
     generating,
     error,

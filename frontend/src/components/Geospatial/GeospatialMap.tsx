@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   APIProvider,
   Map,
@@ -16,7 +17,6 @@ import {
   FileText,
   MapPin,
   Navigation,
-  Building2,
   Calendar,
   Link2,
 } from "lucide-react";
@@ -30,16 +30,6 @@ import {
   fetchLocationDetail,
   type LocationDetailResponse,
 } from "@/lib/api/geospatial";
-
-interface PlaceInfo {
-  name?: string;
-  address?: string;
-  phone?: string;
-  rating?: number;
-  types?: string[];
-  website?: string;
-  photos?: unknown[];
-}
 
 interface GeospatialMapProps {
   caseId: string;
@@ -75,8 +65,6 @@ export function GeospatialMap({
   const [streetViewLandmark, setStreetViewLandmark] = useState<Landmark | null>(
     null,
   );
-  const [placeInfo, setPlaceInfo] = useState<PlaceInfo | null>(null);
-  const [loadingPlaceInfo, setLoadingPlaceInfo] = useState(false);
   const [selectedLocationDetail, setSelectedLocationDetail] =
     useState<LocationDetailResponse | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -99,89 +87,13 @@ export function GeospatialMap({
   // Map type based on view
   const mapTypeId: GoogleMapTypeId = mapView === "3d" ? "satellite" : "roadmap";
 
-  // Fetch place information using Places API
-  const fetchPlaceInfo = useCallback(
-    async (landmark: Landmark) => {
-      if (!apiKey) return;
-
-      // Check if Google Maps API is loaded
-      if (
-        typeof window === "undefined" ||
-        !(window as any).google?.maps?.places
-      ) {
-        console.warn("Google Maps Places API not loaded yet");
-        setLoadingPlaceInfo(false);
-        return;
-      }
-
-      setLoadingPlaceInfo(true);
-      try {
-        const googleMaps = (window as any).google.maps;
-
-        // Use Places API to get nearby place information
-        const service = new googleMaps.places.PlacesService(
-          document.createElement("div"),
-        );
-
-        const request = {
-          location: new googleMaps.LatLng(
-            landmark.location.lat,
-            landmark.location.lng,
-          ),
-          radius: 50, // 50 meters radius
-        };
-
-        service.nearbySearch(request, (results: any, status: any) => {
-          if (
-            status === googleMaps.places.PlacesServiceStatus.OK &&
-            results &&
-            results[0]
-          ) {
-            const place = results[0];
-
-            // Get detailed place information
-            service.getDetails(
-              { placeId: place.place_id! },
-              (placeDetails: any, detailsStatus: any) => {
-                if (
-                  detailsStatus === googleMaps.places.PlacesServiceStatus.OK
-                ) {
-                  setPlaceInfo({
-                    name: placeDetails?.name,
-                    address: placeDetails?.formatted_address,
-                    phone: placeDetails?.formatted_phone_number,
-                    rating: placeDetails?.rating,
-                    types: placeDetails?.types,
-                    website: placeDetails?.website,
-                    photos: placeDetails?.photos?.slice(0, 3),
-                  });
-                }
-                setLoadingPlaceInfo(false);
-              },
-            );
-          } else {
-            setPlaceInfo(null);
-            setLoadingPlaceInfo(false);
-          }
-        });
-      } catch (error) {
-        console.error("Error fetching place info:", error);
-        setPlaceInfo(null);
-        setLoadingPlaceInfo(false);
-      }
-    },
-    [apiKey],
-  );
-
   // Handle landmark click
   const handleLandmarkClick = useCallback(
     async (landmark: Landmark) => {
       setSelectedLandmark(landmark);
-      setPlaceInfo(null);
       setSelectedLocationDetail(null);
-      fetchPlaceInfo(landmark);
 
-      // Fetch full location detail
+      // Fetch full location detail from backend
       try {
         setLoadingDetail(true);
         const detail = await fetchLocationDetail(caseId, landmark.id);
@@ -192,13 +104,12 @@ export function GeospatialMap({
         setLoadingDetail(false);
       }
     },
-    [caseId, fetchPlaceInfo],
+    [caseId],
   );
 
   // Close dialog
   const handleBackdropClick = useCallback(() => {
     setSelectedLandmark(null);
-    setPlaceInfo(null);
   }, []);
 
   // Open Street View
@@ -249,7 +160,7 @@ export function GeospatialMap({
         willChange: mapView === "3d" ? "transform" : "auto",
       }}
     >
-      <APIProvider apiKey={apiKey} libraries={["places"]}>
+      <APIProvider apiKey={apiKey}>
         {/* Main Map */}
         {!showStreetView && (
           <Map
@@ -345,8 +256,8 @@ export function GeospatialMap({
             className={clsx(
               "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2",
               mapView === "2d"
-                ? "text-[var(--foreground)]"
-                : "text-[var(--muted-foreground)]",
+                ? "text-(--foreground)"
+                : "text-(--muted-foreground)",
             )}
             style={{
               backgroundColor:
@@ -361,8 +272,8 @@ export function GeospatialMap({
             className={clsx(
               "px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2",
               mapView === "3d"
-                ? "text-[var(--foreground)]"
-                : "text-[var(--muted-foreground)]",
+                ? "text-(--foreground)"
+                : "text-(--muted-foreground)",
             )}
             style={{
               backgroundColor:
@@ -406,370 +317,283 @@ export function GeospatialMap({
           </div>
         </div>
 
-        {/* Landmark Detail Dialog */}
-        {selectedLandmark && (
-          <div
-            className="absolute inset-0 flex items-center justify-center p-4 z-20"
-            style={{
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(4px)",
-            }}
-            onClick={handleBackdropClick}
-          >
+        {/* Landmark Detail Dialog — portaled to body to escape transform containing block */}
+        {selectedLandmark &&
+          createPortal(
             <div
-              className="relative max-w-2xl w-full max-h-[80vh] overflow-y-auto rounded-xl shadow-2xl"
+              className="fixed inset-0 flex items-center justify-center p-4 z-50"
               style={{
-                backgroundColor: "var(--card)",
-                border: "1px solid var(--border)",
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+                backdropFilter: "blur(4px)",
               }}
-              onClick={(e) => e.stopPropagation()}
+              onClick={handleBackdropClick}
             >
-              {/* Header */}
               <div
-                className="sticky top-0 px-6 py-4 flex items-start justify-between"
+                className="relative max-w-2xl w-full max-h-[80vh] overflow-y-auto rounded-xl shadow-2xl"
                 style={{
                   backgroundColor: "var(--card)",
-                  borderBottom: "1px solid var(--border)",
+                  border: "1px solid var(--border)",
                 }}
+                onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center"
-                      style={{
-                        backgroundColor: LANDMARK_COLORS[selectedLandmark.type],
-                      }}
-                    >
-                      <MapPin size={18} color="white" />
-                    </div>
-                    <h2
-                      className="text-xl font-bold"
-                      style={{ color: "var(--foreground)" }}
-                    >
-                      {selectedLandmark.name}
-                    </h2>
-                  </div>
-                  <p
-                    className="text-sm capitalize mb-3"
-                    style={{ color: "var(--muted-foreground)" }}
-                  >
-                    {selectedLandmark.type.replace("_", " ")}
-                  </p>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleOpenStreetView(selectedLandmark)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
-                      style={{
-                        backgroundColor: "var(--muted)",
-                        color: "var(--foreground)",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "var(--accent)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "var(--muted)";
-                      }}
-                    >
-                      <Navigation size={14} />
-                      Street View
-                    </button>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setSelectedLandmark(null)}
-                  className="p-2 rounded-lg transition-colors"
-                  style={{ color: "var(--muted-foreground)" }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "var(--muted)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                  }}
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* Place Information from Places API */}
-              {loadingPlaceInfo && (
+                {/* Header */}
                 <div
-                  className="px-6 py-4"
-                  style={{ borderBottom: "1px solid var(--border)" }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Building2
-                      size={16}
-                      style={{ color: "var(--muted-foreground)" }}
-                    />
-                    <span
-                      className="text-sm"
-                      style={{ color: "var(--muted-foreground)" }}
-                    >
-                      Loading location information...
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {placeInfo && (
-                <div
-                  className="px-6 py-4"
+                  className="sticky top-0 px-6 py-4 flex items-start justify-between"
                   style={{
-                    backgroundColor: "var(--muted)",
+                    backgroundColor: "var(--card)",
                     borderBottom: "1px solid var(--border)",
                   }}
                 >
-                  <div className="flex items-start gap-3">
-                    <Building2
-                      size={20}
-                      style={{ color: "var(--foreground)" }}
-                    />
-                    <div className="flex-1">
-                      <h3
-                        className="font-semibold text-sm mb-2"
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center"
+                        style={{
+                          backgroundColor:
+                            LANDMARK_COLORS[selectedLandmark.type],
+                        }}
+                      >
+                        <MapPin size={18} color="white" />
+                      </div>
+                      <h2
+                        className="text-xl font-bold"
                         style={{ color: "var(--foreground)" }}
                       >
-                        Location Information
-                      </h3>
-                      {placeInfo.name && (
-                        <p
-                          className="text-sm mb-1"
-                          style={{ color: "var(--foreground)" }}
-                        >
-                          <strong>Name:</strong> {placeInfo.name}
-                        </p>
-                      )}
-                      {placeInfo.address && (
-                        <p
-                          className="text-sm mb-1"
-                          style={{ color: "var(--muted-foreground)" }}
-                        >
-                          <strong>Address:</strong> {placeInfo.address}
-                        </p>
-                      )}
-                      {placeInfo.phone && (
-                        <p
-                          className="text-sm mb-1"
-                          style={{ color: "var(--muted-foreground)" }}
-                        >
-                          <strong>Phone:</strong> {placeInfo.phone}
-                        </p>
-                      )}
-                      {placeInfo.rating && (
-                        <p
-                          className="text-sm mb-1"
-                          style={{ color: "var(--muted-foreground)" }}
-                        >
-                          <strong>Rating:</strong> {placeInfo.rating} ⭐
-                        </p>
-                      )}
-                      {placeInfo.website && (
-                        <p
-                          className="text-sm"
-                          style={{ color: "var(--muted-foreground)" }}
-                        >
-                          <strong>Website:</strong>{" "}
-                          <a
-                            href={placeInfo.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline"
-                            style={{ color: "var(--primary)" }}
-                          >
-                            Visit
-                          </a>
-                        </p>
-                      )}
+                        {selectedLandmark.name}
+                      </h2>
+                    </div>
+                    <p
+                      className="text-sm capitalize mb-3"
+                      style={{ color: "var(--muted-foreground)" }}
+                    >
+                      {selectedLandmark.type.replace("_", " ")}
+                    </p>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleOpenStreetView(selectedLandmark)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                        style={{
+                          backgroundColor: "var(--muted)",
+                          color: "var(--foreground)",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor =
+                            "var(--accent)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor =
+                            "var(--muted)";
+                        }}
+                      >
+                        <Navigation size={14} />
+                        Street View
+                      </button>
                     </div>
                   </div>
-                </div>
-              )}
-
-              {/* Content */}
-              <div className="px-6 py-4">
-                {/* Section 1: Events at this Location */}
-                <div className="mb-6">
-                  <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
-                    <Calendar className="mr-2 h-4 w-4" />
-                    Events at this Location (
-                    {selectedLocationDetail?.events.length || 0})
-                  </h4>
-                  {loadingDetail ? (
-                    <p className="text-xs text-neutral-400">
-                      Loading events...
-                    </p>
-                  ) : selectedLocationDetail &&
-                    selectedLocationDetail.events.length > 0 ? (
-                    <div className="space-y-2">
-                      {selectedLocationDetail.events.map((event, idx) => (
-                        <div
-                          key={idx}
-                          className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3"
-                        >
-                          <p className="text-sm font-medium text-neutral-200">
-                            {event.event_title}
-                          </p>
-                          <p className="mt-1 text-xs text-neutral-400">
-                            {event.event_description}
-                          </p>
-                          <div className="mt-2 flex items-center gap-4 text-xs text-neutral-500">
-                            <span>
-                              {new Date(event.timestamp).toLocaleString()}
-                            </span>
-                            <span className="capitalize">
-                              Layer: {event.layer}
-                            </span>
-                            <span>
-                              Confidence: {(event.confidence * 100).toFixed(0)}%
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-neutral-500">
-                      No events at this location
-                    </p>
-                  )}
+                  <button
+                    onClick={() => setSelectedLandmark(null)}
+                    className="p-2 rounded-lg transition-colors"
+                    style={{ color: "var(--muted-foreground)" }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "var(--muted)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                    }}
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
 
-                {/* Section 2: Citations */}
-                <div className="mb-6">
-                  <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Citations ({selectedLocationDetail?.citations.length || 0})
-                  </h4>
-                  {loadingDetail ? (
-                    <p className="text-xs text-neutral-400">
-                      Loading citations...
-                    </p>
-                  ) : selectedLocationDetail &&
-                    selectedLocationDetail.citations.length > 0 ? (
-                    <div className="space-y-3">
-                      {selectedLocationDetail.citations.map((citation, idx) => (
-                        <div
-                          key={idx}
-                          className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <p className="text-xs font-medium text-neutral-300">
-                                {citation.file_name || "Source Document"}
-                              </p>
-                              <p className="mt-1 text-xs text-neutral-500">
-                                {citation.locator}
-                              </p>
-                            </div>
-                            {onViewSource && (
-                              <button
-                                onClick={() =>
-                                  onViewSource(
-                                    citation.file_id,
-                                    citation.locator,
-                                  )
-                                }
-                                className="text-xs text-primary-400 hover:text-primary-300"
-                              >
-                                View
-                              </button>
-                            )}
-                          </div>
-                          <div className="mt-2 rounded bg-neutral-950/50 p-2">
-                            <p className="text-xs italic text-neutral-400">
-                              &ldquo;{citation.excerpt}&rdquo;
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-neutral-500">
-                      No citations available
-                    </p>
-                  )}
-                </div>
-
-                {/* Section 3: Temporal Analysis */}
-                <div className="mb-6">
-                  <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
-                    <Clock className="mr-2 h-4 w-4" />
-                    Temporal Analysis
-                  </h4>
-                  {loadingDetail ? (
-                    <p className="text-xs text-neutral-400">
-                      Loading temporal data...
-                    </p>
-                  ) : selectedLocationDetail?.temporal_associations ? (
-                    <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3">
+                {/* Content */}
+                <div className="px-6 py-4">
+                  {/* Section 1: Events at this Location */}
+                  <div className="mb-6">
+                    <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Events at this Location (
+                      {selectedLocationDetail?.events.length || 0})
+                    </h4>
+                    {loadingDetail ? (
                       <p className="text-xs text-neutral-400">
-                        Location was relevant during:
+                        Loading events...
                       </p>
-                      <p className="mt-1 text-sm font-medium text-neutral-200">
-                        {selectedLocationDetail.temporal_associations.start
-                          ? new Date(
-                              selectedLocationDetail.temporal_associations
-                                .start,
-                            ).toLocaleDateString()
-                          : "Unknown start"}
-                        {" → "}
-                        {selectedLocationDetail.temporal_associations.end
-                          ? new Date(
-                              selectedLocationDetail.temporal_associations.end,
-                            ).toLocaleDateString()
-                          : "Unknown end"}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-neutral-500">
-                      No temporal data available
-                    </p>
-                  )}
-                </div>
-
-                {/* Section 4: Related Entities */}
-                <div>
-                  <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
-                    <Link2 className="mr-2 h-4 w-4" />
-                    Related Entities (
-                    {selectedLocationDetail?.source_entity_ids.length || 0})
-                  </h4>
-                  {loadingDetail ? (
-                    <p className="text-xs text-neutral-400">
-                      Loading entities...
-                    </p>
-                  ) : selectedLocationDetail &&
-                    selectedLocationDetail.source_entity_ids.length > 0 ? (
-                    <div className="space-y-2">
-                      {selectedLocationDetail.source_entity_ids.map(
-                        (entityId) => (
+                    ) : selectedLocationDetail &&
+                      selectedLocationDetail.events.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedLocationDetail.events.map((event, idx) => (
                           <div
-                            key={entityId}
-                            className="flex items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900/50 p-2"
+                            key={idx}
+                            className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3"
                           >
-                            <div className="h-2 w-2 rounded-full bg-primary-500" />
-                            <p className="text-xs text-neutral-300">
-                              {entityId}
+                            <p className="text-sm font-medium text-neutral-200">
+                              {event.title}
                             </p>
-                            {/* Phase 10: Add click handler to navigate to KG filtered by entity */}
+                            <p className="mt-1 text-xs text-neutral-400">
+                              {event.description}
+                            </p>
+                            <div className="mt-2 flex items-center gap-4 text-xs text-neutral-500">
+                              <span>
+                                {new Date(event.timestamp).toLocaleString()}
+                              </span>
+                              <span className="capitalize">
+                                Layer: {event.layer}
+                              </span>
+                              <span>
+                                Confidence:{" "}
+                                {(event.confidence * 100).toFixed(0)}%
+                              </span>
+                            </div>
                           </div>
-                        ),
-                      )}
-                      <p className="mt-2 text-xs text-neutral-500">
-                        Click entity to view in Knowledge Graph (Phase 10)
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-neutral-500">
+                        No events at this location
                       </p>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-neutral-500">
-                      No related entities
-                    </p>
-                  )}
+                    )}
+                  </div>
+
+                  {/* Section 2: Citations */}
+                  <div className="mb-6">
+                    <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Citations ({selectedLocationDetail?.citations.length || 0}
+                      )
+                    </h4>
+                    {loadingDetail ? (
+                      <p className="text-xs text-neutral-400">
+                        Loading citations...
+                      </p>
+                    ) : selectedLocationDetail &&
+                      selectedLocationDetail.citations.length > 0 ? (
+                      <div className="space-y-3">
+                        {selectedLocationDetail.citations.map(
+                          (citation, idx) => (
+                            <div
+                              key={idx}
+                              className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <p className="text-xs font-medium text-neutral-300">
+                                    Source Document
+                                  </p>
+                                  <p className="mt-1 text-xs text-neutral-500">
+                                    {citation.locator}
+                                  </p>
+                                </div>
+                                {onViewSource && (
+                                  <button
+                                    onClick={() =>
+                                      onViewSource(
+                                        citation.file_id,
+                                        citation.locator,
+                                      )
+                                    }
+                                    className="text-xs text-primary-400 hover:text-primary-300"
+                                  >
+                                    View
+                                  </button>
+                                )}
+                              </div>
+                              <div className="mt-2 rounded bg-neutral-950/50 p-2">
+                                <p className="text-xs italic text-neutral-400">
+                                  &ldquo;{citation.excerpt}&rdquo;
+                                </p>
+                              </div>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-neutral-500">
+                        No citations available
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Section 3: Temporal Analysis */}
+                  <div className="mb-6">
+                    <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
+                      <Clock className="mr-2 h-4 w-4" />
+                      Temporal Analysis
+                    </h4>
+                    {loadingDetail ? (
+                      <p className="text-xs text-neutral-400">
+                        Loading temporal data...
+                      </p>
+                    ) : selectedLocationDetail?.temporal_period ? (
+                      <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3">
+                        <p className="text-xs text-neutral-400">
+                          Location was relevant during:
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-neutral-200">
+                          {selectedLocationDetail.temporal_period.start
+                            ? new Date(
+                                selectedLocationDetail.temporal_period.start,
+                              ).toLocaleDateString()
+                            : "Unknown start"}
+                          {" → "}
+                          {selectedLocationDetail.temporal_period.end
+                            ? new Date(
+                                selectedLocationDetail.temporal_period.end,
+                              ).toLocaleDateString()
+                            : "Unknown end"}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-neutral-500">
+                        No temporal data available
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Section 4: Related Entities */}
+                  <div>
+                    <h4 className="mb-3 flex items-center text-sm font-semibold text-neutral-200">
+                      <Link2 className="mr-2 h-4 w-4" />
+                      Related Entities (
+                      {selectedLocationDetail?.source_entity_ids.length || 0})
+                    </h4>
+                    {loadingDetail ? (
+                      <p className="text-xs text-neutral-400">
+                        Loading entities...
+                      </p>
+                    ) : selectedLocationDetail &&
+                      selectedLocationDetail.source_entity_ids.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedLocationDetail.source_entity_ids.map(
+                          (entityId) => (
+                            <div
+                              key={entityId}
+                              className="flex items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900/50 p-2"
+                            >
+                              <div className="h-2 w-2 rounded-full bg-primary-500" />
+                              <p className="text-xs text-neutral-300">
+                                {entityId}
+                              </p>
+                              {/* Phase 10: Add click handler to navigate to KG filtered by entity */}
+                            </div>
+                          ),
+                        )}
+                        <p className="mt-2 text-xs text-neutral-500">
+                          Click entity to view in Knowledge Graph (Phase 10)
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-neutral-500">
+                        No related entities
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body,
+          )}
       </APIProvider>
     </div>
   );

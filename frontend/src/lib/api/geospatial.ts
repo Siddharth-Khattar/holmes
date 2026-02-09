@@ -19,24 +19,27 @@ export interface LocationResponse {
   citation_count: number;
 }
 
-export interface LocationDetailResponse extends LocationResponse {
+export interface LocationDetailResponse {
+  id: string;
+  name: string;
+  coordinates: { lat: number; lng: number } | null;
+  location_type: string;
   events: Array<{
-    event_title: string;
-    event_description: string;
+    title: string;
+    description: string;
     timestamp: string;
     layer: string;
     confidence: number;
   }>;
   citations: Array<{
     file_id: string;
-    file_name?: string;
     locator: string;
     excerpt: string;
   }>;
-  temporal_associations: {
+  temporal_period: {
     start: string | null;
     end: string | null;
-  };
+  } | null;
   source_entity_ids: string[];
 }
 

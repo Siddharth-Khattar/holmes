@@ -140,10 +140,11 @@ export default function CaseLayout({
 
   return (
     <div
-      className="min-h-screen"
+      className="flex h-full flex-col"
       style={{ backgroundColor: "var(--background)" }}
     >
-      <div className="px-6 pt-4 pb-6 lg:px-8">
+      {/* Case header — fixed height, never shrinks */}
+      <div className="shrink-0 px-6 pt-4 lg:px-8">
         {/* Case header: title, badge, and analysis trigger */}
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2.5">
@@ -211,8 +212,10 @@ export default function CaseLayout({
             {caseData.description}
           </p>
         )}
+      </div>
 
-        {/* Page Content */}
+      {/* Page content — fills remaining height, scrolls internally */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 lg:px-8">
         {children}
       </div>
 

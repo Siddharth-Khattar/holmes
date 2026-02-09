@@ -10,7 +10,6 @@ from uuid import UUID
 
 from google.adk.agents import LlmAgent
 from google.adk.runners import Runner
-from google.adk.sessions import Session
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,7 +33,7 @@ from app.models import (
     Location,
     TimelineEvent,
 )
-from app.services.adk_service import create_stage_runner, get_session_service
+from app.services.adk_service import get_artifact_service, get_session_service
 
 logger = logging.getLogger(__name__)
 
@@ -160,12 +159,17 @@ async def create_chat_agent_and_runner(
     user_id: str,
     context: dict[str, object],
     session_id: str | None = None,
-) -> tuple[Runner, Session]:
-    """Create a chat agent with tools and an ADK runner/session.
+) -> tuple[Runner, str]:
+    """Create a chat agent with tools and an ADK runner bound to a session.
 
     Builds the system prompt from context, creates 4 closure-based tools,
     instantiates a lightweight LlmAgent (Flash model, no planner, no
-    output_schema), and sets up an ADK session for conversation history.
+    output_schema), and ensures an ADK session exists for conversation history.
+
+    The runner is created with auto_create_session=True so that the runner's
+    internal session lookup can create the session if it was not found. This
+    avoids stale-session race conditions between the pre-creation here and
+    the runner's internal get_session call.
 
     Args:
         case_id: The investigation case UUID string.
@@ -175,7 +179,9 @@ async def create_chat_agent_and_runner(
             None, creates a deterministic session ID from case_id + user_id.
 
     Returns:
-        Tuple of (Runner, Session) ready for run_async().
+        Tuple of (Runner, session_id_str). The runner is ready for run_async()
+        with the returned session_id; the ADK session service handles
+        conversation history persistence internally.
     """
     from app.config import get_settings
 
@@ -205,18 +211,31 @@ async def create_chat_agent_and_runner(
         tools=[query_knowledge_graph, get_findings, get_synthesis, search_findings],
     )
 
-    # Create Runner
-    runner = create_stage_runner(agent)
-
-    # Session management via ADK session_service directly
+    # Create Runner with auto_create_session=True for chat.
+    # Unlike pipeline stage runners, the chat runner must maintain conversation
+    # history across requests. auto_create_session ensures the runner can
+    # always find or create the session during run_async(), avoiding stale
+    # session references when the pre-created session object drifts from the
+    # DB state between our lookup and the runner's internal lookup.
     session_service = get_session_service()
+    runner = Runner(
+        agent=agent,
+        session_service=session_service,
+        artifact_service=get_artifact_service(),
+        app_name=settings.adk_app_name,
+        auto_create_session=True,
+    )
 
     # Determine session ID
     if session_id is None:
         # Deterministic session for persistent conversations
         session_id = hashlib.sha256(f"{case_id}:{user_id}:chat".encode()).hexdigest()
 
-    # Try to get existing session
+    # Ensure the session exists in the DB so the runner finds it with history.
+    # If it already exists, this is a no-op. If it doesn't, we create it with
+    # initial state. The runner's auto_create_session is a safety net in case
+    # of race conditions, but this pre-creation ensures the session has the
+    # case_id in its state from the start.
     existing = await session_service.get_session(
         app_name=settings.adk_app_name,
         user_id=user_id,
@@ -224,14 +243,18 @@ async def create_chat_agent_and_runner(
     )
 
     if existing:
-        return (runner, existing)
+        logger.debug(
+            "Reusing chat session=%s with %d prior events",
+            session_id,
+            len(existing.events),
+        )
+    else:
+        await session_service.create_session(
+            app_name=settings.adk_app_name,
+            user_id=user_id,
+            session_id=session_id,
+            state={"case_id": case_id},
+        )
+        logger.info("Created chat session=%s for case=%s", session_id, case_id)
 
-    # Create new session
-    session = await session_service.create_session(
-        app_name=settings.adk_app_name,
-        user_id=user_id,
-        session_id=session_id,
-        state={"case_id": case_id},
-    )
-
-    return (runner, session)
+    return (runner, session_id)

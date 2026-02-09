@@ -23,6 +23,13 @@ from app.services.chat_service import create_chat_agent_and_runner, load_chat_co
 
 logger = logging.getLogger(__name__)
 
+# Suppress the "non-text parts in the response" warning from google-genai.
+# The ADK framework internally accesses GenerateContentResponse.text during
+# debug logging, which triggers a noisy warning when responses contain
+# function_call parts alongside text parts. We handle each part type
+# individually in our event iteration, so this warning is harmless noise.
+logging.getLogger("google_genai.types").setLevel(logging.ERROR)
+
 router = APIRouter(prefix="/api/cases/{case_id}", tags=["chat"])
 
 # Regex for extracting citation markers from model output
@@ -133,11 +140,19 @@ async def chat_endpoint(
     # Create agent and runner (outside the generator so errors raise before SSE starts)
     case_id_str = str(case_id)
     user_id_str = current_user.id
-    runner, session = await create_chat_agent_and_runner(
+    runner, session_id = await create_chat_agent_and_runner(
         case_id=case_id_str,
         user_id=user_id_str,
         context=context,
         session_id=body.session_id,
+    )
+
+    logger.debug(
+        "Chat session: case=%s user=%s session_id=%s (from_client=%s)",
+        case_id_str,
+        user_id_str,
+        session_id,
+        body.session_id,
     )
 
     # Build the user message
@@ -147,13 +162,19 @@ async def chat_endpoint(
     )
 
     async def event_generator():
-        """Yield SSE events from the ADK runner stream."""
+        """Yield SSE events from the ADK runner stream.
+
+        Iterates through each event's content.parts individually to avoid
+        triggering the google-genai "non-text parts" warning. Each part type
+        (function_call, function_response, thought, text) is handled
+        explicitly so that mixed-part responses are processed correctly.
+        """
         full_text = ""
 
         try:
             async for event in runner.run_async(
                 user_id=user_id_str,
-                session_id=session.id,
+                session_id=session_id,
                 new_message=user_message,
             ):
                 # Skip events with no content
@@ -161,36 +182,32 @@ async def chat_endpoint(
                     continue
 
                 for part in event.content.parts:
-                    # Skip thinking parts (internal reasoning)
-                    if getattr(part, "thought", False):
+                    # Skip thinking/reasoning parts (internal model deliberation)
+                    if part.thought is True:
                         continue
 
-                    # Tool call start
+                    # Handle function_call parts (tool invocation started)
                     if part.function_call is not None:
+                        tool_name = part.function_call.name or "unknown"
                         yield {
                             "event": "chat-tool-start",
-                            "data": json.dumps(
-                                {
-                                    "tool_name": part.function_call.name,
-                                }
-                            ),
+                            "data": json.dumps({"tool_name": tool_name}),
                         }
                         continue
 
-                    # Tool call response
+                    # Handle function_response parts (tool invocation completed)
                     if part.function_response is not None:
+                        tool_name = part.function_response.name or "unknown"
                         yield {
                             "event": "chat-tool-end",
-                            "data": json.dumps(
-                                {
-                                    "tool_name": part.function_response.name,
-                                }
-                            ),
+                            "data": json.dumps({"tool_name": tool_name}),
                         }
                         continue
 
-                    # Text token (the actual response content)
-                    if part.text:
+                    # Handle text parts (the actual response content)
+                    # Check part.text is not None explicitly -- empty string
+                    # is a valid (if unusual) text part and should not be skipped
+                    if part.text is not None and part.text:
                         full_text += part.text
                         yield {
                             "event": "chat-token",
@@ -205,16 +222,17 @@ async def chat_endpoint(
                     {
                         "message": full_text,
                         "citations": citations,
-                        "session_id": session.id,
+                        "session_id": session_id,
                     }
                 ),
             }
 
         except Exception:
             logger.exception(
-                "Chat stream error for case=%s user=%s",
+                "Chat stream error for case=%s user=%s session=%s",
                 case_id_str,
                 user_id_str,
+                session_id,
             )
             yield {
                 "event": "chat-error",

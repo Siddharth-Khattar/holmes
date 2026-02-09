@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 10 of 12 (Source Panel & Entity Resolution) — COMPLETE (3/3 plans)
-**Next Phase:** 11 (Corrections & Refinement)
+**Current Phase:** 9 of 12 (Chat Interface) — IN PROGRESS (1/2 plans, backend done)
+**Next Phase:** 9 Plan 02 (Frontend chat wiring)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -23,7 +23,7 @@
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
 | 8.1 | Geospatial Agent & Map View | COMPLETE | 2026-02-09 | 2026-02-09 | 5 plans (5 commits): GeocodingService, GeospatialAgentRunner + pipeline Stage 9, 6 REST API endpoints, frontend API client + hook + trigger UI, enhanced detail panel with 4 sections |
-| 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
+| 9 | Chat Interface & Research | IN_PROGRESS | 2026-02-09 | - | Plan 01 done (backend): 4 tools, SSE endpoint, chat service. Plan 02 (frontend wiring) pending. |
 | 10 | Source Panel & Entity Resolution | COMPLETE | 2026-02-09 | 2026-02-09 | 3 plans (9 commits), 9/9 verified: shared citation utils + hooks, KG + Geospatial source wiring + entity resolution, Verdict + Timeline citation navigation |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
 | 12 | Demo Preparation | NOT_STARTED | - | - | |
@@ -35,6 +35,12 @@
 ## Current Context
 
 **What was just completed:**
+- **Phase 9 Plan 01 COMPLETE** (2026-02-09): Chat Backend -- 2 tasks, 2 commits
+  - Task 1: 4 closure-based tool factories (query_knowledge_graph, get_findings with detail/list modes, get_synthesis with 6 optional sections, search_findings via tsvector)
+  - Task 2: chat_service.py (context loading + agent/runner/session), chat.py (SSE POST endpoint with 5 event types), main.py router registration
+  - System prompt injects full synthesis context, citation format [[file_id|locator|label]], and tool usage strategy
+  - Flash model, no planner, no output_schema, default temperature (1.0)
+
 - **Phase 10 COMPLETE** (2026-02-09): Source Panel & Entity Resolution -- 3 plans, 9 commits, 9/9 verified
   - Plan 01: Shared foundation (citation-utils, useSourceNavigation, useEntityResolver, CitationLink, EntityBadge)
   - Plan 02: KG entity panel source docs clickable, EntityTimelineEntry "View source evidence", Geospatial entity resolution + citation-to-source
@@ -188,10 +194,9 @@
   - Known limitations: Paths not rendered (v1), no SSE streaming (polling-based), entity names not resolved (UUIDs only)
 
 **What's next:**
+- Phase 9 Plan 02 (Chat Frontend Wiring) -- SSE streaming in useChatbot.ts, citation chips, tool activity UX
 - Phase 11 (Corrections & Refinement) -- polish, bug fixes, integration testing
 - Phase 12 (Demo Preparation) -- demo scenarios, sample data, walkthrough
-- Phase 9 (Chat Interface) -- backend API + tool integration still needed
-- Chat message citations deferred to Phase 9+ (backend does not yet produce structured citations)
 
 ---
 
@@ -309,15 +314,20 @@
 
 ---
 
-### REQ-CHAT-001: Chat Interface — FRONTEND_DONE
+### REQ-CHAT-001: Chat Interface — BACKEND_DONE (frontend wiring pending)
 
 | Component | File Path |
 |-----------|-----------|
 | Chatbot UI | `frontend/src/components/app/chatbot.tsx` |
 | Chat hook | `frontend/src/hooks/useChatbot.ts` |
 | Types | `frontend/src/types/chatbot.ts` |
+| **Backend: Chat tools** | `backend/app/agents/chat_tools.py` |
+| **Backend: Chat prompt** | `backend/app/agents/prompts/chat.py` |
+| **Backend: Chat service** | `backend/app/services/chat_service.py` |
+| **Backend: Chat API** | `backend/app/api/chat.py` |
 
-**Backend API Needed:** `POST /api/chat`
+**Backend API:** `POST /api/cases/:caseId/chat` (SSE streaming) -- DONE
+**Frontend wiring:** useChatbot.ts needs SSE streaming update (Plan 02)
 
 ---
 
@@ -356,7 +366,7 @@ All frontend features need these backend endpoints:
 | File Ingestion | `/api/cases/:caseId/files` | GET, POST, DELETE | HIGH | DONE |
 | File Download | `/api/cases/:caseId/files/:fileId/download` | GET | HIGH | DONE |
 | File SSE | `/sse/cases/:caseId/files` | SSE | HIGH | DONE |
-| Chat | `/api/chat` | POST | HIGH | TODO |
+| Chat | `/api/cases/:caseId/chat` | POST (SSE) | HIGH | DONE |
 | Knowledge Graph | `/api/cases/:caseId/graph` | GET | HIGH | DONE |
 | KG Entities | `/api/cases/:caseId/entities` | GET, POST, PATCH, DELETE | MEDIUM | DONE |
 | KG Relationships | `/api/cases/:caseId/relationships` | GET, POST | MEDIUM | DONE |
@@ -623,9 +633,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 10 COMPLETE (3/3 plans, 9 commits, 9/9 verified). Source panel & entity resolution across all views.
+Stopped at: Phase 9 Plan 01 COMPLETE (2/2 tasks, 2 commits). Chat backend: 4 tools, SSE endpoint, chat service.
 Resume file: None
-Next action: Phase 11 (Corrections & Refinement)
+Next action: Phase 9 Plan 02 (Frontend chat wiring)
 
 ---
 

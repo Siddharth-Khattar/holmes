@@ -152,3 +152,22 @@ export function formatLocatorDisplay(
 
   return trimmed;
 }
+
+// ---------------------------------------------------------------------------
+// Finding ID normalization
+// ---------------------------------------------------------------------------
+
+/**
+ * Strips known prefixes from finding IDs produced by synthesis agents.
+ *
+ * The synthesis agent may store finding references with a "FINDING:" prefix
+ * (e.g., "FINDING:ae6b850d-..."). The findings API expects a bare UUID.
+ * This normalizer handles that boundary.
+ */
+export function normalizeFindingId(rawId: string): string {
+  const trimmed = rawId.trim();
+  if (trimmed.toUpperCase().startsWith("FINDING:")) {
+    return trimmed.slice("FINDING:".length);
+  }
+  return trimmed;
+}

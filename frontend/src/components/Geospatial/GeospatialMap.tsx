@@ -91,7 +91,7 @@ export function GeospatialMap({
   // File list for resolving citation file_id to original_filename
   const { data: filesData } = useQuery({
     queryKey: ["case-files", caseId],
-    queryFn: () => listFiles(caseId, 1, 200),
+    queryFn: () => listFiles(caseId, 1, 100),
     staleTime: 5 * 60 * 1000,
     enabled: !!caseId,
   });

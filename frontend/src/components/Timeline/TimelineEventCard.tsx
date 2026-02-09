@@ -48,10 +48,18 @@ export function TimelineEventCard({
   const layerConfig = LAYER_CONFIG[event.layer];
   const IconComponent = ICON_MAP[layerConfig.icon as keyof typeof ICON_MAP];
 
-  // Extract citations from event metadata
-  const citations: TimelineCitation[] = Array.isArray(event.metadata?.citations)
-    ? (event.metadata.citations as TimelineCitation[])
-    : [];
+  // Extract citations from event metadata, validating at the API boundary.
+  // metadata.citations is untyped (Record<string, unknown>), so each item
+  // must be validated before use rather than blindly cast.
+  const citations: TimelineCitation[] = (() => {
+    const raw = event.metadata?.citations;
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((c: unknown): c is TimelineCitation => {
+      if (typeof c !== "object" || c === null) return false;
+      const obj = c as { file_id?: unknown; locator?: unknown };
+      return typeof obj.file_id === "string" && typeof obj.locator === "string";
+    });
+  })();
 
   const [showCitations, setShowCitations] = useState(false);
 

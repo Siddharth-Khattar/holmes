@@ -6,7 +6,11 @@
 import { useState, useCallback, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { Citation } from "@/lib/citation-utils";
-import { parseLocator, categoryToViewerType } from "@/lib/citation-utils";
+import {
+  parseLocator,
+  categoryToViewerType,
+  normalizeFindingId,
+} from "@/lib/citation-utils";
 import { listFiles, getDownloadUrl, type FileResponse } from "@/lib/api/files";
 import { useFileUrlCache } from "@/hooks/useFileUrlCache";
 import type { SourceViewerContent } from "@/components/source-viewer/SourceViewerModal";
@@ -77,7 +81,7 @@ export function useSourceNavigation(caseId: string): UseSourceNavigationReturn {
   // Fetch and cache all case files (stale for 5 minutes)
   const { data: filesData } = useQuery({
     queryKey: ["case-files", caseId],
-    queryFn: () => listFiles(caseId, 1, 200),
+    queryFn: () => listFiles(caseId, 1, 100),
     staleTime: 5 * 60 * 1000,
     enabled: !!caseId,
   });
@@ -174,7 +178,8 @@ export function useSourceNavigation(caseId: string): UseSourceNavigationReturn {
   );
 
   const openFromFinding = useCallback(
-    async (findingId: string): Promise<void> => {
+    async (rawFindingId: string): Promise<void> => {
+      const findingId = normalizeFindingId(rawFindingId);
       const requestId = ++requestCounterRef.current;
       setIsLoading(true);
       setError(null);

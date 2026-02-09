@@ -1071,75 +1071,93 @@ Post-completion fixes:
 
 ---
 
-## Phase 8.1: Geospatial Agent & Map View
+## Phase 8.1: Geospatial Agent & Map View (On-Demand)
 
-**Goal:** Location intelligence: extract, enrich, geocode locations and visualize movement patterns on interactive map.
+**Goal:** On-demand geospatial intelligence: user-triggered extraction, geocoding, and visualization of location-based case evidence with citations.
 
 **Requirements:** REQ-GEO-001 through REQ-GEO-011
 
-**Depends on:** Phase 8 (Synthesis triggers Geospatial when `has_location_data == True`)
+**Depends on:** Phase 8 (Synthesis data: hypotheses, contradictions, gaps, timeline)
 
 **Status:** ⏳ NOT_STARTED
 
-**Plans:** 5 plans in 3 waves
+**Plans:** TBD (4-5 plans estimated)
 
 Plans:
-- [ ] 07-01-PLAN.md — DB schema: 9 new tables (KG, findings, synthesis) + Alembic migration + tsvector search
-- [ ] 07-02-PLAN.md — Pydantic schemas for KG/findings APIs + domain agent findings_text enrichment
-- [ ] 07-03-PLAN.md — KG Builder service (entity extraction, relationships, deduplication) + findings service (storage, full-text search)
-- [ ] 07-04-PLAN.md — Domain agent prompt enrichment (exhaustive citations, findings_text instructions)
-- [ ] 07-05-PLAN.md — API endpoints (KG + findings), SSE events, pipeline wiring
+- [ ] 08.1-01-PLAN.md — Geospatial Agent implementation + geocoding service
+- [ ] 08.1-02-PLAN.md — Locations API endpoints (GET/POST) + SSE events
+- [ ] 08.1-03-PLAN.md — Frontend integration: trigger button, data fetching, real data replacement
+- [ ] 08.1-04-PLAN.md — Movement pattern detection and path visualization
+- [ ] 08.1-05-PLAN.md — Location detail panel with events, citations, temporal analysis
 
 **Deliverables:**
 - Geospatial Agent implementation (LLM with tools):
-  - Triggered by Synthesis Agent when `has_location_data == True`
-  - Extracts and enriches location entities from synthesis findings
-  - Disambiguates ambiguous place names
-  - Geocodes locations to coordinates via mapping API
-  - Detects movement patterns and spatial relationships
-  - Flags locations needing satellite imagery analysis
+  - **On-demand execution** (user-triggered from Geospatial tab, NOT auto-triggered)
+  - Accesses synthesis outputs, domain findings, KG entities, timeline events from DB
+  - Extracts location references (addresses, place names, coordinates)
+  - Disambiguates ambiguous place names using context
+  - Geocodes locations to coordinates via Google Maps Geocoding API
+  - Detects movement patterns and temporal-spatial relationships
+  - Categorizes locations by type (crime_scene, witness_location, evidence_location, suspect_location, other)
+  - Associates events with locations (what happened where, when)
+  - **Citation-based**: every location must have source file_id + page/timestamp + excerpt
   - Gemini 3 Pro with `thinking_level="medium"`
   - Inline Pro-to-Flash fallback
-- Geocoding integration:
-  - Mapbox or Google Maps Geocoding API
+- Geocoding Service (`backend/app/services/geocoding_service.py`):
+  - Google Maps Geocoding API integration
   - Address → coordinates resolution
   - Reverse geocoding for coordinate-only locations
+  - Caching to avoid redundant API calls
+- Locations API endpoints (`backend/app/api/locations.py`):
+  - `POST /api/cases/:caseId/geospatial/generate` — Trigger geospatial analysis (on-demand)
+  - `GET /api/cases/:caseId/geospatial/status` — Check if analysis exists + status
+  - `GET /api/cases/:caseId/locations` — All locations with coordinates, types, events
+  - `GET /api/cases/:caseId/locations/:locationId` — Location detail with citations
+  - `DELETE /api/cases/:caseId/geospatial` — Clear geospatial data (for regeneration)
+- Locations table population (schema exists from Phase 7):
+  - name, coordinates {lat, lng}, location_type, source_entity_ids, temporal_associations
+  - Hybrid storage: DB persistence + regeneration capability
 - Movement pattern detection:
-  - Connect locations showing movement over time
-  - Route visualization (dashed for inferred, solid for confirmed)
-  - Anomaly detection for unusual patterns
-- Locations table population (schema from Phase 7):
-  - name, coordinates, location_type, source entities, temporal associations
-- Google Earth Engine integration (if API approved):
-  - Historical imagery retrieval
-  - Change detection between dates
-  - Thumbnail generation
-- Map View tab (frontend):
-  - Interactive map component (Mapbox GL JS or alternative)
-  - Location markers styled by type
-  - Route visualization for movement patterns
-  - Click interactions for location details
-  - Fullscreen capability
-- SSE events: `LOCATION_ENRICHED`, `GEOSPATIAL_COMPLETE`
-- Map API endpoints:
-  - `GET /api/cases/:caseId/locations` — All locations with coordinates
-  - `GET /api/cases/:caseId/locations/:locationId` — Location detail with temporal data
+  - Connect locations showing movement over time (using timeline + temporal_associations)
+  - GeospatialPath generation (from → to, with timestamps)
+  - Route type classification (confirmed vs inferred based on evidence)
+- Frontend enhancements (GeospatialMap component):
+  - **"Generate Geospatial Intelligence" button** (triggers POST /geospatial/generate)
+  - **Status indicator** (not generated / generating / complete)
+  - **Refresh button** (regenerate analysis after new evidence added)
+  - Replace mock data with real API data
+  - Color-coded location markers by type
+  - Movement paths visualization (solid for confirmed, dashed for inferred)
+  - Click interactions → detailed intelligence panel
+  - Intelligence panel shows: location name, type, events at location, citations, temporal associations
+  - Basic filtering (by location type, date range)
+- SSE events: `GEOSPATIAL_GENERATING`, `LOCATION_ENRICHED`, `GEOSPATIAL_COMPLETE`
 
 **Technical Notes:**
-- Geospatial Agent is a POST-SYNTHESIS utility, not part of the main domain analysis pipeline
-- Earth Engine API approval may take days/weeks — geocoding works without it
-- Map component should be lazy-loaded (heavy dependency)
+- Geospatial Agent is an **on-demand** utility, triggered only when user requests it
+- Storage is **hybrid**: results stored in DB (persistent), but can be regenerated
+- Agent reads from: case_findings, case_synthesis, case_hypotheses, timeline_events, kg_entities, kg_relationships
+- Google Maps API already integrated in frontend (GeospatialMap uses it)
+- Map component already exists with Google Maps — replace mock data, add trigger UI
 - **Key files to create:**
-  - `backend/app/agents/geospatial/` — Geospatial agent module
-  - `backend/app/services/geocoding_service.py` — Geocoding API integration
+  - `backend/app/agents/geospatial.py` — Geospatial agent (follows synthesis.py pattern)
+  - `backend/app/agents/prompts/geospatial.py` — Agent system prompt
+  - `backend/app/services/geocoding_service.py` — Geocoding API wrapper
   - `backend/app/api/locations.py` — Location API endpoints
+  - `backend/app/schemas/geospatial.py` — Pydantic schemas for geospatial output
+- **Key files to modify:**
+  - `frontend/src/app/(app)/cases/[id]/geospatial/page.tsx` — Add trigger button, replace mock data
+  - `frontend/src/components/Geospatial/GeospatialMap.tsx` — Enhanced props for events + citations
 
 **Exit Criteria:**
-- Locations extracted and geocoded from case findings
-- Movement patterns detected and visualized on map
-- Map View tab functional with real location data
-- Location markers clickable with detail panel
-- Geospatial Agent triggered automatically when synthesis detects location data
+- User can trigger geospatial analysis from Geospatial tab
+- Locations extracted and geocoded from case data (synthesis + findings + KG + timeline)
+- Locations stored in DB with citations (file_id, page/timestamp, excerpt)
+- Movement patterns detected and stored as paths
+- Map View displays real location data with color-coded markers
+- Location markers clickable → detail panel with events, citations, temporal data
+- Regeneration capability (user can refresh analysis)
+- No auto-triggering (purely on-demand)
 
 ---
 

@@ -39,11 +39,11 @@ Evidence-backed case Q&A via a Chat Agent with full DB access. The agent receive
 ### Backend data fetching
 - **4 consolidated tools** (not 7 individual tools) — agent must see the full picture with fewer calls:
   1. `query_knowledge_graph` — entities + relationships from `kg_entities` and `kg_relationships` tables
-  2. `get_findings` — all domain findings from `case_findings` table (filterable by agent_type, category, min_confidence)
+  2. `get_findings` — all domain findings from `case_findings` table (filterable by agent_type, category, min_confidence; supports single-finding drill-down by ID for full text retrieval)
   3. `get_synthesis` — consolidated view of hypotheses + contradictions + gaps + timeline events + locations from synthesis tables
   4. `search_findings` — full-text search over `case_findings` via PostgreSQL tsvector
 - **Full context injection on first message** — load entire case_synthesis (verdict, summary, key findings, risk assessment, cross-domain conclusions) + counts from all tables into system prompt when chat starts. Agent has full investigative context from message #1.
-- **Context caching (Gemini cached_content)** — implement in this phase with 2-hour TTL for cost reduction
+- **Context caching DEFERRED** — Context caching (REQ-AGENT-007f / Gemini cached_content with 2hr TTL) is deferred from this phase. It is a cost optimization, not a functional requirement. The chat agent works correctly without caching. Implementing it requires wrapping the agent in an ADK `App` object with `ContextCacheConfig`, which needs experimentation. Can be added as a follow-up optimization.
 
 ### Claude's Discretion
 - Exact system prompt wording and tool-table mapping instructions
@@ -51,7 +51,6 @@ Evidence-backed case Q&A via a Chat Agent with full DB access. The agent receive
 - PDF library choice (jspdf, @react-pdf/renderer, or alternative)
 - Tool response format and truncation strategy for large result sets
 - How citation chips are parsed from the model's text output (regex, special tokens, structured output)
-- Exact Gemini model configuration (thinking level, temperature, etc.)
 
 </decisions>
 
@@ -64,6 +63,7 @@ Evidence-backed case Q&A via a Chat Agent with full DB access. The agent receive
 - Reuse Phase 10 `useSourceNavigation` hook for citation click behavior — no new source viewer infrastructure needed
 - Chat API path must be `POST /api/cases/:caseId/chat` (case-scoped, not global `/api/chat`)
 - Frontend currently calls `POST /api/chat` — must update to case-scoped path
+- **Gemini model config:** Do NOT override temperature. Gemini 3 models require temperature=1.0 (the default). Setting a lower temperature causes errors or unexpected behavior per ADK limitations.
 
 </specifics>
 
@@ -73,6 +73,7 @@ Evidence-backed case Q&A via a Chat Agent with full DB access. The agent receive
 - Agent escalation (REQ-CHAT-003) — user requesting re-analysis or new domain agent runs from chat
 - DB-persisted chat history (REQ-CHAT-005) — currently session-only in React state
 - Context compaction for long sessions (REQ-AGENT-007g) — handle when conversation exceeds context window
+- Context caching (REQ-AGENT-007f) — Gemini cached_content with 2hr TTL for cost reduction. Requires ADK `App` wrapping with `ContextCacheConfig`. Deferred as cost optimization.
 - Research/Discovery system (REQ-RESEARCH-001 through 009) — web research agent triggered from chat
 - Conversation starters / suggested questions — decided against for v1, could add later
 

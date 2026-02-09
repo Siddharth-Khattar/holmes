@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — COMPLETE (7/7 plans)
-**Next Phase:** 8.1 (Geospatial Agent & Map View) or 9 (Chat Interface)
+**Current Phase:** 8.1 of 12 (Geospatial Agent & Map View) — IN PROGRESS (1/4 plans)
+**Next Phase:** 9 (Chat Interface)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -22,7 +22,7 @@
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
-| 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
+| 8.1 | Geospatial Agent & Map View | IN_PROGRESS | 2026-02-09 | - | Plan 01 complete: GeocodingService with Google Maps API + caching |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
@@ -125,8 +125,17 @@
   - Post-fix 2: `CaseFile.mime_type` (was `.content_type`), timeline date string→datetime parsing, Timeline ref hydration + scroll-position warnings
   - Post-fix 3: Gap entity display uses actual UUIDs (not position indices), `RelatedEntity` model with batch resolution in gaps API, entity name + type badge in GapDetailPanel; `_extract_agent_type` uses rsplit for multi-word prefixes (kg_builder → "kg" bug)
 
+**Phase 8.1 Plan 01 Complete** (2026-02-09): Geocoding Service Foundation -- 2 tasks, 2 commits
+  - Task 1: googlemaps>=4.10.0 dependency added and installed
+  - Task 2: GeocodingService class with forward/reverse/batch geocoding, in-memory caching, async interface via asyncio.to_thread
+  - Capabilities: address → {lat, lng}, {lat, lng} → address, batch geocoding with concurrent execution
+  - Error handling: Returns None on failure, logs warnings, caches failed results to avoid redundant API calls
+  - Type checking passes with googlemaps type ignores for incomplete library stubs
+
 **What's next:**
-- Phase 8.1 (Geospatial Agent & Map View) -- if location data detected by synthesis
+- Phase 8.1 Plan 02 (Geospatial Agent) -- LLM agent to extract locations from case data + geocode
+- Phase 8.1 Plan 03 (Locations API) -- REST endpoints for geospatial data access
+- Phase 8.1 Plan 04 (Frontend Integration) -- Replace mock data with real API calls
 - Phase 9 (Chat Interface) -- backend API needed
 - Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
 
@@ -512,6 +521,10 @@ All frontend features need these backend endpoints:
 | Gap entity referencing | Position indices (0,1,2) vs Entity UUIDs | Entity UUIDs | Position indices are meaningless after storage; UUIDs enable resolution to names/types |
 | Gap entity API resolution | Raw IDs vs Enriched objects | Batch-resolved `RelatedEntity` (id, name, entity_type) | Single DB query resolves all UUIDs; frontend displays human-readable names + type badges |
 | Agent type extraction | `split("_", 1)` vs `rsplit("_", 1)` | `rsplit("_", 1)` | Multi-word prefixes like `kg_builder` need right-split to preserve full prefix before case ID suffix |
+| Geocoding library | googlemaps vs geopy vs requests | googlemaps (official Google client) | Official client with built-in rate limiting, retry logic, production-tested reliability |
+| Geocoding caching | In-memory vs Redis | In-memory for v1 | Simple implementation, sufficient for single-instance deployment; can upgrade to Redis in Phase 9 |
+| Geocoding error handling | Raise exceptions vs Return None | Return None on failure | Graceful degradation allows partial results; agent can mark unmappable locations |
+| Geocoding async pattern | Sync client vs asyncio.to_thread wrapper | asyncio.to_thread wrapper | googlemaps library is synchronous; asyncio.to_thread provides non-blocking async interface |
 
 ---
 
@@ -524,9 +537,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8 COMPLETE (7/7 plans, 19 commits total). All post-completion bugfixes applied and committed.
+Stopped at: Phase 8.1 Plan 01 COMPLETE (2/2 tasks, 2 commits). GeocodingService implemented with Google Maps API + caching.
 Resume file: None
-Next action: Phase 8.1 (Geospatial Agent) or Phase 9 (Chat Interface backend)
+Next action: Phase 8.1 Plan 02 (Geospatial Agent implementation)
 
 ---
 

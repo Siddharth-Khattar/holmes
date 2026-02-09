@@ -55,6 +55,13 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
     color: "",
     position: { x: 0, y: 0 },
   },
+  synthesis: {
+    type: "synthesis",
+    name: "Synthesis Agent",
+    description: "Generates hypotheses, contradictions, gaps, and case verdict",
+    color: "",
+    position: { x: 0, y: 0 },
+  },
 };
 
 // Default connections between agents
@@ -70,6 +77,7 @@ export const DEFAULT_CONNECTIONS: Array<{
   { source: "legal", target: "strategy" },
   { source: "evidence", target: "strategy" },
   { source: "strategy", target: "knowledge-graph" },
+  { source: "knowledge-graph", target: "synthesis" },
 ];
 
 // Per-agent color variable pair: tint (subtle background) and accent (bright text/glow)
@@ -102,6 +110,10 @@ export const AGENT_TYPE_COLORS: Record<AgentType, AgentColorVars> = {
   "knowledge-graph": {
     tint: "var(--cc-kg-tint)",
     accent: "var(--cc-kg-accent)",
+  },
+  synthesis: {
+    tint: "var(--cc-synthesis-tint)",
+    accent: "var(--cc-synthesis-accent)",
   },
 };
 

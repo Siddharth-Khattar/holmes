@@ -1,5 +1,5 @@
 # ABOUTME: Analysis pipeline orchestrator with session-per-stage architecture.
-# ABOUTME: Runs as a background task coordinating triage, orchestrator, domain agents, and strategy.
+# ABOUTME: Runs as a background task coordinating triage, orchestrator, domain agents, and synthesis.
 
 import logging
 import time
@@ -132,13 +132,12 @@ async def run_analysis_workflow(
     2. Stage 1: Run Triage Agent (fresh session, multimodal files)
     3. Stage 2: Run Orchestrator Agent (fresh session, text-only input)
     4. Stage 3: Run Domain Agents (file-group-based parallel fresh sessions)
-    5. Stage 4: Run Strategy Agent (sequential, receives domain summaries)
-    6. Stage 5: HITL for low-confidence findings
-    7. Stage 6: Save Findings to case_findings table
-    8. Stage 7: Build Knowledge Graph (entities, relationships, dedup)
-    9. Stage 7b: Backfill finding-to-entity links
-    10. Update file statuses to ANALYZED
-    11. Emit processing-complete event
+    5. Stage 4: HITL for low-confidence findings
+    6. Stage 5: Save Findings to case_findings table
+    7. Stage 6: Build Knowledge Graph (entities, relationships, dedup)
+    8. Stage 6b: Backfill finding-to-entity links
+    9. Update file statuses to ANALYZED
+    10. Emit processing-complete event
 
     SSE events emitted at each stage transition:
     - agent-started: When an agent within a stage starts
@@ -150,13 +149,11 @@ async def run_analysis_workflow(
     from app.agents.base import create_sse_publish_fn
     from app.agents.domain_runner import (
         DomainRunResult,
-        build_strategy_context,
         compute_agent_tasks,
         run_domain_agents_parallel,
     )
     from app.agents.kg_builder import run_kg_builder
     from app.agents.orchestrator import run_orchestrator
-    from app.agents.strategy import run_strategy
     from app.agents.synthesis import run_synthesis
     from app.agents.triage import run_triage
     from app.database import _get_sessionmaker
@@ -661,178 +658,7 @@ async def run_analysis_workflow(
                             error=f"Agent {compound_id} did not return any result",
                         )
 
-            # ---- Stage 4: Legal Strategy Agent (Sequential, after domain agents) ----
-            strategy_output = None
-            strategy_execution_id: UUID | None = None
-            any_domain_ran = any(
-                any(rr.output is not None for rr in run_list)
-                for run_list in domain_results.values()
-            )
-
-            # Identify strategy-routed files (needed for both standalone and domain-summary paths)
-            strategy_file_ids: set[str] = set()
-            strategy_context_injection: str | None = None
-            if orchestrator_output:
-                for rd in orchestrator_output.routing_decisions:
-                    if "strategy" in rd.target_agents:
-                        strategy_file_ids.add(rd.file_id)
-                        if strategy_context_injection is None and rd.context_injection:
-                            strategy_context_injection = rd.context_injection
-
-            file_lookup = {str(f.id): f for f in files}
-            strategy_files = [
-                file_lookup[fid] for fid in strategy_file_ids if fid in file_lookup
-            ]
-
-            # Determine whether the orchestrator requested strategy analysis.
-            # Strategy only runs when explicitly routed — having domain results
-            # alone is not sufficient. This prevents strategy from running on
-            # cases where it was never requested (e.g., pure evidence analysis).
-            strategy_requested = False
-            if orchestrator_output:
-                strategy_requested = (
-                    bool(strategy_file_ids)
-                    or "strategy" in orchestrator_output.parallel_agents
-                    or "strategy" in orchestrator_output.sequential_agents
-                )
-
-            # Determine whether to run strategy and with what inputs
-            run_strategy_agent = False
-            domain_summaries = ""
-
-            if strategy_requested and any_domain_ran:
-                # Case 1: Strategy requested + domain agents ran → summaries path
-                run_strategy_agent = True
-                domain_summaries = build_strategy_context(domain_results)
-            elif strategy_requested and not any_domain_ran and strategy_files:
-                # Case 2: No domain agents ran but strategy has its own files.
-                # Distinguish deliberate strategy-only routing from domain agent failure.
-                # strategy_requested is only True when orchestrator_output is not None
-                assert orchestrator_output is not None
-                domain_agent_types = frozenset({"financial", "legal", "evidence"})
-                domain_routing_intended = any(
-                    any(a in domain_agent_types for a in rd.target_agents)
-                    for rd in orchestrator_output.routing_decisions
-                )
-                if domain_routing_intended:
-                    # Domain agents were expected but all failed — ask user
-                    standalone_confirmation = await request_confirmation(
-                        case_id=case_id,
-                        agent_type="strategy",
-                        action_description=(
-                            f"Domain agents were routed but produced no results. "
-                            f"Run strategy agent standalone with "
-                            f"{len(strategy_files)} file(s)?"
-                        ),
-                        affected_items=[str(f.id) for f in strategy_files],
-                        context={
-                            "strategy_file_count": len(strategy_files),
-                            "strategy_file_names": [
-                                f.original_filename for f in strategy_files
-                            ],
-                            "domain_agents_expected": True,
-                        },
-                    )
-                    if standalone_confirmation.approved:
-                        run_strategy_agent = True
-                    else:
-                        logger.info(
-                            "Strategy standalone rejected for case=%s (reason: %s)",
-                            case_id,
-                            standalone_confirmation.reason,
-                        )
-                else:
-                    # Deliberate strategy-only routing — run directly
-                    run_strategy_agent = True
-                    logger.info(
-                        "Strategy-only routing (deliberate) for case=%s with %d files",
-                        case_id,
-                        len(strategy_files),
-                    )
-
-            if not strategy_requested:
-                logger.info(
-                    "Skipping strategy agent for case=%s: not requested by orchestrator",
-                    case_id,
-                )
-
-            if run_strategy_agent:
-                logger.info(
-                    "Pipeline starting stage=strategy case=%s workflow=%s "
-                    "standalone=%s",
-                    case_id,
-                    workflow_id,
-                    not any_domain_ran,
-                )
-
-                strategy_task_id = str(uuid4())
-                await emit_agent_started(
-                    case_id=case_id,
-                    agent_type="strategy",
-                    task_id=strategy_task_id,
-                    file_id=str(first_file.id),
-                    file_name="strategy-analysis",
-                )
-
-                strategy_output, strategy_execution_id = await run_strategy(
-                    case_id=case_id,
-                    workflow_id=workflow_id,
-                    user_id=user_id,
-                    files=strategy_files,
-                    domain_summaries=domain_summaries,
-                    hypotheses=[],
-                    db_session=db,
-                    publish_event=publish_fn,
-                    parent_execution_id=(orch_execution.id if orch_execution else None),
-                    context_injection=strategy_context_injection,
-                )
-
-                if strategy_output:
-                    # Look up strategy execution record for SSE metadata
-                    strat_metadata: dict[str, object] = {}
-                    if strategy_execution_id is not None:
-                        strat_exec_result = await db.execute(
-                            select(AgentExecution).where(
-                                AgentExecution.id == strategy_execution_id,
-                            )
-                        )
-                        strat_exec = strat_exec_result.scalar_one_or_none()
-                        if strat_exec:
-                            strat_metadata = build_execution_metadata(
-                                strat_exec, settings.gemini_pro_model
-                            )
-
-                    await emit_agent_complete(
-                        case_id=case_id,
-                        agent_type="strategy",
-                        task_id=strategy_task_id,
-                        result={
-                            "taskId": strategy_task_id,
-                            "agentType": "strategy",
-                            "outputs": [
-                                {
-                                    "type": "strategy-findings",
-                                    "data": {
-                                        "findingCount": len(strategy_output.findings),
-                                    },
-                                }
-                            ],
-                            "metadata": strat_metadata,
-                        },
-                    )
-                else:
-                    await emit_agent_error(
-                        case_id=case_id,
-                        agent_type="strategy",
-                        task_id=strategy_task_id,
-                        error="Strategy agent failed to produce output",
-                    )
-
-                # Commit so the strategy execution record is visible to
-                # snapshot queries from reconnecting SSE clients during HITL.
-                await db.commit()
-
-            # ---- Stage 5: HITL for Low-Confidence Findings ----
+            # ---- Stage 4: HITL for Low-Confidence Findings ----
             if domain_results:
                 for domain_agent, domain_run_list in domain_results.items():
                     for run_result in domain_run_list:
@@ -881,41 +707,7 @@ async def run_analysis_workflow(
                                     # Mark finding as rejected (for audit trail)
                                     # Finding remains in output but excluded from KG in Phase 7
 
-            # Also check strategy results for HITL
-            if strategy_output:
-                for finding in strategy_output.findings:
-                    if finding.confidence < settings.confidence_threshold:
-                        logger.info(
-                            "Low-confidence finding from strategy: %s "
-                            "(confidence=%s), requesting HITL",
-                            finding.title,
-                            finding.confidence,
-                        )
-                        confirmation_result = await request_confirmation(
-                            case_id=case_id,
-                            agent_type="strategy",
-                            action_description=(
-                                f"Low-confidence finding "
-                                f"({finding.confidence}/100): {finding.title}"
-                            ),
-                            affected_items=[c.file_id for c in finding.citations],
-                            context={
-                                "finding_title": finding.title,
-                                "finding_category": finding.category,
-                                "finding_description": finding.description[:500],
-                                "confidence": finding.confidence,
-                                "agent": "strategy",
-                            },
-                        )
-                        if not confirmation_result.approved:
-                            logger.info(
-                                "Finding rejected by user: %s from strategy "
-                                "(reason: %s)",
-                                finding.title,
-                                confirmation_result.reason,
-                            )
-
-            # ---- Stage 6: Save Findings to case_findings ----
+            # ---- Stage 5: Save Findings to case_findings ----
             logger.info(
                 "Pipeline starting stage=save_findings case=%s workflow=%s",
                 case_id,
@@ -945,44 +737,14 @@ async def run_analysis_workflow(
                             title=f.title,
                         )
 
-            # Also save strategy findings if available
-            if strategy_output:
-                strat_saved = await save_findings_from_output(
-                    output=strategy_output,
-                    agent_type="strategy",
-                    execution_id=strategy_execution_id,
-                    case_id=UUID(case_id),
-                    workflow_id=UUID(workflow_id),
-                    file_group_label="strategy",
-                    db=db,
-                )
-                all_saved_findings.extend(strat_saved)
-                for f in strat_saved:
-                    await emit_finding_committed(
-                        case_id=case_id,
-                        finding_id=str(f.id),
-                        agent_type="strategy",
-                        title=f.title,
-                    )
-
             await db.commit()  # Commit findings before KG building
 
-            # ---- Stage 7: Build Knowledge Graph (LLM-based KG Builder) ----
+            # ---- Stage 6: Build Knowledge Graph (LLM-based KG Builder) ----
             logger.info(
                 "Pipeline starting stage=kg_builder case=%s workflow=%s",
                 case_id,
                 workflow_id,
             )
-            # Add strategy to domain_results so KG Builder processes strategy entities too
-            if strategy_output:
-                domain_results.setdefault("strategy", []).append(
-                    DomainRunResult(
-                        agent_type="strategy",
-                        output=strategy_output,
-                        group_label="strategy",
-                        execution_id=strategy_execution_id,
-                    )
-                )
 
             kg_builder_task_id = str(uuid4())
             await emit_agent_started(
@@ -1043,7 +805,7 @@ async def run_analysis_workflow(
                 kg_relationships_created,
             )
 
-            # ---- Stage 7b: Backfill finding-to-entity links ----
+            # ---- Stage 6b: Backfill finding-to-entity links ----
             # For each saved finding, find KG entities that came from the same
             # agent execution and link them via the entity_ids JSONB field.
             for finding in all_saved_findings:
@@ -1065,7 +827,7 @@ async def run_analysis_workflow(
                     )
             await db.commit()
 
-            # ---- Stage 8: Synthesis Agent ----
+            # ---- Stage 7: Synthesis Agent ----
             logger.info(
                 "Pipeline starting stage=synthesis case=%s workflow=%s",
                 case_id,
@@ -1149,9 +911,6 @@ async def run_analysis_workflow(
                     if run_result.output is not None:
                         total_findings += len(run_result.output.findings)
                         total_domain_entities += len(run_result.output.entities)
-
-            # Also count strategy findings (already included in domain_results if present)
-            # Strategy findings are counted in the loop above when strategy was added to domain_results
 
             total_entities = sum(len(fr.entities) for fr in triage_output.file_results)
             total_duration_s = time.monotonic() - pipeline_start

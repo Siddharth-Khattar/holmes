@@ -34,7 +34,7 @@
 | 7.2 | Knowledge Graph Frontend (D3.js Enhancement) | Improve D3.js graph with Epstein-inspired layout, physics, sidebars, filtering, document excerpts | REQ-VIS-003 | ✅ COMPLETE |
 | 7.3 | Knowledge Graph Frontend (vis-network) — OPTIONAL | Premium vis-network graph visualization (preserved for experimentation) | REQ-VIS-003 (alternative) | ⏳ DEFERRED |
 | 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ✅ COMPLETE |
-| 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ⏳ PLANNED |
+| 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ✅ COMPLETE |
 | 9 | Chat Interface & Research | Multi-source tool-based Q&A, research/discovery, context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
 | 10 | Source Panel & Agent Flow Polish | Source viewers, citation navigation, task panel, narrative generation | REQ-SOURCE-*, REQ-VIS-*, REQ-TASK-003-007 | 🟡 FRONTEND_DONE |
 | 11 | Corrections & Refinement | Error flagging, Verification, Regeneration | REQ-CORR-* | ⏳ NOT_STARTED |

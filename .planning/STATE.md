@@ -35,7 +35,15 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 7 Complete** (2026-02-07): Knowledge Storage & Domain Agent Enrichment — 6 plans, 11 commits, 8/8 verified
+- **Phase 8.1 Complete** (2026-02-09): Geospatial Agent & Map View — 5 plans, 15 commits, 15/15 verified
+  - Plan 01: GeocodingService with Google Maps API integration (forward/reverse/batch geocoding + in-memory caching)
+  - Plan 02: GeospatialAgentRunner (text-only input from 6 DB sources, Flash model, pipeline Stage 9, auto-geocoding)
+  - Plan 03: 6 REST API endpoints (POST /generate, GET /status, GET /locations, GET /locations/:id, GET /paths, DELETE)
+  - Plan 04: Frontend API client + useGeospatialData hook + trigger UI (Generate/Refresh buttons, status banner, 3-second polling)
+  - Plan 05: Enhanced GeospatialMap with 4-section detail panel (Events, Citations, Temporal Analysis, Related Entities)
+  - Full pipeline: Triage → Orchestrator → Domain → Strategy → HITL → Save Findings → KG Builder → Entity Backfill → Synthesis → Geospatial (on-demand) → Final
+
+**Phase 7 Complete** (2026-02-07): Knowledge Storage & Domain Agent Enrichment — 6 plans, 11 commits, 8/8 verified
   - Plan 01: 9 SQLAlchemy models (KgEntity, KgRelationship, CaseFinding, CaseHypothesis, CaseContradiction, CaseGap, CaseSynthesis, TimelineEvent, Location) + Alembic migration with tsvector GIN indexes
   - Plan 02: 15 Pydantic API schemas (KG + findings) + findings_text added to all 4 domain output models
   - Plan 03: KG Builder service (entity extraction, co-occurrence relationships, exact+fuzzy dedup, degree computation) + Findings service (storage, tsvector search, pagination)
@@ -174,10 +182,9 @@
   - Known limitations: Paths not rendered (v1), no SSE streaming (polling-based), entity names not resolved (UUIDs only)
 
 **What's next:**
-- Phase 9 (Chat Interface) -- backend API needed (tools: query_kg, search_findings, get_hypotheses, run_domain_agent)
-- Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
-- Phase 10 must wire Geospatial citations to Source Viewer (View buttons already in place)
-- Phase 10 can add entity name resolution to Geospatial Related Entities section
+- Phase 9 (Chat Interface) -- backend API + tool integration (query_kg, search_findings, get_synthesis, generate_geospatial, run_domain_agent)
+- Phase 10 (Source Panel) -- wire KG/Geospatial/Timeline citations to source viewers: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
+- Phase 10 geospatial enhancements: entity name resolution (currently shows UUIDs), location filtering, movement path visualization
 
 ---
 

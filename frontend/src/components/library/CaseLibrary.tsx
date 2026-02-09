@@ -292,8 +292,9 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
 
   const handleRedactFile = useCallback(
     async (file: LibraryFile) => {
-      // Check cache — if hit, open with URL immediately
-      const cachedUrl = getCachedUrl(caseId, file.id);
+      // Check cache or preloaded URLs — if hit, open with URL immediately
+      const cachedUrl =
+        getCachedUrl(caseId, file.id) || preloadedUrls.get(file.id) || null;
       if (cachedUrl) {
         setRedactModalFile({ ...file, url: cachedUrl });
         return;
@@ -317,7 +318,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
         alert("Failed to load file for redaction. Please try again.");
       }
     },
-    [caseId, getCachedUrl, setCachedUrl],
+    [caseId, getCachedUrl, setCachedUrl, preloadedUrls],
   );
 
   const handlePreviewFile = useCallback(
@@ -455,10 +456,10 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
               prev.map((f) =>
                 f.id === file.id
                   ? {
-                      ...f,
-                      status: "ready" as FileStatus,
-                      conflictInfo: undefined,
-                    }
+                    ...f,
+                    status: "ready" as FileStatus,
+                    conflictInfo: undefined,
+                  }
                   : f,
               ),
             );
@@ -780,11 +781,10 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className={`px-2.5 py-0.5 text-xs rounded-lg transition-colors ${
-                  selectedCategory === category
+                className={`px-2.5 py-0.5 text-xs rounded-lg transition-colors ${selectedCategory === category
                     ? "bg-accent-light dark:bg-[#f5f4ef] text-cream dark:text-charcoal"
                     : "bg-warm-gray/8 dark:bg-stone/10 text-muted-foreground hover:bg-warm-gray/12 dark:hover:bg-stone/15"
-                }`}
+                  }`}
               >
                 {category.charAt(0).toUpperCase() + category.slice(1)}
               </button>
@@ -928,11 +928,10 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                   <th className="w-12 px-4 py-3">
                     <button
                       onClick={toggleSelectAll}
-                      className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${
-                        selectionState === "none"
+                      className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${selectionState === "none"
                           ? "border-warm-gray/40 dark:border-stone/50 hover:border-warm-gray/60 dark:hover:border-stone/70"
                           : "border-blue-500 bg-blue-500"
-                      }`}
+                        }`}
                       title={
                         selectionState === "all" ? "Deselect all" : "Select all"
                       }
@@ -959,18 +958,16 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className={`border-b border-warm-gray/15 dark:border-stone/15 hover:bg-warm-gray/8 dark:hover:bg-stone/10 transition-colors ${
-                      selectedFileIds.has(file.id) ? "bg-blue-500/10" : ""
-                    }`}
+                    className={`border-b border-warm-gray/15 dark:border-stone/15 hover:bg-warm-gray/8 dark:hover:bg-stone/10 transition-colors ${selectedFileIds.has(file.id) ? "bg-blue-500/10" : ""
+                      }`}
                   >
                     <td className="w-12 px-4 py-4">
                       <button
                         onClick={() => toggleFileSelection(file.id)}
-                        className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${
-                          selectedFileIds.has(file.id)
+                        className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${selectedFileIds.has(file.id)
                             ? "border-blue-500 bg-blue-500"
                             : "border-warm-gray/40 dark:border-stone/60 hover:border-warm-gray/60 dark:hover:border-stone/80"
-                        }`}
+                          }`}
                       >
                         {selectedFileIds.has(file.id) && (
                           <Check className="w-3 h-3 text-white" />

@@ -144,6 +144,7 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
   const [redactedImageUrl, setRedactedImageUrl] = useState<string | null>(null);
   const [redactedVideoUrl, setRedactedVideoUrl] = useState<string | null>(null);
   const [redactedAudioUrl, setRedactedAudioUrl] = useState<string | null>(null);
+  const [isMediaLoaded, setIsMediaLoaded] = useState(false);
   // Visualization image is available but not currently displayed in the UI
   // const [visualizationImageUrl, setVisualizationImageUrl] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -152,6 +153,10 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
   const isImage = file.type === "image";
   const isVideo = file.type === "video";
   const isAudio = file.type === "audio";
+
+  useEffect(() => {
+    setIsMediaLoaded(false);
+  }, [file.url]);
 
   const handleRedactionSubmit = useCallback(async () => {
     if (!redactionPrompt.trim()) return;
@@ -510,11 +515,13 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                         src={file.url}
                         className="w-full h-full"
                         title={`Original: ${file.name}`}
+                        onLoad={() => setIsMediaLoaded(true)}
                       />
                     ) : isVideo ? (
                       <div className="w-full h-full flex items-center justify-center bg-warm-gray/5 dark:bg-stone/5 p-4 overflow-hidden">
                         <video
                           src={file.url}
+                          onLoadedData={() => setIsMediaLoaded(true)}
                           controls
                           className="max-w-full max-h-full object-contain"
                           title={`Original: ${file.name}`}
@@ -530,6 +537,7 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                         </p>
                         <audio
                           src={file.url}
+                          onLoadedData={() => setIsMediaLoaded(true)}
                           controls
                           className="w-full max-w-md"
                           title={`Original: ${file.name}`}
@@ -543,6 +551,7 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                           fill
                           className="object-contain"
                           unoptimized
+                          onLoad={() => setIsMediaLoaded(true)}
                         />
                       </div>
                     )}
@@ -556,10 +565,10 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                   {/* Right Half - Redaction Controls or Preview */}
                   <div className="flex-1 overflow-hidden flex flex-col min-h-0">
                     {status === "success" &&
-                    (redactedPdfUrl ||
-                      redactedImageUrl ||
-                      redactedVideoUrl ||
-                      redactedAudioUrl) ? (
+                      (redactedPdfUrl ||
+                        redactedImageUrl ||
+                        redactedVideoUrl ||
+                        redactedAudioUrl) ? (
                       /* Redacted Preview */
                       <div className="flex-1 relative min-h-0 overflow-hidden">
                         {isPdf && redactedPdfUrl ? (
@@ -680,7 +689,8 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                       <div className="flex-1 flex items-center justify-center">
                         <button
                           onClick={() => setShowRedactionInput(true)}
-                          className="flex items-center space-x-3 px-6 py-4 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border-2 border-purple-500/30 hover:border-purple-500/50 transition-all"
+                          disabled={!isMediaLoaded}
+                          className="flex items-center space-x-3 px-6 py-4 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border-2 border-purple-500/30 hover:border-purple-500/50 transition-all disabled:opacity-50 disabled:blur-sm disabled:cursor-not-allowed"
                         >
                           <Sparkles className="w-6 h-6 text-purple-600 dark:text-purple-400" />
                           <span className="text-lg font-medium text-purple-700 dark:text-purple-300">
@@ -731,22 +741,20 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                                 <button
                                   type="button"
                                   onClick={() => setRedactionMethod("blur")}
-                                  className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
-                                    redactionMethod === "blur"
-                                      ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
-                                      : "border-warm-gray/15 dark:border-stone/15 text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10"
-                                  }`}
+                                  className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${redactionMethod === "blur"
+                                    ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
+                                    : "border-warm-gray/15 dark:border-stone/15 text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10"
+                                    }`}
                                 >
                                   Blur
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setRedactionMethod("pixelate")}
-                                  className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
-                                    redactionMethod === "pixelate"
-                                      ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
-                                      : "border-warm-gray/15 dark:border-stone/15 text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10"
-                                  }`}
+                                  className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${redactionMethod === "pixelate"
+                                    ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
+                                    : "border-warm-gray/15 dark:border-stone/15 text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10"
+                                    }`}
                                 >
                                   Pixelate
                                 </button>
@@ -756,11 +764,10 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                                     onClick={() =>
                                       setRedactionMethod("blackbox")
                                     }
-                                    className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
-                                      redactionMethod === "blackbox"
-                                        ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
-                                        : "border-warm-gray/15 dark:border-stone/15 text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10"
-                                    }`}
+                                    className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${redactionMethod === "blackbox"
+                                      ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
+                                      : "border-warm-gray/15 dark:border-stone/15 text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10"
+                                      }`}
                                   >
                                     Blackbox
                                   </button>
@@ -856,13 +863,13 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                               </span>
                               {imageRedactionResult.categories_selected.length >
                                 0 && (
-                                <span className="text-muted-foreground ml-2">
-                                  •{" "}
-                                  {imageRedactionResult.categories_selected.join(
-                                    ", ",
-                                  )}
-                                </span>
-                              )}
+                                  <span className="text-muted-foreground ml-2">
+                                    •{" "}
+                                    {imageRedactionResult.categories_selected.join(
+                                      ", ",
+                                    )}
+                                  </span>
+                                )}
                             </>
                           ) : isVideo && videoRedactionResult ? (
                             <>

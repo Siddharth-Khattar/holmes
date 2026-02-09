@@ -333,7 +333,11 @@ async def write_synthesis_output(
                 workflow_id=workflow_uuid,
                 case_summary=output.case_summary,
                 case_verdict=output.case_verdict.model_dump(mode="json"),
-                cross_modal_links=output.cross_modal_links or [],
+                cross_modal_links=[
+                    link.model_dump(mode="json") for link in output.cross_modal_links
+                ]
+                if output.cross_modal_links
+                else [],
                 cross_domain_conclusions=[output.cross_domain_conclusions],
                 key_findings_summary=json.dumps(
                     [kf.model_dump(mode="json") for kf in output.key_findings]

@@ -217,6 +217,27 @@ class SynthesisKeyFinding(BaseModel):
     )
 
 
+class CrossModalLink(BaseModel):
+    """A link connecting findings across different evidence modalities."""
+
+    description: str = Field(
+        ...,
+        description="Description of the cross-modal correlation",
+    )
+    modality_a: str = Field(
+        ...,
+        description="First evidence modality (e.g. 'audio', 'document', 'image')",
+    )
+    modality_b: str = Field(
+        ...,
+        description="Second evidence modality that correlates with modality_a",
+    )
+    temporal_link: str = Field(
+        ...,
+        description="Temporal or causal relationship between the two modalities",
+    )
+
+
 class SynthesisVerdict(BaseModel):
     """The overall case verdict assessment."""
 
@@ -278,7 +299,7 @@ class SynthesisOutput(BaseModel):
         ...,
         description="Actionable investigation tasks derived from findings",
     )
-    cross_modal_links: list[dict[str, str]] = Field(
+    cross_modal_links: list[CrossModalLink] = Field(
         ...,
         description="Links connecting findings across modalities "
         "(e.g., audio mention matches document reference)",

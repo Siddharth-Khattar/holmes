@@ -20,6 +20,7 @@ from app.api import (
     findings,
     health,
     knowledge_graph,
+    locations,
     redaction,
     sse,
     synthesis,
@@ -184,3 +185,4 @@ app.include_router(knowledge_graph.router, tags=["knowledge-graph"])
 app.include_router(findings.router, tags=["findings"])
 app.include_router(synthesis.router, tags=["synthesis"])
 app.include_router(timeline.router, tags=["timeline"])
+app.include_router(locations.router, tags=["geospatial"])

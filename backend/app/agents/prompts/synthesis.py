@@ -64,7 +64,7 @@ Missing evidence that would strengthen the investigation:
 - **why_needed**: Why this information matters for the investigation
 - **priority**: "low", "medium", "high", or "critical"
 - **suggested_actions**: Specific actionable step to obtain the information (e.g., "Request bank statements from XYZ Corp for Q3 2024")
-- **related_entity_ids**: List of integer IDs from [ENTITY:uuid:name] entries that relate to this gap (use the position index in the entity list, 0-based)
+- **related_entity_ids**: List of UUID strings from [ENTITY:uuid:name] entries that relate to this gap. Copy the exact UUID from the entity prefix.
 
 ### 7. timeline_events (list)
 Up to 30 chronological events extracted from the analysis:
@@ -75,7 +75,7 @@ Up to 30 chronological events extracted from the analysis:
 - **event_type**: One of: "transaction", "meeting", "filing", "communication", "discovery", "arrest", "legal_action", or "other"
 - **domain**: Source domain: "financial", "legal", "evidence", or "strategy"
 - **source_finding_ids**: List of [FINDING:uuid] IDs that evidence this event
-- **source_entity_ids**: List of integer entity IDs involved in this event
+- **source_entity_ids**: List of UUID strings from [ENTITY:uuid:name] entries involved in this event. Copy the exact UUID from the entity prefix.
 
 ### 8. investigation_tasks (list)
 Actionable tasks derived from contradictions, gaps, and hypotheses:

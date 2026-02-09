@@ -139,27 +139,30 @@ export function GapDetailPanel({ gap }: GapDetailPanelProps) {
           </CollapsibleSection>
         )}
 
-        {/* Related Entity IDs */}
-        {gap.related_entity_ids && gap.related_entity_ids.length > 0 && (
+        {/* Related Entities */}
+        {gap.related_entities && gap.related_entities.length > 0 && (
           <CollapsibleSection
             title="Related Entities"
             color={priorityStyle.color}
             icon={<Link2 className="w-3.5 h-3.5" />}
-            badge={gap.related_entity_ids.length}
+            badge={gap.related_entities.length}
           >
             <div className="space-y-1.5">
-              {gap.related_entity_ids.map((entityId) => (
+              {gap.related_entities.map((entity) => (
                 <div
-                  key={entityId}
-                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg bg-charcoal/50 border border-stone/10"
+                  key={entity.id}
+                  className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-charcoal/50 border border-stone/10"
                 >
                   <AlertCircle
                     size={14}
                     className="shrink-0"
                     style={{ color: priorityStyle.color }}
                   />
-                  <span className="text-xs text-smoke font-mono truncate">
-                    {entityId.slice(0, 8)}
+                  <span className="text-xs text-smoke truncate">
+                    {entity.name}
+                  </span>
+                  <span className="ml-auto shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded bg-stone/15 text-stone/80 uppercase tracking-wide">
+                    {entity.entity_type}
                   </span>
                 </div>
               ))}
@@ -170,7 +173,7 @@ export function GapDetailPanel({ gap }: GapDetailPanelProps) {
         {/* Empty state for minimal gap */}
         {!gap.why_needed &&
           !gap.suggested_actions &&
-          (!gap.related_entity_ids || gap.related_entity_ids.length === 0) && (
+          gap.related_entities.length === 0 && (
             <div className="px-6 py-12 text-center">
               <p className="text-sm text-stone">
                 No additional details available for this evidence gap.

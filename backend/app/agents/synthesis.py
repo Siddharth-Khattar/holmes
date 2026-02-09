@@ -435,13 +435,6 @@ async def write_synthesis_output(
     # --- Write CaseGap records ---
     for gap in output.gaps:
         try:
-            # Convert integer entity IDs to strings for JSONB storage
-            related_ids = (
-                [str(eid) for eid in gap.related_entity_ids]
-                if gap.related_entity_ids
-                else None
-            )
-
             async with db.begin_nested():
                 gap_record = CaseGap(
                     case_id=case_uuid,
@@ -451,7 +444,7 @@ async def write_synthesis_output(
                     why_needed=gap.why_needed,
                     priority=gap.priority,
                     suggested_actions=gap.suggested_actions,
-                    related_entity_ids=related_ids,
+                    related_entity_ids=gap.related_entity_ids or None,
                 )
                 db.add(gap_record)
                 await db.flush()
@@ -478,13 +471,6 @@ async def write_synthesis_output(
                 else None
             )
 
-            # Convert entity IDs to strings
-            source_entity_ids = (
-                [str(eid) for eid in evt.source_entity_ids]
-                if evt.source_entity_ids
-                else None
-            )
-
             async with db.begin_nested():
                 timeline_event = TimelineEvent(
                     case_id=case_uuid,
@@ -495,7 +481,7 @@ async def write_synthesis_output(
                     event_end_date=event_end_date,
                     event_type=evt.event_type,
                     layer=evt.domain,
-                    source_entity_ids=source_entity_ids,
+                    source_entity_ids=evt.source_entity_ids or None,
                     citations=citations,
                 )
                 db.add(timeline_event)

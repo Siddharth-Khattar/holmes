@@ -64,6 +64,13 @@ export interface ContradictionResponse {
   created_at: string;
 }
 
+/** Resolved KG entity referenced by a gap. */
+export interface RelatedEntity {
+  id: string;
+  name: string;
+  entity_type: string;
+}
+
 /** API response for an evidence gap. */
 export interface GapResponse {
   id: string;
@@ -73,7 +80,7 @@ export interface GapResponse {
   what_is_missing: string;
   why_needed: string | null;
   priority: "low" | "medium" | "high" | "critical";
-  related_entity_ids: string[] | null;
+  related_entities: RelatedEntity[];
   suggested_actions: string | null;
   created_at: string;
 }

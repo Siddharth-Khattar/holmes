@@ -116,9 +116,9 @@ class SynthesisGap(BaseModel):
         ...,
         description="Specific actionable steps to obtain the missing information",
     )
-    related_entity_ids: list[int] = Field(
+    related_entity_ids: list[str] = Field(
         default_factory=list,
-        description="KG entity integer IDs from the input that relate to this gap",
+        description="UUIDs from [ENTITY:uuid:name] entries that relate to this gap",
     )
 
 
@@ -154,9 +154,9 @@ class SynthesisTimelineEvent(BaseModel):
         default_factory=list,
         description="UUIDs of case_findings that evidence this event",
     )
-    source_entity_ids: list[int] = Field(
+    source_entity_ids: list[str] = Field(
         default_factory=list,
-        description="KG entity integer IDs from the input involved in this event",
+        description="UUIDs from [ENTITY:uuid:name] entries involved in this event",
     )
 
 
@@ -442,6 +442,14 @@ class ContradictionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class RelatedEntity(BaseModel):
+    """Lightweight representation of a KG entity referenced by a gap or task."""
+
+    id: str = Field(..., description="Entity UUID")
+    name: str = Field(..., description="Entity display name")
+    entity_type: str = Field(..., description="Entity type (PERSON, ORG, etc.)")
+
+
 class GapResponse(BaseModel):
     """API response for an evidence gap."""
 
@@ -457,15 +465,14 @@ class GapResponse(BaseModel):
         description="Why this information is important for the investigation",
     )
     priority: str = Field(..., description="low, medium, high, or critical")
-    related_entity_ids: list[str] | None = Field(
-        default=None, description="IDs of KG entities related to this gap"
+    related_entities: list[RelatedEntity] = Field(
+        default_factory=list,
+        description="Resolved KG entities related to this gap",
     )
     suggested_actions: str | None = Field(
         default=None, description="Recommended steps to fill the gap"
     )
     created_at: datetime = Field(..., description="Creation timestamp")
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class TaskResponse(BaseModel):

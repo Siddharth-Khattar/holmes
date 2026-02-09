@@ -1027,6 +1027,9 @@ export interface paths {
         /**
          * List evidence gaps with optional priority filter
          * @description Return gaps for a case, ordered by priority (critical first).
+         *
+         *     Entity UUIDs stored in related_entity_ids are resolved to name/type
+         *     via a single batch query against KgEntity.
          */
         get: operations["list_gaps_api_cases__case_id__gaps_get"];
         put?: never;
@@ -2524,10 +2527,10 @@ export interface components {
              */
             priority: string;
             /**
-             * Related Entity Ids
-             * @description IDs of KG entities related to this gap
+             * Related Entities
+             * @description Resolved KG entities related to this gap
              */
-            related_entity_ids?: string[] | null;
+            related_entities?: components["schemas"]["RelatedEntity"][];
             /**
              * Suggested Actions
              * @description Recommended steps to fill the gap
@@ -2738,6 +2741,27 @@ export interface components {
              * @description Concerns, edge cases, or caveats noted during routing
              */
             warnings?: string[];
+        };
+        /**
+         * RelatedEntity
+         * @description Lightweight representation of a KG entity referenced by a gap or task.
+         */
+        RelatedEntity: {
+            /**
+             * Id
+             * @description Entity UUID
+             */
+            id: string;
+            /**
+             * Name
+             * @description Entity display name
+             */
+            name: string;
+            /**
+             * Entity Type
+             * @description Entity type (PERSON, ORG, etc.)
+             */
+            entity_type: string;
         };
         /**
          * RelationshipCreateRequest

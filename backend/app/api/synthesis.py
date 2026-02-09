@@ -20,10 +20,12 @@ from app.models import (
     CaseSynthesis,
     InvestigationTask,
 )
+from app.models.knowledge_graph import KgEntity
 from app.schemas.synthesis import (
     ContradictionResponse,
     GapResponse,
     HypothesisResponse,
+    RelatedEntity,
     SynthesisResponse,
     TaskResponse,
 )
@@ -197,6 +199,83 @@ async def list_contradictions(
 
 
 # ---------------------------------------------------------------------------
+# Entity resolution helpers
+# ---------------------------------------------------------------------------
+
+
+async def _resolve_entity_ids(
+    db: AsyncSession,
+    gaps: list[CaseGap],
+) -> dict[str, RelatedEntity]:
+    """Batch-resolve entity UUID strings stored in gaps to RelatedEntity objects.
+
+    Collects all unique entity UUIDs across all gaps, performs a single DB
+    query against KgEntity, and returns a lookup dict keyed by UUID string.
+    Missing or invalid UUIDs are silently skipped.
+    """
+    all_ids: set[str] = set()
+    for gap in gaps:
+        if gap.related_entity_ids:
+            all_ids.update(gap.related_entity_ids)
+
+    if not all_ids:
+        return {}
+
+    # Convert to UUID objects, skipping invalid strings
+    valid_uuids: list[UUID] = []
+    for eid in all_ids:
+        try:
+            valid_uuids.append(UUID(eid))
+        except (ValueError, AttributeError):
+            logger.debug("Skipping invalid entity UUID in gap: %s", eid)
+
+    if not valid_uuids:
+        return {}
+
+    result = await db.execute(
+        select(KgEntity.id, KgEntity.name, KgEntity.entity_type).where(
+            KgEntity.id.in_(valid_uuids)
+        )
+    )
+
+    lookup: dict[str, RelatedEntity] = {}
+    for entity_id, name, entity_type in result.all():
+        lookup[str(entity_id)] = RelatedEntity(
+            id=str(entity_id),
+            name=name,
+            entity_type=entity_type or "UNKNOWN",
+        )
+
+    return lookup
+
+
+def _build_gap_response(
+    gap: CaseGap,
+    entity_lookup: dict[str, RelatedEntity],
+) -> GapResponse:
+    """Build a GapResponse with resolved related_entities from ORM object."""
+    related_entities: list[RelatedEntity] = []
+    if gap.related_entity_ids:
+        for eid in gap.related_entity_ids:
+            entity = entity_lookup.get(eid)
+            if entity:
+                related_entities.append(entity)
+
+    return GapResponse(
+        id=gap.id,
+        case_id=gap.case_id,
+        workflow_id=gap.workflow_id,
+        description=gap.description,
+        what_is_missing=gap.what_is_missing,
+        why_needed=gap.why_needed,
+        priority=gap.priority,
+        related_entities=related_entities,
+        suggested_actions=gap.suggested_actions,
+        created_at=gap.created_at,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Gaps
 # ---------------------------------------------------------------------------
 
@@ -215,7 +294,11 @@ async def list_gaps(
         Query(description="Filter by priority: low, medium, high, critical"),
     ] = None,
 ) -> list[GapResponse]:
-    """Return gaps for a case, ordered by priority (critical first)."""
+    """Return gaps for a case, ordered by priority (critical first).
+
+    Entity UUIDs stored in related_entity_ids are resolved to name/type
+    via a single batch query against KgEntity.
+    """
     await _get_user_case(db, case_id, current_user.id)
 
     query = select(CaseGap).where(CaseGap.case_id == case_id)
@@ -234,7 +317,10 @@ async def list_gaps(
     result = await db.execute(query)
     gaps = list(result.scalars().all())
 
-    return [GapResponse.model_validate(g) for g in gaps]
+    # Batch-resolve all referenced entity UUIDs to name + type
+    entity_lookup = await _resolve_entity_ids(db, gaps)
+
+    return [_build_gap_response(g, entity_lookup) for g in gaps]
 
 
 # ---------------------------------------------------------------------------

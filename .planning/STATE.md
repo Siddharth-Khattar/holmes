@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 9 of 12 (Chat Interface) — IN PROGRESS (1/2 plans, backend done)
-**Next Phase:** 9 Plan 02 (Frontend chat wiring)
+**Current Phase:** 9 of 12 (Chat Interface) — COMPLETE (2/2 plans)
+**Next Phase:** 11 (Corrections & Refinement)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -23,7 +23,7 @@
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
 | 8.1 | Geospatial Agent & Map View | COMPLETE | 2026-02-09 | 2026-02-09 | 5 plans (5 commits): GeocodingService, GeospatialAgentRunner + pipeline Stage 9, 6 REST API endpoints, frontend API client + hook + trigger UI, enhanced detail panel with 4 sections |
-| 9 | Chat Interface & Research | IN_PROGRESS | 2026-02-09 | - | Plan 01 done (backend): 4 tools, SSE endpoint, chat service. Plan 02 (frontend wiring) pending. |
+| 9 | Chat Interface & Research | COMPLETE | 2026-02-09 | 2026-02-09 | 2 plans (4 commits): backend (4 tools, SSE endpoint, chat service) + frontend (SSE hook, markdown, citations, tool activity, stop/clear) |
 | 10 | Source Panel & Entity Resolution | COMPLETE | 2026-02-09 | 2026-02-09 | 3 plans (9 commits), 9/9 verified: shared citation utils + hooks, KG + Geospatial source wiring + entity resolution, Verdict + Timeline citation navigation |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
 | 12 | Demo Preparation | NOT_STARTED | - | - | |
@@ -35,11 +35,10 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 9 Plan 01 COMPLETE** (2026-02-09): Chat Backend -- 2 tasks, 2 commits
-  - Task 1: 4 closure-based tool factories (query_knowledge_graph, get_findings with detail/list modes, get_synthesis with 6 optional sections, search_findings via tsvector)
-  - Task 2: chat_service.py (context loading + agent/runner/session), chat.py (SSE POST endpoint with 5 event types), main.py router registration
-  - System prompt injects full synthesis context, citation format [[file_id|locator|label]], and tool usage strategy
-  - Flash model, no planner, no output_schema, default temperature (1.0)
+- **Phase 9 COMPLETE** (2026-02-09): Chat Interface -- 2 plans, 4 commits
+  - Plan 01 (Backend): 4 closure-based tool factories, chat_service.py, SSE POST endpoint with 5 event types, system prompt with full synthesis context
+  - Plan 02 (Frontend): @microsoft/fetch-event-source SSE hook, markdown rendering (react-markdown + remark-gfm), inline citation chips opening SourceViewerModal, tool activity expandable section, stop/clear buttons, disabled state, error bubbles with retry
+  - Full user flow: type message -> SSE stream tokens -> markdown + citations -> click citation -> SourceViewerModal
 
 - **Phase 10 COMPLETE** (2026-02-09): Source Panel & Entity Resolution -- 3 plans, 9 commits, 9/9 verified
   - Plan 01: Shared foundation (citation-utils, useSourceNavigation, useEntityResolver, CitationLink, EntityBadge)
@@ -194,7 +193,6 @@
   - Known limitations: Paths not rendered (v1), no SSE streaming (polling-based), entity names not resolved (UUIDs only)
 
 **What's next:**
-- Phase 9 Plan 02 (Chat Frontend Wiring) -- SSE streaming in useChatbot.ts, citation chips, tool activity UX
 - Phase 11 (Corrections & Refinement) -- polish, bug fixes, integration testing
 - Phase 12 (Demo Preparation) -- demo scenarios, sample data, walkthrough
 
@@ -314,7 +312,7 @@
 
 ---
 
-### REQ-CHAT-001: Chat Interface — BACKEND_DONE (frontend wiring pending)
+### REQ-CHAT-001: Chat Interface — COMPLETE
 
 | Component | File Path |
 |-----------|-----------|
@@ -327,7 +325,7 @@
 | **Backend: Chat API** | `backend/app/api/chat.py` |
 
 **Backend API:** `POST /api/cases/:caseId/chat` (SSE streaming) -- DONE
-**Frontend wiring:** useChatbot.ts needs SSE streaming update (Plan 02)
+**Frontend wiring:** useChatbot.ts SSE streaming, chatbot.tsx markdown + citations + tool activity -- DONE
 
 ---
 
@@ -614,6 +612,11 @@ All frontend features need these backend endpoints:
 | Verdict source navigation wiring | Direct hook in panels vs Callback threading | Callback threading via sidebar descriptors | Detail panels render inside DetailSidebar without caseId access; callback threaded from page through VerdictView -> descriptor props |
 | Timeline citation source | event.sourceIds vs event.metadata.citations | event.metadata.citations | sourceIds contains entity UUIDs (misnamed); metadata.citations has actual file refs (file_id, locator, excerpt) |
 | Timeline citation UX | Modal with all citations vs Expandable list | Expandable list in card | Progressive disclosure; click count to expand, click individual citation to open SourceViewerModal |
+| Chat SSE library | Native EventSource vs fetchEventSource | @microsoft/fetch-event-source | EventSource only supports GET; chat endpoint is POST with body; fetchEventSource supports POST + headers + AbortController |
+| Chat auth token | api-client.ts wrapper vs getToken direct | getToken from auth-client.ts | fetchEventSource needs explicit headers; getToken provides raw JWT without api-client wrapper |
+| Chat session persistence | Frontend session tracking vs Server-side ADK | Server-side ADK with session_id ref | ADK manages conversation history; frontend only stores session_id to reconnect |
+| Citation regex mutation | Module-level global regex vs Local creation | Local new RegExp() inside useMemo | React Compiler immutability rule prevents lastIndex mutation on module-level regex |
+| Chat disabled derivation | caseStatus only vs latest_workflow_id + status | latest_workflow_id !== null && status !== PROCESSING | Chat requires completed analysis; in-progress analysis data is incomplete |
 
 ---
 
@@ -633,9 +636,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 9 Plan 01 COMPLETE (2/2 tasks, 2 commits). Chat backend: 4 tools, SSE endpoint, chat service.
+Stopped at: Phase 9 COMPLETE (2/2 plans, 4 commits). Chat backend + frontend fully wired.
 Resume file: None
-Next action: Phase 9 Plan 02 (Frontend chat wiring)
+Next action: Phase 11 (Corrections & Refinement)
 
 ---
 

@@ -1731,21 +1731,25 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ### REQ-CHAT: Contextual Chat
 
-#### REQ-CHAT-001: Chat Interface — 🟡 FRONTEND_COMPLETE
+#### REQ-CHAT-001: Chat Interface — ✅ COMPLETE
 
 | Sub-Criterion | Status | Notes |
 |---------------|--------|-------|
 | Message input with send button | ✅ | Full input with keyboard support |
-| Message history display | ✅ | Scrollable history |
-| Streaming response with typing indicator | ✅ | Animated typing dots |
-| Markdown rendering | ✅ | Implemented |
-| Code block formatting | ✅ | Implemented |
+| Message history display | ✅ | Scrollable history with SSE streaming |
+| Streaming response with typing indicator | ✅ | Real-time SSE token streaming via fetchEventSource |
+| Markdown rendering | ✅ | ReactMarkdown + remark-gfm with styled components |
+| Code block formatting | ✅ | Custom pre/code styling in dark theme |
 | Mobile-responsive | ✅ | Responsive design |
+| Inline citation chips | ✅ | [[file_id\|locator\|label]] parsed to clickable chips |
+| Tool activity indicators | ✅ | Expandable "Agent is working..." section |
+| Stop/Clear buttons | ✅ | AbortController cancellation, session reset |
+| Disabled state (no analysis) | ✅ | Overlay message when analysis not run |
+| Error bubbles with retry | ✅ | Red-tinted inline error messages |
 
-**Backend APIs Needed:**
-- `POST /api/chat` — Send message, receive response
+**Backend API:** `POST /api/cases/:caseId/chat` (SSE streaming) — DONE
 
-**Files:** `frontend/src/components/app/chatbot.tsx`, `frontend/src/hooks/useChatbot.ts`, `frontend/src/types/chatbot.ts`
+**Files:** `frontend/src/components/app/chatbot.tsx`, `frontend/src/hooks/useChatbot.ts`, `frontend/src/types/chatbot.ts`, `backend/app/api/chat.py`, `backend/app/services/chat_service.py`, `backend/app/agents/chat_tools.py`, `backend/app/agents/prompts/chat.py`
 
 ---
 

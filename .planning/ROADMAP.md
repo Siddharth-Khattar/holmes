@@ -35,7 +35,7 @@
 | 7.3 | Knowledge Graph Frontend (vis-network) — OPTIONAL | Premium vis-network graph visualization (preserved for experimentation) | REQ-VIS-003 (alternative) | ⏳ DEFERRED |
 | 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ✅ COMPLETE |
 | 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ✅ COMPLETE |
-| 9 | Chat Interface & Research | Multi-source tool-based Q&A, research/discovery, context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
+| 9 | Chat Interface & Research | Multi-source tool-based Q&A, research/discovery, context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | ✅ COMPLETE |
 | 10 | Source Panel & Entity Resolution | Citation-to-source wiring, entity name resolution across all views | REQ-SOURCE-* | ✅ COMPLETE |
 | 11 | Corrections & Refinement | Error flagging, Verification, Regeneration | REQ-CORR-* | ⏳ NOT_STARTED |
 | 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i | ⏳ NOT_STARTED |
@@ -1174,11 +1174,11 @@ Plans:
 **Plans:** 2 plans in 2 waves
 
 Plans:
-- [ ] 09-01-PLAN.md — Backend: Chat tools (4 DB-query tool factories), system prompt with context injection, chat service, SSE streaming POST endpoint, router registration
-- [ ] 09-02-PLAN.md — Frontend: SSE streaming hook rewrite, markdown rendering, citation chips, tool activity indicators, stop/clear buttons, disabled state
+- [x] 09-01-PLAN.md — Backend: Chat tools (4 DB-query tool factories), system prompt with context injection, chat service, SSE streaming POST endpoint, router registration
+- [x] 09-02-PLAN.md — Frontend: SSE streaming hook rewrite, markdown rendering, citation chips, tool activity indicators, stop/clear buttons, disabled state
 
 
-**Status:** 🟡 FRONTEND_DONE (Chat UI) — Backend agent + API required
+**Status:** ✅ COMPLETE
 
 ### Frontend Completed (Yatharth, 2026-02-02)
 - ✅ Floating chat button with animations (`chatbot.tsx`)

@@ -192,6 +192,11 @@
   - Full user flow: Generate button → 3-second polling → location extraction + geocoding → map display → click marker → detailed evidence context
   - Known limitations: Paths not rendered (v1), no SSE streaming (polling-based), entity names not resolved (UUIDs only)
 
+**Phase 9 COMPLETE** (2026-02-09): Chat Interface & Research -- 2 plans, 6 commits, 20/20 verified
+  - Plan 01: Backend -- 4 closure-based tool factories (query_knowledge_graph, get_findings with detail/list modes, get_synthesis, search_findings), build_chat_system_prompt with full context injection, chat_service (load_chat_context + create_chat_agent_and_runner with ADK session_service), SSE POST endpoint with 5 event types, router registered
+  - Plan 02: Frontend -- @microsoft/fetch-event-source SSE streaming, useChatbot hook rewrite with AbortController + session persistence, ReactMarkdown + remark-gfm rendering, [[file_id|locator|label]] citation chips with SourceViewerModal, tool activity expandable section, stop/clear buttons, disabled state, error bubbles with retry
+  - Full flow: User types message → POST SSE → Flash agent queries DB tools → tokens stream → citations parsed → markdown rendered → SourceViewerModal on click
+
 **What's next:**
 - Phase 11 (Corrections & Refinement) -- polish, bug fixes, integration testing
 - Phase 12 (Demo Preparation) -- demo scenarios, sample data, walkthrough

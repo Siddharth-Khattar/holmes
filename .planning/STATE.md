@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — In progress (6/7 plans)
-**Next Plan:** 08-07 (Timeline wiring, if applicable)
+**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — COMPLETE (7/7 plans)
+**Next Phase:** 8.1 (Geospatial Agent & Map View) or 9 (Chat Interface)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -21,7 +21,7 @@
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
-| 8 | Synthesis Agent & Intelligence Layer | IN_PROGRESS | 2026-02-08 | - | Plans 01-06 complete (12 commits): DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness |
+| 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits): DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges |
 | 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -113,8 +113,18 @@
   - Task 1: 3 verdict detail panels (HypothesisDetailPanel, ContradictionDetailPanel, GapDetailPanel) wired into DetailSidebar via SidebarContentDescriptor union
   - Task 2: "synthesis" added to AgentType union + validation + config + CSS vars, SynthesisDataReadyEvent SSE handling, synthesisReady state in useAgentStates (SSE event + state-snapshot detection), CC page tab toggle (Agent Flow / Verdict) with URL param persistence + disabled state with pulse indicator, React Query cache invalidation on synthesis-data-ready
 
+**Phase 8 Plan 07 Complete** (2026-02-09): Timeline wiring + verdict badges -- 2 tasks, 2 commits
+  - Task 1: Timeline wired to real synthesis API data (mock fallback removed), "financial" layer added to TimelineLayer/LAYER_CONFIG/filters/eventProcessors, JWT auth in timeline API client, backend-to-frontend field transformation (event_date->date), event type category badge on cards
+  - Task 2: Backend CaseResponse schema + verdict_label/verdict_summary fields, VerdictLabel type in frontend, verdict badge in case header (Conclusive/Substantial/Inconclusive) with summary subtitle, verdict badge in CaseCard (grid+list), "Pending Analysis" badge for READY cases without verdict
+
+**Phase 8 COMPLETE** (2026-02-09): Synthesis Agent & Intelligence Layer -- 7 plans, 16 commits
+  - Full pipeline: Triage -> Orchestrator -> Domain -> Strategy -> HITL -> Save Findings -> KG Builder -> Entity Backfill -> Synthesis -> ANALYZED -> processing-complete
+  - Backend: 9 DB models, Alembic migration, SynthesisAgentRunner, 8 API endpoints (synthesis + timeline), SSE synthesis-data-ready event
+  - Frontend: 11 TypeScript interfaces, 5 API functions, 5 React Query hooks, VerdictView (6 sections), 3 detail panels, CC tab toggle, timeline wired to real API, verdict badges in case header + list
+
 **What's next:**
-- Phase 8 Plan 07: Timeline wiring (if applicable)
+- Phase 8.1 (Geospatial Agent & Map View) -- if location data detected by synthesis
+- Phase 9 (Chat Interface) -- backend API needed
 - Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
 
 ---
@@ -206,7 +216,7 @@
 
 ---
 
-### REQ-VIS-004: Timeline — FRONTEND_DONE
+### REQ-VIS-004: Timeline — COMPLETE (SSE streaming deferred)
 
 | Component | File Path |
 |-----------|-----------|
@@ -224,11 +234,12 @@
 | Mock data | `frontend/src/lib/mock-timeline-data.ts` |
 | Types | `frontend/src/types/timeline.types.ts` |
 
-**Backend APIs Needed:**
-- `GET /api/cases/:caseId/timeline/events`
-- `POST /api/cases/:caseId/timeline/events`
-- `PATCH/DELETE /api/cases/:caseId/timeline/events/:eventId`
-- `SSE GET /api/cases/:caseId/timeline/stream`
+**Backend APIs:**
+- `GET /api/cases/:caseId/timeline` - List events with filters + aggregation (DONE)
+- `GET /api/cases/:caseId/timeline/:id` - Get single event (DONE)
+- `POST /api/cases/:caseId/timeline/events` - Create event (TODO)
+- `PATCH/DELETE /api/cases/:caseId/timeline/events/:eventId` - Update/delete (TODO)
+- `SSE GET /api/cases/:caseId/timeline/stream` - Real-time updates (TODO)
 
 ---
 
@@ -489,6 +500,11 @@ All frontend features need these backend endpoints:
 | Synthesis readiness detection | SSE-only vs Dual (SSE + API fallback) | Dual: SSE synthesisReady + useSynthesis API data | SSE for live sessions; API fallback for page reload after analysis completes |
 | Synthesis cache invalidation | Polling vs SSE-triggered | SSE-triggered (on synthesis-data-ready) | Immediate cache invalidation when synthesis completes; no polling overhead |
 | CC tab toggle state | React state only vs URL search params | URL search params (?tab=verdict) | Deep-linkable, survives page refresh, shareable |
+| Timeline Zod datetime validation | Strict z.string().datetime() vs Relaxed z.string() | Relaxed z.string() | Backend sends ISO dates without timezone offset; strict validation rejects valid dates |
+| Timeline field transformation | Frontend adapts to backend vs Backend adapts to frontend | Frontend transformBackendEvent() | Centralized mapping (event_date->date, case_id->caseId) in API client; backend schema unchanged |
+| Verdict badge priority | Always show status vs Verdict replaces status | Verdict replaces status when present | Verdict is more informative than READY status; "Pending Analysis" fills the gap between READY and verdict |
+| CaseCard badge logic | Inline conditional vs resolveBadge() helper | resolveBadge() helper | Reusable across grid and list modes; single source of truth for badge resolution |
+| Financial layer color | New unique color vs Reuse existing | Teal (#45B5AA) | Consistent with asset entity color in knowledge-graph-config.ts; matches financial domain identity |
 
 ---
 
@@ -501,9 +517,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8 Plan 06 COMPLETE (2 tasks, 2 commits). 3 verdict detail panels + CC tab toggle + SSE synthesis readiness.
+Stopped at: Phase 8 COMPLETE (7/7 plans, 16 commits). Timeline wired to real API, verdict badges in case header + list.
 Resume file: None
-Next action: Execute Phase 8 Plan 07 (Timeline wiring, if applicable)
+Next action: Phase 8.1 (Geospatial Agent) or Phase 9 (Chat Interface backend)
 
 ---
 

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   APIProvider,
@@ -19,6 +19,7 @@ import {
   Navigation,
   Calendar,
   Link2,
+  ChevronDown,
 } from "lucide-react";
 import { clsx } from "clsx";
 import type {
@@ -68,6 +69,7 @@ export function GeospatialMap({
   const [selectedLocationDetail, setSelectedLocationDetail] =
     useState<LocationDetailResponse | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [legendExpanded, setLegendExpanded] = useState(true);
 
   // Get API key from environment
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -174,6 +176,8 @@ export function GeospatialMap({
             tilt={mapView === "3d" ? 30 : 0}
             heading={mapView === "3d" ? 0 : 0}
             options={{
+              // Hide default map type control (we have a custom toggle)
+              mapTypeControl: false,
               // Performance optimizations
               renderingType: mapView === "3d" ? "RASTER" : "VECTOR",
               isFractionalZoomEnabled: false,
@@ -229,6 +233,9 @@ export function GeospatialMap({
 
             {/* Render paths as polylines */}
             <PathsOverlay paths={paths} landmarks={landmarks} />
+
+            {/* Auto-fit map bounds to show all landmarks */}
+            <FitBoundsToLandmarks landmarks={landmarks} />
           </Map>
         )}
 
@@ -287,34 +294,51 @@ export function GeospatialMap({
 
         {/* Legend */}
         <div
-          className="absolute bottom-4 left-4 p-4 rounded-lg shadow-lg max-w-xs z-10"
+          className="absolute bottom-4 left-4 rounded-lg shadow-lg z-10 overflow-hidden"
           style={{
             backgroundColor: "var(--card)",
             border: "1px solid var(--border)",
           }}
         >
-          <h3
-            className="text-sm font-semibold mb-3"
+          <button
+            onClick={() => setLegendExpanded((prev) => !prev)}
+            className="w-full flex items-center justify-between px-4 py-2.5 transition-colors"
             style={{ color: "var(--foreground)" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--muted)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+            }}
           >
-            Landmark Types
-          </h3>
-          <div className="space-y-2">
-            {Object.entries(LANDMARK_COLORS).map(([type, color]) => (
-              <div key={type} className="flex items-center gap-2">
-                <div
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: color }}
-                />
-                <span
-                  className="text-xs capitalize"
-                  style={{ color: "var(--muted-foreground)" }}
-                >
-                  {type.replace("_", " ")}
-                </span>
-              </div>
-            ))}
-          </div>
+            <span className="text-sm font-semibold">Landmark Types</span>
+            <ChevronDown
+              size={16}
+              className="transition-transform duration-200"
+              style={{
+                color: "var(--muted-foreground)",
+                transform: legendExpanded ? "rotate(0deg)" : "rotate(180deg)",
+              }}
+            />
+          </button>
+          {legendExpanded && (
+            <div className="px-4 pb-3 space-y-2">
+              {Object.entries(LANDMARK_COLORS).map(([type, color]) => (
+                <div key={type} className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span
+                    className="text-xs capitalize"
+                    style={{ color: "var(--muted-foreground)" }}
+                  >
+                    {type.replace("_", " ")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Landmark Detail Dialog — portaled to body to escape transform containing block */}
@@ -597,6 +621,42 @@ export function GeospatialMap({
       </APIProvider>
     </div>
   );
+}
+
+// Auto-fits map viewport to contain all landmarks with padding
+const BOUNDS_PADDING = 60;
+
+function FitBoundsToLandmarks({ landmarks }: { landmarks: Landmark[] }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (
+      !map ||
+      landmarks.length === 0 ||
+      typeof window === "undefined" ||
+      !(window as any).google?.maps
+    )
+      return;
+
+    const googleMaps = (window as any).google.maps;
+    const bounds = new googleMaps.LatLngBounds();
+
+    for (const landmark of landmarks) {
+      bounds.extend(landmark.location);
+    }
+
+    // For a single landmark, set center + reasonable zoom instead of fitBounds
+    // (fitBounds on a single point zooms to max)
+    if (landmarks.length === 1) {
+      map.setCenter(landmarks[0].location);
+      map.setZoom(15);
+      return;
+    }
+
+    map.fitBounds(bounds, BOUNDS_PADDING);
+  }, [map, landmarks]);
+
+  return null;
 }
 
 // Component to render paths as polylines

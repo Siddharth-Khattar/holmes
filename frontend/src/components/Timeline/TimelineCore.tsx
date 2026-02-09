@@ -6,16 +6,20 @@ import {
   motion,
   AnimatePresence,
 } from "framer-motion";
-import React, { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { TimelineEvent, TimelineZoomLevel } from "@/types/timeline.types";
 import { TimelineEventCard } from "./TimelineEventCard";
+import { SourceViewerModal } from "@/components/source-viewer/SourceViewerModal";
+import { useSourceNavigation } from "@/hooks/useSourceNavigation";
 import { ZOOM_CONFIG } from "@/constants/timeline.constants";
 import { cn } from "@/lib/utils";
 
 interface TimelineCoreProps {
   events: TimelineEvent[];
   zoomLevel: TimelineZoomLevel;
+  caseId: string;
   onEventClick?: (event: TimelineEvent) => void;
   className?: string;
 }
@@ -27,12 +31,20 @@ interface GroupedEvents {
 export function TimelineCore({
   events,
   zoomLevel,
+  caseId,
   onEventClick,
   className,
 }: TimelineCoreProps) {
   const ref = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(0);
+
+  // Source navigation for citation clicks
+  const {
+    openSource: timelineOpenSource,
+    sourceContent: timelineSourceContent,
+    closeSource: timelineCloseSource,
+  } = useSourceNavigation(caseId);
 
   // Group events by zoom level
   const groupedEvents = useMemo(() => {
@@ -159,6 +171,9 @@ export function TimelineCore({
                         <TimelineEventCard
                           event={event}
                           onClick={() => onEventClick?.(event)}
+                          onViewCitation={(citation) =>
+                            timelineOpenSource(citation)
+                          }
                         />
                       </motion.div>
                     ))}
@@ -189,6 +204,23 @@ export function TimelineCore({
           </div>
         </div>
       )}
+
+      {/* Source Viewer Modal for timeline citation clicks */}
+      {timelineSourceContent &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+            style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+          >
+            <div className="w-full max-w-5xl h-[85vh]">
+              <SourceViewerModal
+                content={timelineSourceContent}
+                onClose={timelineCloseSource}
+              />
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -1751,11 +1751,11 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ### REQ-SOURCE: Source Panel
 
-#### REQ-SOURCE-005: Citation Navigation — ⏳ NOT_STARTED
+#### REQ-SOURCE-005: Citation Navigation — ✅ COMPLETE
 
-Evidence source panel exists (`evidence-source-panel.tsx`) but citation navigation not implemented.
+Citation-to-source navigation wired across all 4 views (KG, Geospatial, Verdict, Timeline). Shared hooks: `useSourceNavigation` (citation -> SourceViewerModal), `useEntityResolver` (UUID -> name/type/color). Reusable components: `CitationLink`, `EntityBadge`.
 
-**Files:** `frontend/src/components/app/evidence-source-panel.tsx`
+**Files:** `frontend/src/lib/citation-utils.ts`, `frontend/src/hooks/useSourceNavigation.ts`, `frontend/src/hooks/useEntityResolver.ts`, `frontend/src/components/ui/citation-link.tsx`, `frontend/src/components/ui/entity-badge.tsx`
 
 ---
 

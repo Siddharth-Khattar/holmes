@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 8.1 of 12 (Geospatial Agent & Map View) — COMPLETE (5/5 plans)
-**Next Phase:** 9 (Chat Interface)
+**Current Phase:** 10 of 12 (Source Panel & Entity Resolution) — COMPLETE (3/3 plans)
+**Next Phase:** 11 (Corrections & Refinement)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -24,7 +24,7 @@
 | 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
 | 8.1 | Geospatial Agent & Map View | COMPLETE | 2026-02-09 | 2026-02-09 | 5 plans (5 commits): GeocodingService, GeospatialAgentRunner + pipeline Stage 9, 6 REST API endpoints, frontend API client + hook + trigger UI, enhanced detail panel with 4 sections |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
-| 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
+| 10 | Source Panel & Entity Resolution | COMPLETE | 2026-02-09 | 2026-02-09 | 3 plans (9 commits), 9/9 verified: shared citation utils + hooks, KG + Geospatial source wiring + entity resolution, Verdict + Timeline citation navigation |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
 | 12 | Demo Preparation | NOT_STARTED | - | - | |
 
@@ -35,6 +35,12 @@
 ## Current Context
 
 **What was just completed:**
+- **Phase 10 COMPLETE** (2026-02-09): Source Panel & Entity Resolution -- 3 plans, 9 commits, 9/9 verified
+  - Plan 01: Shared foundation (citation-utils, useSourceNavigation, useEntityResolver, CitationLink, EntityBadge)
+  - Plan 02: KG entity panel source docs clickable, EntityTimelineEntry "View source evidence", Geospatial entity resolution + citation-to-source
+  - Plan 03: Verdict hypothesis/contradiction evidence clickable, GapDetailPanel EntityBadge, Timeline expandable citation list
+  - All 4 target views have functional citation-to-source navigation: KG, Geospatial, Verdict, Timeline
+
 - **Phase 8.1 Complete** (2026-02-09): Geospatial Agent & Map View — 5 plans, 15 commits, 15/15 verified
   - Plan 01: GeocodingService with Google Maps API integration (forward/reverse/batch geocoding + in-memory caching)
   - Plan 02: GeospatialAgentRunner (text-only input from 6 DB sources, Flash model, pipeline Stage 9, auto-geocoding)
@@ -182,9 +188,10 @@
   - Known limitations: Paths not rendered (v1), no SSE streaming (polling-based), entity names not resolved (UUIDs only)
 
 **What's next:**
-- Phase 9 (Chat Interface) -- backend API + tool integration (query_kg, search_findings, get_synthesis, generate_geospatial, run_domain_agent)
-- Phase 10 (Source Panel) -- wire KG/Geospatial/Timeline citations to source viewers: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
-- Phase 10 geospatial enhancements: entity name resolution (currently shows UUIDs), location filtering, movement path visualization
+- Phase 11 (Corrections & Refinement) -- polish, bug fixes, integration testing
+- Phase 12 (Demo Preparation) -- demo scenarios, sample data, walkthrough
+- Phase 9 (Chat Interface) -- backend API + tool integration still needed
+- Chat message citations deferred to Phase 9+ (backend does not yet produce structured citations)
 
 ---
 
@@ -235,7 +242,7 @@
 
 ---
 
-### REQ-VIS-003: Knowledge Graph — COMPLETE (Source viewer wiring deferred to Phase 10)
+### REQ-VIS-003: Knowledge Graph — COMPLETE (Source viewer wired in Phase 10 Plan 02)
 
 | Component | File Path |
 |-----------|-----------|
@@ -585,6 +592,25 @@ All frontend features need these backend endpoints:
 | Geospatial detail loading | Upfront vs Lazy on-demand | Lazy on marker click | LocationResponse list lightweight (coordinates+counts); detail API heavy (full events/citations arrays); faster initial render |
 | Geospatial entity display | Resolve names vs Show IDs | Show UUIDs only | Entity name resolution requires additional API or preloading; deferred to Phase 10 with KG navigation |
 | Citation excerpt quotes | Literal vs HTML entities | &ldquo; / &rdquo; entities | React react/no-unescaped-entities lint rule rejects literal quotes in JSX text |
+| File lookup map pattern | useRef vs useMemo | useMemo derived from React Query data | React Compiler's react-hooks/refs rule forbids ref mutation during render; useMemo is the correct pattern for derived data |
+| Entity resolution caching | Dedicated endpoint vs Graph endpoint | Graph endpoint (fetchGraph) | All entities already returned by /graph; 5-min stale time cache; avoids new backend endpoint |
+| Unresolved entity fallback | Throw error vs Graceful degradation | Graceful fallback (Unknown Entity, type=other) | Missing entities should not crash UI; fallback allows partial resolution |
+| PDF highlight excerpt length | Full excerpt vs Truncated | Truncated to 100 chars | Shorter text matches more reliably in @react-pdf-viewer/search plugin |
+| KG Canvas caseId passing | useParams inside vs Prop from page | Prop from page | Keeps canvas component decoupled from routing; page is the routing boundary |
+| KG source navigation callback stability | Direct callback vs Stable ref pattern | Stable ref pattern (openFromFindingRef) | Prevents sidebar content effect re-triggering on every openFromFinding recreation |
+| Geospatial file name lookup type | Map<string, string> vs Record<string, string> | Record<string, string> | Map import from @vis.gl/react-google-maps shadows global Map constructor |
+| Geospatial source navigation | Prop-based (onViewSource) vs Self-contained hook | Self-contained useSourceNavigation hook | Component manages its own SourceViewerModal portal; no prop drilling |
+| SourceViewerModal layering in geospatial | Same z-index as dialog vs Higher | z-[60] above z-50 dialog | Source viewer must appear above the detail dialog without closing it |
+| Verdict source navigation wiring | Direct hook in panels vs Callback threading | Callback threading via sidebar descriptors | Detail panels render inside DetailSidebar without caseId access; callback threaded from page through VerdictView -> descriptor props |
+| Timeline citation source | event.sourceIds vs event.metadata.citations | event.metadata.citations | sourceIds contains entity UUIDs (misnamed); metadata.citations has actual file refs (file_id, locator, excerpt) |
+| Timeline citation UX | Modal with all citations vs Expandable list | Expandable list in card | Progressive disclosure; click count to expand, click individual citation to open SourceViewerModal |
+
+---
+
+## Known Issues
+
+- **PDF Viewer**: Has rendering/display bugs (identified during Phase 10 testing)
+- **Audio Viewer**: Not yet tested with real data; may have issues
 
 ---
 
@@ -597,9 +623,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8.1 COMPLETE (5/5 plans, 5 commits, 38 min total). Geospatial agent + frontend integration + detail panel complete.
+Stopped at: Phase 10 COMPLETE (3/3 plans, 9 commits, 9/9 verified). Source panel & entity resolution across all views.
 Resume file: None
-Next action: Phase 9 (Chat Interface Backend)
+Next action: Phase 11 (Corrections & Refinement)
 
 ---
 

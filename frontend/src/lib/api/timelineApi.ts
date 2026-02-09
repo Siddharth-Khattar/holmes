@@ -26,6 +26,20 @@ function transformBackendEvent(
     ? (rawLayer as TimelineLayer)
     : "evidence";
 
+  // Extract finding IDs from citations array (backend stores [{finding_id: uuid}, ...]).
+  // source_entity_ids are KG entity UUIDs — distinct from source finding IDs.
+  const rawCitations = backendEvent.citations;
+  const findingIds: string[] = Array.isArray(rawCitations)
+    ? rawCitations
+        .map((c: unknown) => {
+          if (typeof c === "object" && c !== null && "finding_id" in c) {
+            return (c as { finding_id: unknown }).finding_id;
+          }
+          return undefined;
+        })
+        .filter((id: unknown): id is string => typeof id === "string")
+    : [];
+
   return {
     id: backendEvent.id as string,
     caseId: backendEvent.case_id as string,
@@ -33,7 +47,7 @@ function transformBackendEvent(
     description: (backendEvent.description as string | undefined) ?? undefined,
     date: (backendEvent.event_date as string) ?? "",
     layer,
-    sourceIds: (backendEvent.source_entity_ids as string[]) ?? [],
+    sourceIds: findingIds,
     entityIds: (backendEvent.source_entity_ids as string[]) ?? [],
     confidence: 0.8,
     isUserCorrected: false,

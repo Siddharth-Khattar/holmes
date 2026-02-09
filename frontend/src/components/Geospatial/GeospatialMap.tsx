@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any -- Google Maps global typings use any */
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
@@ -20,8 +20,10 @@ import {
   Calendar,
   Link2,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
 import { clsx } from "clsx";
+import { useQuery } from "@tanstack/react-query";
 import type {
   Landmark,
   GeospatialPath,
@@ -31,12 +33,16 @@ import {
   fetchLocationDetail,
   type LocationDetailResponse,
 } from "@/lib/api/geospatial";
+import { useSourceNavigation } from "@/hooks/useSourceNavigation";
+import { useEntityResolver } from "@/hooks/useEntityResolver";
+import { EntityBadge } from "@/components/ui/entity-badge";
+import { SourceViewerModal } from "@/components/source-viewer/SourceViewerModal";
+import { listFiles } from "@/lib/api/files";
 
 interface GeospatialMapProps {
   caseId: string;
   landmarks: Landmark[];
   paths: GeospatialPath[];
-  onViewSource?: (fileId: string, locator: string) => void;
 }
 
 // Landmark type colors
@@ -55,7 +61,6 @@ export function GeospatialMap({
   caseId,
   landmarks,
   paths,
-  onViewSource,
 }: GeospatialMapProps) {
   const [mapView, setMapView] = useState<MapView>("2d");
   const [selectedLandmark, setSelectedLandmark] = useState<Landmark | null>(
@@ -70,6 +75,36 @@ export function GeospatialMap({
     useState<LocationDetailResponse | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [legendExpanded, setLegendExpanded] = useState(true);
+
+  // Source navigation for opening citations in the source viewer
+  const {
+    openSource,
+    sourceContent: geoSourceContent,
+    closeSource: geoCloseSource,
+    isLoading: sourceLoading,
+  } = useSourceNavigation(caseId);
+
+  // Entity resolution for displaying entity names instead of UUIDs
+  const { resolveEntities, isLoading: entitiesLoading } =
+    useEntityResolver(caseId);
+
+  // File list for resolving citation file_id to original_filename
+  const { data: filesData } = useQuery({
+    queryKey: ["case-files", caseId],
+    queryFn: () => listFiles(caseId, 1, 100),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!caseId,
+  });
+
+  const fileNameById = useMemo(() => {
+    const lookup: Record<string, string> = {};
+    if (filesData?.files) {
+      for (const file of filesData.files) {
+        lookup[file.id] = file.original_filename;
+      }
+    }
+    return lookup;
+  }, [filesData]);
 
   // Get API key from environment
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -503,25 +538,36 @@ export function GeospatialMap({
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                   <p className="text-xs font-medium text-neutral-300">
-                                    Source Document
+                                    {fileNameById[citation.file_id] ??
+                                      "Source Document"}
                                   </p>
                                   <p className="mt-1 text-xs text-neutral-500">
                                     {citation.locator}
                                   </p>
                                 </div>
-                                {onViewSource && (
-                                  <button
-                                    onClick={() =>
-                                      onViewSource(
-                                        citation.file_id,
-                                        citation.locator,
-                                      )
-                                    }
-                                    className="text-xs text-primary-400 hover:text-primary-300"
-                                  >
-                                    View
-                                  </button>
-                                )}
+                                <button
+                                  onClick={() =>
+                                    openSource({
+                                      file_id: citation.file_id,
+                                      locator: citation.locator,
+                                      excerpt: citation.excerpt,
+                                    })
+                                  }
+                                  disabled={sourceLoading}
+                                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                                >
+                                  {sourceLoading ? (
+                                    <span className="inline-flex items-center gap-1">
+                                      <Loader2
+                                        size={10}
+                                        className="animate-spin"
+                                      />
+                                      Opening...
+                                    </span>
+                                  ) : (
+                                    "View"
+                                  )}
+                                </button>
                               </div>
                               <div className="mt-2 rounded bg-neutral-950/50 p-2">
                                 <p className="text-xs italic text-neutral-400">
@@ -589,23 +635,22 @@ export function GeospatialMap({
                     ) : selectedLocationDetail &&
                       selectedLocationDetail.source_entity_ids.length > 0 ? (
                       <div className="space-y-2">
-                        {selectedLocationDetail.source_entity_ids.map(
-                          (entityId) => (
-                            <div
-                              key={entityId}
-                              className="flex items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900/50 p-2"
-                            >
-                              <div className="h-2 w-2 rounded-full bg-primary-500" />
-                              <p className="text-xs text-neutral-300">
-                                {entityId}
-                              </p>
-                              {/* Phase 10: Add click handler to navigate to KG filtered by entity */}
-                            </div>
-                          ),
+                        {entitiesLoading ? (
+                          <p className="text-xs text-neutral-400">
+                            Resolving entities...
+                          </p>
+                        ) : (
+                          resolveEntities(
+                            selectedLocationDetail.source_entity_ids,
+                          ).map((entity) => (
+                            <EntityBadge
+                              key={entity.id}
+                              name={entity.name}
+                              entityType={entity.entity_type}
+                              color={entity.color}
+                            />
+                          ))
                         )}
-                        <p className="mt-2 text-xs text-neutral-500">
-                          Click entity to view in Knowledge Graph (Phase 10)
-                        </p>
                       </div>
                     ) : (
                       <p className="text-xs text-neutral-500">
@@ -614,6 +659,28 @@ export function GeospatialMap({
                     )}
                   </div>
                 </div>
+              </div>
+            </div>,
+            document.body,
+          )}
+
+        {/* Source viewer modal — portaled to body above detail dialog */}
+        {geoSourceContent &&
+          createPortal(
+            <div
+              className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+              style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+              onClick={geoCloseSource}
+            >
+              <div
+                className="w-full max-w-5xl h-[85vh]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <SourceViewerModal
+                  content={geoSourceContent}
+                  onClose={geoCloseSource}
+                  className="w-full h-full"
+                />
               </div>
             </div>,
             document.body,

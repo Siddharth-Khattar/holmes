@@ -36,12 +36,12 @@
 | 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ✅ COMPLETE |
 | 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ✅ COMPLETE |
 | 9 | Chat Interface & Research | Multi-source tool-based Q&A, research/discovery, context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
-| 10 | Source Panel & Agent Flow Polish | Source viewers, citation navigation, task panel, narrative generation | REQ-SOURCE-*, REQ-VIS-*, REQ-TASK-003-007 | 🟡 FRONTEND_DONE |
+| 10 | Source Panel & Entity Resolution | Citation-to-source wiring, entity name resolution across all views | REQ-SOURCE-* | ✅ COMPLETE |
 | 11 | Corrections & Refinement | Error flagging, Verification, Regeneration | REQ-CORR-* | ⏳ NOT_STARTED |
 | 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i | ⏳ NOT_STARTED |
 
 > **Status Legend:** ✅ COMPLETE | 🟡 FRONTEND_DONE (backend pending) | ⏳ NOT_STARTED | ⏳ PLANNED
-> **Note:** Phase 6 complete (2026-02-06, 35 commits). Architecture redesigned 2026-02-07: Phases 7-9 restructured with KG-as-Memory pattern, hybrid storage (PG + Vector), programmatic KG Builder, Synthesis Agent, tool-based Chat Agent. Architecture revised 2026-02-08: Programmatic KG Builder replaced with LLM-based KG Builder Agent (Approach 4); D3.js retained and enhanced (Epstein-inspired); vis-network deferred to optional Phase 7.3.
+> **Note:** Phase 10 complete (2026-02-09). Citation-to-source navigation wired across all 4 views (KG, Geospatial, Verdict, Timeline) with shared hooks and entity resolution. Known issues: PDF viewer has rendering bugs, audio viewer untested. Architecture revised 2026-02-08: Programmatic KG Builder replaced with LLM-based KG Builder Agent (Approach 4); D3.js retained and enhanced (Epstein-inspired); vis-network deferred to optional Phase 7.3.
 
 **Post-MVP:**
 | Phase | Name | Focus | Requirements |
@@ -1252,78 +1252,61 @@ Plans:
 
 ---
 
-## Phase 10: Agent Flow & Source Panel
+## Phase 10: Source Panel & Entity Resolution
 
-**Goal:** Full-featured source viewers, Agent Flow refinements, and task panel.
+**Goal:** Wire citation-to-source navigation across all views and resolve all entity IDs to human-readable names with type badges.
 
-**Requirements:** REQ-SOURCE-001 (complete), REQ-SOURCE-002 (complete), REQ-SOURCE-003 (complete), REQ-SOURCE-004 (complete), REQ-VIS-001, REQ-VIS-001a, REQ-VIS-002, REQ-VIS-004, REQ-VIS-007, REQ-WOW-004, REQ-TASK-003, REQ-TASK-004, REQ-TASK-005, REQ-TASK-006, REQ-TASK-007
+**Requirements:** REQ-SOURCE-001 (complete), REQ-SOURCE-002 (complete), REQ-SOURCE-003 (complete), REQ-SOURCE-004 (complete)
 
-**Status:** 🟡 FRONTEND_DONE (Timeline) — Source viewers + Task Panel pending
+**Status:** ✅ COMPLETE (2026-02-09)
 
-### Frontend Completed (Yatharth, 2026-02-02)
-- ✅ Timeline view with events (`Timeline/`)
-  - Day/week/month/year zoom levels
-  - Layer filtering (evidence/legal/strategy)
-  - Event cards with click-to-detail
-  - Search with debouncing
-  - SSE hooks ready (`useTimelineSSE.ts`)
-  - React Query with caching (`useTimelineData.ts`)
-  - Skeleton loading states
-  - Framer Motion animations
-- ✅ Evidence source panel exists (`evidence-source-panel.tsx`)
+**Plans:** 3 plans in 3 waves
 
-### Backend Work Remaining
-- ⏳ Timeline API endpoints (CRUD + SSE stream)
-- ⏳ PDF viewer with excerpt highlighting
-- ⏳ Video player with timestamp markers
-- ⏳ Audio player with waveform and transcript sync
-- ⏳ Image viewer with bounding box annotations
-- ⏳ Citation navigation (click → exact location)
-- ⏳ Narrative generation (executive summary, detailed)
-- ⏳ Export as PDF/DOCX
-- ⏳ Agent Flow refinements (most items)
-- ⏳ Investigation Task Panel (all items)
+Plans:
+- [x] 10-01-PLAN.md -- Shared utilities: citation-utils, useSourceNavigation hook, useEntityResolver hook, CitationLink + EntityBadge components
+- [x] 10-02-PLAN.md -- Wire KG entity panel, EntityTimelineEntry, and Geospatial detail panel
+- [x] 10-03-PLAN.md -- Wire Verdict detail panels (hypothesis, contradiction, gap) and Timeline event cards
+
+**Scope (narrowed from original Phase 10 via CONTEXT.md):**
+- **Track 1 -- Source Viewer Wiring:** Connect citations across ALL views to open SourceViewerModal with real source files at exact page/timestamp locations. Components already built in Phase 7.2 (SourceViewerModal, PdfViewer, AudioViewer, VideoViewer, ImageViewer); only the data pipeline needs wiring.
+- **Track 2 -- Entity Name Resolution:** Resolve ALL entity integer IDs and UUIDs to human-readable names + type badges across every view (KG, Geospatial, Verdict, Timeline).
+
+**Deferred (out of scope for this phase):**
+- Agent Flow refinements (thinking overlay, task badges, time-scrubbing, playback, pause/resume, fullscreen)
+- Investigation Task Panel
+- Narrative generation (executive summary, reports)
+- PDF/DOCX export
+- Image bounding box annotations
+- Audio transcript sync highlighting
 
 **Deliverables:**
-- **KG Source Viewer wiring (deferred from Phase 7.2):** Wire `source_finding_ids` → `case_findings` → `agent_executions` → `case_files` → signed download URL chain so that clicking "View source" in KG EntityTimelineEntry opens the SourceViewerModal with the actual document/audio/video/image content. Components already built in Phase 7.2 (SourceViewerModal, PdfViewer, AudioViewer, VideoViewer, ImageViewer); only the data pipeline needs wiring.
-- PDF viewer with excerpt highlighting
-- Video player with timestamp markers
-- Audio player with waveform and transcript sync
-- Image viewer with bounding box annotations
-- Citation navigation (click → exact location)
-- ~~Timeline view with events~~ ✅
-- Narrative generation (executive summary, detailed)
-- Export as PDF/DOCX
-- **Agent Flow refinements:**
-  - ~~ReactFlow agent pipeline visualization~~ ✅ (@xyflow/react + dagre, done in Phase 4.1)
-  - ~~Custom node components per agent type~~ ✅ (DecisionNode, FileGroupNode, Phase 4.1)
-  - ~~Agent color coding~~ ✅ (muted palette, Phase 4.1)
-  - **Task count badges on agent nodes** (pending)
-  - Thinking overlay with streaming thoughts
-  - Interactive time-scrubbing
-  - Pause/resume workflow
-  - Workflow playback with speed control
-  - Frontend confirmation dialogs for sensitive operations
-  - Fullscreen mode
-- **Investigation Task Panel:** (all pending)
+- Shared useSourceNavigation hook: citation {file_id, locator, excerpt} -> SourceViewerContent with signed URL
+- Shared useEntityResolver hook: entity UUID -> {name, entity_type, color} via cached graph data
+- citation-utils.ts: locator parser (page:N, ts:HH:MM:SS, region:x,y,w,h), category-to-viewer mapper
+- Reusable CitationLink and EntityBadge UI components
+- KG entity panel: source finding IDs clickable -> opens SourceViewerModal
+- EntityTimelineEntry: "View source evidence" replaces "Source not yet available"
+- Geospatial detail panel: citations open SourceViewerModal, entity IDs show resolved names + type badges
+- Verdict hypothesis evidence items clickable -> two-hop finding -> citation -> source navigation
+- Verdict contradiction source excerpts clickable
+- Verdict gap entity badges use consistent getEntityColor styling
+- Timeline event card source count expandable with clickable source links
 
 **Technical Notes:**
-- PDF: react-pdf or pdf.js
-- Audio: wavesurfer.js
-- Video: native HTML5 with custom controls
-- ~~Timeline: D3.js or vis-timeline~~ → Custom React implementation ✅
-- Narrative: Gemini generates from Synthesis output
-- **Task count badges update in real-time via SSE**
-- **Frontend files:** `frontend/src/components/Timeline/`, `frontend/src/hooks/useTimelineData.ts`, `frontend/src/hooks/useTimelineFilters.ts`, `frontend/src/hooks/useTimelineSSE.ts`
+- Frontend-only phase: no new backend endpoints needed (all data accessible via existing APIs)
+- Two-hop resolution for findings: finding_id -> GET /findings/:id -> citations[] -> file_id -> signed URL
+- Entity resolution via cached graph data: GET /graph returns all entities, cached per case session
+- File metadata cached via React Query (staleTime: 5 min)
+- Signed URLs cached via existing useFileUrlCache hook (1h cache, 24h expiry)
+- Race condition prevention via request counter ref in useSourceNavigation
+- PDF highlight: first 100 chars of excerpt for search match reliability
 
 **Exit Criteria:**
-- All source types viewable with full features
-- Citations navigate to exact locations
-- ~~Timeline shows chronological events~~ ✅
-- Narrative generation works with citations
-- **Task panel shows pending investigation tasks**
-- **Task count badges visible on agent nodes**
-- **Task completion workflow functional**
+- Citations clickable from ALL views: KG entity panel, KG timeline entry, Verdict (hypothesis/contradiction), Geospatial detail, Timeline cards
+- Clicking any citation opens SourceViewerModal at correct page/timestamp with excerpt highlighting
+- Entity IDs resolved to human-readable names + type badges in Geospatial and across all views
+- No "Source not yet available" placeholders remain in KG views
+- All type checking and build pass
 
 ---
 
@@ -1552,3 +1535,4 @@ For 2 developers working simultaneously:
 *Phase 7.3 (vis-network, optional) renumbered: 2026-02-08
 *Phase 7.2 (D3.js Enhancement) planned: 2026-02-08 (5 plans in 3 waves)
 *Phase 7.2 (D3.js Enhancement) complete: 2026-02-08 (5 plans + 28 post-plan polish, 46 total commits; source viewer deferred to Phase 10)
+*Phase 10 planned: 2026-02-09 (3 plans in 2 waves -- source viewer wiring + entity resolution)

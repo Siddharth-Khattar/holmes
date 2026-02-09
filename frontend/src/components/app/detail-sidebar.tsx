@@ -41,18 +41,28 @@ function renderContent(descriptor: SidebarContentDescriptor): React.ReactNode {
     case "knowledge-graph-entity":
       return (
         <KnowledgeGraphEntityPanel
+          caseId={descriptor.props.caseId}
           entity={descriptor.props.entity}
           relationships={descriptor.props.relationships}
           allEntities={descriptor.props.allEntities}
           onEntitySelect={descriptor.props.onEntitySelect}
+          onViewFinding={descriptor.props.onViewFinding}
         />
       );
     case "verdict-hypothesis":
-      return <HypothesisDetailPanel hypothesis={descriptor.props.hypothesis} />;
+      return (
+        <HypothesisDetailPanel
+          caseId={descriptor.props.caseId}
+          hypothesis={descriptor.props.hypothesis}
+          onViewFinding={descriptor.props.onViewFinding}
+        />
+      );
     case "verdict-contradiction":
       return (
         <ContradictionDetailPanel
+          caseId={descriptor.props.caseId}
           contradiction={descriptor.props.contradiction}
+          onViewFinding={descriptor.props.onViewFinding}
         />
       );
     case "verdict-gap":

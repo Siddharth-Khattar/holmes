@@ -1,14 +1,17 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { TimelineCore } from "./TimelineCore";
 import { TimelineControls } from "./TimelineControls";
 import { TimelineHeader } from "./TimelineHeader";
 import { TimelineSkeleton } from "./TimelineSkeleton";
 import { EventDetailModal } from "../EventDetail/EventDetailModal";
+import { SourceViewerModal } from "@/components/source-viewer/SourceViewerModal";
 import { useTimelineData } from "@/hooks/useTimelineData";
 import { useTimelineFilters } from "@/hooks/useTimelineFilters";
 import { useTimelineSSE } from "@/hooks/useTimelineSSE";
+import { useSourceNavigation } from "@/hooks/useSourceNavigation";
 import type { TimelineProps, TimelineEvent } from "@/types/timeline.types";
 
 export function Timeline({
@@ -48,6 +51,13 @@ export function Timeline({
     onEventUpdated: () => refetch(),
     onEventDeleted: () => refetch(),
   });
+
+  // Source navigation for EventDetailModal source document clicks
+  const {
+    openFromFinding: detailOpenFromFinding,
+    sourceContent: detailSourceContent,
+    closeSource: detailCloseSource,
+  } = useSourceNavigation(caseId);
 
   // Filter events by selected layers
   const filteredEvents = useMemo(() => {
@@ -116,17 +126,37 @@ export function Timeline({
       <TimelineCore
         events={filteredEvents}
         zoomLevel={zoomLevel}
+        caseId={caseId}
         onEventClick={handleEventClick}
       />
 
       {selectedEvent && (
         <EventDetailModal
+          caseId={caseId}
           event={selectedEvent}
           onClose={() => setSelectedEvent(null)}
           onUpdate={handleEventUpdate}
           onDelete={handleEventDelete}
+          onViewSource={detailOpenFromFinding}
         />
       )}
+
+      {/* Source Viewer Modal for EventDetailModal source clicks (z above modal's z-100) */}
+      {detailSourceContent &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+            style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+          >
+            <div className="w-full max-w-5xl h-[85vh]">
+              <SourceViewerModal
+                content={detailSourceContent}
+                onClose={detailCloseSource}
+              />
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   X,
   Edit2,
@@ -16,19 +16,25 @@ import { format } from "date-fns";
 import { TimelineEvent } from "@/types/timeline.types";
 import { LAYER_CONFIG } from "@/constants/timeline.constants";
 import { cn } from "@/lib/utils";
+import { useFindingResolver } from "@/hooks/useFindingResolver";
 
 interface EventDetailModalProps {
+  caseId: string;
   event: TimelineEvent;
   onClose: () => void;
   onUpdate?: (event: TimelineEvent) => Promise<void>;
   onDelete?: (eventId: string) => Promise<void>;
+  /** Called when the user clicks a source document entry (sourceId = finding ID). */
+  onViewSource?: (sourceId: string) => void;
 }
 
 export function EventDetailModal({
+  caseId,
   event,
   onClose,
   onUpdate,
   onDelete,
+  onViewSource,
 }: EventDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -38,6 +44,7 @@ export function EventDetailModal({
   );
 
   const layerConfig = LAYER_CONFIG[event.layer];
+  const { getFinding } = useFindingResolver(caseId);
 
   const handleUpdate = async () => {
     if (!onUpdate) return;
@@ -201,17 +208,42 @@ export function EventDetailModal({
                   Source Documents ({event.sourceIds.length})
                 </h3>
                 <div className="space-y-2">
-                  {event.sourceIds.map((sourceId) => (
-                    <div
-                      key={sourceId}
-                      className="flex items-center gap-2 p-2 bg-(--muted) rounded hover:bg-(--muted)/80 transition-colors cursor-pointer"
-                    >
-                      <FileText className="w-4 h-4 text-(--muted-foreground)" />
-                      <span className="text-sm text-(--foreground) font-mono">
-                        {sourceId.slice(0, 8)}...
-                      </span>
-                    </div>
-                  ))}
+                  {event.sourceIds.map((sourceId) => {
+                    const resolved = getFinding(sourceId);
+                    return (
+                      <button
+                        key={sourceId}
+                        type="button"
+                        onClick={() => onViewSource?.(sourceId)}
+                        disabled={!onViewSource}
+                        className={cn(
+                          "flex items-center gap-2 p-2 w-full text-left rounded transition-colors",
+                          "bg-(--muted)",
+                          onViewSource
+                            ? "hover:bg-(--muted)/80 cursor-pointer group"
+                            : "opacity-60 cursor-default",
+                        )}
+                      >
+                        <FileText className="w-4 h-4 text-(--muted-foreground) shrink-0" />
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className="text-sm text-(--foreground) truncate">
+                            {resolved.fileName ?? resolved.title}
+                          </span>
+                          {resolved.fileName &&
+                            resolved.title !== resolved.id.slice(0, 8) && (
+                              <span className="text-xs text-(--muted-foreground) truncate">
+                                {resolved.title}
+                              </span>
+                            )}
+                        </div>
+                        {onViewSource && (
+                          <span className="ml-auto text-xs text-(--muted-foreground) opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            View source
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

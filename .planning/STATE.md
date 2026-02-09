@@ -1,7 +1,7 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 8.1 of 12 (Geospatial Agent & Map View) — IN PROGRESS (1/4 plans)
+**Current Phase:** 8.1 of 12 (Geospatial Agent & Map View) — IN PROGRESS (2/4 plans)
 **Next Phase:** 9 (Chat Interface)
 **Current Milestone:** M1 - Holmes v1.0
 
@@ -22,7 +22,7 @@
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
-| 8.1 | Geospatial Agent & Map View | IN_PROGRESS | 2026-02-09 | - | Plan 01 complete: GeocodingService with Google Maps API + caching |
+| 8.1 | Geospatial Agent & Map View | IN_PROGRESS | 2026-02-09 | - | Plans 01-02 complete: GeocodingService + GeospatialAgentRunner with pipeline integration |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
@@ -132,8 +132,15 @@
   - Error handling: Returns None on failure, logs warnings, caches failed results to avoid redundant API calls
   - Type checking passes with googlemaps type ignores for incomplete library stubs
 
+**Phase 8.1 Plan 02 Complete** (2026-02-09): Geospatial Agent Implementation -- 2 tasks, 2 commits (6 min)
+  - Task 1: GeospatialOutput schema (Citation, EventAtLocation, LocationOutput, PathOutput) + GEOSPATIAL_SYSTEM_PROMPT (8-section structure)
+  - Task 2: GeospatialAgentRunner subclass (text-only input from 6 DB sources), write_geospatial_output (clear-and-rebuild + auto-geocoding), Pipeline Stage 9 integration
+  - Flash model with medium thinking for cost efficiency
+  - SSE geospatial-complete event emitted after location data committed
+  - Non-blocking pipeline failure (geospatial failure logs warning, doesn't crash pipeline)
+  - Adapts to existing Location schema (coordinates/temporal_associations JSONB)
+
 **What's next:**
-- Phase 8.1 Plan 02 (Geospatial Agent) -- LLM agent to extract locations from case data + geocode
 - Phase 8.1 Plan 03 (Locations API) -- REST endpoints for geospatial data access
 - Phase 8.1 Plan 04 (Frontend Integration) -- Replace mock data with real API calls
 - Phase 9 (Chat Interface) -- backend API needed
@@ -525,6 +532,11 @@ All frontend features need these backend endpoints:
 | Geocoding caching | In-memory vs Redis | In-memory for v1 | Simple implementation, sufficient for single-instance deployment; can upgrade to Redis in Phase 9 |
 | Geocoding error handling | Raise exceptions vs Return None | Return None on failure | Graceful degradation allows partial results; agent can mark unmappable locations |
 | Geocoding async pattern | Sync client vs asyncio.to_thread wrapper | asyncio.to_thread wrapper | googlemaps library is synchronous; asyncio.to_thread provides non-blocking async interface |
+| Geospatial agent model | Flash vs Pro | Flash with medium thinking | Location extraction less complex than synthesis; Flash provides cost efficiency |
+| Geospatial Location schema | Add columns vs Adapt to existing | Adapt to existing JSONB | Location model has coordinates/temporal_associations JSONB; no migration needed |
+| Geospatial entity IDs | UUID mapping vs Integer storage | Integer storage | LLM outputs 1,2,3..., stored as-is; UUID resolution deferred to Phase 8.2 or 9 |
+| Geospatial pipeline failure | Blocking vs Non-blocking | Non-blocking | Geospatial optional; failure logs warning, emits error SSE, pipeline continues |
+| Geospatial confidence scale | Percentages vs 0.0-1.0 | 0.0-1.0 scale | Consistent with synthesis agent; avoids 0-1 vs 0-100 confusion |
 
 ---
 
@@ -537,9 +549,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8.1 Plan 01 COMPLETE (2/2 tasks, 2 commits). GeocodingService implemented with Google Maps API + caching.
+Stopped at: Phase 8.1 Plan 02 COMPLETE (2/2 tasks, 2 commits, 6 min). GeospatialAgentRunner with pipeline Stage 9 integration.
 Resume file: None
-Next action: Phase 8.1 Plan 02 (Geospatial Agent implementation)
+Next action: Phase 8.1 Plan 03 (Locations API endpoints)
 
 ---
 

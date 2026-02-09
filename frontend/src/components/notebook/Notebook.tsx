@@ -323,14 +323,14 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
                             </Link>
                             <div>
                                 <h1
-                                    className="font-serif text-xl font-semibold"
+                                    className="text-base font-medium tracking-tight"
                                     style={{ color: "var(--foreground)" }}
                                 >
                                     {"Sherlock's Diary"}
                                 </h1>
                                 {caseName && (
                                     <p
-                                        className="text-sm"
+                                        className="text-xs"
                                         style={{ color: "var(--muted-foreground)" }}
                                     >
                                         {caseName}

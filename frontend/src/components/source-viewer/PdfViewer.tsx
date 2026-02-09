@@ -1,12 +1,11 @@
-// ABOUTME: PDF rendering component using @react-pdf-viewer with page navigation
-// ABOUTME: and text search/highlight plugins. Supports jump-to-page and keyword highlighting.
+// ABOUTME: PDF rendering component using @react-pdf-viewer/default-layout with built-in toolbar,
+// ABOUTME: zoom controls, page navigation, search/highlight, and scrollable document view.
 
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Viewer, Worker } from "@react-pdf-viewer/core";
-import { pageNavigationPlugin } from "@react-pdf-viewer/page-navigation";
-import { searchPlugin } from "@react-pdf-viewer/search";
+import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
 
@@ -35,27 +34,31 @@ export function PdfViewer({
   initialPage,
   highlightKeyword,
 }: PdfViewerProps) {
-  // Plugin factories are called at the top level of the component body.
-  // They internally register React hooks, so they MUST NOT be wrapped in
-  // useState, useMemo, useEffect, or any other hook. The library manages
-  // instance identity across renders internally.
-  const pageNavInstance = pageNavigationPlugin();
-  const searchInstance = searchPlugin();
+  // defaultLayoutPlugin aggregates toolbar (zoom, search, page nav), sidebar, etc.
+  // Disable sidebar tabs since we only need the toolbar + document view.
+  const defaultLayoutPluginInstance = defaultLayoutPlugin({
+    sidebarTabs: () => [],
+    toolbarPlugin: {
+      searchPlugin: highlightKeyword
+        ? { keyword: [highlightKeyword] }
+        : undefined,
+    },
+  });
 
-  // Stable plugins array via ref to avoid recreating on every render
-  const pluginsRef = useRef([pageNavInstance, searchInstance]);
-  pluginsRef.current = [pageNavInstance, searchInstance];
+  const { toolbarPluginInstance } = defaultLayoutPluginInstance;
+  const { pageNavigationPluginInstance, searchPluginInstance } =
+    toolbarPluginInstance;
 
   // Jump to page when initialPage changes (convert 1-indexed to 0-indexed)
   useEffect(() => {
     if (initialPage !== undefined && initialPage > 0) {
       // Small delay to ensure the viewer has rendered and plugin is installed
       const timer = setTimeout(() => {
-        pageNavInstance.jumpToPage(initialPage - 1);
+        pageNavigationPluginInstance.jumpToPage(initialPage - 1);
       }, 300);
       return () => clearTimeout(timer);
     }
-    // pageNavInstance changes identity every render but jumpToPage is stable
+    // pageNavigationPluginInstance changes identity every render but jumpToPage is stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPage]);
 
@@ -64,7 +67,7 @@ export function PdfViewer({
     if (highlightKeyword) {
       // Small delay to ensure the document is loaded
       const timer = setTimeout(() => {
-        searchInstance.highlight({
+        searchPluginInstance.highlight({
           keyword: highlightKeyword,
           matchCase: false,
           wholeWords: false,
@@ -72,9 +75,9 @@ export function PdfViewer({
       }, 500);
       return () => clearTimeout(timer);
     } else {
-      searchInstance.clearHighlights();
+      searchPluginInstance.clearHighlights();
     }
-    // searchInstance changes identity every render but highlight/clear are stable
+    // searchPluginInstance changes identity every render but highlight/clear are stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightKeyword]);
 
@@ -83,7 +86,7 @@ export function PdfViewer({
       <Worker workerUrl={PDFJS_WORKER_URL}>
         <Viewer
           fileUrl={fileUrl}
-          plugins={pluginsRef.current}
+          plugins={[defaultLayoutPluginInstance]}
           theme="dark"
           defaultScale={1}
           renderLoader={(percentages: number) => (
@@ -133,6 +136,30 @@ export function PdfViewer({
         }
         .pdf-viewer-container .rpv-search__highlight--current {
           background-color: rgba(212, 168, 67, 0.6);
+        }
+        /* Dark theme overrides for default-layout toolbar and containers */
+        .pdf-viewer-container .rpv-default-layout__toolbar {
+          background-color: var(--color-charcoal, #1a1a1a);
+          border-bottom: 1px solid rgba(107, 101, 96, 0.15);
+        }
+        .pdf-viewer-container .rpv-default-layout__container {
+          background-color: var(--color-jet, #111111);
+          border: none;
+        }
+        .pdf-viewer-container .rpv-default-layout__body {
+          background-color: var(--color-jet, #111111);
+        }
+        .pdf-viewer-container .rpv-core__minimal-button {
+          color: var(--color-stone, #6b6560);
+        }
+        .pdf-viewer-container .rpv-core__minimal-button:hover {
+          background-color: rgba(107, 101, 96, 0.15);
+          color: var(--color-smoke, #c8c3bc);
+        }
+        .pdf-viewer-container .rpv-core__textbox {
+          background-color: rgba(107, 101, 96, 0.1);
+          border-color: rgba(107, 101, 96, 0.2);
+          color: var(--color-smoke, #c8c3bc);
         }
       `}</style>
     </div>

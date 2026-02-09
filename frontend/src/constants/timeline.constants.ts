@@ -13,10 +13,10 @@ export const LAYER_CONFIG: Record<
   }
 > = {
   evidence: {
-    color: "text-[#47d198] dark:text-[#47d198]",
-    bgColor: "bg-[#47d198]/10 dark:bg-[#47d198]/10",
-    borderColor: "border-[#47d198]/50 dark:border-[#47d198]/40",
-    hexColor: "#47d198", // Financial agent accent — hsl(155, 60%, 55%)
+    color: "text-[#d65c70] dark:text-[#d65c70]",
+    bgColor: "bg-[#d65c70]/10 dark:bg-[#d65c70]/10",
+    borderColor: "border-[#d65c70]/50 dark:border-[#d65c70]/40",
+    hexColor: "#d65c70", // Evidence agent accent — hsl(350, 60%, 60%)
     icon: "FileText",
     label: "Evidence",
   },
@@ -37,10 +37,10 @@ export const LAYER_CONFIG: Record<
     label: "Strategy",
   },
   financial: {
-    color: "text-[#45B5AA] dark:text-[#45B5AA]",
-    bgColor: "bg-[#45B5AA]/10 dark:bg-[#45B5AA]/10",
-    borderColor: "border-[#45B5AA]/50 dark:border-[#45B5AA]/40",
-    hexColor: "#45B5AA", // Financial agent accent — teal
+    color: "text-[#47d198] dark:text-[#47d198]",
+    bgColor: "bg-[#47d198]/10 dark:bg-[#47d198]/10",
+    borderColor: "border-[#47d198]/50 dark:border-[#47d198]/40",
+    hexColor: "#47d198", // Financial agent accent — hsl(155, 60%, 55%)
     icon: "DollarSign",
     label: "Financial",
   },

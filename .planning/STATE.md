@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — In progress (5/7 plans)
-**Next Plan:** 08-06 (Command Center integration)
+**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — In progress (6/7 plans)
+**Next Plan:** 08-07 (Timeline wiring, if applicable)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -21,7 +21,7 @@
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
-| 8 | Synthesis Agent & Intelligence Layer | IN_PROGRESS | 2026-02-08 | - | Plans 01-05 complete (10 commits): DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components |
+| 8 | Synthesis Agent & Intelligence Layer | IN_PROGRESS | 2026-02-08 | - | Plans 01-06 complete (12 commits): DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness |
 | 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -109,8 +109,11 @@
   - Task 1: 6 card components (VerdictSummary, KeyFindingCard, HypothesisCard, ContradictionCard, GapCard, TaskCard) with Holmes dark theme, confidence dots (red/amber/green), severity badges, side-by-side claim comparison
   - Task 2: VerdictView main layout (6 scrollable sections with count badges, loading skeletons, empty states), 3 verdict sidebar descriptor types (VerdictHypothesisContent, VerdictContradictionContent, VerdictGapContent) added to SidebarContentDescriptor union, placeholder switch cases in detail-sidebar.tsx
 
+**Phase 8 Plan 06 Complete** (2026-02-09): Command Center integration -- 2 tasks, 2 commits
+  - Task 1: 3 verdict detail panels (HypothesisDetailPanel, ContradictionDetailPanel, GapDetailPanel) wired into DetailSidebar via SidebarContentDescriptor union
+  - Task 2: "synthesis" added to AgentType union + validation + config + CSS vars, SynthesisDataReadyEvent SSE handling, synthesisReady state in useAgentStates (SSE event + state-snapshot detection), CC page tab toggle (Agent Flow / Verdict) with URL param persistence + disabled state with pulse indicator, React Query cache invalidation on synthesis-data-ready
+
 **What's next:**
-- Phase 8 Plan 06: Command Center integration (Verdict tab toggle, synthesis agent node SSE events)
 - Phase 8 Plan 07: Timeline wiring (if applicable)
 - Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
 
@@ -482,6 +485,10 @@ All frontend features need these backend endpoints:
 | React Compiler useMemo dependency | Sub-property vs Full object | Full object (`[synthesis]`) | React Compiler infers full object as dependency; `[synthesis?.key_findings_summary]` fails preserve-manual-memoization lint rule |
 | TaskCard interactivity | Clickable with onClick vs Read-only | Read-only (no onClick) | Task management (status updates, assignment) deferred; tasks are informational-only for v1 |
 | Verdict sidebar descriptor rendering | Render panel now vs Placeholder | Placeholder (return null) | Actual detail panels for verdict-hypothesis/contradiction/gap built in Plan 06 |
+| Synthesis AgentType registration | String comparison vs Union member | Union member ("synthesis" added to AgentType) | Type-safe handling across validation, config, and color systems; backend sends agentType: "synthesis" |
+| Synthesis readiness detection | SSE-only vs Dual (SSE + API fallback) | Dual: SSE synthesisReady + useSynthesis API data | SSE for live sessions; API fallback for page reload after analysis completes |
+| Synthesis cache invalidation | Polling vs SSE-triggered | SSE-triggered (on synthesis-data-ready) | Immediate cache invalidation when synthesis completes; no polling overhead |
+| CC tab toggle state | React state only vs URL search params | URL search params (?tab=verdict) | Deep-linkable, survives page refresh, shareable |
 
 ---
 
@@ -494,9 +501,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8 Plan 05 COMPLETE (2 tasks, 2 commits). 7 Verdict components + SidebarContentDescriptor extensions.
+Stopped at: Phase 8 Plan 06 COMPLETE (2 tasks, 2 commits). 3 verdict detail panels + CC tab toggle + SSE synthesis readiness.
 Resume file: None
-Next action: Execute Phase 8 Plan 06 (Command Center integration)
+Next action: Execute Phase 8 Plan 07 (Timeline wiring, if applicable)
 
 ---
 

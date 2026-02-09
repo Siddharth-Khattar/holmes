@@ -77,6 +77,7 @@ export function getEventStatistics(events: TimelineEvent[]) {
     evidence: 0,
     legal: 0,
     strategy: 0,
+    financial: 0,
   };
 
   let totalConfidence = 0;

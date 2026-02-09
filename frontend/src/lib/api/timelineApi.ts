@@ -4,8 +4,48 @@ import {
   TimelineEvent,
   TimelineEventSchema,
   TimelineFilters,
+  TimelineLayer,
 } from "@/types/timeline.types";
 import { API_CONFIG } from "@/constants/timeline.constants";
+import { getToken } from "@/lib/auth-client";
+
+/** Known timeline layers for safe type narrowing from backend string values. */
+const VALID_LAYERS = new Set<string>([
+  "evidence",
+  "legal",
+  "strategy",
+  "financial",
+]);
+
+/** Map a backend TimelineEventResponse object to the frontend TimelineEvent shape. */
+function transformBackendEvent(
+  backendEvent: Record<string, unknown>,
+): Record<string, unknown> {
+  const rawLayer = (backendEvent.layer as string) ?? "evidence";
+  const layer: TimelineLayer = VALID_LAYERS.has(rawLayer)
+    ? (rawLayer as TimelineLayer)
+    : "evidence";
+
+  return {
+    id: backendEvent.id as string,
+    caseId: backendEvent.case_id as string,
+    title: backendEvent.title as string,
+    description: (backendEvent.description as string | undefined) ?? undefined,
+    date: (backendEvent.event_date as string) ?? "",
+    layer,
+    sourceIds: (backendEvent.source_entity_ids as string[]) ?? [],
+    entityIds: (backendEvent.source_entity_ids as string[]) ?? [],
+    confidence: 0.8,
+    isUserCorrected: false,
+    eventType: (backendEvent.event_type as string | undefined) ?? undefined,
+    metadata: {
+      eventType: backendEvent.event_type,
+      citations: backendEvent.citations,
+    },
+    createdAt: (backendEvent.created_at as string) ?? "",
+    updatedAt: (backendEvent.created_at as string) ?? "",
+  };
+}
 
 class TimelineApiClient {
   private baseUrl: string;
@@ -15,7 +55,22 @@ class TimelineApiClient {
   }
 
   /**
-   * Fetch timeline events with filters
+   * Build authorization headers using the JWT token from Better Auth.
+   */
+  private async getAuthHeaders(): Promise<HeadersInit> {
+    const token = await getToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    return headers;
+  }
+
+  /**
+   * Fetch timeline events with filters.
+   * Transforms backend TimelineEventResponse objects to frontend TimelineEvent shape.
    */
   async getTimelineEvents(
     caseId: string,
@@ -43,12 +98,11 @@ class TimelineApiClient {
     }
 
     const url = `${this.baseUrl}/${caseId}/timeline?${params.toString()}`;
+    const headers = await this.getAuthHeaders();
 
     const response = await this.fetchWithTimeout(url, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -57,10 +111,21 @@ class TimelineApiClient {
       );
     }
 
-    const data = await response.json();
+    const rawData = await response.json();
+
+    // Transform backend events to frontend format
+    const rawEvents = (rawData.events ?? []) as Record<string, unknown>[];
+    const transformedEvents = rawEvents.map(transformBackendEvent);
+
+    const transformed = {
+      events: transformedEvents,
+      totalCount: rawData.totalCount ?? 0,
+      dateRange: rawData.dateRange ?? { earliest: "", latest: "" },
+      layerCounts: rawData.layerCounts ?? {},
+    };
 
     // Validate response schema
-    const validated = TimelineApiResponseSchema.parse(data);
+    const validated = TimelineApiResponseSchema.parse(transformed);
     return validated;
   }
 

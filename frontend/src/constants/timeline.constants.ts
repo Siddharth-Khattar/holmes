@@ -36,6 +36,14 @@ export const LAYER_CONFIG: Record<
     icon: "Target",
     label: "Strategy",
   },
+  financial: {
+    color: "text-[#45B5AA] dark:text-[#45B5AA]",
+    bgColor: "bg-[#45B5AA]/10 dark:bg-[#45B5AA]/10",
+    borderColor: "border-[#45B5AA]/50 dark:border-[#45B5AA]/40",
+    hexColor: "#45B5AA", // Financial agent accent — teal
+    icon: "DollarSign",
+    label: "Financial",
+  },
 };
 
 // Zoom level configuration

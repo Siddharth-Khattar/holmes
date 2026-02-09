@@ -323,14 +323,14 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
               </Link>
               <div>
                 <h1
-                  className="font-serif text-xl font-semibold"
+                  className="text-base font-medium tracking-tight"
                   style={{ color: "var(--foreground)" }}
                 >
                   {"Sherlock's Diary"}
                 </h1>
                 {caseName && (
                   <p
-                    className="text-sm"
+                    className="text-xs"
                     style={{ color: "var(--muted-foreground)" }}
                   >
                     {caseName}
@@ -429,16 +429,18 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
         onClick={toggleSidebar}
         className={clsx(
           "fixed right-0 top-1/2 -translate-y-1/2 z-50",
-          "flex items-center justify-center w-10 h-24 rounded-l-xl",
-          "transition-all shadow-lg",
+          "flex items-center justify-center w-6 h-12 rounded-l-md",
+          "transition-colors duration-150",
           sidebarMode !== "closed" && "opacity-0 pointer-events-none",
         )}
         style={{
-          backgroundColor: "var(--primary)",
-          color: "var(--primary-foreground)",
+          backgroundColor: "var(--card)",
+          border: "1px solid var(--border)",
+          borderRight: "none",
+          color: "var(--muted-foreground)",
         }}
       >
-        <ChevronLeft className="w-5 h-5" />
+        <ChevronLeft className="w-4 h-4" />
       </button>
 
       {/* Right Sidebar */}

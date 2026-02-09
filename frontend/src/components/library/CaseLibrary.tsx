@@ -292,8 +292,9 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
 
   const handleRedactFile = useCallback(
     async (file: LibraryFile) => {
-      // Check cache — if hit, open with URL immediately
-      const cachedUrl = getCachedUrl(caseId, file.id);
+      // Check cache or preloaded URLs — if hit, open with URL immediately
+      const cachedUrl =
+        getCachedUrl(caseId, file.id) || preloadedUrls.get(file.id) || null;
       if (cachedUrl) {
         setRedactModalFile({ ...file, url: cachedUrl });
         return;
@@ -317,7 +318,7 @@ export function CaseLibrary({ caseId, caseName }: CaseLibraryProps) {
         alert("Failed to load file for redaction. Please try again.");
       }
     },
-    [caseId, getCachedUrl, setCachedUrl],
+    [caseId, getCachedUrl, setCachedUrl, preloadedUrls],
   );
 
   const handlePreviewFile = useCallback(

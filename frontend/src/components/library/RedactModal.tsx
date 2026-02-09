@@ -144,6 +144,7 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
   const [redactedImageUrl, setRedactedImageUrl] = useState<string | null>(null);
   const [redactedVideoUrl, setRedactedVideoUrl] = useState<string | null>(null);
   const [redactedAudioUrl, setRedactedAudioUrl] = useState<string | null>(null);
+  const [isMediaLoaded, setIsMediaLoaded] = useState(false);
   // Visualization image is available but not currently displayed in the UI
   // const [visualizationImageUrl, setVisualizationImageUrl] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -152,6 +153,10 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
   const isImage = file.type === "image";
   const isVideo = file.type === "video";
   const isAudio = file.type === "audio";
+
+  useEffect(() => {
+    setIsMediaLoaded(false);
+  }, [file.url]);
 
   const handleRedactionSubmit = useCallback(async () => {
     if (!redactionPrompt.trim()) return;
@@ -428,7 +433,7 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={handleClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
           />
 
           {/* Modal */}
@@ -439,7 +444,7 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
             <div
-              className="bg-background border border-warm-gray/15 dark:border-stone/15 rounded-xl shadow-2xl overflow-hidden"
+              className="bg-(--card) border border-(--border) rounded-xl shadow-2xl overflow-hidden"
               style={{
                 width: "min(1400px, 90vw)",
                 height: "min(800px, 85vh)",
@@ -510,11 +515,13 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                         src={file.url}
                         className="w-full h-full"
                         title={`Original: ${file.name}`}
+                        onLoad={() => setIsMediaLoaded(true)}
                       />
                     ) : isVideo ? (
                       <div className="w-full h-full flex items-center justify-center bg-warm-gray/5 dark:bg-stone/5 p-4 overflow-hidden">
                         <video
                           src={file.url}
+                          onLoadedData={() => setIsMediaLoaded(true)}
                           controls
                           className="max-w-full max-h-full object-contain"
                           title={`Original: ${file.name}`}
@@ -530,6 +537,7 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                         </p>
                         <audio
                           src={file.url}
+                          onLoadedData={() => setIsMediaLoaded(true)}
                           controls
                           className="w-full max-w-md"
                           title={`Original: ${file.name}`}
@@ -543,6 +551,7 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                           fill
                           className="object-contain"
                           unoptimized
+                          onLoad={() => setIsMediaLoaded(true)}
                         />
                       </div>
                     )}
@@ -680,7 +689,8 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                       <div className="flex-1 flex items-center justify-center">
                         <button
                           onClick={() => setShowRedactionInput(true)}
-                          className="flex items-center space-x-3 px-6 py-4 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border-2 border-purple-500/30 hover:border-purple-500/50 transition-all"
+                          disabled={!isMediaLoaded}
+                          className="flex items-center space-x-3 px-6 py-4 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border-2 border-purple-500/30 hover:border-purple-500/50 transition-all disabled:opacity-50 disabled:blur-sm disabled:cursor-not-allowed"
                         >
                           <Sparkles className="w-6 h-6 text-purple-600 dark:text-purple-400" />
                           <span className="text-lg font-medium text-purple-700 dark:text-purple-300">
@@ -840,46 +850,10 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                                 </span>
                               )}
                             </>
-                          ) : isImage && imageRedactionResult ? (
-                            <>
-                              <span className="text-muted-foreground">
-                                Censored{" "}
-                                <span className="font-semibold text-foreground">
-                                  {imageRedactionResult.segments_censored}
-                                </span>{" "}
-                                {imageRedactionResult.segments_censored === 1
-                                  ? "segment"
-                                  : "segments"}
-                              </span>
-                              <span className="text-muted-foreground ml-2">
-                                ({imageRedactionResult.segments_found} found)
-                              </span>
-                              {imageRedactionResult.categories_selected.length >
-                                0 && (
-                                <span className="text-muted-foreground ml-2">
-                                  •{" "}
-                                  {imageRedactionResult.categories_selected.join(
-                                    ", ",
-                                  )}
-                                </span>
-                              )}
-                            </>
-                          ) : isVideo && videoRedactionResult ? (
-                            <>
-                              <span className="text-muted-foreground">
-                                Censored{" "}
-                                <span className="font-semibold text-foreground">
-                                  {videoRedactionResult.segments_censored}
-                                </span>{" "}
-                                {videoRedactionResult.segments_censored === 1
-                                  ? "segment"
-                                  : "segments"}
-                              </span>
-                              <span className="text-muted-foreground ml-2">
-                                ({videoRedactionResult.segments_found} found)
-                              </span>
-                            </>
-                          ) : isAudio && audioRedactionResult ? (
+                          ) : isImage &&
+                            imageRedactionResult ? null : isVideo &&
+                            videoRedactionResult ? null : isAudio &&
+                            audioRedactionResult ? (
                             <>
                               <span className="text-muted-foreground">
                                 Censored{" "}

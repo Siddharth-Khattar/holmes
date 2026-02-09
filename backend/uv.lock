@@ -888,6 +888,15 @@ grpc = [
 ]
 
 [[package]]
+name = "googlemaps"
+version = "4.10.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fe/26/bca4d737a9acea25e94c19940a780bbf0be64a691f7caf3a68467d3a5838/googlemaps-4.10.0.tar.gz", hash = "sha256:3055fcbb1aa262a9159b589b5e6af762b10e80634ae11c59495bd44867e47d88", size = 33056, upload-time = "2023-01-26T16:45:02.501Z" }
+
+[[package]]
 name = "graphviz"
 version = "0.21"
 source = { registry = "https://pypi.org/simple" }
@@ -1037,6 +1046,7 @@ dependencies = [
     { name = "google-adk" },
     { name = "google-cloud-storage" },
     { name = "google-genai" },
+    { name = "googlemaps" },
     { name = "greenlet" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -1066,6 +1076,7 @@ requires-dist = [
     { name = "google-adk", specifier = ">=1.22.0" },
     { name = "google-cloud-storage", specifier = ">=2.19.0" },
     { name = "google-genai", specifier = ">=0.8.0" },
+    { name = "googlemaps", specifier = ">=4.10.0" },
     { name = "greenlet", specifier = ">=3.3.0" },
     { name = "pydantic", specifier = ">=2.10.0" },
     { name = "pydantic-settings", specifier = ">=2.7.0" },

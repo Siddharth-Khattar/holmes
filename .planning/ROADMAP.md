@@ -1273,14 +1273,13 @@ Plans:
 - ✅ Evidence source panel exists (`evidence-source-panel.tsx`)
 
 ### Backend Work Remaining
-- ⏳ Timeline API endpoints (CRUD + SSE stream)
+
 - ⏳ PDF viewer with excerpt highlighting
 - ⏳ Video player with timestamp markers
 - ⏳ Audio player with waveform and transcript sync
 - ⏳ Image viewer with bounding box annotations
 - ⏳ Citation navigation (click → exact location)
-- ⏳ Narrative generation (executive summary, detailed)
-- ⏳ Export as PDF/DOCX
+- ⏳ Export as PDF
 - ⏳ Agent Flow refinements (most items)
 - ⏳ Investigation Task Panel (all items)
 

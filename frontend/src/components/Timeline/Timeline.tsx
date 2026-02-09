@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { TimelineCore } from "./TimelineCore";
 import { TimelineControls } from "./TimelineControls";
 import { TimelineHeader } from "./TimelineHeader";
@@ -116,6 +116,7 @@ export function Timeline({
       <TimelineCore
         events={filteredEvents}
         zoomLevel={zoomLevel}
+        caseId={caseId}
         onEventClick={handleEventClick}
       />
 

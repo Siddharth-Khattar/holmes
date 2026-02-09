@@ -22,6 +22,8 @@ from app.api import (
     knowledge_graph,
     redaction,
     sse,
+    synthesis,
+    timeline,
 )
 from app.config import get_settings
 from app.logging_config import setup_logging
@@ -180,3 +182,5 @@ app.include_router(confirmations.router, tags=["confirmations"])
 app.include_router(redaction.router, tags=["redaction"])
 app.include_router(knowledge_graph.router, tags=["knowledge-graph"])
 app.include_router(findings.router, tags=["findings"])
+app.include_router(synthesis.router, tags=["synthesis"])
+app.include_router(timeline.router, tags=["timeline"])

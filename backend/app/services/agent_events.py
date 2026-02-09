@@ -40,6 +40,7 @@ class AgentEventType(str, Enum):
     FINDING_COMMITTED = "finding-committed"
     KG_ENTITY_ADDED = "kg-entity-added"
     KG_RELATIONSHIP_ADDED = "kg-relationship-added"
+    SYNTHESIS_DATA_READY = "synthesis-data-ready"
 
 
 # ---------------------------------------------------------------------------
@@ -597,6 +598,33 @@ async def emit_kg_relationship_added(
             "sourceEntityName": source_entity_name,
             "targetEntityName": target_entity_name,
             "relationshipType": relationship_type,
+        },
+    )
+
+
+async def emit_synthesis_data_ready(
+    case_id: str,
+    counts: dict[str, int],
+) -> None:
+    """Emit synthesis-data-ready event after all synthesis data is committed to DB.
+
+    Fires once after the Synthesis Agent writes all outputs (hypotheses,
+    contradictions, gaps, timeline events, tasks, case summary, verdict).
+    The frontend uses this to invalidate React Query caches and refetch
+    all synthesis data.
+
+    Args:
+        case_id: UUID string of the case.
+        counts: Dict with counts of written records (hypotheses, contradictions,
+            gaps, timeline_events, tasks).
+    """
+    await publish_agent_event(
+        case_id,
+        AgentEventType.SYNTHESIS_DATA_READY,
+        {
+            "type": AgentEventType.SYNTHESIS_DATA_READY.value,
+            "caseId": case_id,
+            "counts": counts,
         },
     )
 

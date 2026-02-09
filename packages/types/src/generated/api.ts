@@ -937,6 +937,171 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cases/{case_id}/synthesis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the latest synthesis summary for a case
+         * @description Return the most recent synthesis record with parsed verdict JSONB.
+         */
+        get: operations["get_synthesis_api_cases__case_id__synthesis_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/hypotheses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List hypotheses with optional status filter
+         * @description Return hypotheses for a case, ordered by confidence descending.
+         */
+        get: operations["list_hypotheses_api_cases__case_id__hypotheses_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/hypotheses/{hypothesis_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a single hypothesis by ID
+         * @description Return a single hypothesis by ID, scoped to the case.
+         */
+        get: operations["get_hypothesis_api_cases__case_id__hypotheses__hypothesis_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/contradictions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List contradictions with optional severity filter
+         * @description Return contradictions for a case, ordered by severity (critical first).
+         */
+        get: operations["list_contradictions_api_cases__case_id__contradictions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/gaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List evidence gaps with optional priority filter
+         * @description Return gaps for a case, ordered by priority (critical first).
+         *
+         *     Entity UUIDs stored in related_entity_ids are resolved to name/type
+         *     via a single batch query against KgEntity.
+         */
+        get: operations["list_gaps_api_cases__case_id__gaps_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List investigation tasks with optional filters
+         * @description Return investigation tasks for a case, ordered by priority then creation date.
+         */
+        get: operations["list_tasks_api_cases__case_id__tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List timeline events with filtering and aggregation
+         * @description Return timeline events with date range and layer count aggregation.
+         *
+         *     Events are ordered by event_date ascending (nulls last).
+         */
+        get: operations["list_timeline_events_api_cases__case_id__timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/timeline/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a single timeline event by ID
+         * @description Retrieve a single timeline event by ID, scoped to the case.
+         */
+        get: operations["get_timeline_event_api_cases__case_id__timeline__event_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1373,6 +1538,16 @@ export interface components {
              */
             latest_workflow_id?: string | null;
             /**
+             * Verdict Label
+             * @description Verdict strength label (Conclusive, Substantial, Inconclusive) set by synthesis agent
+             */
+            verdict_label?: string | null;
+            /**
+             * Verdict Summary
+             * @description One-line verdict summary from synthesis agent
+             */
+            verdict_summary?: string | null;
+            /**
              * Created At
              * Format: date-time
              * @description When the case was created
@@ -1531,6 +1706,75 @@ export interface components {
              * @description Optional reason for the decision
              */
             reason?: string | null;
+        };
+        /**
+         * ContradictionResponse
+         * @description API response for a case contradiction.
+         */
+        ContradictionResponse: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Contradiction ID
+             */
+            id: string;
+            /**
+             * Case Id
+             * Format: uuid
+             * @description Case ID
+             */
+            case_id: string;
+            /**
+             * Workflow Id
+             * Format: uuid
+             * @description Workflow that detected this contradiction
+             */
+            workflow_id: string;
+            /**
+             * Claim A
+             * @description First conflicting claim
+             */
+            claim_a: string;
+            /**
+             * Claim B
+             * @description Second conflicting claim
+             */
+            claim_b: string;
+            /**
+             * Source A
+             * @description Source reference for claim_a
+             */
+            source_a?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Source B
+             * @description Source reference for claim_b
+             */
+            source_b?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Severity
+             * @description minor, significant, or critical
+             */
+            severity: string;
+            /**
+             * Domain
+             * @description Domain where contradiction was detected
+             */
+            domain?: string | null;
+            /**
+             * Resolution Status
+             * @description unresolved or resolved
+             */
+            resolution_status: string;
+            /**
+             * Created At
+             * Format: date-time
+             * @description Creation timestamp
+             */
+            created_at: string;
         };
         /**
          * DomainScore
@@ -2240,6 +2484,66 @@ export interface components {
             relevance_score: number;
         };
         /**
+         * GapResponse
+         * @description API response for an evidence gap.
+         */
+        GapResponse: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Gap ID
+             */
+            id: string;
+            /**
+             * Case Id
+             * Format: uuid
+             * @description Case ID
+             */
+            case_id: string;
+            /**
+             * Workflow Id
+             * Format: uuid
+             * @description Workflow that identified this gap
+             */
+            workflow_id: string;
+            /**
+             * Description
+             * @description What information gap was identified
+             */
+            description: string;
+            /**
+             * What Is Missing
+             * @description Specific description of missing information
+             */
+            what_is_missing: string;
+            /**
+             * Why Needed
+             * @description Why this information is important for the investigation
+             */
+            why_needed?: string | null;
+            /**
+             * Priority
+             * @description low, medium, high, or critical
+             */
+            priority: string;
+            /**
+             * Related Entities
+             * @description Resolved KG entities related to this gap
+             */
+            related_entities?: components["schemas"]["RelatedEntity"][];
+            /**
+             * Suggested Actions
+             * @description Recommended steps to fill the gap
+             */
+            suggested_actions?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             * @description Creation timestamp
+             */
+            created_at: string;
+        };
+        /**
          * GraphResponse
          * @description Full knowledge graph data for a case, containing all entities and relationships.
          */
@@ -2311,6 +2615,87 @@ export interface components {
             timestamp: string;
         };
         /**
+         * HypothesisEvidenceResponse
+         * @description A single evidence item within a hypothesis response.
+         */
+        HypothesisEvidenceResponse: {
+            /**
+             * Finding Id
+             * @description UUID of the referenced case_finding
+             */
+            finding_id: string;
+            /**
+             * Role
+             * @description Evidence role: supporting, contradicting, or neutral
+             */
+            role: string;
+            /**
+             * Excerpt
+             * @description Verbatim excerpt from the finding
+             */
+            excerpt: string;
+        };
+        /**
+         * HypothesisResponse
+         * @description API response for a case hypothesis.
+         */
+        HypothesisResponse: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Hypothesis ID
+             */
+            id: string;
+            /**
+             * Case Id
+             * Format: uuid
+             * @description Case ID
+             */
+            case_id: string;
+            /**
+             * Workflow Id
+             * Format: uuid
+             * @description Workflow that generated this hypothesis
+             */
+            workflow_id: string;
+            /**
+             * Claim
+             * @description The hypothesis statement
+             */
+            claim: string;
+            /**
+             * Status
+             * @description PENDING, SUPPORTED, or REFUTED
+             */
+            status: string;
+            /**
+             * Confidence
+             * @description Confidence score 0-100
+             */
+            confidence: number;
+            /**
+             * Evidence
+             * @description Flat evidence list merged from supporting + contradicting columns
+             */
+            evidence?: components["schemas"]["HypothesisEvidenceResponse"][];
+            /**
+             * Source Agent
+             * @description Agent that proposed this hypothesis
+             */
+            source_agent?: string | null;
+            /**
+             * Reasoning
+             * @description Explanation of hypothesis reasoning
+             */
+            reasoning?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             * @description Creation timestamp
+             */
+            created_at: string;
+        };
+        /**
          * OrchestratorOutput
          * @description Complete output from the Orchestrator Agent.
          *
@@ -2356,6 +2741,27 @@ export interface components {
              * @description Concerns, edge cases, or caveats noted during routing
              */
             warnings?: string[];
+        };
+        /**
+         * RelatedEntity
+         * @description Lightweight representation of a KG entity referenced by a gap or task.
+         */
+        RelatedEntity: {
+            /**
+             * Id
+             * @description Entity UUID
+             */
+            id: string;
+            /**
+             * Name
+             * @description Entity display name
+             */
+            name: string;
+            /**
+             * Entity Type
+             * @description Entity type (PERSON, ORG, etc.)
+             */
+            entity_type: string;
         };
         /**
          * RelationshipCreateRequest
@@ -2611,6 +3017,246 @@ export interface components {
             evidence: number;
         };
         /**
+         * SynthesisResponse
+         * @description API response for the overall case synthesis record.
+         */
+        SynthesisResponse: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Synthesis record ID
+             */
+            id: string;
+            /**
+             * Case Id
+             * Format: uuid
+             * @description Case ID
+             */
+            case_id: string;
+            /**
+             * Workflow Id
+             * Format: uuid
+             * @description Workflow that produced this synthesis
+             */
+            workflow_id: string;
+            /**
+             * Case Summary
+             * @description Executive case summary
+             */
+            case_summary?: string | null;
+            /** @description Structured verdict parsed from JSONB */
+            case_verdict?: components["schemas"]["VerdictResponse"] | null;
+            /**
+             * Cross Modal Links
+             * @description Cross-modality finding links
+             */
+            cross_modal_links?: {
+                [key: string]: unknown;
+            }[] | null;
+            /**
+             * Cross Domain Conclusions
+             * @description Cross-domain conclusion items
+             */
+            cross_domain_conclusions?: string[] | null;
+            /**
+             * Key Findings Summary
+             * @description Distilled key findings summary
+             */
+            key_findings_summary?: string | null;
+            /**
+             * Risk Assessment
+             * @description Overall risk assessment narrative
+             */
+            risk_assessment?: string | null;
+            /**
+             * Timeline Event Count
+             * @description Number of timeline events from this synthesis
+             * @default 0
+             */
+            timeline_event_count: number;
+            /**
+             * Created At
+             * Format: date-time
+             * @description Creation timestamp
+             */
+            created_at: string;
+        };
+        /**
+         * TaskResponse
+         * @description API response for an investigation task.
+         */
+        TaskResponse: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Task ID
+             */
+            id: string;
+            /**
+             * Case Id
+             * Format: uuid
+             * @description Case ID
+             */
+            case_id: string;
+            /**
+             * Workflow Id
+             * Format: uuid
+             * @description Workflow that generated this task
+             */
+            workflow_id: string;
+            /**
+             * Title
+             * @description Short task title
+             */
+            title: string;
+            /**
+             * Description
+             * @description Detailed task description
+             */
+            description: string;
+            /**
+             * Task Type
+             * @description Task type classification
+             */
+            task_type: string;
+            /**
+             * Priority
+             * @description low, medium, high, or critical
+             */
+            priority: string;
+            /**
+             * Status
+             * @description pending, in_progress, completed, or dismissed
+             */
+            status: string;
+            /**
+             * Source Hypothesis Id
+             * @description Hypothesis that originated this task
+             */
+            source_hypothesis_id?: string | null;
+            /**
+             * Source Contradiction Id
+             * @description Contradiction that originated this task
+             */
+            source_contradiction_id?: string | null;
+            /**
+             * Source Gap Id
+             * @description Gap that originated this task
+             */
+            source_gap_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             * @description Creation timestamp
+             */
+            created_at: string;
+        };
+        /**
+         * TimelineApiResponseModel
+         * @description API response wrapping a list of timeline events with aggregation metadata.
+         *
+         *     Matches the frontend TimelineApiResponse shape: events list, total count,
+         *     date range boundaries, and per-layer counts.
+         */
+        TimelineApiResponseModel: {
+            /**
+             * Events
+             * @description Timeline events matching the query
+             */
+            events: components["schemas"]["TimelineEventResponse"][];
+            /**
+             * Totalcount
+             * @description Total number of events returned
+             */
+            totalCount: number;
+            /**
+             * Daterange
+             * @description Date boundaries: {earliest: ISO string, latest: ISO string}
+             */
+            dateRange: {
+                [key: string]: string;
+            };
+            /**
+             * Layercounts
+             * @description Count of events per layer (e.g. financial: 5, legal: 3)
+             */
+            layerCounts?: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * TimelineEventResponse
+         * @description API response for a timeline event.
+         */
+        TimelineEventResponse: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Timeline event ID
+             */
+            id: string;
+            /**
+             * Case Id
+             * Format: uuid
+             * @description Case ID
+             */
+            case_id: string;
+            /**
+             * Workflow Id
+             * Format: uuid
+             * @description Workflow that produced this event
+             */
+            workflow_id: string;
+            /**
+             * Title
+             * @description Event title
+             */
+            title: string;
+            /**
+             * Description
+             * @description Event description
+             */
+            description?: string | null;
+            /**
+             * Event Date
+             * @description Start date/time of the event
+             */
+            event_date?: string | null;
+            /**
+             * Event End Date
+             * @description End date/time for duration events
+             */
+            event_end_date?: string | null;
+            /**
+             * Event Type
+             * @description Category (transaction, meeting, filing, etc.)
+             */
+            event_type?: string | null;
+            /**
+             * Layer
+             * @description Visualization layer grouping (domain-based)
+             */
+            layer?: string | null;
+            /**
+             * Source Entity Ids
+             * @description KG entity UUIDs associated with this event
+             */
+            source_entity_ids?: string[] | null;
+            /**
+             * Citations
+             * @description Source citations [{file_id, locator, excerpt}]
+             */
+            citations?: {
+                [key: string]: unknown;
+            }[] | null;
+            /**
+             * Created At
+             * Format: date-time
+             * @description Creation timestamp
+             */
+            created_at: string;
+        };
+        /**
          * TriageFileResult
          * @description Triage output for a single file.
          *
@@ -2691,6 +3337,32 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * VerdictResponse
+         * @description API response for the case verdict (from case_synthesis JSONB).
+         */
+        VerdictResponse: {
+            /**
+             * Verdict
+             * @description Free-text verdict statement
+             */
+            verdict: string;
+            /**
+             * Evidence Strength
+             * @description Conclusive, Substantial, or Inconclusive
+             */
+            evidence_strength: string;
+            /**
+             * Key Strengths
+             * @description Strongest evidence aspects
+             */
+            key_strengths?: string[];
+            /**
+             * Key Weaknesses
+             * @description Evidence weaknesses
+             */
+            key_weaknesses?: string[];
         };
     };
     responses: never;
@@ -4440,6 +5112,281 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FindingResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_synthesis_api_cases__case_id__synthesis_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SynthesisResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_hypotheses_api_cases__case_id__hypotheses_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by status: PENDING, SUPPORTED, REFUTED */
+                status?: string | null;
+            };
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HypothesisResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_hypothesis_api_cases__case_id__hypotheses__hypothesis_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                hypothesis_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HypothesisResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_contradictions_api_cases__case_id__contradictions_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by severity: minor, significant, critical */
+                severity?: string | null;
+            };
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContradictionResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_gaps_api_cases__case_id__gaps_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by priority: low, medium, high, critical */
+                priority?: string | null;
+            };
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GapResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tasks_api_cases__case_id__tasks_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by task type (e.g. resolve_contradiction, obtain_evidence) */
+                task_type?: string | null;
+                /** @description Filter by status: pending, in_progress, completed, dismissed */
+                status?: string | null;
+            };
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_timeline_events_api_cases__case_id__timeline_get: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated layer filter (e.g. 'financial,legal') */
+                layers?: string | null;
+                /** @description Filter events on or after this ISO 8601 date */
+                startDate?: string | null;
+                /** @description Filter events on or before this ISO 8601 date */
+                endDate?: string | null;
+                /** @description Search query matching title or description (ILIKE) */
+                q?: string | null;
+                /** @description Minimum confidence threshold */
+                minConfidence?: number | null;
+            };
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineApiResponseModel"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_timeline_event_api_cases__case_id__timeline__event_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimelineEventResponse"];
                 };
             };
             /** @description Validation Error */

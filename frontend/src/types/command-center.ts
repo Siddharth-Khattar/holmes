@@ -7,7 +7,8 @@ export type AgentType =
   | "legal"
   | "strategy"
   | "evidence"
-  | "knowledge-graph";
+  | "knowledge-graph"
+  | "synthesis";
 
 export type AgentStatus = "idle" | "processing" | "complete" | "error";
 
@@ -194,6 +195,13 @@ export interface ConfirmationBatchResolvedEvent {
   resolvedCount: number;
 }
 
+/** Emitted once after the Synthesis Agent writes all outputs to DB. */
+export interface SynthesisDataReadyEvent {
+  type: "synthesis-data-ready";
+  caseId: string;
+  counts: Record<string, number>;
+}
+
 export type CommandCenterSSEEvent =
   | AgentStartedEvent
   | AgentCompleteEvent
@@ -205,7 +213,8 @@ export type CommandCenterSSEEvent =
   | ConfirmationResolvedEvent
   | ConfirmationBatchRequiredEvent
   | ConfirmationBatchResolvedEvent
-  | ToolCalledEvent;
+  | ToolCalledEvent
+  | SynthesisDataReadyEvent;
 
 // Agent Configuration
 export interface AgentConfig {

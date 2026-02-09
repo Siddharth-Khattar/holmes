@@ -1,8 +1,8 @@
 # Holmes Project State
 
-**Last Updated:** 2026-02-08
-**Current Phase:** 7.2 of 12 (D3.js KG Frontend Enhancement) — ✅ COMPLETE (5/5 plans + 28 polish commits)
-**Next Phase:** 8 (Synthesis Agent & Intelligence Layer)
+**Last Updated:** 2026-02-09
+**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — COMPLETE (7/7 plans)
+**Next Phase:** 8.1 (Geospatial Agent & Map View) or 9 (Chat Interface)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -21,7 +21,7 @@
 | 7.1 | LLM-Based KG Builder Agent | COMPLETE | 2026-02-08 | 2026-02-08 | 2 plans (4 commits): schema evolution, Pydantic schemas, agent runner/prompt/factory, pipeline wiring |
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
-| 8 | Synthesis Agent & Intelligence Layer | NOT_STARTED | - | - | |
+| 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
 | 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
@@ -86,12 +86,48 @@
   - **Source viewer NOT wired:** source_finding_ids → file URL chain requires backend API. Deferred to Phase 10.
   - Full summary: `.planning/phases/07.2-kg-frontend-d3-enhancement/07.2-05-SUMMARY.md`
 
+**Phase 8 Plan 01 Complete** (2026-02-08): Synthesis schema foundation -- 2 tasks, 2 commits
+  - Task 1: InvestigationTask model (12 columns, FKs to case_hypotheses/case_contradictions/case_gaps) + Case verdict_label/verdict_summary columns + Alembic migration f8a3b2c91d40
+  - Task 2: SynthesisOutput Pydantic schema (12 fields for Gemini structured output) + 9 API response schemas with model_validators (evidence merge, JSONB verdict parse)
+
+**Phase 8 Plan 02 Complete** (2026-02-09): Synthesis Agent runner + pipeline integration -- 2 tasks, 2 commits
+  - Task 1: SynthesisAgentRunner (DomainAgentRunner[SynthesisOutput] subclass, text-only input), assemble_synthesis_input() (5 data sources: case, files, findings, entities, relationships), write_synthesis_output() (6 tables + Case verdict), SYNTHESIS_SYSTEM_PROMPT (12-field output instructions + citation/quality rules), AgentFactory.create_synthesis_agent()
+  - Task 2: Pipeline Stage 8 after entity backfill (agent-started/agent-complete/agent-error SSE events), SYNTHESIS_DATA_READY event type + emit helper, non-blocking failure handling
+  - Full pipeline: Triage -> Orchestrator -> Domain -> Strategy -> HITL -> Save Findings -> KG Builder -> Entity Backfill -> Synthesis -> ANALYZED -> processing-complete
+
+**Phase 8 Plan 03 Complete** (2026-02-09): Synthesis API endpoints -- 2 tasks, 2 commits
+  - Task 1: 6 synthesis endpoints (/synthesis, /hypotheses list+detail, /contradictions, /gaps, /tasks) with auth, sa_case() ordering, status/severity/priority/task_type filters
+  - Task 2: 2 timeline endpoints (/timeline list with dateRange+layerCounts aggregation, /timeline/{id}), TimelineApiResponseModel schema, synthesis+timeline routers registered in main.py
+  - All 8 endpoints enforce auth + case ownership following knowledge_graph.py pattern
+
+**Phase 8 Plan 04 Complete** (2026-02-09): Synthesis frontend data layer -- 2 tasks, 2 commits
+  - Task 1: 11 TypeScript interfaces in synthesis.ts matching backend Pydantic Category B schemas (SynthesisEvidenceItem, HypothesisResponse, ContradictionResponse, GapResponse, TaskResponse, SynthesisResponse, VerdictResponse, KeyFindingResponse, TimelineEventResponse, TimelineApiResponse)
+  - Task 2: 5 fetch functions in api/synthesis.ts using shared api client (fetchSynthesis with 404->null, fetchHypotheses, fetchContradictions, fetchGaps, fetchTasks) + 5 React Query hooks in useSynthesisData.ts with 30s stale time
+  - Used shared api-client.ts instead of duplicating fetchWithAuth (consistent with useAgentExecutionDetail.ts pattern)
+
+**Phase 8 Plan 05 Complete** (2026-02-09): Verdict frontend components -- 2 tasks, 2 commits
+  - Task 1: 6 card components (VerdictSummary, KeyFindingCard, HypothesisCard, ContradictionCard, GapCard, TaskCard) with Holmes dark theme, confidence dots (red/amber/green), severity badges, side-by-side claim comparison
+  - Task 2: VerdictView main layout (6 scrollable sections with count badges, loading skeletons, empty states), 3 verdict sidebar descriptor types (VerdictHypothesisContent, VerdictContradictionContent, VerdictGapContent) added to SidebarContentDescriptor union, placeholder switch cases in detail-sidebar.tsx
+
+**Phase 8 Plan 06 Complete** (2026-02-09): Command Center integration -- 2 tasks, 2 commits
+  - Task 1: 3 verdict detail panels (HypothesisDetailPanel, ContradictionDetailPanel, GapDetailPanel) wired into DetailSidebar via SidebarContentDescriptor union
+  - Task 2: "synthesis" added to AgentType union + validation + config + CSS vars, SynthesisDataReadyEvent SSE handling, synthesisReady state in useAgentStates (SSE event + state-snapshot detection), CC page tab toggle (Agent Flow / Verdict) with URL param persistence + disabled state with pulse indicator, React Query cache invalidation on synthesis-data-ready
+
+**Phase 8 Plan 07 Complete** (2026-02-09): Timeline wiring + verdict badges -- 2 tasks, 2 commits
+  - Task 1: Timeline wired to real synthesis API data (mock fallback removed), "financial" layer added to TimelineLayer/LAYER_CONFIG/filters/eventProcessors, JWT auth in timeline API client, backend-to-frontend field transformation (event_date->date), event type category badge on cards
+  - Task 2: Backend CaseResponse schema + verdict_label/verdict_summary fields, VerdictLabel type in frontend, verdict badge in case header (Conclusive/Substantial/Inconclusive) with summary subtitle, verdict badge in CaseCard (grid+list), "Pending Analysis" badge for READY cases without verdict
+
+**Phase 8 COMPLETE** (2026-02-09): Synthesis Agent & Intelligence Layer -- 7 plans, 16 commits + 3 bugfix commits
+  - Full pipeline: Triage -> Orchestrator -> Domain -> Strategy -> HITL -> Save Findings -> KG Builder -> Entity Backfill -> Synthesis -> ANALYZED -> processing-complete
+  - Backend: 9 DB models, Alembic migration, SynthesisAgentRunner, 8 API endpoints (synthesis + timeline), SSE synthesis-data-ready event
+  - Frontend: 11 TypeScript interfaces, 5 API functions, 5 React Query hooks, VerdictView (6 sections), 3 detail panels, CC tab toggle, timeline wired to real API, verdict badges in case header + list
+  - Post-fix 1: `CrossModalLink` typed model replaces `dict[str, str]` (Gemini rejects `additionalProperties` in JSON Schema)
+  - Post-fix 2: `CaseFile.mime_type` (was `.content_type`), timeline date string→datetime parsing, Timeline ref hydration + scroll-position warnings
+  - Post-fix 3: Gap entity display uses actual UUIDs (not position indices), `RelatedEntity` model with batch resolution in gaps API, entity name + type badge in GapDetailPanel; `_extract_agent_type` uses rsplit for multi-word prefixes (kg_builder → "kg" bug)
+
 **What's next:**
-- Phase 8: Synthesis Agent & Intelligence Layer
-  - Synthesis Agent reads two DB sources: (1) `case_findings` from domain agents + strategy, (2) curated `kg_entities`/`kg_relationships` from LLM KG Builder
-  - Pipeline Stage 8: after LLM KG Builder + Entity Backfill → Synthesis → [Geospatial if locations]
-  - Populates: case_hypotheses, case_contradictions, case_gaps, case_synthesis, timeline_events
-  - Frontend integration: connect Timeline, Hypothesis, Contradictions, Gaps panels to real API data
+- Phase 8.1 (Geospatial Agent & Map View) -- if location data detected by synthesis
+- Phase 9 (Chat Interface) -- backend API needed
 - Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
 
 ---
@@ -183,7 +219,7 @@
 
 ---
 
-### REQ-VIS-004: Timeline — FRONTEND_DONE
+### REQ-VIS-004: Timeline — COMPLETE (SSE streaming deferred)
 
 | Component | File Path |
 |-----------|-----------|
@@ -201,11 +237,12 @@
 | Mock data | `frontend/src/lib/mock-timeline-data.ts` |
 | Types | `frontend/src/types/timeline.types.ts` |
 
-**Backend APIs Needed:**
-- `GET /api/cases/:caseId/timeline/events`
-- `POST /api/cases/:caseId/timeline/events`
-- `PATCH/DELETE /api/cases/:caseId/timeline/events/:eventId`
-- `SSE GET /api/cases/:caseId/timeline/stream`
+**Backend APIs:**
+- `GET /api/cases/:caseId/timeline` - List events with filters + aggregation (DONE)
+- `GET /api/cases/:caseId/timeline/:id` - Get single event (DONE)
+- `POST /api/cases/:caseId/timeline/events` - Create event (TODO)
+- `PATCH/DELETE /api/cases/:caseId/timeline/events/:eventId` - Update/delete (TODO)
+- `SSE GET /api/cases/:caseId/timeline/stream` - Real-time updates (TODO)
 
 ---
 
@@ -263,7 +300,14 @@ All frontend features need these backend endpoints:
 | Findings | `/api/cases/:caseId/findings` | GET | HIGH | DONE |
 | Findings Search | `/api/cases/:caseId/findings/search` | GET | HIGH | DONE |
 | Finding Detail | `/api/cases/:caseId/findings/:findingId` | GET | HIGH | DONE |
-| Timeline Events | `/api/cases/:caseId/timeline/events` | GET, POST, PATCH, DELETE | MEDIUM | TODO |
+| Synthesis | `/api/cases/:caseId/synthesis` | GET | HIGH | DONE |
+| Hypotheses | `/api/cases/:caseId/hypotheses` | GET | HIGH | DONE |
+| Hypothesis Detail | `/api/cases/:caseId/hypotheses/:id` | GET | HIGH | DONE |
+| Contradictions | `/api/cases/:caseId/contradictions` | GET | HIGH | DONE |
+| Gaps | `/api/cases/:caseId/gaps` | GET | HIGH | DONE |
+| Tasks | `/api/cases/:caseId/tasks` | GET | HIGH | DONE |
+| Timeline Events | `/api/cases/:caseId/timeline` | GET | MEDIUM | DONE |
+| Timeline Event Detail | `/api/cases/:caseId/timeline/:id` | GET | MEDIUM | DONE |
 | Timeline SSE | `/api/cases/:caseId/timeline/stream` | SSE | MEDIUM | TODO |
 | Command Center SSE | `/sse/cases/:caseId/command-center/stream` | SSE | HIGH | DONE |
 | Start Analysis | `/api/cases/:caseId/analyze` | POST | HIGH | DONE |
@@ -437,6 +481,37 @@ All frontend features need these backend endpoints:
 | KG filter state model | Active-set vs Disabled-set | Disabled-set pattern | ESLint react-hooks rules prohibit setState in useMemo/useEffect; inverted model avoids sync entirely |
 | KG source viewer wiring | Wire onViewSource vs Graceful degradation | Graceful degradation | source_finding_ids -> file URL chain requires backend API not available in Phase 7.2; show "Source not yet available" |
 | KG timeline relationship input | Full list + filter in component vs Pre-filtered by parent | Pre-filtered by parent | EntityTimeline receives only relationships involving selected entity; keeps component focused on display |
+| Hypothesis evidence storage | Flat list in one column vs Split by role in two columns vs Both columns split by role | Both columns split by role (Option 3) | Preserves original schema intent (supporting_evidence + contradicting_evidence JSONB); API response model_validator merges into flat list with role labels |
+| Case verdict persistence | Fetch from case_synthesis JSONB vs Columns on Case model | Columns on Case model (verdict_label + verdict_summary) | Cases list page needs verdict badge without joining to case_synthesis; direct column access |
+| Synthesis schema typing | Complex nested types vs Simple Gemini-compatible types | Simple types (str/int/float/bool/list) | Gemini structured output constraints require simple types; dates as ISO 8601 strings, entity IDs as integers |
+| Synthesis agent input format | Multimodal files vs Text-only | Text-only (5 DB sources) | Domain agents already processed raw evidence; synthesis only needs pre-processed text from DB |
+| Synthesis rebuild strategy | Incremental merge vs Clear-and-rebuild | Clear-and-rebuild | Same pattern as KG Builder; delete all synthesis data per case, then insert fresh |
+| Synthesis SSE granularity | Per-item events vs Batch event | Batch event (synthesis-data-ready) | All outputs arrive atomically from single LLM call; per-item events add complexity with no UX benefit |
+| Synthesis failure handling | Block pipeline vs Non-blocking | Non-blocking | Synthesis failure emits SSE error, pipeline continues to ANALYZED status |
+| Hypothesis status derivation | User-driven vs Confidence-based | Confidence-based (>60 SUPPORTED, <40 REFUTED, else PENDING) | Auto-classification from LLM confidence scores; user can override later |
+| Pipeline terminal stage | Strategy vs Synthesis | Synthesis completion | Processing-complete now fires after Stage 8 (synthesis), not after Stage 7b (entity backfill) |
+| Timeline dateRange scope | Full table vs Filtered results | Filtered results | Date boundaries reflect active filters, not entire dataset |
+| Timeline layer counts | SQL GROUP BY vs Python Counter | Python Counter | Simpler code for small result sets; no extra DB query |
+| Query param alias pattern | Direct param name vs Query(alias=) | Query(alias="status") | Avoids Python reserved keyword conflicts in function signatures |
+| Synthesis API client pattern | Duplicate fetchWithAuth vs Shared api client | Shared api client (api-client.ts) | Consistent with useAgentExecutionDetail.ts; avoids duplicating JWT auth logic |
+| Synthesis fetch 404 handling | Throw error vs Return null | Return null for fetchSynthesis | Analysis may not have run yet; null signals empty state without error boundary |
+| React Query filter cache | Single queryKey vs Filter-inclusive queryKey | Filter params in queryKey | Different filter combinations get separate cache entries and proper invalidation |
+| React Compiler useMemo dependency | Sub-property vs Full object | Full object (`[synthesis]`) | React Compiler infers full object as dependency; `[synthesis?.key_findings_summary]` fails preserve-manual-memoization lint rule |
+| TaskCard interactivity | Clickable with onClick vs Read-only | Read-only (no onClick) | Task management (status updates, assignment) deferred; tasks are informational-only for v1 |
+| Verdict sidebar descriptor rendering | Render panel now vs Placeholder | Placeholder (return null) | Actual detail panels for verdict-hypothesis/contradiction/gap built in Plan 06 |
+| Synthesis AgentType registration | String comparison vs Union member | Union member ("synthesis" added to AgentType) | Type-safe handling across validation, config, and color systems; backend sends agentType: "synthesis" |
+| Synthesis readiness detection | SSE-only vs Dual (SSE + API fallback) | Dual: SSE synthesisReady + useSynthesis API data | SSE for live sessions; API fallback for page reload after analysis completes |
+| Synthesis cache invalidation | Polling vs SSE-triggered | SSE-triggered (on synthesis-data-ready) | Immediate cache invalidation when synthesis completes; no polling overhead |
+| CC tab toggle state | React state only vs URL search params | URL search params (?tab=verdict) | Deep-linkable, survives page refresh, shareable |
+| Timeline Zod datetime validation | Strict z.string().datetime() vs Relaxed z.string() | Relaxed z.string() | Backend sends ISO dates without timezone offset; strict validation rejects valid dates |
+| Timeline field transformation | Frontend adapts to backend vs Backend adapts to frontend | Frontend transformBackendEvent() | Centralized mapping (event_date->date, case_id->caseId) in API client; backend schema unchanged |
+| Verdict badge priority | Always show status vs Verdict replaces status | Verdict replaces status when present | Verdict is more informative than READY status; "Pending Analysis" fills the gap between READY and verdict |
+| CaseCard badge logic | Inline conditional vs resolveBadge() helper | resolveBadge() helper | Reusable across grid and list modes; single source of truth for badge resolution |
+| Financial layer color | New unique color vs Reuse existing | Teal (#45B5AA) | Consistent with asset entity color in knowledge-graph-config.ts; matches financial domain identity |
+| Gemini schema dict types | `dict[str, str]` vs typed Pydantic model | `CrossModalLink` typed model | Gemini API rejects `additionalProperties` in JSON Schema; explicit fields required |
+| Gap entity referencing | Position indices (0,1,2) vs Entity UUIDs | Entity UUIDs | Position indices are meaningless after storage; UUIDs enable resolution to names/types |
+| Gap entity API resolution | Raw IDs vs Enriched objects | Batch-resolved `RelatedEntity` (id, name, entity_type) | Single DB query resolves all UUIDs; frontend displays human-readable names + type badges |
+| Agent type extraction | `split("_", 1)` vs `rsplit("_", 1)` | `rsplit("_", 1)` | Multi-word prefixes like `kg_builder` need right-split to preserve full prefix before case ID suffix |
 
 ---
 
@@ -448,10 +523,10 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-02-08
-Stopped at: Phase 7.2 COMPLETE (all 5 plans + 28 polish commits, 46 total). Source viewer deferred to Phase 10.
+Last session: 2026-02-09
+Stopped at: Phase 8 COMPLETE (7/7 plans, 19 commits total). All post-completion bugfixes applied and committed.
 Resume file: None
-Next action: Begin Phase 8 (Synthesis Agent & Intelligence Layer)
+Next action: Phase 8.1 (Geospatial Agent) or Phase 9 (Chat Interface backend)
 
 ---
 

@@ -165,6 +165,11 @@ export class MockCommandCenterEventGenerator {
         "relationship_mapper()",
         "conflict_detector()",
       ],
+      synthesis: [
+        "hypothesis_generator()",
+        "contradiction_detector()",
+        "gap_analyzer()",
+      ],
     };
 
     return toolsByAgent[agentType] || [];

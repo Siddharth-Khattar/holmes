@@ -345,3 +345,38 @@ class AgentFactory:
             output_key="kg_builder_result",
             callbacks=callbacks,
         )
+
+    @staticmethod
+    def create_synthesis_agent(
+        case_id: str,
+        *,
+        model: str = MODEL_PRO,
+        publish_fn: PublishFn | None = None,
+    ) -> LlmAgent:
+        """Create a fresh Synthesis Agent for a specific case.
+
+        Uses Pro model with HIGH thinking for comprehensive cross-domain
+        synthesis of all domain findings and knowledge graph data.
+        Text-only input -- no media resolution needed.
+
+        Args:
+            case_id: Investigation case ID.
+            model: Gemini model ID (default: Pro for complex synthesis reasoning).
+            publish_fn: Optional SSE publish function for real-time callbacks.
+
+        Returns:
+            A new LlmAgent instance configured for synthesis.
+        """
+        from app.agents.prompts.synthesis import SYNTHESIS_SYSTEM_PROMPT
+        from app.schemas.synthesis import SynthesisOutput
+
+        callbacks = create_agent_callbacks(case_id, publish_fn) if publish_fn else None
+        return _create_llm_agent(
+            name=_safe_name("synthesis", case_id),
+            model=model,
+            instruction=SYNTHESIS_SYSTEM_PROMPT,
+            planner=create_thinking_planner("high"),
+            output_schema=SynthesisOutput,
+            output_key="synthesis_result",
+            callbacks=callbacks,
+        )

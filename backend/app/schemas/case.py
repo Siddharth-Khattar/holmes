@@ -42,6 +42,15 @@ class CaseResponse(BaseModel):
     latest_workflow_id: UUID | None = Field(
         None, description="ID of the most recent analysis workflow"
     )
+    verdict_label: str | None = Field(
+        default=None,
+        description="Verdict strength label (Conclusive, Substantial, Inconclusive) "
+        "set by synthesis agent",
+    )
+    verdict_summary: str | None = Field(
+        default=None,
+        description="One-line verdict summary from synthesis agent",
+    )
     created_at: datetime = Field(..., description="When the case was created")
     updated_at: datetime = Field(..., description="When the case was last updated")
 

@@ -13,6 +13,7 @@ export function useTimelineFilters() {
     "evidence",
     "legal",
     "strategy",
+    "financial",
   ]);
   const [dateRange, setDateRange] = useState<{
     startDate?: string;
@@ -51,7 +52,7 @@ export function useTimelineFilters() {
   // Reset all filters
   const resetFilters = useCallback(() => {
     setZoomLevel("month");
-    setSelectedLayers(["evidence", "legal", "strategy"]);
+    setSelectedLayers(["evidence", "legal", "strategy", "financial"]);
     setDateRange({});
     setSearchQuery("");
     setMinConfidence(0);
@@ -61,7 +62,7 @@ export function useTimelineFilters() {
   // Check if any non-default filters are active
   const hasActiveFilters = useMemo(() => {
     return (
-      selectedLayers.length < 3 ||
+      selectedLayers.length < 4 ||
       !!dateRange.startDate ||
       !!dateRange.endDate ||
       !!searchQuery ||

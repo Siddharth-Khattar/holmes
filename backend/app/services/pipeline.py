@@ -22,6 +22,7 @@ from app.services.agent_events import (
     emit_agent_started,
     emit_finding_committed,
     emit_processing_complete,
+    emit_synthesis_data_ready,
 )
 
 logger = logging.getLogger(__name__)
@@ -156,6 +157,7 @@ async def run_analysis_workflow(
     from app.agents.kg_builder import run_kg_builder
     from app.agents.orchestrator import run_orchestrator
     from app.agents.strategy import run_strategy
+    from app.agents.synthesis import run_synthesis
     from app.agents.triage import run_triage
     from app.database import _get_sessionmaker
     from app.models.knowledge_graph import KgEntity
@@ -1062,6 +1064,70 @@ async def run_analysis_workflow(
                         db=db,
                     )
             await db.commit()
+
+            # ---- Stage 8: Synthesis Agent ----
+            logger.info(
+                "Pipeline starting stage=synthesis case=%s workflow=%s",
+                case_id,
+                workflow_id,
+            )
+            synthesis_task_id = str(uuid4())
+            await emit_agent_started(
+                case_id=case_id,
+                agent_type="synthesis",
+                task_id=synthesis_task_id,
+                file_id="",
+                file_name="synthesis-agent",
+            )
+
+            synthesis_counts: dict[str, int] = {}
+            try:
+                synthesis_counts = await run_synthesis(
+                    case_id=case_id,
+                    workflow_id=workflow_id,
+                    user_id=user_id,
+                    db_session=db,
+                    publish_event=publish_fn,
+                )
+                await emit_agent_complete(
+                    case_id=case_id,
+                    agent_type="synthesis",
+                    task_id=synthesis_task_id,
+                    result={
+                        "taskId": synthesis_task_id,
+                        "agentType": "synthesis",
+                        "outputs": [
+                            {
+                                "type": "synthesis-results",
+                                "data": synthesis_counts,
+                            }
+                        ],
+                    },
+                )
+            except Exception as exc:
+                logger.exception("Synthesis failed for case=%s: %s", case_id, exc)
+                await db.rollback()
+                await emit_agent_error(
+                    case_id=case_id,
+                    agent_type="synthesis",
+                    task_id=synthesis_task_id,
+                    error=str(exc)[:500],
+                )
+
+            await db.commit()  # Commit synthesis data
+
+            # Emit synthesis-data-ready AFTER commit so frontend can safely fetch
+            if synthesis_counts:
+                await emit_synthesis_data_ready(
+                    case_id=case_id,
+                    counts=synthesis_counts,
+                )
+
+            logger.info(
+                "Synthesis complete case=%s counts=%s",
+                case_id,
+                synthesis_counts,
+            )
 
             # ---- Final: Update file statuses to ANALYZED ----
             await db.execute(

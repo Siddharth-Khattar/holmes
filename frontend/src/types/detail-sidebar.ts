@@ -4,6 +4,11 @@
 import type { AgentType, AgentState } from "./command-center";
 import type { SourceViewerContent } from "@/components/source-viewer/SourceViewerModal";
 import type { EntityResponse, RelationshipResponse } from "./knowledge-graph";
+import type {
+  HypothesisResponse,
+  ContradictionResponse,
+  GapResponse,
+} from "./synthesis";
 
 // ---------------------------------------------------------------------------
 // Content Descriptors (discriminated union)
@@ -39,11 +44,38 @@ export interface KnowledgeGraphEntityContent {
   };
 }
 
+/** Verdict hypothesis detail view */
+export interface VerdictHypothesisContent {
+  type: "verdict-hypothesis";
+  props: {
+    hypothesis: HypothesisResponse;
+  };
+}
+
+/** Verdict contradiction detail view */
+export interface VerdictContradictionContent {
+  type: "verdict-contradiction";
+  props: {
+    contradiction: ContradictionResponse;
+  };
+}
+
+/** Verdict gap detail view */
+export interface VerdictGapContent {
+  type: "verdict-gap";
+  props: {
+    gap: GapResponse;
+  };
+}
+
 /** Union of all possible sidebar content descriptors */
 export type SidebarContentDescriptor =
   | CommandCenterAgentContent
   | KnowledgeGraphEvidenceContent
-  | KnowledgeGraphEntityContent;
+  | KnowledgeGraphEntityContent
+  | VerdictHypothesisContent
+  | VerdictContradictionContent
+  | VerdictGapContent;
 
 // ---------------------------------------------------------------------------
 // Sidebar State

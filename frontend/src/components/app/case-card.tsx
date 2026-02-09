@@ -6,7 +6,7 @@
 import { useRouter } from "next/navigation";
 import { Trash2, FileText, Clock } from "lucide-react";
 import { clsx } from "clsx";
-import type { Case, CaseStatus } from "@/types/case";
+import type { Case, CaseStatus, VerdictLabel } from "@/types/case";
 
 interface CaseCardProps {
   caseData: Case;
@@ -38,6 +38,34 @@ const statusConfig: Record<
   },
 };
 
+/** Verdict badge colors keyed by evidence strength label. */
+const verdictConfig: Record<VerdictLabel, { className: string }> = {
+  Conclusive: {
+    className: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+  },
+  Substantial: {
+    className: "bg-amber-500/20 text-amber-600 dark:text-amber-400",
+  },
+  Inconclusive: {
+    className: "bg-stone-500/20 text-stone-500 dark:text-stone-400",
+  },
+};
+
+/** Resolve the badge label and className for a case (verdict takes priority). */
+function resolveBadge(caseData: Case): {
+  label: string;
+  className: string;
+  style?: React.CSSProperties;
+} {
+  if (caseData.verdict_label && verdictConfig[caseData.verdict_label]) {
+    return {
+      label: caseData.verdict_label,
+      className: verdictConfig[caseData.verdict_label].className,
+    };
+  }
+  return statusConfig[caseData.status];
+}
+
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
@@ -64,7 +92,7 @@ export function CaseCard({
   isDeleting,
 }: CaseCardProps) {
   const router = useRouter();
-  const status = statusConfig[caseData.status];
+  const badge = resolveBadge(caseData);
 
   const handleClick = () => {
     router.push(`/cases/${caseData.id}`);
@@ -103,15 +131,15 @@ export function CaseCard({
           )}
         </div>
 
-        {/* Status */}
+        {/* Status / Verdict badge */}
         <span
           className={clsx(
             "px-2.5 py-1 rounded-full text-xs font-medium",
-            status.className,
+            badge.className,
           )}
-          style={status.style}
+          style={badge.style}
         >
-          {status.label}
+          {badge.label}
         </span>
 
         {/* File count */}
@@ -157,16 +185,16 @@ export function CaseCard({
         border: "1px solid var(--border)",
       }}
     >
-      {/* Header with status and delete */}
+      {/* Header with status/verdict badge and delete */}
       <div className="flex items-start justify-between mb-3">
         <span
           className={clsx(
             "px-2.5 py-1 rounded-full text-xs font-medium",
-            status.className,
+            badge.className,
           )}
-          style={status.style}
+          style={badge.style}
         >
-          {status.label}
+          {badge.label}
         </span>
         <button
           onClick={handleDelete}

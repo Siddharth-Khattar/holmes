@@ -60,7 +60,7 @@ export function TimelineHeader({
           </div>
 
           {/* Date range card */}
-          {dateRange && (
+          {dateRange && dateRange.earliest && dateRange.latest && (
             <div className="rounded-lg p-4 border bg-white/95 dark:bg-[rgba(17,17,17,0.6)] border-purple-300/30 dark:border-purple-800/30">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-muted-foreground">

@@ -2,7 +2,14 @@
 
 import React from "react";
 import { format } from "date-fns";
-import { FileText, Scale, Target, AlertCircle, Check } from "lucide-react";
+import {
+  FileText,
+  Scale,
+  Target,
+  DollarSign,
+  AlertCircle,
+  Check,
+} from "lucide-react";
 import { TimelineEvent } from "@/types/timeline.types";
 import { LAYER_CONFIG } from "@/constants/timeline.constants";
 import { cn } from "@/lib/utils";
@@ -16,6 +23,7 @@ const ICON_MAP = {
   FileText,
   Scale,
   Target,
+  DollarSign,
 };
 
 export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
@@ -64,6 +72,17 @@ export function TimelineEventCard({ event, onClick }: TimelineEventCardProps) {
           >
             {layerConfig.label}
           </span>
+          {event.eventType && (
+            <span
+              className="text-xs px-1.5 py-0.5 rounded font-medium"
+              style={{
+                backgroundColor: "var(--muted)",
+                color: "var(--muted-foreground)",
+              }}
+            >
+              {event.eventType.replace(/_/g, " ")}
+            </span>
+          )}
         </div>
 
         {/* Confidence indicator */}

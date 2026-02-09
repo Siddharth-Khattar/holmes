@@ -342,17 +342,22 @@ def _extract_agent_type(agent_name: str) -> str:
     """Extract the logical agent type from an ADK agent name.
 
     ADK agent names are formatted as "{type}_{case_id_prefix}" by _safe_name().
-    For example: "triage_e6f15c88" -> "triage", "orchestrator_e6f15c88" -> "orchestrator"
+    The suffix is always a single underscore + 8 alphanumeric chars, so we
+    split from the right to preserve multi-word prefixes like "kg_builder".
+
+    Examples:
+        "triage_e6f15c88" -> "triage"
+        "kg_builder_e6f15c88" -> "kg_builder"
+        "synthesis_e6f15c88" -> "synthesis"
 
     Args:
-        agent_name: The ADK agent name (e.g., "triage_e6f15c88").
+        agent_name: The ADK agent name (e.g., "kg_builder_e6f15c88").
 
     Returns:
-        The logical agent type (e.g., "triage").
+        The logical agent type (e.g., "kg_builder").
     """
-    # Split on underscore and take the first part as the agent type
-    parts = agent_name.split("_", 1)
-    return parts[0] if parts else agent_name
+    parts = agent_name.rsplit("_", 1)
+    return parts[0] if len(parts) == 2 else agent_name
 
 
 def create_sse_publish_fn(case_id: str) -> PublishFn:

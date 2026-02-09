@@ -156,6 +156,9 @@
 
   --cc-kg-tint: 270 35% 22%;
   --cc-kg-accent: 270 60% 68%;
+
+  --cc-synthesis-tint: 45 35% 20%;
+  --cc-synthesis-accent: 45 60% 65%;
 }
 
 /* Light mode variant - Following LIGHT-MODE-REFERENCE.MD */

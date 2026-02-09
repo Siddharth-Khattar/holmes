@@ -301,12 +301,12 @@ class Citation(BaseModel):
         description="Exact location within the file. "
         "Format: 'page:3', 'ts:01:23:45', 'region:x,y,w,h'",
     )
-    excerpt: str | None = Field(
-        default=None,
+    excerpt: str = Field(
+        ...,
         max_length=500,
         description="Exact character-for-character excerpt from the source material. "
         "Must be preserved in original format for PDF.js search highlighting. "
-        "Required for all new findings (enforced via agent prompts).",
+        "Required — Pydantic validation rejects citations without an excerpt.",
     )
 
 

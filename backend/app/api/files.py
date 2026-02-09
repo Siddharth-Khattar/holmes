@@ -139,7 +139,7 @@ async def upload_file(
     if content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File type '{content_type}' is not allowed. Supported types: PDF, images, video, audio, Office documents.",
+            detail=f"File type '{content_type}' is not allowed. Supported types: PDF, images, video, audio.",
         )
 
     # Generate file UUID

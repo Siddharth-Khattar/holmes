@@ -954,18 +954,18 @@ Plans:
 
 **Depends on:** Phase 7.1 (curated KG with semantic relationships), Phase 7 (case_findings + DB tables)
 
-**Status:** ⏳ PLANNED
+**Status:** ✅ COMPLETE (2026-02-09)
 
-**Plans:** 7 plans in 3 waves
+**Plans:** 7 plans in 3 waves — all complete
 
 Plans:
-- [ ] 08-01-PLAN.md — DB schema (InvestigationTask model, Case verdict columns, Alembic migration, Pydantic schemas)
-- [ ] 08-02-PLAN.md — Synthesis Agent (runner, prompt, factory, input assembly, output writer, pipeline Stage 8)
-- [ ] 08-03-PLAN.md — Backend API endpoints (synthesis, hypotheses, contradictions, gaps, tasks, timeline)
-- [ ] 08-04-PLAN.md — Frontend types, API client, React Query hooks for synthesis data
-- [ ] 08-05-PLAN.md — Frontend Verdict card components + VerdictView layout
-- [ ] 08-06-PLAN.md — Frontend DetailSidebar panels + Command Center tab toggle + SSE wiring
-- [ ] 08-07-PLAN.md — Frontend Timeline wiring + Case header verdict badge + backend CaseResponse schema
+- [x] 08-01-PLAN.md — DB schema (InvestigationTask model, Case verdict columns, Alembic migration, Pydantic schemas)
+- [x] 08-02-PLAN.md — Synthesis Agent (runner, prompt, factory, input assembly, output writer, pipeline Stage 8)
+- [x] 08-03-PLAN.md — Backend API endpoints (synthesis, hypotheses, contradictions, gaps, tasks, timeline)
+- [x] 08-04-PLAN.md — Frontend types, API client, React Query hooks for synthesis data
+- [x] 08-05-PLAN.md — Frontend Verdict card components + VerdictView layout
+- [x] 08-06-PLAN.md — Frontend DetailSidebar panels + Command Center tab toggle + SSE wiring
+- [x] 08-07-PLAN.md — Frontend Timeline wiring + Case header verdict badge + backend CaseResponse schema
 
 ### Frontend Available (Yatharth, 2026-02-02)
 - ✅ Timeline view with day/week/month/year zoom, layer filtering, event cards, search (`Timeline/`)

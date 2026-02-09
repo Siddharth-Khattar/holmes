@@ -227,6 +227,7 @@ export default function CaseLayout({
           description: caseData.description || undefined,
           status: caseData.status,
         }}
+        analysisAvailable={hasAnalysisRun && caseData.status !== "PROCESSING"}
       />
     </div>
   );

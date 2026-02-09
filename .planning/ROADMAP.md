@@ -35,7 +35,7 @@
 | 7.3 | Knowledge Graph Frontend (vis-network) — OPTIONAL | Premium vis-network graph visualization (preserved for experimentation) | REQ-VIS-003 (alternative) | ⏳ DEFERRED |
 | 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ✅ COMPLETE |
 | 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ✅ COMPLETE |
-| 9 | Chat Interface & Research | Multi-source tool-based Q&A, research/discovery, context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
+| 9 | Chat Interface & Research | Multi-source tool-based Q&A, research/discovery, context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | ✅ COMPLETE |
 | 10 | Source Panel & Entity Resolution | Citation-to-source wiring, entity name resolution across all views | REQ-SOURCE-* | ✅ COMPLETE |
 | 11 | Corrections & Refinement | Error flagging, Verification, Regeneration | REQ-CORR-* | ⏳ NOT_STARTED |
 | 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i | ⏳ NOT_STARTED |
@@ -1161,15 +1161,24 @@ Plans:
 
 ---
 
-## Phase 9: Chat Interface & Research
+## Phase 9: Chat Interface
 
-**Goal:** Interactive case Q&A via standalone Chat Agent with multi-source tool-based access to KG, findings, synthesis outputs, and on-demand domain agent escalation.
+**Goal:** Evidence-backed case Q&A via a Chat Agent that has full access to every analysis table (findings, KG, synthesis, timeline, locations, tasks). Every statement the agent makes MUST be grounded in exact sources already stored in the database from prior agent runs. The agent receives the complete verdict and synthesis context on initialization, then fetches filtered data from DB tables for every query.
 
-**Requirements:** REQ-CHAT-001/002/003/004/005, REQ-AGENT-007f/007g, REQ-SOURCE-005 (complete), REQ-RESEARCH-001/002/003/005/006/007/008/009, REQ-HYPO-007/008, REQ-GEO-010
+**Requirements:** REQ-CHAT-001 (frontend done), REQ-CHAT-002, REQ-CHAT-004, REQ-AGENT-007f, REQ-SOURCE-005 (complete from Phase 10)
 
-**Depends on:** Phase 7 (KG tables), Phase 8 (synthesis tables)
+**Deferred to later phases:** REQ-CHAT-003 (agent escalation), REQ-CHAT-005 (DB-persisted history), REQ-AGENT-007g (context compaction), REQ-RESEARCH-001/002/003/005/006/007/008/009 (Research/Discovery system), REQ-HYPO-008 (hypothesis fullscreen), REQ-GEO-010 (geo temporal sync)
 
-**Status:** 🟡 FRONTEND_DONE (Chat UI) — Backend agents + API required
+**Depends on:** Phase 7 (KG tables), Phase 8 (synthesis tables), Phase 10 (source viewer wiring)
+
+**Plans:** 2 plans in 2 waves
+
+Plans:
+- [x] 09-01-PLAN.md — Backend: Chat tools (4 DB-query tool factories), system prompt with context injection, chat service, SSE streaming POST endpoint, router registration
+- [x] 09-02-PLAN.md — Frontend: SSE streaming hook rewrite, markdown rendering, citation chips, tool activity indicators, stop/clear buttons, disabled state
+
+
+**Status:** ✅ COMPLETE
 
 ### Frontend Completed (Yatharth, 2026-02-02)
 - ✅ Floating chat button with animations (`chatbot.tsx`)
@@ -1183,72 +1192,115 @@ Plans:
 - ✅ Mock fallback when backend unavailable (`useChatbot.ts`)
 
 ### Backend Work
+
 **Deliverables:**
-- Chat Agent implementation (standalone LlmAgent with tools):
-  - Model: Gemini 3 Pro with `thinking_level="high"`
-  - System prompt includes `case_synthesis.case_summary` (~500-1000 tokens) for immediate context
-  - System prompt describes each tool, when to use it, and query strategy
-  - Tools (tiered by speed):
-    - **Fast lookups (SQL, <100ms):**
-      - `query_knowledge_graph` — Entity/relationship lookups from kg_entities, kg_relationships
-      - `get_case_hypotheses` — Hypothesis status and evidence from case_hypotheses
-      - `get_contradictions` — Pre-computed contradictions from case_contradictions
-      - `get_evidence_gaps` — Evidence gaps from case_gaps
-      - `get_case_synthesis` — Case summary, verdict, conclusions from case_synthesis
-      - `get_finding_details` — Specific finding by ID from case_findings
-    - **Semantic search (~500ms):**
-      - `search_findings` — Full-text search over case_findings (PG tsvector or Vertex AI RAG)
-    - **Deep analysis (10-60s, on-demand):**
-      - `run_domain_analysis` — Spawns domain agent for novel questions requiring raw file examination
-  - Prompt strategy instructions: "Always try fast lookups first. Use search_findings for evidence discovery. Only use run_domain_analysis when existing knowledge cannot answer."
-- Chat API endpoint: `POST /api/cases/:caseId/chat` (streaming SSE response)
-- Chat history persistence (PostgreSQL):
-  - `chat_messages` table (id, case_id, role, content, citations JSONB, tool_calls JSONB, created_at)
-  - Load on case open, searchable
-- Inline citations in responses:
-  - Citations formatted as [1], [2] with footer list
-  - Each citation links to source file + exact location
-  - Hover shows source preview
-  - Click opens Source Panel (Phase 10)
-- Context caching for cost optimization:
-  - Context cache created when user opens case for chat
-  - Cache includes case evidence file references
-  - TTL: 2 hours (session duration)
-  - Chat queries use `cached_content` parameter
-- Context compaction for long sessions:
-  - `EventsCompactionConfig` for Chat Agent sessions only (not pipeline)
-  - Compaction interval: every 5 invocations
-  - `LlmEventSummarizer` with Gemini Flash for cost efficiency
-- Research/Discovery invocation:
-  - Research Agent uses Gemini web search for source discovery
-  - Discovery Agent synthesizes external research
-  - Triggerable from chat ("Research background on [subject]")
-  - Results feed back into case findings
+
+#### 1. Chat Agent (standalone LlmAgent with DB-querying tools)
+- Model: Gemini 3 Flash with `thinking_level="high"`
+- **System prompt context injection** (loaded when pipeline finishes or chat session starts):
+  - Full `case_synthesis.case_verdict` (JSONB — structured verdict assessment)
+  - Full `case_synthesis.case_summary` (executive summary text)
+  - Full `case_synthesis.key_findings_summary` (distilled key findings)
+  - Full `case_synthesis.risk_assessment` (risk narrative)
+  - `case_synthesis.cross_domain_conclusions` (cross-domain links)
+  - Counts: number of findings, entities, hypotheses, contradictions, gaps, timeline events, locations, tasks
+  - This gives the agent full investigative context from message #1 — no cold start
+- **System prompt tool-table mapping** (explicit instructions per tool):
+  - The system prompt MUST describe each tool, the exact DB table it queries, the filterable columns, and when to use it
+  - The prompt MUST instruct: "For EVERY factual statement you make, you MUST first call the relevant tool to fetch the supporting data. NEVER state facts from memory alone — always ground in a tool call result. Include the exact citation (file_id, page/timestamp, excerpt) from the tool result in your response."
+  - The prompt MUST include the query strategy: "For questions about entities/relationships → query_knowledge_graph. For domain-specific findings → get_domain_findings. For hypotheses/status → get_hypotheses. For conflicts between sources → get_contradictions. For missing info → get_gaps. For chronological questions → get_timeline_events. For location questions → get_locations. For broad evidence search → search_findings."
+
+- **Tools (7 tools, all SQL-backed, each maps to explicit DB tables):**
+
+  - `query_knowledge_graph` — Queries `kg_entities` and `kg_relationships` tables
+    - Params: entity_name (fuzzy match on `name`/`name_normalized`), entity_type filter, relationship_type filter, domain filter
+    - Returns: Matching entities with properties, aliases, descriptions, confidence, source_finding_ids; relationships with labels, evidence_excerpt, temporal_context, confidence
+    - Table columns: kg_entities.{name, entity_type, domain, confidence, properties, aliases, description_brief, description_detailed, source_finding_ids} + kg_relationships.{relationship_type, label, strength, evidence_excerpt, source_finding_ids, temporal_context, confidence}
+
+  - `get_domain_findings` — Queries `case_findings` table filtered by agent_type and/or category
+    - Params: agent_type (financial/legal/evidence/strategy), category (optional), min_confidence (optional)
+    - Returns: Findings with title, finding_text, confidence, citations[], entity_ids[]
+    - Table columns: case_findings.{agent_type, category, title, finding_text, confidence, citations, entity_ids}
+    - Citations contain: {file_id, locator, excerpt} — these are the EXACT source references
+
+  - `get_hypotheses` — Queries `case_hypotheses` table
+    - Params: status filter (PENDING/SUPPORTED/REFUTED), min_confidence (optional)
+    - Returns: Hypotheses with claim, status, confidence, supporting_evidence[], contradicting_evidence[], reasoning
+    - Table columns: case_hypotheses.{claim, status, confidence, supporting_evidence, contradicting_evidence, source_agent, reasoning}
+
+  - `get_contradictions` — Queries `case_contradictions` table
+    - Params: severity filter (minor/significant/critical), resolution_status filter (unresolved/resolved)
+    - Returns: Contradictions with claim_a, claim_b, source_a, source_b, severity, domain
+    - Table columns: case_contradictions.{claim_a, claim_b, source_a, source_b, severity, domain, resolution_status}
+
+  - `get_gaps` — Queries `case_gaps` table
+    - Params: priority filter (low/medium/high/critical)
+    - Returns: Gaps with description, what_is_missing, why_needed, priority, related_entity_ids, suggested_actions
+    - Table columns: case_gaps.{description, what_is_missing, why_needed, priority, related_entity_ids, suggested_actions}
+
+  - `get_timeline_events` — Queries `timeline_events` table
+    - Params: date_range (start/end), event_type filter, entity_id filter
+    - Returns: Events with title, description, event_date, event_end_date, event_type, layer, source_entity_ids, citations[]
+    - Table columns: timeline_events.{title, description, event_date, event_end_date, event_type, layer, source_entity_ids, citations}
+
+  - `search_findings` — Full-text search over `case_findings` via PostgreSQL tsvector
+    - Params: query string, agent_type filter (optional), limit
+    - Returns: Ranked findings matching the search query, with citations
+    - Uses: case_findings tsvector GIN index for fast full-text search
+
+#### 2. Chat API Endpoint
+- `POST /api/cases/:caseId/chat` (streaming SSE response)
+- Request: `{ message, context, history[] }` (session-only history sent from frontend)
+- Response: SSE stream with events: `message_chunk`, `tool_call`, `tool_result`, `citation`, `done`
+- On first request per session: loads full synthesis context into agent system prompt
+
+#### 3. Chat Session (no DB persistence)
+- Chat history lives in frontend React state only (session-scoped)
+- History sent with each request for conversational continuity
+- **PDF export button**: Exports the complete chat session as a well-formatted PDF
+  - Includes: all messages (user + assistant), inline citations, timestamps
+  - Formatted with case name, date, and proper typography
+  - Generated server-side via `GET /api/cases/:caseId/chat/export-pdf` with chat history in request body
+  - Or generated client-side using a PDF library (e.g., `jspdf` or `@react-pdf/renderer`)
+
+#### 4. Inline Citations in Responses
+- Citations formatted as [1], [2] with footer list per message
+- Each citation links to source file + exact location (file_id, locator, excerpt)
+- Hover shows source preview (excerpt text)
+- Click opens SourceViewerModal at exact page/timestamp (reuses Phase 10 `useSourceNavigation` hook)
+- The agent MUST include citations from tool call results — it cannot fabricate source references
+
+#### 5. Context Caching (REQ-AGENT-007f)
+- Context cache created when chat session starts for a case
+- Cache includes full synthesis context (verdict, summary, conclusions)
+- TTL: 2 hours (session duration)
+- Chat queries use `cached_content` parameter for cost reduction
 
 **Technical Notes:**
-- Chat Agent self-routes based on retrieval confidence — no separate router agent needed
-- The LLM's native reasoning handles tool selection and escalation decisions
-- System prompt loaded with case_synthesis.case_summary on each chat session start
-- KG queries via SQL for sub-100ms fast path responses
-- Novel question detection: if tools return insufficient results AND user asks for analysis → escalate
-- Context cache via `client.caches.create()` for 4x cheaper repeated queries
+- **Context injection trigger**: When pipeline completes (status → READY), the synthesis context is ready for chat. On first chat message, the API loads case_synthesis + counts from all tables and injects into the agent's system prompt.
+- **Mandatory tool grounding**: The system prompt enforces that the agent MUST call tools before making factual claims. This prevents hallucination by requiring DB-backed evidence for every statement.
+- **Citation passthrough**: Domain agent findings already contain `citations: [{file_id, locator, excerpt}]`. The chat agent passes these through to the response. No citation fabrication — only citations that exist in the DB.
+- **Frontend API path update**: Current frontend calls `POST /api/chat` — must update to `POST /api/cases/:caseId/chat`
+- **Frontend citation rendering**: Must add citation parsing ([1], [2] format), hover preview, and click-to-open SourceViewerModal wiring in `chatbot.tsx`
 - **Key files to create:**
-  - `backend/app/agents/chat/` — Chat agent module (agent, prompts, tools)
-  - `backend/app/api/chat.py` — Chat API endpoint with streaming
-  - `backend/app/models/chat.py` — ChatMessage model
-  - `backend/app/services/chat_service.py` — Chat history + tool implementations
-- **Frontend files:** `frontend/src/components/app/chatbot.tsx`, `frontend/src/hooks/useChatbot.ts`, `frontend/src/types/chatbot.ts`
+  - `backend/app/agents/chat/` — Chat agent module (agent definition, system prompt, tool definitions)
+  - `backend/app/api/chat.py` — Chat API endpoint with SSE streaming
+  - `backend/app/services/chat_service.py` — Tool implementations (DB queries), context assembly
+- **Frontend files to modify:**
+  - `frontend/src/components/app/chatbot.tsx` — Add citation rendering, PDF export button, real API integration
+  - `frontend/src/hooks/useChatbot.ts` — Replace mock with SSE streaming, add export function
+  - `frontend/src/types/chatbot.ts` — Add citation types, export types
 
 **Exit Criteria:**
-- Chat answers questions about case using tools
-- Simple questions answered from KG/synthesis (fast path, <2 seconds)
-- Complex questions escalate to domain agents via tool
-- All responses have inline citations to exact source locations
-- Chat history persists across sessions
-- Context caching working (verify cost reduction)
-- Long sessions don't exhaust context (compaction working)
-- Research/Discovery invocable from chat
-- Case summary available in chat context from first message
+- Chat answers questions about case using DB-backed tools
+- Every factual statement in chat responses has an inline citation to an exact source (file_id + page/timestamp + excerpt)
+- Citations are clickable and open SourceViewerModal at the correct location
+- Full verdict + synthesis context available to the agent from the first message
+- Agent queries the correct DB table for each type of question (KG, findings, hypotheses, contradictions, gaps, timeline)
+- Chat session exportable as well-formatted PDF
+- Context caching working (verify via Gemini API cost reduction)
+- Frontend mock replaced with real SSE streaming API
+- All type checks and build pass
 
 ---
 

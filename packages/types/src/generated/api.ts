@@ -1535,6 +1535,16 @@ export interface components {
              */
             latest_workflow_id?: string | null;
             /**
+             * Verdict Label
+             * @description Verdict strength label (Conclusive, Substantial, Inconclusive) set by synthesis agent
+             */
+            verdict_label?: string | null;
+            /**
+             * Verdict Summary
+             * @description One-line verdict summary from synthesis agent
+             */
+            verdict_summary?: string | null;
+            /**
              * Created At
              * Format: date-time
              * @description When the case was created

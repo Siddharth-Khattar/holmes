@@ -565,10 +565,10 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                   {/* Right Half - Redaction Controls or Preview */}
                   <div className="flex-1 overflow-hidden flex flex-col min-h-0">
                     {status === "success" &&
-                      (redactedPdfUrl ||
-                        redactedImageUrl ||
-                        redactedVideoUrl ||
-                        redactedAudioUrl) ? (
+                    (redactedPdfUrl ||
+                      redactedImageUrl ||
+                      redactedVideoUrl ||
+                      redactedAudioUrl) ? (
                       /* Redacted Preview */
                       <div className="flex-1 relative min-h-0 overflow-hidden">
                         {isPdf && redactedPdfUrl ? (
@@ -741,20 +741,22 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                                 <button
                                   type="button"
                                   onClick={() => setRedactionMethod("blur")}
-                                  className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${redactionMethod === "blur"
-                                    ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
-                                    : "border-warm-gray/15 dark:border-stone/15 text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10"
-                                    }`}
+                                  className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
+                                    redactionMethod === "blur"
+                                      ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
+                                      : "border-warm-gray/15 dark:border-stone/15 text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10"
+                                  }`}
                                 >
                                   Blur
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setRedactionMethod("pixelate")}
-                                  className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${redactionMethod === "pixelate"
-                                    ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
-                                    : "border-warm-gray/15 dark:border-stone/15 text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10"
-                                    }`}
+                                  className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
+                                    redactionMethod === "pixelate"
+                                      ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
+                                      : "border-warm-gray/15 dark:border-stone/15 text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10"
+                                  }`}
                                 >
                                   Pixelate
                                 </button>
@@ -764,10 +766,11 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                                     onClick={() =>
                                       setRedactionMethod("blackbox")
                                     }
-                                    className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${redactionMethod === "blackbox"
-                                      ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
-                                      : "border-warm-gray/15 dark:border-stone/15 text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10"
-                                      }`}
+                                    className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
+                                      redactionMethod === "blackbox"
+                                        ? "border-purple-500 bg-purple-500/10 text-purple-700 dark:text-purple-300"
+                                        : "border-warm-gray/15 dark:border-stone/15 text-muted-foreground hover:bg-warm-gray/10 dark:hover:bg-stone/10"
+                                    }`}
                                   >
                                     Blackbox
                                   </button>
@@ -847,11 +850,10 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
                                 </span>
                               )}
                             </>
-                          ) : isImage && imageRedactionResult ? (
-                            null
-                          ) : isVideo && videoRedactionResult ? (
-                            null
-                          ) : isAudio && audioRedactionResult ? (
+                          ) : isImage &&
+                            imageRedactionResult ? null : isVideo &&
+                            videoRedactionResult ? null : isAudio &&
+                            audioRedactionResult ? (
                             <>
                               <span className="text-muted-foreground">
                                 Censored{" "}

@@ -17,6 +17,7 @@ from app.agents.base import PublishFn
 from app.agents.domain_agent_runner import DomainAgentRunner
 from app.agents.factory import AgentFactory
 from app.models.case import Case
+from app.models.file import CaseFile
 from app.models.findings import CaseFinding
 from app.models.knowledge_graph import KgEntity
 from app.models.synthesis import CaseSynthesis, Location, TimelineEvent
@@ -48,16 +49,16 @@ class GeospatialAgentRunner(DomainAgentRunner[GeospatialOutput]):
 
     async def _prepare_content(
         self,
-        _files: list,
-        _gcs_bucket: str,
-        _hypotheses: list[dict[str, object]],
-        _context_injection: str | None = None,
+        files: list[CaseFile],
+        gcs_bucket: str,
+        hypotheses: list[dict[str, object]],
+        context_injection: str | None = None,
         **kwargs: object,
     ) -> types.Content:
         """Build text-only Content from pre-assembled geospatial input.
 
-        Args are unused (prefixed with _) as geospatial agent only uses
-        text-only input from kwargs.
+        Args files, gcs_bucket, hypotheses, context_injection are unused
+        as geospatial agent only uses text-only input from kwargs.
         """
         geospatial_input = str(kwargs.get("geospatial_input", ""))
         return types.Content(role="user", parts=[types.Part(text=geospatial_input)])

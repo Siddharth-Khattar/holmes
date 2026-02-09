@@ -36,12 +36,12 @@
 | 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ✅ COMPLETE |
 | 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ✅ COMPLETE |
 | 9 | Chat Interface & Research | Multi-source tool-based Q&A, research/discovery, context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
-| 10 | Source Panel & Entity Resolution | Citation-to-source wiring, entity name resolution across all views | REQ-SOURCE-* | 🟡 PLANNED |
+| 10 | Source Panel & Entity Resolution | Citation-to-source wiring, entity name resolution across all views | REQ-SOURCE-* | ✅ COMPLETE |
 | 11 | Corrections & Refinement | Error flagging, Verification, Regeneration | REQ-CORR-* | ⏳ NOT_STARTED |
 | 12 | Demo Preparation | Demo case showcasing all integration features | Demo readiness, REQ-RESEARCH-004, REQ-AGENT-007i | ⏳ NOT_STARTED |
 
 > **Status Legend:** ✅ COMPLETE | 🟡 FRONTEND_DONE (backend pending) | ⏳ NOT_STARTED | ⏳ PLANNED
-> **Note:** Phase 6 complete (2026-02-06, 35 commits). Architecture redesigned 2026-02-07: Phases 7-9 restructured with KG-as-Memory pattern, hybrid storage (PG + Vector), programmatic KG Builder, Synthesis Agent, tool-based Chat Agent. Architecture revised 2026-02-08: Programmatic KG Builder replaced with LLM-based KG Builder Agent (Approach 4); D3.js retained and enhanced (Epstein-inspired); vis-network deferred to optional Phase 7.3.
+> **Note:** Phase 10 complete (2026-02-09). Citation-to-source navigation wired across all 4 views (KG, Geospatial, Verdict, Timeline) with shared hooks and entity resolution. Known issues: PDF viewer has rendering bugs, audio viewer untested. Architecture revised 2026-02-08: Programmatic KG Builder replaced with LLM-based KG Builder Agent (Approach 4); D3.js retained and enhanced (Epstein-inspired); vis-network deferred to optional Phase 7.3.
 
 **Post-MVP:**
 | Phase | Name | Focus | Requirements |

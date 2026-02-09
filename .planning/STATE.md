@@ -607,6 +607,13 @@ All frontend features need these backend endpoints:
 
 ---
 
+## Known Issues
+
+- **PDF Viewer**: Has rendering/display bugs (identified during Phase 10 testing)
+- **Audio Viewer**: Not yet tested with real data; may have issues
+
+---
+
 ## Blockers
 
 None currently.

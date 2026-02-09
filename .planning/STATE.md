@@ -1,7 +1,7 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 8.1 of 12 (Geospatial Agent & Map View) — IN PROGRESS (2/4 plans)
+**Current Phase:** 8.1 of 12 (Geospatial Agent & Map View) — IN PROGRESS (3/4 plans)
 **Next Phase:** 9 (Chat Interface)
 **Current Milestone:** M1 - Holmes v1.0
 
@@ -22,7 +22,7 @@
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
-| 8.1 | Geospatial Agent & Map View | IN_PROGRESS | 2026-02-09 | - | Plans 01-02 complete: GeocodingService + GeospatialAgentRunner with pipeline integration |
+| 8.1 | Geospatial Agent & Map View | IN_PROGRESS | 2026-02-09 | - | Plans 01-03 complete: GeocodingService + GeospatialAgentRunner + 6 REST API endpoints |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
@@ -140,9 +140,18 @@
   - Non-blocking pipeline failure (geospatial failure logs warning, doesn't crash pipeline)
   - Adapts to existing Location schema (coordinates/temporal_associations JSONB)
 
+**Phase 8.1 Plan 03 Complete** (2026-02-09): Locations API Endpoints -- 2 tasks, 2 commits (7 min)
+  - Task 1: 6 REST endpoints in locations.py (POST generate, GET status, GET list, GET detail, GET paths, DELETE)
+  - Task 2: Router registration in main.py
+  - All endpoints enforce auth via CurrentUser + case ownership via _get_user_case helper
+  - Async task spawning with asyncio.create_task for non-blocking generation
+  - SSE events: emit_agent_started + emit_geospatial_complete
+  - Adapted response structure to actual Location schema (coordinates JSONB, temporal_associations JSONB)
+  - Detail endpoint extracts events and temporal periods from temporal_associations JSONB
+  - Type checking passes (pyright 0 errors)
+
 **What's next:**
-- Phase 8.1 Plan 03 (Locations API) -- REST endpoints for geospatial data access
-- Phase 8.1 Plan 04 (Frontend Integration) -- Replace mock data with real API calls
+- Phase 8.1 Plan 04 (Frontend Integration) -- Replace mock data with real API calls, wire SSE events
 - Phase 9 (Chat Interface) -- backend API needed
 - Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
 
@@ -537,6 +546,8 @@ All frontend features need these backend endpoints:
 | Geospatial entity IDs | UUID mapping vs Integer storage | Integer storage | LLM outputs 1,2,3..., stored as-is; UUID resolution deferred to Phase 8.2 or 9 |
 | Geospatial pipeline failure | Blocking vs Non-blocking | Non-blocking | Geospatial optional; failure logs warning, emits error SSE, pipeline continues |
 | Geospatial confidence scale | Percentages vs 0.0-1.0 | 0.0-1.0 scale | Consistent with synthesis agent; avoids 0-1 vs 0-100 confusion |
+| Locations API async pattern | Blocking vs Async task spawn | Async task spawn (asyncio.create_task) | Non-blocking 202 response; SSE events for progress updates |
+| Locations API Query params | Old FastAPI vs Annotated | Annotated[type, Query(...)] = default | Modern FastAPI pattern; avoids syntax errors with dependency injection |
 
 ---
 
@@ -549,9 +560,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8.1 Plan 02 COMPLETE (2/2 tasks, 2 commits, 6 min). GeospatialAgentRunner with pipeline Stage 9 integration.
+Stopped at: Phase 8.1 Plan 03 COMPLETE (2/2 tasks, 2 commits, 7 min). 6 REST API endpoints for geospatial data access.
 Resume file: None
-Next action: Phase 8.1 Plan 03 (Locations API endpoints)
+Next action: Phase 8.1 Plan 04 (Frontend Integration)
 
 ---
 

@@ -97,7 +97,11 @@ function EvidenceRow({
 }) {
   const config = ROLE_CONFIG[item.role] ?? ROLE_CONFIG.neutral;
   const Icon = config.icon;
-  const isClickable = !!onViewFinding && !!item.finding_id;
+  const isClickable =
+    !!onViewFinding &&
+    !!item.finding_id &&
+    !!resolved?.fileId &&
+    !!resolved?.fileName;
 
   return (
     <div

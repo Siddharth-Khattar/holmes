@@ -8,6 +8,7 @@ import { AlertTriangle, FileText, Quote } from "lucide-react";
 
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { useFindingResolver } from "@/hooks/useFindingResolver";
+import type { ResolvedFinding } from "@/hooks/useFindingResolver";
 import type { ContradictionResponse } from "@/types/synthesis";
 
 // ---------------------------------------------------------------------------
@@ -56,7 +57,7 @@ interface SourceExcerptProps {
   label: string;
   source: Record<string, unknown> | null;
   accentColor: string;
-  resolvedFileName?: string | null;
+  resolved?: ResolvedFinding | null;
   onViewFinding?: (findingId: string) => void;
 }
 
@@ -64,7 +65,7 @@ function SourceExcerpt({
   label,
   source,
   accentColor,
-  resolvedFileName,
+  resolved,
   onViewFinding,
 }: SourceExcerptProps) {
   if (!source) return null;
@@ -75,7 +76,11 @@ function SourceExcerpt({
 
   if (!findingId && !excerpt) return null;
 
-  const isClickable = !!onViewFinding && !!findingId;
+  const isClickable =
+    !!onViewFinding &&
+    !!findingId &&
+    !!resolved?.fileId &&
+    !!resolved?.fileName;
 
   return (
     <div
@@ -108,7 +113,7 @@ function SourceExcerpt({
           <span className="ml-auto flex items-center gap-1 text-[10px] text-stone/50">
             <FileText size={10} className="shrink-0" />
             <span className="truncate max-w-[120px]">
-              {resolvedFileName ?? findingId.slice(0, 8)}
+              {resolved?.fileName ?? findingId.slice(0, 8)}
             </span>
             {isClickable && (
               <span className="hidden group-hover:inline text-[10px] text-stone/70 ml-1">
@@ -252,14 +257,14 @@ export function ContradictionDetailPanel({
                 label="Source for Claim A"
                 source={contradiction.source_a}
                 accentColor={severityStyle.color}
-                resolvedFileName={resolvedA?.fileName}
+                resolved={resolvedA}
                 onViewFinding={onViewFinding}
               />
               <SourceExcerpt
                 label="Source for Claim B"
                 source={contradiction.source_b}
                 accentColor={severityStyle.color}
-                resolvedFileName={resolvedB?.fileName}
+                resolved={resolvedB}
                 onViewFinding={onViewFinding}
               />
             </div>

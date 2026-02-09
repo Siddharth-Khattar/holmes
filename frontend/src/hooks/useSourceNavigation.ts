@@ -5,6 +5,7 @@
 
 import { useState, useCallback, useRef, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type { Citation } from "@/lib/citation-utils";
 import {
   parseLocator,
@@ -54,7 +55,31 @@ interface UseSourceNavigationReturn {
 // Maximum excerpt length for PDF highlight text
 // ---------------------------------------------------------------------------
 
-const MAX_HIGHLIGHT_LENGTH = 100;
+const MAX_HIGHLIGHT_LENGTH = 300;
+
+// ---------------------------------------------------------------------------
+// Excerpt normalization for PDF highlighting
+// ---------------------------------------------------------------------------
+
+/**
+ * Normalizes excerpt text for better PDF highlight matching by converting
+ * typographic characters to their ASCII equivalents and collapsing whitespace.
+ */
+function normalizeExcerptForHighlight(text: string): string {
+  return (
+    text
+      // Smart quotes → straight quotes
+      .replace(/[\u2018\u2019\u201A]/g, "'")
+      .replace(/[\u201C\u201D\u201E]/g, '"')
+      // Em-dash / en-dash → hyphen
+      .replace(/[\u2013\u2014]/g, "-")
+      // Ellipsis character → three dots
+      .replace(/\u2026/g, "...")
+      // Collapse whitespace runs (including line breaks) into a single space
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Hook implementation
@@ -68,6 +93,7 @@ const MAX_HIGHLIGHT_LENGTH = 100;
  * - Two-hop finding citations (finding_id -> CaseFinding.citations -> file)
  * - Signed URL retrieval with caching via useFileUrlCache
  * - Race condition prevention via request counter
+ * - Error feedback via sonner toasts (automatic for all consumers)
  */
 export function useSourceNavigation(caseId: string): UseSourceNavigationReturn {
   const [sourceContent, setSourceContent] =
@@ -99,6 +125,12 @@ export function useSourceNavigation(caseId: string): UseSourceNavigationReturn {
     return map;
   }, [filesData]);
 
+  /** Sets both the error state and fires a sonner toast for user feedback. */
+  const setErrorWithToast = useCallback((message: string) => {
+    setError(message);
+    toast.error(message);
+  }, []);
+
   const openSource = useCallback(
     async (citation: Citation): Promise<void> => {
       const requestId = ++requestCounterRef.current;
@@ -110,7 +142,7 @@ export function useSourceNavigation(caseId: string): UseSourceNavigationReturn {
         const file = fileMap.get(citation.file_id);
         if (!file) {
           if (requestId === requestCounterRef.current) {
-            setError("Source file not available");
+            setErrorWithToast("Source file not available");
             setIsLoading(false);
           }
           return;
@@ -152,10 +184,11 @@ export function useSourceNavigation(caseId: string): UseSourceNavigationReturn {
             : {}),
           ...(viewerType === "pdf" && citation.excerpt
             ? {
-                highlightText:
+                highlightText: normalizeExcerptForHighlight(
                   citation.excerpt.length > MAX_HIGHLIGHT_LENGTH
                     ? citation.excerpt.slice(0, MAX_HIGHLIGHT_LENGTH)
                     : citation.excerpt,
+                ),
               }
             : {}),
         };
@@ -167,14 +200,14 @@ export function useSourceNavigation(caseId: string): UseSourceNavigationReturn {
         }
       } catch (err) {
         if (requestId === requestCounterRef.current) {
-          setError(
+          setErrorWithToast(
             err instanceof Error ? err.message : "Failed to load source file",
           );
           setIsLoading(false);
         }
       }
     },
-    [caseId, fileMap, getCachedUrl, setCachedUrl],
+    [caseId, fileMap, getCachedUrl, setCachedUrl, setErrorWithToast],
   );
 
   const openFromFinding = useCallback(
@@ -203,13 +236,13 @@ export function useSourceNavigation(caseId: string): UseSourceNavigationReturn {
           });
         } else {
           if (requestId === requestCounterRef.current) {
-            setError("No source citations available for this finding");
+            setErrorWithToast("No source citations available for this finding");
             setIsLoading(false);
           }
         }
       } catch (err) {
         if (requestId === requestCounterRef.current) {
-          setError(
+          setErrorWithToast(
             err instanceof Error
               ? err.message
               : "Failed to resolve finding citation",
@@ -218,7 +251,7 @@ export function useSourceNavigation(caseId: string): UseSourceNavigationReturn {
         }
       }
     },
-    [caseId, openSource],
+    [caseId, openSource, setErrorWithToast],
   );
 
   const closeSource = useCallback(() => {

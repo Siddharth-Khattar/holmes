@@ -17,6 +17,21 @@ const PDFJS_WORKER_URL =
   "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
 
 // ---------------------------------------------------------------------------
+// Flexible highlight regex builder
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a case-insensitive RegExp from excerpt text that tolerates whitespace
+ * variations in the PDF text layer. Escapes regex special characters, then
+ * replaces whitespace runs with `\s+` so line breaks / extra spaces still match.
+ */
+function buildFlexibleHighlightRegex(text: string): RegExp {
+  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const flexible = escaped.replace(/\s+/g, "\\s+");
+  return new RegExp(flexible, "i");
+}
+
+// ---------------------------------------------------------------------------
 // PdfViewer
 // ---------------------------------------------------------------------------
 
@@ -34,14 +49,17 @@ export function PdfViewer({
   initialPage,
   highlightKeyword,
 }: PdfViewerProps) {
+  // Build a flexible regex for the highlight keyword (tolerates whitespace diffs)
+  const highlightRegex = highlightKeyword
+    ? buildFlexibleHighlightRegex(highlightKeyword)
+    : undefined;
+
   // defaultLayoutPlugin aggregates toolbar (zoom, search, page nav), sidebar, etc.
   // Disable sidebar tabs since we only need the toolbar + document view.
   const defaultLayoutPluginInstance = defaultLayoutPlugin({
     sidebarTabs: () => [],
     toolbarPlugin: {
-      searchPlugin: highlightKeyword
-        ? { keyword: [highlightKeyword] }
-        : undefined,
+      searchPlugin: highlightRegex ? { keyword: [highlightRegex] } : undefined,
     },
   });
 
@@ -64,15 +82,11 @@ export function PdfViewer({
 
   // Highlight keyword when it changes
   useEffect(() => {
-    if (highlightKeyword) {
-      // Small delay to ensure the document is loaded
+    if (highlightRegex) {
+      // Delay to ensure the document is loaded (larger delay for better reliability)
       const timer = setTimeout(() => {
-        searchPluginInstance.highlight({
-          keyword: highlightKeyword,
-          matchCase: false,
-          wholeWords: false,
-        });
-      }, 500);
+        searchPluginInstance.highlight(highlightRegex);
+      }, 800);
       return () => clearTimeout(timer);
     } else {
       searchPluginInstance.clearHighlights();

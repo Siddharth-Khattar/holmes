@@ -10,7 +10,6 @@ import {
   Clock,
   AlertCircle,
   Check,
-  ExternalLink,
   Quote,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -18,10 +17,12 @@ import { format } from "date-fns";
 import { TimelineEvent } from "@/types/timeline.types";
 import { LAYER_CONFIG } from "@/constants/timeline.constants";
 import { cn } from "@/lib/utils";
+import { useFindingResolver } from "@/hooks/useFindingResolver";
+import { partitionSources } from "@/lib/source-partition";
 import {
-  useFindingResolver,
-  type ResolvedFinding,
-} from "@/hooks/useFindingResolver";
+  FileSourceEntry,
+  ExcerptSourceEntry,
+} from "@/components/ui/source-entries";
 
 interface EventDetailModalProps {
   caseId: string;
@@ -29,72 +30,6 @@ interface EventDetailModalProps {
   onClose: () => void;
   /** Called when the user clicks a source document entry (sourceId = finding ID). */
   onViewSource?: (sourceId: string) => void;
-}
-
-/**
- * Renders a source entry that is backed by an actual file (has fileId).
- * Shows filename + finding title with a "View source" action.
- */
-function FileSourceEntry({
-  sourceId,
-  resolved,
-  onViewSource,
-}: {
-  sourceId: string;
-  resolved: ResolvedFinding;
-  onViewSource?: (sourceId: string) => void;
-}) {
-  return (
-    <button
-      key={sourceId}
-      type="button"
-      onClick={() => onViewSource?.(sourceId)}
-      disabled={!onViewSource}
-      className={cn(
-        "flex items-start gap-3 p-3 w-full text-left rounded-lg transition-colors",
-        "bg-(--muted)",
-        onViewSource
-          ? "hover:bg-(--muted)/80 cursor-pointer group"
-          : "opacity-60 cursor-default",
-      )}
-    >
-      <FileText className="w-4 h-4 text-(--muted-foreground) shrink-0 mt-0.5" />
-      <div className="flex flex-col min-w-0 flex-1 gap-0.5">
-        <span className="text-sm text-(--foreground) font-medium break-words">
-          {resolved.fileName}
-        </span>
-        {resolved.title !== resolved.id.slice(0, 8) && (
-          <span className="text-xs text-(--muted-foreground) leading-relaxed break-words">
-            {resolved.title}
-          </span>
-        )}
-      </div>
-      {onViewSource && (
-        <ExternalLink className="w-3.5 h-3.5 text-(--muted-foreground) opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" />
-      )}
-    </button>
-  );
-}
-
-/**
- * Renders a source entry that has no file backing (excerpt-only finding).
- * Shows the finding title/excerpt as plain readable text.
- */
-function ExcerptSourceEntry({ resolved }: { resolved: ResolvedFinding }) {
-  const displayText =
-    resolved.excerpt ??
-    (resolved.title !== resolved.id.slice(0, 8) ? resolved.title : null);
-
-  if (!displayText) return null;
-
-  return (
-    <div className="flex items-start gap-3 p-3 rounded-lg bg-(--muted)/50">
-      <Quote className="w-3.5 h-3.5 text-(--muted-foreground) shrink-0 mt-0.5" />
-      <p className="text-xs text-(--muted-foreground) leading-relaxed break-words">
-        {displayText}
-      </p>
-    </div>
-  );
 }
 
 export function EventDetailModal({
@@ -225,6 +160,7 @@ export function EventDetailModal({
                       sourceId={sourceId}
                       resolved={resolved}
                       onViewSource={onViewSource}
+                      variant="modal"
                     />
                   ))}
                 </div>
@@ -240,7 +176,11 @@ export function EventDetailModal({
                 </h3>
                 <div className="space-y-2">
                   {excerptSources.map(({ sourceId, resolved }) => (
-                    <ExcerptSourceEntry key={sourceId} resolved={resolved} />
+                    <ExcerptSourceEntry
+                      key={sourceId}
+                      resolved={resolved}
+                      variant="modal"
+                    />
                   ))}
                 </div>
               </div>
@@ -259,38 +199,4 @@ export function EventDetailModal({
       </div>
     </AnimatePresence>
   );
-}
-
-// ---------------------------------------------------------------------------
-// Partitioning helpers
-// ---------------------------------------------------------------------------
-
-interface PartitionedSource {
-  sourceId: string;
-  resolved: ResolvedFinding;
-}
-
-/**
- * Partitions an array of source IDs into file-backed (openable in source viewer)
- * and excerpt-only (display as text). A source is considered file-backed only if
- * both fileId AND fileName are resolved — meaning the file actually exists in the
- * case files list and can be opened in the source viewer.
- */
-function partitionSources(
-  sourceIds: string[],
-  getFinding: (id: string) => ResolvedFinding,
-): { fileSources: PartitionedSource[]; excerptSources: PartitionedSource[] } {
-  const fileSources: PartitionedSource[] = [];
-  const excerptSources: PartitionedSource[] = [];
-
-  for (const sourceId of sourceIds) {
-    const resolved = getFinding(sourceId);
-    if (resolved.fileId && resolved.fileName) {
-      fileSources.push({ sourceId, resolved });
-    } else {
-      excerptSources.push({ sourceId, resolved });
-    }
-  }
-
-  return { fileSources, excerptSources };
 }

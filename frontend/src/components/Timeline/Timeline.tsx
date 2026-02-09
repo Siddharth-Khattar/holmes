@@ -55,7 +55,6 @@ export function Timeline({
     openFromFinding: detailOpenFromFinding,
     sourceContent: detailSourceContent,
     closeSource: detailCloseSource,
-    error: sourceError,
   } = useSourceNavigation(caseId);
 
   // Filter events by selected layers
@@ -139,15 +138,6 @@ export function Timeline({
                 onClose={detailCloseSource}
               />
             </div>
-          </div>,
-          document.body,
-        )}
-
-      {/* Source resolution error toast */}
-      {sourceError &&
-        createPortal(
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[120] px-4 py-3 rounded-lg bg-red-900/90 border border-red-700/50 text-sm text-red-200 shadow-lg backdrop-blur-sm max-w-md text-center">
-            {sourceError}
           </div>,
           document.body,
         )}

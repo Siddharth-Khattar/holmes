@@ -27,7 +27,6 @@ const AGENT_SEQUENCE: AgentType[] = [
   "orchestrator",
   "financial",
   "legal",
-  "strategy",
   "knowledge-graph",
 ];
 
@@ -150,11 +149,6 @@ export class MockCommandCenterEventGenerator {
         "anomaly_detector()",
       ],
       legal: ["entity_extractor()", "citation_parser()", "clause_identifier()"],
-      strategy: [
-        "pattern_analyzer()",
-        "cross_reference_finder()",
-        "insight_generator()",
-      ],
       evidence: [
         "authenticity_verifier()",
         "chain_of_custody_tracker()",
@@ -193,7 +187,7 @@ export class MockCommandCenterEventGenerator {
 /**
  * Pre-populated agent states for visual testing when backend is unavailable.
  * Shows a realistic mid-pipeline state: triage and orchestrator complete,
- * financial processing, legal complete, strategy and KG idle/unchosen.
+ * financial processing, legal complete, KG idle/unchosen.
  *
  * TODO: Remove when backend SSE is fully integrated
  */
@@ -230,12 +224,6 @@ export function createDemoAgentStates(): Map<string, AgentState> {
           reason: "Contract documents with legal terminology",
           domainScore: 87, // 0-100 scale matching backend
         },
-        {
-          fileId: "file-3",
-          targetAgent: "strategy",
-          reason: "Communication patterns suggest strategic coordination",
-          domainScore: 74, // 0-100 scale matching backend
-        },
       ],
       toolsCalled: [
         "file_analyzer()",
@@ -249,7 +237,6 @@ export function createDemoAgentStates(): Map<string, AgentState> {
         domain_scores: {
           financial: 0.91,
           legal: 0.87,
-          strategy: 0.74,
           evidence: 0.65,
         },
         complexity: "high",
@@ -300,14 +287,13 @@ export function createDemoAgentStates(): Map<string, AgentState> {
         confidence: 0.88,
         model: "gemini-2.5-pro",
         routing_summary:
-          "5 files routed: 2 financial, 2 legal, 1 strategy. High complexity case.",
+          "4 files routed: 2 financial, 2 legal. High complexity case.",
         warnings: ["Large document set — processing may be slow"],
         file_routing: [
           { file: "bank_statement_2023.pdf", target: "financial" },
           { file: "financial_report_q4.xlsx", target: "financial" },
           { file: "contract_agreement.pdf", target: "legal" },
           { file: "witness_testimony.txt", target: "legal" },
-          { file: "email_thread.txt", target: "strategy" },
         ],
       },
     },
@@ -377,12 +363,6 @@ export function createDemoAgentStates(): Map<string, AgentState> {
     ],
   });
 
-  states.set("strategy", {
-    id: "strategy",
-    type: "strategy",
-    status: "idle",
-    processingHistory: [],
-  });
   states.set("knowledge-graph", {
     id: "knowledge-graph",
     type: "knowledge-graph",

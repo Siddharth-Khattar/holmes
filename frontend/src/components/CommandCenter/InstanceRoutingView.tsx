@@ -136,13 +136,8 @@ function buildAgentSections(
   }
 
   // Collect domain agent instances from agentStates
-  // Domain agents: financial, legal, evidence, strategy (not triage, orchestrator, knowledge-graph)
-  const domainTypes = new Set<AgentType>([
-    "financial",
-    "legal",
-    "evidence",
-    "strategy",
-  ]);
+  // Domain agents: financial, legal, evidence (not triage, orchestrator, knowledge-graph)
+  const domainTypes = new Set<AgentType>(["financial", "legal", "evidence"]);
 
   // Also include any base types referenced by routing decisions
   for (const d of decisions) {

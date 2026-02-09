@@ -34,13 +34,6 @@ export const AGENT_CONFIGS: Record<AgentType, AgentConfig> = {
     color: "",
     position: { x: 0, y: 0 },
   },
-  strategy: {
-    type: "strategy",
-    name: "Strategy Agent",
-    description: "Identifies patterns and strategic insights",
-    color: "",
-    position: { x: 0, y: 0 },
-  },
   evidence: {
     type: "evidence",
     name: "Evidence Agent",
@@ -73,10 +66,9 @@ export const DEFAULT_CONNECTIONS: Array<{
   { source: "orchestrator", target: "financial" },
   { source: "orchestrator", target: "legal" },
   { source: "orchestrator", target: "evidence" },
-  { source: "financial", target: "strategy" },
-  { source: "legal", target: "strategy" },
-  { source: "evidence", target: "strategy" },
-  { source: "strategy", target: "knowledge-graph" },
+  { source: "financial", target: "knowledge-graph" },
+  { source: "legal", target: "knowledge-graph" },
+  { source: "evidence", target: "knowledge-graph" },
   { source: "knowledge-graph", target: "synthesis" },
 ];
 
@@ -99,10 +91,6 @@ export const AGENT_TYPE_COLORS: Record<AgentType, AgentColorVars> = {
     accent: "var(--cc-financial-accent)",
   },
   legal: { tint: "var(--cc-legal-tint)", accent: "var(--cc-legal-accent)" },
-  strategy: {
-    tint: "var(--cc-strategy-tint)",
-    accent: "var(--cc-strategy-accent)",
-  },
   evidence: {
     tint: "var(--cc-evidence-tint)",
     accent: "var(--cc-evidence-accent)",

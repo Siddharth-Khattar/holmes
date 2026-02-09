@@ -4,7 +4,14 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { Search, GitBranch, X, Link2, FileText } from "lucide-react";
+import {
+  Search,
+  GitBranch,
+  X,
+  Link2,
+  FileText,
+  ExternalLink,
+} from "lucide-react";
 
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { EntityTimelineEntry } from "./EntityTimelineEntry";
@@ -23,6 +30,7 @@ interface KnowledgeGraphEntityPanelProps {
   relationships: RelationshipResponse[];
   allEntities: EntityResponse[];
   onEntitySelect?: (entityId: string) => void;
+  onViewFinding?: (findingId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -98,6 +106,7 @@ export function KnowledgeGraphEntityPanel({
   relationships,
   allEntities,
   onEntitySelect,
+  onViewFinding,
 }: KnowledgeGraphEntityPanelProps) {
   const [filterText, setFilterText] = useState("");
 
@@ -283,6 +292,15 @@ export function KnowledgeGraphEntityPanel({
                     selectedEntity={entity}
                     connectedEntity={connectedEntity}
                     isSource={isSource}
+                    onViewSource={
+                      onViewFinding
+                        ? (findingIds) => {
+                            if (findingIds.length > 0) {
+                              onViewFinding(findingIds[0]);
+                            }
+                          }
+                        : undefined
+                    }
                   />
                 );
               })}
@@ -338,16 +356,23 @@ export function KnowledgeGraphEntityPanel({
           >
             <div className="space-y-1.5">
               {sourceIds.map((id) => (
-                <div
+                <button
                   key={id}
-                  className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg bg-charcoal/50 border border-stone/10"
+                  type="button"
+                  onClick={() => onViewFinding?.(id)}
+                  disabled={!onViewFinding}
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg bg-charcoal/50 border border-stone/10 text-left transition-colors ${
+                    onViewFinding
+                      ? "cursor-pointer hover:bg-charcoal/70"
+                      : "cursor-default"
+                  }`}
                 >
                   <FileText
                     size={14}
                     className="shrink-0"
                     style={{ color: entityColor }}
                   />
-                  <div className="flex flex-col min-w-0">
+                  <div className="flex flex-col min-w-0 flex-1">
                     <span className="text-xs text-smoke font-medium">
                       Source Finding
                     </span>
@@ -355,7 +380,13 @@ export function KnowledgeGraphEntityPanel({
                       {id.slice(0, 8)}
                     </span>
                   </div>
-                </div>
+                  {onViewFinding && (
+                    <ExternalLink
+                      size={12}
+                      className="shrink-0 text-stone/50"
+                    />
+                  )}
+                </button>
               ))}
             </div>
           </CollapsibleSection>

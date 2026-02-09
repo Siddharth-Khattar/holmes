@@ -13,6 +13,7 @@ import { FilterPanel } from "./FilterPanel";
 import { SourceViewerModal } from "@/components/source-viewer/SourceViewerModal";
 import type { SourceViewerContent } from "@/components/source-viewer/SourceViewerModal";
 import { useGraphFilters } from "@/hooks/useGraphFilters";
+import { useSourceNavigation } from "@/hooks/useSourceNavigation";
 import { useDetailSidebarDispatch } from "@/hooks";
 import type {
   EntityResponse,
@@ -24,6 +25,7 @@ import type {
 // ---------------------------------------------------------------------------
 
 interface KnowledgeGraphCanvasProps {
+  caseId: string;
   entities: EntityResponse[];
   relationships: RelationshipResponse[];
 }
@@ -33,6 +35,7 @@ interface KnowledgeGraphCanvasProps {
 // ---------------------------------------------------------------------------
 
 export function KnowledgeGraphCanvas({
+  caseId,
   entities,
   relationships,
 }: KnowledgeGraphCanvasProps) {
@@ -59,6 +62,13 @@ export function KnowledgeGraphCanvas({
     seq: number;
   } | null>(null);
   const focusSeqRef = useRef(0);
+
+  // -- Source navigation (finding ID -> file resolution) --
+  const {
+    openFromFinding,
+    sourceContent: navSourceContent,
+    closeSource: navCloseSource,
+  } = useSourceNavigation(caseId);
 
   // -- Source viewer --
   const [sourceViewerContent, setSourceViewerContent] =
@@ -117,6 +127,14 @@ export function KnowledgeGraphCanvas({
     [],
   );
 
+  // Stable ref for openFromFinding to avoid re-triggering sidebar content effect
+  const openFromFindingRef = useRef(openFromFinding);
+  openFromFindingRef.current = openFromFinding;
+  const stableOpenFromFinding = useCallback(
+    (findingId: string) => openFromFindingRef.current(findingId),
+    [],
+  );
+
   // -- Push entity content to app-wide DetailSidebar --
   useEffect(() => {
     if (selectedEntity) {
@@ -128,6 +146,7 @@ export function KnowledgeGraphCanvas({
           relationships: selectedEntityRelationships,
           allEntities: entities,
           onEntitySelect: stableSidebarEntitySelect,
+          onViewFinding: stableOpenFromFinding,
         },
       });
     } else {
@@ -140,6 +159,7 @@ export function KnowledgeGraphCanvas({
     setContent,
     clearContent,
     stableSidebarEntitySelect,
+    stableOpenFromFinding,
   ]);
 
   // -- Clear sidebar on unmount --
@@ -148,10 +168,6 @@ export function KnowledgeGraphCanvas({
       clearContent();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleViewSource = useCallback((content: SourceViewerContent) => {
-    setSourceViewerContent(content);
   }, []);
 
   const toggleFullscreen = useCallback(() => {
@@ -172,10 +188,12 @@ export function KnowledgeGraphCanvas({
     setIsFilterPanelOpen((prev) => !prev);
   }, []);
 
-  // Source viewer wiring is in place but EntityTimelineEntry currently shows
-  // "Source not yet available" (graceful degradation). handleViewSource will
-  // be wired when source navigation is available.
-  void handleViewSource;
+  // Combine source content: navigation-resolved content takes priority
+  const activeSourceContent = navSourceContent ?? sourceViewerContent;
+  const handleCloseSourceViewer = useCallback(() => {
+    navCloseSource();
+    setSourceViewerContent(null);
+  }, [navCloseSource]);
 
   // -- Header stats badges --
   const headerRight = (
@@ -233,11 +251,11 @@ export function KnowledgeGraphCanvas({
           />
 
           {/* Source viewer modal overlays graph area */}
-          {sourceViewerContent && (
+          {activeSourceContent && (
             <div className="absolute inset-0 z-30">
               <SourceViewerModal
-                content={sourceViewerContent}
-                onClose={() => setSourceViewerContent(null)}
+                content={activeSourceContent}
+                onClose={handleCloseSourceViewer}
                 className="w-full h-full"
               />
             </div>

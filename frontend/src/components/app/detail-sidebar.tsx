@@ -45,6 +45,7 @@ function renderContent(descriptor: SidebarContentDescriptor): React.ReactNode {
           relationships={descriptor.props.relationships}
           allEntities={descriptor.props.allEntities}
           onEntitySelect={descriptor.props.onEntitySelect}
+          onViewFinding={descriptor.props.onViewFinding}
         />
       );
     case "verdict-hypothesis":

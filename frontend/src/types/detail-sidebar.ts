@@ -41,6 +41,7 @@ export interface KnowledgeGraphEntityContent {
     relationships: RelationshipResponse[];
     allEntities: EntityResponse[];
     onEntitySelect?: (entityId: string) => void;
+    onViewFinding?: (findingId: string) => void;
   };
 }
 

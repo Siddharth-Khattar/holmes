@@ -1,0 +1,310 @@
+# ABOUTME: Locations API endpoints for geospatial intelligence.
+# ABOUTME: Provides endpoints for triggering geospatial analysis and retrieving location data.
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import delete, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.auth import CurrentUser
+from app.database import get_db
+from app.models import Case
+from app.models.synthesis import Location
+from app.services.agent_events import (
+    emit_agent_started,
+    emit_geospatial_complete,
+)
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api/cases/{case_id}", tags=["geospatial"])
+
+
+async def _get_user_case(
+    db: AsyncSession,
+    case_id: UUID,
+    user_id: str,
+) -> Case:
+    """Fetch a case ensuring ownership. Raises 404 if not found or not owned."""
+    result = await db.execute(
+        select(Case).where(
+            Case.id == case_id,
+            Case.user_id == user_id,
+            Case.deleted_at.is_(None),
+        )
+    )
+    case = result.scalar_one_or_none()
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case not found",
+        )
+    return case
+
+
+# ---------------------------------------------------------------------------
+# Generation & Status
+# ---------------------------------------------------------------------------
+
+
+@router.post("/geospatial/generate", status_code=202)
+async def generate_geospatial_intelligence(
+    case_id: UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    force: Annotated[
+        bool, Query(description="Force regeneration even if exists")
+    ] = False,
+):
+    """Trigger on-demand geospatial analysis.
+
+    Spawns Geospatial Agent async task. Returns immediately with 202 Accepted.
+    Frontend should subscribe to SSE for progress updates.
+    """
+    # Verify case ownership
+    await _get_user_case(db, case_id, current_user.id)
+
+    # Check if analysis already exists (unless force=True)
+    if not force:
+        existing_stmt = select(func.count(Location.id)).where(
+            Location.case_id == case_id
+        )
+        existing_count = (await db.execute(existing_stmt)).scalar()
+        if existing_count and existing_count > 0:
+            return {
+                "status": "exists",
+                "message": "Geospatial analysis already exists. Use force=true to regenerate.",
+                "location_count": existing_count,
+            }
+
+    # Spawn async task (non-blocking)
+    from app.agents.geospatial import run_geospatial
+
+    workflow_id = UUID(
+        "00000000-0000-0000-0000-000000000000"
+    )  # TODO: get from request or generate
+
+    async def run_task():
+        async with db.begin_nested():
+            # Geospatial agent doesn't process individual files, so use empty values
+            await emit_agent_started(
+                str(case_id), "geospatial", str(case_id), "", "geospatial-analysis"
+            )
+            try:
+                counts = await run_geospatial(
+                    case_id=str(case_id),
+                    workflow_id=workflow_id,
+                    user_id=current_user.id,
+                    db_session=db,
+                )
+                await emit_geospatial_complete(str(case_id), counts)
+            except Exception as e:
+                logger.error(f"Geospatial generation failed: {e}", exc_info=True)
+                raise
+
+    asyncio.create_task(run_task())
+
+    return {"status": "generating", "case_id": str(case_id)}
+
+
+@router.get("/geospatial/status")
+async def get_geospatial_status(
+    case_id: UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Check if geospatial analysis exists and its status."""
+    # Verify case ownership
+    await _get_user_case(db, case_id, current_user.id)
+
+    # Check if locations exist
+    count_stmt = select(func.count(Location.id)).where(Location.case_id == case_id)
+    location_count = (await db.execute(count_stmt)).scalar() or 0
+
+    if location_count == 0:
+        return {
+            "exists": False,
+            "status": "not_started",
+            "location_count": 0,
+        }
+
+    # Get latest location timestamp
+    latest_stmt = (
+        select(Location.created_at)
+        .where(Location.case_id == case_id)
+        .order_by(Location.created_at.desc())
+        .limit(1)
+    )
+    latest_created = (await db.execute(latest_stmt)).scalar_one_or_none()
+
+    return {
+        "exists": True,
+        "status": "complete",
+        "location_count": location_count,
+        "last_generated": latest_created.isoformat() if latest_created else None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Locations
+# ---------------------------------------------------------------------------
+
+
+@router.get("/locations")
+async def get_locations(
+    case_id: UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    location_type: Annotated[
+        str | None,
+        Query(
+            description="Filter by type: crime_scene, witness_location, evidence_location, suspect_location, other"
+        ),
+    ] = None,
+):
+    """Get all locations for map visualization."""
+    # Verify case ownership
+    await _get_user_case(db, case_id, current_user.id)
+
+    # Build query
+    stmt = select(Location).where(Location.case_id == case_id)
+    if location_type:
+        stmt = stmt.where(Location.location_type == location_type)
+    stmt = stmt.order_by(Location.name)
+
+    locations = (await db.execute(stmt)).scalars().all()
+
+    return {
+        "locations": [
+            {
+                "id": str(loc.id),
+                "name": loc.name,
+                "coordinates": loc.coordinates if loc.coordinates else None,
+                "location_type": loc.location_type,
+                "event_count": (
+                    len(
+                        [
+                            item
+                            for item in loc.temporal_associations or []
+                            if item.get("type") == "event"
+                        ]
+                    )
+                ),
+                "has_temporal_period": (
+                    any(
+                        item.get("type") == "period"
+                        for item in loc.temporal_associations or []
+                    )
+                ),
+            }
+            for loc in locations
+        ]
+    }
+
+
+@router.get("/locations/{location_id}")
+async def get_location_detail(
+    case_id: UUID,
+    location_id: UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get detailed location data with events and temporal associations."""
+    # Verify case ownership
+    await _get_user_case(db, case_id, current_user.id)
+
+    # Get location
+    stmt = select(Location).where(
+        Location.case_id == case_id, Location.id == location_id
+    )
+    location = (await db.execute(stmt)).scalar_one_or_none()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+
+    # Extract events and temporal periods from temporal_associations JSONB
+    events = []
+    temporal_period = None
+    if location.temporal_associations:
+        for item in location.temporal_associations:
+            if item.get("type") == "event":
+                events.append(
+                    {
+                        "title": item.get("title"),
+                        "description": item.get("description"),
+                        "timestamp": item.get("timestamp"),
+                        "layer": item.get("layer"),
+                        "confidence": item.get("confidence"),
+                    }
+                )
+            elif item.get("type") == "period":
+                temporal_period = {
+                    "start": item.get("start"),
+                    "end": item.get("end"),
+                }
+
+    return {
+        "id": str(location.id),
+        "name": location.name,
+        "coordinates": location.coordinates,
+        "location_type": location.location_type,
+        "events": events,
+        "temporal_period": temporal_period,
+        "source_entity_ids": location.source_entity_ids or [],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+
+
+@router.get("/paths")
+async def get_paths(
+    case_id: UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get movement paths for visualization.
+
+    Note: For Phase 8.1, paths are stored in GeospatialOutput but not persisted.
+    Phase 8.2 may add dedicated paths table.
+    """
+    # Verify case ownership
+    await _get_user_case(db, case_id, current_user.id)
+
+    # For v1, return empty array (paths not persisted to DB yet)
+    # Phase 8.2 can add proper path persistence and retrieval
+    return {"paths": []}
+
+
+# ---------------------------------------------------------------------------
+# Delete
+# ---------------------------------------------------------------------------
+
+
+@router.delete("/geospatial")
+async def delete_geospatial_data(
+    case_id: UUID,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Clear geospatial data for regeneration."""
+    # Verify case ownership
+    await _get_user_case(db, case_id, current_user.id)
+
+    # Count before delete
+    count_stmt = select(func.count(Location.id)).where(Location.case_id == case_id)
+    location_count = (await db.execute(count_stmt)).scalar() or 0
+
+    # Delete all locations for this case
+    delete_stmt = delete(Location).where(Location.case_id == case_id)
+    await db.execute(delete_stmt)
+    await db.commit()
+
+    return {"deleted": True, "location_count": location_count}

@@ -34,7 +34,7 @@
 | 7.2 | Knowledge Graph Frontend (D3.js Enhancement) | Improve D3.js graph with Epstein-inspired layout, physics, sidebars, filtering, document excerpts | REQ-VIS-003 | ✅ COMPLETE |
 | 7.3 | Knowledge Graph Frontend (vis-network) — OPTIONAL | Premium vis-network graph visualization (preserved for experimentation) | REQ-VIS-003 (alternative) | ⏳ DEFERRED |
 | 8 | Synthesis Agent & Intelligence Layer | Cross-referencing, hypotheses, contradictions, gaps, timeline, case summary/verdict | REQ-AGENT-008, REQ-HYPO-*, REQ-WOW-*, REQ-VIS-004/005/006, REQ-TASK-001/002 | ✅ COMPLETE |
-| 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ⏳ NOT_STARTED |
+| 8.1 | Geospatial Agent & Map View | Location intelligence, geocoding, movement patterns, Earth Engine | REQ-GEO-* | ⏳ PLANNED |
 | 9 | Chat Interface & Research | Multi-source tool-based Q&A, research/discovery, context caching | REQ-CHAT-*, REQ-RESEARCH-*, REQ-HYPO-007/008 | 🟡 FRONTEND_DONE |
 | 10 | Source Panel & Agent Flow Polish | Source viewers, citation navigation, task panel, narrative generation | REQ-SOURCE-*, REQ-VIS-*, REQ-TASK-003-007 | 🟡 FRONTEND_DONE |
 | 11 | Corrections & Refinement | Error flagging, Verification, Regeneration | REQ-CORR-* | ⏳ NOT_STARTED |
@@ -1079,16 +1079,16 @@ Post-completion fixes:
 
 **Depends on:** Phase 8 (Synthesis data: hypotheses, contradictions, gaps, timeline)
 
-**Status:** ⏳ NOT_STARTED
+**Status:** ⏳ PLANNED
 
-**Plans:** TBD (4-5 plans estimated)
+**Plans:** 5 plans in 5 waves
 
 Plans:
-- [ ] 08.1-01-PLAN.md — Geospatial Agent implementation + geocoding service
-- [ ] 08.1-02-PLAN.md — Locations API endpoints (GET/POST) + SSE events
-- [ ] 08.1-03-PLAN.md — Frontend integration: trigger button, data fetching, real data replacement
-- [ ] 08.1-04-PLAN.md — Movement pattern detection and path visualization
-- [ ] 08.1-05-PLAN.md — Location detail panel with events, citations, temporal analysis
+- [ ] 08.1-01-PLAN.md — Geocoding service (googlemaps library + caching)
+- [ ] 08.1-02-PLAN.md — Geospatial Agent (runner + prompt + schemas + pipeline integration)
+- [ ] 08.1-03-PLAN.md — Locations API (6 endpoints: generate, status, list, detail, paths, delete)
+- [ ] 08.1-04-PLAN.md — Frontend data hook + trigger UI (useGeospatialData + status banner + generate/refresh buttons)
+- [ ] 08.1-05-PLAN.md — Location detail panel enhancement (citations, temporal analysis, related entities)
 
 **Deliverables:**
 - Geospatial Agent implementation (LLM with tools):

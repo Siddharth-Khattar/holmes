@@ -41,6 +41,7 @@ function renderContent(descriptor: SidebarContentDescriptor): React.ReactNode {
     case "knowledge-graph-entity":
       return (
         <KnowledgeGraphEntityPanel
+          caseId={descriptor.props.caseId}
           entity={descriptor.props.entity}
           relationships={descriptor.props.relationships}
           allEntities={descriptor.props.allEntities}
@@ -51,6 +52,7 @@ function renderContent(descriptor: SidebarContentDescriptor): React.ReactNode {
     case "verdict-hypothesis":
       return (
         <HypothesisDetailPanel
+          caseId={descriptor.props.caseId}
           hypothesis={descriptor.props.hypothesis}
           onViewFinding={descriptor.props.onViewFinding}
         />
@@ -58,6 +60,7 @@ function renderContent(descriptor: SidebarContentDescriptor): React.ReactNode {
     case "verdict-contradiction":
       return (
         <ContradictionDetailPanel
+          caseId={descriptor.props.caseId}
           contradiction={descriptor.props.contradiction}
           onViewFinding={descriptor.props.onViewFinding}
         />

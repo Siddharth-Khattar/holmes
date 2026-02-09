@@ -141,6 +141,7 @@ export function KnowledgeGraphCanvas({
       setContent({
         type: "knowledge-graph-entity",
         props: {
+          caseId,
           entityId: selectedEntity.id,
           entity: selectedEntity,
           relationships: selectedEntityRelationships,

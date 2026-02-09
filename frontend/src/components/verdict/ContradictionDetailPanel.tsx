@@ -7,6 +7,7 @@ import { clsx } from "clsx";
 import { AlertTriangle, FileText, Quote } from "lucide-react";
 
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
+import { useFindingResolver } from "@/hooks/useFindingResolver";
 import type { ContradictionResponse } from "@/types/synthesis";
 
 // ---------------------------------------------------------------------------
@@ -14,6 +15,7 @@ import type { ContradictionResponse } from "@/types/synthesis";
 // ---------------------------------------------------------------------------
 
 interface ContradictionDetailPanelProps {
+  caseId: string;
   contradiction: ContradictionResponse;
   onViewFinding?: (findingId: string) => void;
 }
@@ -54,6 +56,7 @@ interface SourceExcerptProps {
   label: string;
   source: Record<string, unknown> | null;
   accentColor: string;
+  resolvedFileName?: string | null;
   onViewFinding?: (findingId: string) => void;
 }
 
@@ -61,6 +64,7 @@ function SourceExcerpt({
   label,
   source,
   accentColor,
+  resolvedFileName,
   onViewFinding,
 }: SourceExcerptProps) {
   if (!source) return null;
@@ -101,9 +105,11 @@ function SourceExcerpt({
           {label}
         </span>
         {findingId && (
-          <span className="ml-auto flex items-center gap-1 text-[10px] text-stone/50 font-mono">
+          <span className="ml-auto flex items-center gap-1 text-[10px] text-stone/50">
             <FileText size={10} className="shrink-0" />
-            {findingId.slice(0, 8)}
+            <span className="truncate max-w-[120px]">
+              {resolvedFileName ?? findingId.slice(0, 8)}
+            </span>
             {isClickable && (
               <span className="hidden group-hover:inline text-[10px] text-stone/70 ml-1">
                 View source
@@ -126,11 +132,25 @@ function SourceExcerpt({
 // ---------------------------------------------------------------------------
 
 export function ContradictionDetailPanel({
+  caseId,
   contradiction,
   onViewFinding,
 }: ContradictionDetailPanelProps) {
   const severityStyle =
     SEVERITY_STYLE[contradiction.severity] ?? SEVERITY_STYLE.minor;
+  const { getFinding } = useFindingResolver(caseId);
+
+  // Resolve file names for source references
+  const sourceAFindingId =
+    typeof contradiction.source_a?.finding_id === "string"
+      ? contradiction.source_a.finding_id
+      : null;
+  const sourceBFindingId =
+    typeof contradiction.source_b?.finding_id === "string"
+      ? contradiction.source_b.finding_id
+      : null;
+  const resolvedA = sourceAFindingId ? getFinding(sourceAFindingId) : null;
+  const resolvedB = sourceBFindingId ? getFinding(sourceBFindingId) : null;
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
@@ -232,12 +252,14 @@ export function ContradictionDetailPanel({
                 label="Source for Claim A"
                 source={contradiction.source_a}
                 accentColor={severityStyle.color}
+                resolvedFileName={resolvedA?.fileName}
                 onViewFinding={onViewFinding}
               />
               <SourceExcerpt
                 label="Source for Claim B"
                 source={contradiction.source_b}
                 accentColor={severityStyle.color}
+                resolvedFileName={resolvedB?.fileName}
                 onViewFinding={onViewFinding}
               />
             </div>

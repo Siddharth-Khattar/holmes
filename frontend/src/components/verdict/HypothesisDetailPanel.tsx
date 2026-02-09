@@ -7,16 +7,19 @@ import { clsx } from "clsx";
 import { FileText, Shield, AlertTriangle, Minus } from "lucide-react";
 
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
+import { useFindingResolver } from "@/hooks/useFindingResolver";
 import type {
   HypothesisResponse,
   SynthesisEvidenceItem,
 } from "@/types/synthesis";
+import type { ResolvedFinding } from "@/hooks/useFindingResolver";
 
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
 interface HypothesisDetailPanelProps {
+  caseId: string;
   hypothesis: HypothesisResponse;
   onViewFinding?: (findingId: string) => void;
 }
@@ -85,9 +88,11 @@ const ROLE_CONFIG: Record<
 
 function EvidenceRow({
   item,
+  resolved,
   onViewFinding,
 }: {
   item: SynthesisEvidenceItem;
+  resolved: ResolvedFinding | null;
   onViewFinding?: (findingId: string) => void;
 }) {
   const config = ROLE_CONFIG[item.role] ?? ROLE_CONFIG.neutral;
@@ -122,9 +127,11 @@ function EvidenceRow({
           {config.label}
         </span>
         {item.finding_id && (
-          <span className="ml-auto flex items-center gap-1 text-[10px] text-stone/50 font-mono">
+          <span className="ml-auto flex items-center gap-1 text-[10px] text-stone/50">
             <FileText size={10} className="shrink-0" />
-            {item.finding_id.slice(0, 8)}
+            <span className="truncate max-w-[120px]">
+              {resolved?.fileName ?? item.finding_id.slice(0, 8)}
+            </span>
             {isClickable && (
               <span className="hidden group-hover:inline text-[10px] text-stone/70 ml-1">
                 View source
@@ -143,11 +150,13 @@ function EvidenceRow({
 // ---------------------------------------------------------------------------
 
 export function HypothesisDetailPanel({
+  caseId,
   hypothesis,
   onViewFinding,
 }: HypothesisDetailPanelProps) {
   const confidenceColor = getConfidenceColor(hypothesis.confidence);
   const statusStyle = STATUS_STYLE[hypothesis.status] ?? STATUS_STYLE.PENDING;
+  const { getFinding } = useFindingResolver(caseId);
 
   const supportingEvidence = hypothesis.evidence.filter(
     (e) => e.role === "supporting",
@@ -257,6 +266,9 @@ export function HypothesisDetailPanel({
                 <EvidenceRow
                   key={`supporting-${idx}`}
                   item={item}
+                  resolved={
+                    item.finding_id ? getFinding(item.finding_id) : null
+                  }
                   onViewFinding={onViewFinding}
                 />
               ))}
@@ -278,6 +290,9 @@ export function HypothesisDetailPanel({
                 <EvidenceRow
                   key={`contradicting-${idx}`}
                   item={item}
+                  resolved={
+                    item.finding_id ? getFinding(item.finding_id) : null
+                  }
                   onViewFinding={onViewFinding}
                 />
               ))}
@@ -298,6 +313,9 @@ export function HypothesisDetailPanel({
                 <EvidenceRow
                   key={`neutral-${idx}`}
                   item={item}
+                  resolved={
+                    item.finding_id ? getFinding(item.finding_id) : null
+                  }
                   onViewFinding={onViewFinding}
                 />
               ))}

@@ -36,6 +36,7 @@ export interface KnowledgeGraphEvidenceContent {
 export interface KnowledgeGraphEntityContent {
   type: "knowledge-graph-entity";
   props: {
+    caseId: string;
     entityId: string;
     entity: EntityResponse;
     relationships: RelationshipResponse[];
@@ -49,6 +50,7 @@ export interface KnowledgeGraphEntityContent {
 export interface VerdictHypothesisContent {
   type: "verdict-hypothesis";
   props: {
+    caseId: string;
     hypothesis: HypothesisResponse;
     onViewFinding?: (findingId: string) => void;
   };
@@ -58,6 +60,7 @@ export interface VerdictHypothesisContent {
 export interface VerdictContradictionContent {
   type: "verdict-contradiction";
   props: {
+    caseId: string;
     contradiction: ContradictionResponse;
     onViewFinding?: (findingId: string) => void;
   };

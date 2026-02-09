@@ -123,20 +123,20 @@ export function VerdictView({
     (hypothesis: HypothesisResponse) => {
       onOpenDetail?.({
         type: "verdict-hypothesis",
-        props: { hypothesis, onViewFinding },
+        props: { caseId, hypothesis, onViewFinding },
       });
     },
-    [onOpenDetail, onViewFinding],
+    [onOpenDetail, onViewFinding, caseId],
   );
 
   const handleContradictionClick = useCallback(
     (contradiction: ContradictionResponse) => {
       onOpenDetail?.({
         type: "verdict-contradiction",
-        props: { contradiction, onViewFinding },
+        props: { caseId, contradiction, onViewFinding },
       });
     },
-    [onOpenDetail, onViewFinding],
+    [onOpenDetail, onViewFinding, caseId],
   );
 
   const handleGapClick = useCallback(

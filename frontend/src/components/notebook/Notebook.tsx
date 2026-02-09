@@ -12,7 +12,6 @@ import {
     Loader2,
     AlertCircle,
     ChevronLeft,
-    ChevronRight,
     Square,
     Play,
     Pause,
@@ -42,7 +41,9 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
     const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
-    const [audioLevels, setAudioLevels] = useState<number[]>(new Array(20).fill(5));
+    const [audioLevels, setAudioLevels] = useState<number[]>(
+        new Array(20).fill(5),
+    );
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
@@ -122,7 +123,9 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
             analyserRef.current = analyser;
 
             const mediaRecorder = new MediaRecorder(stream, {
-                mimeType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4",
+                mimeType: MediaRecorder.isTypeSupported("audio/webm")
+                    ? "audio/webm"
+                    : "audio/mp4",
             });
 
             audioChunksRef.current = [];
@@ -134,7 +137,9 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
             };
 
             mediaRecorder.onstop = () => {
-                const blob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType });
+                const blob = new Blob(audioChunksRef.current, {
+                    type: mediaRecorder.mimeType,
+                });
                 setAudioBlob(blob);
                 setAudioUrl(URL.createObjectURL(blob));
                 stream.getTracks().forEach((track) => track.stop());
@@ -225,28 +230,28 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
         async (noteId: string) => {
             await exportAsEvidence(noteId);
         },
-        [exportAsEvidence]
+        [exportAsEvidence],
     );
 
     const handleDelete = useCallback(
         async (noteId: string) => {
             await remove(noteId);
         },
-        [remove]
+        [remove],
     );
 
     const handleGenerateMetadata = useCallback(
         async (noteId: string) => {
             await generateMeta(noteId);
         },
-        [generateMeta]
+        [generateMeta],
     );
 
     const handleGetAudioUrl = useCallback(
         async (noteId: string) => {
             return await getAudio(noteId);
         },
-        [getAudio]
+        [getAudio],
     );
 
     const formatDuration = (seconds: number) => {
@@ -311,7 +316,10 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
                                 href={`/cases/${caseId}`}
                                 className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-muted"
                             >
-                                <ChevronLeft className="w-5 h-5" style={{ color: "var(--muted-foreground)" }} />
+                                <ChevronLeft
+                                    className="w-5 h-5"
+                                    style={{ color: "var(--muted-foreground)" }}
+                                />
                             </Link>
                             <div>
                                 <h1
@@ -363,7 +371,9 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center py-12">
                             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                            <p className="mt-3 text-sm text-muted-foreground">Loading notes...</p>
+                            <p className="mt-3 text-sm text-muted-foreground">
+                                Loading notes...
+                            </p>
                         </div>
                     ) : notes.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -381,7 +391,8 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
                                 className="text-sm max-w-[300px] mb-6"
                                 style={{ color: "var(--muted-foreground)" }}
                             >
-                                Start capturing your thoughts and recordings for this investigation.
+                                Start capturing your thoughts and recordings for this
+                                investigation.
                             </p>
                             <button
                                 onClick={() => setSidebarMode("select")}
@@ -420,7 +431,7 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
                     "fixed right-0 top-1/2 -translate-y-1/2 z-50",
                     "flex items-center justify-center w-10 h-24 rounded-l-xl",
                     "transition-all shadow-lg",
-                    sidebarMode !== "closed" && "opacity-0 pointer-events-none"
+                    sidebarMode !== "closed" && "opacity-0 pointer-events-none",
                 )}
                 style={{
                     backgroundColor: "var(--primary)",
@@ -455,7 +466,10 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
                                         onClick={handleBackToSelect}
                                         className="p-2 rounded-lg hover:bg-muted transition-colors"
                                     >
-                                        <ChevronLeft className="w-5 h-5" style={{ color: "var(--muted-foreground)" }} />
+                                        <ChevronLeft
+                                            className="w-5 h-5"
+                                            style={{ color: "var(--muted-foreground)" }}
+                                        />
                                     </button>
                                 )}
                                 <h2
@@ -471,7 +485,10 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
                                 onClick={toggleSidebar}
                                 className="p-2 rounded-lg hover:bg-muted transition-colors"
                             >
-                                <X className="w-5 h-5" style={{ color: "var(--muted-foreground)" }} />
+                                <X
+                                    className="w-5 h-5"
+                                    style={{ color: "var(--muted-foreground)" }}
+                                />
                             </button>
                         </div>
 
@@ -501,9 +518,7 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
                                             style={{ borderColor: "var(--border)" }}
                                         >
                                             <div className="flex flex-col items-center gap-4">
-                                                <div
-                                                    className="w-20 h-20 rounded-full flex items-center justify-center bg-purple-500/10 group-hover:bg-purple-500/20 transition-colors"
-                                                >
+                                                <div className="w-20 h-20 rounded-full flex items-center justify-center bg-purple-500/10 group-hover:bg-purple-500/20 transition-colors">
                                                     <Mic className="w-10 h-10 text-purple-500" />
                                                 </div>
                                                 <div className="text-center">
@@ -530,9 +545,7 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
                                             style={{ borderColor: "var(--border)" }}
                                         >
                                             <div className="flex flex-col items-center gap-4">
-                                                <div
-                                                    className="w-20 h-20 rounded-full flex items-center justify-center bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors"
-                                                >
+                                                <div className="w-20 h-20 rounded-full flex items-center justify-center bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
                                                     <PenLine className="w-10 h-10 text-blue-500" />
                                                 </div>
                                                 <div className="text-center">
@@ -601,7 +614,7 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
                                                         "transition-all shadow-lg",
                                                         isRecording
                                                             ? "bg-red-500 hover:bg-red-600"
-                                                            : "bg-purple-500 hover:bg-purple-600"
+                                                            : "bg-purple-500 hover:bg-purple-600",
                                                     )}
                                                 >
                                                     {isRecording ? (
@@ -632,7 +645,7 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
                                                         className={clsx(
                                                             "w-20 h-20 rounded-full flex items-center justify-center",
                                                             "bg-green-500 hover:bg-green-600 transition-colors shadow-lg",
-                                                            isSaving && "opacity-50"
+                                                            isSaving && "opacity-50",
                                                         )}
                                                     >
                                                         {isSaving ? (
@@ -695,7 +708,7 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
                                             className={clsx(
                                                 "flex-1 min-h-[400px] w-full p-4 rounded-xl resize-none",
                                                 "text-base leading-relaxed",
-                                                "focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                "focus:outline-none focus:ring-2 focus:ring-primary/20",
                                             )}
                                             style={{
                                                 backgroundColor: "var(--background)",
@@ -710,7 +723,7 @@ export function Notebook({ caseId, caseName }: NotebookProps) {
                                             className={clsx(
                                                 "mt-4 w-full py-4 rounded-xl font-medium transition-all",
                                                 "flex items-center justify-center gap-2",
-                                                "disabled:opacity-50 disabled:cursor-not-allowed"
+                                                "disabled:opacity-50 disabled:cursor-not-allowed",
                                             )}
                                             style={{
                                                 backgroundColor: "var(--primary)",

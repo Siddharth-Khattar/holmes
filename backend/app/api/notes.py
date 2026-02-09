@@ -4,11 +4,19 @@
 import hashlib
 import io
 import logging
-from datetime import timedelta
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +24,8 @@ from app.api.auth import CurrentUser
 from app.database import get_db
 from app.models.case import Case
 from app.models.file import CaseFile, FileCategory, FileStatus
-from app.models.note import CaseNote, NoteType as ModelNoteType
+from app.models.note import CaseNote
+from app.models.note import NoteType as ModelNoteType
 from app.schemas.notes import (
     AudioDownloadResponse,
     GenerateMetadataResponse,
@@ -32,7 +41,6 @@ from app.services.file_service import (
     CHUNK_SIZE,
     MAX_FILE_SIZE,
     generate_signed_url,
-    upload_to_gcs,
 )
 from app.storage import get_bucket
 
@@ -41,15 +49,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/cases/{case_id}/notes", tags=["notes"])
 
 # Allowed audio MIME types
-ALLOWED_AUDIO_TYPES = frozenset([
-    "audio/mpeg",
-    "audio/mp3",
-    "audio/wav",
-    "audio/webm",
-    "audio/x-m4a",
-    "audio/mp4",
-    "audio/ogg",
-])
+ALLOWED_AUDIO_TYPES = frozenset(
+    [
+        "audio/mpeg",
+        "audio/mp3",
+        "audio/wav",
+        "audio/webm",
+        "audio/x-m4a",
+        "audio/mp4",
+        "audio/ogg",
+    ]
+)
 
 
 async def get_user_case(
@@ -146,9 +156,11 @@ async def create_audio_note(
     content_type = file.content_type or "application/octet-stream"
     # Handle mime types with parameters (e.g. audio/webm;codecs=opus)
     base_content_type = content_type.split(";")[0].strip()
-    
+
     if base_content_type not in ALLOWED_AUDIO_TYPES:
-        logger.warning(f"Rejected audio upload with content_type: {content_type} (base: {base_content_type})")
+        logger.warning(
+            f"Rejected audio upload with content_type: {content_type} (base: {base_content_type})"
+        )
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported audio format: {content_type}. Allowed: {', '.join(ALLOWED_AUDIO_TYPES)}",
@@ -192,7 +204,9 @@ async def create_audio_note(
         file_content = b"".join(chunks)
         blob.upload_from_string(file_content, content_type=content_type)
 
-        logger.info("Uploaded audio to GCS: path=%s, size=%d", storage_path, total_bytes)
+        logger.info(
+            "Uploaded audio to GCS: path=%s, size=%d", storage_path, total_bytes
+        )
 
     except HTTPException:
         raise
@@ -204,7 +218,7 @@ async def create_audio_note(
         except Exception:
             pass
         logger.error("Audio upload failed: %s", e)
-        raise HTTPException(status_code=500, detail="Failed to upload audio")
+        raise HTTPException(status_code=500, detail="Failed to upload audio") from e
 
     # Create the note record
     note = CaseNote(
@@ -244,7 +258,9 @@ async def list_notes(
 
     # Build query
     query = select(CaseNote).where(CaseNote.case_id == case_id)
-    count_query = select(func.count()).select_from(CaseNote).where(CaseNote.case_id == case_id)
+    count_query = (
+        select(func.count()).select_from(CaseNote).where(CaseNote.case_id == case_id)
+    )
 
     if note_type:
         query = query.where(CaseNote.type == note_type)
@@ -360,7 +376,9 @@ async def get_audio_url(
     filename = f"note_{note_id}.mp3"
     if note.title:
         # Sanitize title for filename
-        safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in note.title)
+        safe_title = "".join(
+            c if c.isalnum() or c in " -_" else "_" for c in note.title
+        )
         filename = f"{safe_title[:50]}.mp3"
 
     url = generate_signed_url(
@@ -389,11 +407,13 @@ async def generate_note_metadata(
     For text notes, uses the content directly.
     For audio notes, transcribes the audio using Gemini STT and generates title from transcription.
     """
-    import os
     import json
+    import os
     from datetime import datetime
+
     from google import genai
     from google.genai import types
+
     from app.config import settings
 
     note = await get_user_note(db, case_id, note_id, current_user.id)
@@ -411,25 +431,27 @@ async def generate_note_metadata(
     if note.type == ModelNoteType.AUDIO:
         if not note.audio_storage_path:
             raise HTTPException(status_code=400, detail="Audio note has no audio file")
-        
+
         try:
             # Download audio from GCS
             bucket = get_bucket()
             blob = bucket.blob(note.audio_storage_path)
-            
+
             if not blob.exists():
-                raise HTTPException(status_code=404, detail="Audio file not found in storage")
-            
+                raise HTTPException(
+                    status_code=404, detail="Audio file not found in storage"
+                )
+
             audio_data = blob.download_as_bytes()
             logger.info("Downloaded audio for transcription: %d bytes", len(audio_data))
-            
+
             # Get MIME type
             mime_type = note.audio_mime_type or "audio/mpeg"
-            
+
             # Transcribe using Gemini
             transcription_prompt = """Please transcribe this audio recording accurately. 
 Return ONLY the transcribed text, nothing else. If the audio is empty or inaudible, return "[No speech detected]"."""
-            
+
             contents = [
                 types.Content(
                     role="user",
@@ -442,7 +464,7 @@ Return ONLY the transcribed text, nothing else. If the audio is empty or inaudib
                     ],
                 )
             ]
-            
+
             # Stream the response
             full_transcript = ""
             for chunk in client.models.generate_content_stream(
@@ -451,19 +473,24 @@ Return ONLY the transcribed text, nothing else. If the audio is empty or inaudib
             ):
                 if chunk.text:
                     full_transcript += chunk.text
-            
+
             full_transcript = full_transcript.strip()
-            logger.info("Transcribed audio: %s", full_transcript[:100] + "..." if len(full_transcript) > 100 else full_transcript)
-            
+            logger.info(
+                "Transcribed audio: %s",
+                full_transcript[:100] + "..."
+                if len(full_transcript) > 100
+                else full_transcript,
+            )
+
             # If transcription is empty or failed, use timestamp-based title
             if not full_transcript or full_transcript == "[No speech detected]":
                 created = note.created_at
                 if isinstance(created, str):
                     created = datetime.fromisoformat(created.replace("Z", "+00:00"))
-                
+
                 date_str = created.strftime("%B %d, %Y")
                 time_str = created.strftime("%I:%M %p")
-                
+
                 if note.audio_duration_seconds:
                     mins = note.audio_duration_seconds // 60
                     secs = note.audio_duration_seconds % 60
@@ -475,10 +502,10 @@ Return ONLY the transcribed text, nothing else. If the audio is empty or inaudib
             else:
                 # Save transcription to note content
                 note.content = full_transcript
-                
+
                 # Generate title from transcript - use the transcript as content
                 content = full_transcript
-                
+
                 # Now generate title/subtitle from the transcription
                 title_prompt = f"""You are helping an investigator organize their voice notes. This is a TRANSCRIPTION of an audio recording.
 
@@ -498,7 +525,7 @@ Respond ONLY with valid JSON in this exact format:
                     model=settings.gemini_flash_model,
                     contents=title_prompt,
                 )
-                
+
                 # Parse response
                 response_text = response.text.strip()
                 # Remove markdown code blocks if present
@@ -513,7 +540,7 @@ Respond ONLY with valid JSON in this exact format:
                         if in_block:
                             json_lines.append(line)
                     response_text = "\n".join(json_lines).strip()
-                
+
                 try:
                     metadata = json.loads(response_text)
                     title = metadata.get("title", "Voice Note")[:255]
@@ -522,7 +549,7 @@ Respond ONLY with valid JSON in this exact format:
                     # Fallback - use first part of transcript
                     title = (content[:47] + "...") if len(content) > 50 else content
                     subtitle = ""
-        
+
         except HTTPException:
             raise
         except Exception as e:
@@ -531,10 +558,10 @@ Respond ONLY with valid JSON in this exact format:
             created = note.created_at
             if isinstance(created, str):
                 created = datetime.fromisoformat(created.replace("Z", "+00:00"))
-            
+
             date_str = created.strftime("%B %d, %Y")
             time_str = created.strftime("%I:%M %p")
-            
+
             if note.audio_duration_seconds:
                 mins = note.audio_duration_seconds // 60
                 secs = note.audio_duration_seconds % 60
@@ -543,13 +570,15 @@ Respond ONLY with valid JSON in this exact format:
             else:
                 title = "Voice Note"
             subtitle = f"Recording from {date_str}"
-        
+
         # Update note with generated metadata
         note.title = title
         note.subtitle = subtitle
         await db.commit()
-        
-        logger.info("Generated metadata for audio note: id=%s, title=%s", note_id, title)
+
+        logger.info(
+            "Generated metadata for audio note: id=%s, title=%s", note_id, title
+        )
         return {
             "note_id": note_id,
             "title": title,
@@ -560,7 +589,7 @@ Respond ONLY with valid JSON in this exact format:
     # For text notes, use AI to generate title
     if not note.content:
         raise HTTPException(status_code=400, detail="Note has no content to analyze")
-    
+
     content = note.content
 
     # Generate metadata using Gemini
@@ -661,9 +690,9 @@ async def export_note_as_evidence(
 
         try:
             from reportlab.lib.pagesizes import letter
-            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
             from reportlab.lib.units import inch
+            from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
             # Create PDF in memory
             pdf_buffer = io.BytesIO()
@@ -672,8 +701,8 @@ async def export_note_as_evidence(
 
             # Add custom style for body text
             body_style = ParagraphStyle(
-                'BodyText',
-                parent=styles['Normal'],
+                "BodyText",
+                parent=styles["Normal"],
                 fontSize=11,
                 leading=14,
                 spaceAfter=12,
@@ -683,19 +712,19 @@ async def export_note_as_evidence(
 
             # Add title if available
             if note.title:
-                title_style = styles['Heading1']
+                title_style = styles["Heading1"]
                 story.append(Paragraph(note.title, title_style))
                 story.append(Spacer(1, 0.2 * inch))
 
             # Add subtitle if available
             if note.subtitle:
-                subtitle_style = styles['Italic']
+                subtitle_style = styles["Italic"]
                 story.append(Paragraph(note.subtitle, subtitle_style))
                 story.append(Spacer(1, 0.3 * inch))
 
             # Add content
             # Handle line breaks
-            content_paragraphs = note.content.split('\n')
+            content_paragraphs = note.content.split("\n")
             for para in content_paragraphs:
                 if para.strip():
                     story.append(Paragraph(para, body_style))
@@ -706,10 +735,10 @@ async def export_note_as_evidence(
             story.append(Spacer(1, 0.5 * inch))
             footer_text = f"Exported from Sherlock's Diary on {note.created_at.strftime('%Y-%m-%d %H:%M')}"
             footer_style = ParagraphStyle(
-                'Footer',
-                parent=styles['Normal'],
+                "Footer",
+                parent=styles["Normal"],
                 fontSize=8,
-                textColor='gray',
+                textColor="gray",
             )
             story.append(Paragraph(footer_text, footer_style))
 
@@ -720,7 +749,9 @@ async def export_note_as_evidence(
             # Filename for the PDF
             filename = f"note_{note_id}.pdf"
             if note.title:
-                safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in note.title)
+                safe_title = "".join(
+                    c if c.isalnum() or c in " -_" else "_" for c in note.title
+                )
                 filename = f"{safe_title[:50]}.pdf"
 
             # Upload to GCS
@@ -738,10 +769,10 @@ async def export_note_as_evidence(
             raise HTTPException(
                 status_code=500,
                 detail="PDF generation not available. Please install reportlab.",
-            )
+            ) from None
         except Exception as e:
             logger.error("Failed to create PDF: %s", e)
-            raise HTTPException(status_code=500, detail="Failed to create PDF")
+            raise HTTPException(status_code=500, detail="Failed to create PDF") from e
 
     else:
         # Audio note - copy the file to evidence storage
@@ -753,7 +784,9 @@ async def export_note_as_evidence(
             source_blob = bucket.blob(note.audio_storage_path)
 
             if not source_blob.exists():
-                raise HTTPException(status_code=500, detail="Audio file not found in storage")
+                raise HTTPException(
+                    status_code=500, detail="Audio file not found in storage"
+                )
 
             # Determine extension
             ext = "mp3"
@@ -770,12 +803,14 @@ async def export_note_as_evidence(
 
             filename = f"note_{note_id}.{ext}"
             if note.title:
-                safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in note.title)
+                safe_title = "".join(
+                    c if c.isalnum() or c in " -_" else "_" for c in note.title
+                )
                 filename = f"{safe_title[:50]}.{ext}"
 
             # Copy to evidence location
             storage_path = f"cases/{case_id}/files/{file_id}.{ext}"
-            dest_blob = bucket.blob(storage_path)
+            # dest_blob = bucket.blob(storage_path)
             bucket.copy_blob(source_blob, bucket, storage_path)
 
             # Get file metadata
@@ -786,7 +821,7 @@ async def export_note_as_evidence(
 
         except Exception as e:
             logger.error("Failed to copy audio: %s", e)
-            raise HTTPException(status_code=500, detail="Failed to export audio")
+            raise HTTPException(status_code=500, detail="Failed to export audio") from e
 
     # Create file record in evidence library
     case_file = CaseFile(
@@ -796,10 +831,13 @@ async def export_note_as_evidence(
         storage_path=storage_path,
         mime_type=mime_type,
         size_bytes=size_bytes,
-        category=FileCategory.DOCUMENT if note.type == ModelNoteType.TEXT else FileCategory.AUDIO,
+        category=FileCategory.DOCUMENT
+        if note.type == ModelNoteType.TEXT
+        else FileCategory.AUDIO,
         status=FileStatus.UPLOADED,
         content_hash=content_hash,
-        description=description or f"Exported from Sherlock's Diary: {note.title or 'Untitled'}",
+        description=description
+        or f"Exported from Sherlock's Diary: {note.title or 'Untitled'}",
     )
     db.add(case_file)
 

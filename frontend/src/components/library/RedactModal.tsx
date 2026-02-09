@@ -433,7 +433,7 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={handleClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
           />
 
           {/* Modal */}
@@ -444,7 +444,7 @@ export function RedactModal({ isOpen, onClose, file }: RedactModalProps) {
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
           >
             <div
-              className="bg-background border border-warm-gray/15 dark:border-stone/15 rounded-xl shadow-2xl overflow-hidden"
+              className="bg-(--card) border border-(--border) rounded-xl shadow-2xl overflow-hidden"
               style={{
                 width: "min(1400px, 90vw)",
                 height: "min(800px, 85vh)",

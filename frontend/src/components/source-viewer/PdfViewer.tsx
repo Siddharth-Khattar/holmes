@@ -46,7 +46,6 @@ export function PdfViewer({
           : undefined,
       }),
     // Re-create search plugin only when keyword changes to trigger fresh highlight
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [highlightKeyword],
   );
 

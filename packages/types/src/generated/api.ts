@@ -348,6 +348,153 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cases/{case_id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Notes
+         * @description List all notes for a case.
+         *
+         *     Notes are ordered by creation date (newest first).
+         */
+        get: operations["list_notes_api_cases__case_id__notes_get"];
+        put?: never;
+        /**
+         * Create Note
+         * @description Create a new text note.
+         *
+         *     For audio notes, use the audio upload endpoint first, then create the note
+         *     with the returned storage path.
+         */
+        post: operations["create_note_api_cases__case_id__notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/notes/audio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Audio Note
+         * @description Upload an audio recording and create an audio note.
+         *
+         *     The audio file is stored in GCS and a note record is created.
+         */
+        post: operations["create_audio_note_api_cases__case_id__notes_audio_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/notes/{note_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Note
+         * @description Get a single note by ID.
+         */
+        get: operations["get_note_api_cases__case_id__notes__note_id__get"];
+        /**
+         * Update Note
+         * @description Update a note's content or metadata.
+         */
+        put: operations["update_note_api_cases__case_id__notes__note_id__put"];
+        post?: never;
+        /**
+         * Delete Note
+         * @description Delete a note and its associated audio file if applicable.
+         */
+        delete: operations["delete_note_api_cases__case_id__notes__note_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/notes/{note_id}/audio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Audio Url
+         * @description Get a signed URL for streaming/downloading the audio file.
+         */
+        get: operations["get_audio_url_api_cases__case_id__notes__note_id__audio_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/notes/{note_id}/generate-metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Note Metadata
+         * @description Generate AI-powered title and subtitle for a note using Gemini.
+         *
+         *     For text notes, uses the content directly.
+         *     For audio notes, transcribes the audio using Gemini STT and generates title from transcription.
+         */
+        post: operations["generate_note_metadata_api_cases__case_id__notes__note_id__generate_metadata_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cases/{case_id}/notes/{note_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Export Note As Evidence
+         * @description Export a note as evidence to the case's file library.
+         *
+         *     - Text notes are converted to PDF
+         *     - Audio notes are copied directly as MP3
+         *
+         *     The exported file appears in the Evidence Library like any other uploaded file.
+         */
+        post: operations["export_note_as_evidence_api_cases__case_id__notes__note_id__export_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cases/{case_id}/analyze": {
         parameters: {
             query?: never;
@@ -1331,6 +1478,16 @@ export interface components {
             } | null;
         };
         /**
+         * AudioDownloadResponse
+         * @description Schema for audio download URL response.
+         */
+        AudioDownloadResponse: {
+            /** Download Url */
+            download_url: string;
+            /** Expires In */
+            expires_in: number;
+        };
+        /**
          * BatchConfirmationResolveResponse
          * @description Response after resolving a batch confirmation.
          */
@@ -1377,6 +1534,16 @@ export interface components {
              * @description Optional reason
              */
             reason?: string | null;
+        };
+        /** Body_create_audio_note_api_cases__case_id__notes_audio_post */
+        Body_create_audio_note_api_cases__case_id__notes_audio_post: {
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
+            /** Duration Seconds */
+            duration_seconds?: number | null;
         };
         /** Body_redact_audio_direct_api_redact_audio_post */
         Body_redact_audio_direct_api_redact_audio_post: {
@@ -4306,6 +4473,311 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_notes_api_cases__case_id__notes_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                per_page?: number;
+                type?: components["schemas"]["NoteType"] | null;
+            };
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_note_api_cases__case_id__notes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_audio_note_api_cases__case_id__notes_audio_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_create_audio_note_api_cases__case_id__notes_audio_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_note_api_cases__case_id__notes__note_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_note_api_cases__case_id__notes__note_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NoteUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_note_api_cases__case_id__notes__note_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_audio_url_api_cases__case_id__notes__note_id__audio_get: {
+        parameters: {
+            query?: {
+                inline?: boolean;
+            };
+            header?: never;
+            path: {
+                case_id: string;
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AudioDownloadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_note_metadata_api_cases__case_id__notes__note_id__generate_metadata_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateMetadataResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_note_as_evidence_api_cases__case_id__notes__note_id__export_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+                note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["NoteExportRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoteExportResponse"];
                 };
             };
             /** @description Validation Error */

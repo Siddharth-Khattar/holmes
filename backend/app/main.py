@@ -20,6 +20,7 @@ from app.api import (
     findings,
     health,
     knowledge_graph,
+    notes,
     locations,
     redaction,
     sse,
@@ -178,6 +179,7 @@ app.include_router(sse.router, tags=["sse"])
 app.include_router(auth.router, tags=["auth"])
 app.include_router(cases.router, tags=["cases"])
 app.include_router(files.router, tags=["files"])
+app.include_router(notes.router, tags=["notes"])
 app.include_router(agents.router, tags=["agents"])
 app.include_router(confirmations.router, tags=["confirmations"])
 app.include_router(redaction.router, tags=["redaction"])

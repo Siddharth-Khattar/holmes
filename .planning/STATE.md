@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 8.1 of 12 (Geospatial Agent & Map View) — COMPLETE (5/5 plans)
-**Next Phase:** 9 (Chat Interface)
+**Current Phase:** 10 of 12 (Source Panel & Entity Resolution) — IN PROGRESS (1/? plans)
+**Next Phase:** Continue 10-02 (view-level integration)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -24,7 +24,7 @@
 | 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
 | 8.1 | Geospatial Agent & Map View | COMPLETE | 2026-02-09 | 2026-02-09 | 5 plans (5 commits): GeocodingService, GeospatialAgentRunner + pipeline Stage 9, 6 REST API endpoints, frontend API client + hook + trigger UI, enhanced detail panel with 4 sections |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
-| 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
+| 10 | Source Panel & Entity Resolution | IN_PROGRESS | 2026-02-09 | - | Plan 01 complete (2 commits): shared citation/entity resolution hooks + UI components |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
 | 12 | Demo Preparation | NOT_STARTED | - | - | |
 
@@ -35,6 +35,11 @@
 ## Current Context
 
 **What was just completed:**
+- **Phase 10 Plan 01 Complete** (2026-02-09): Shared Citation & Entity Resolution Foundation -- 2 tasks, 2 commits (6 min)
+  - Task 1: citation-utils.ts (parseLocator, categoryToViewerType, Citation/FindingCitation interfaces, formatLocatorDisplay) + useSourceNavigation hook (citation -> SourceViewerContent with signed URL caching, two-hop finding resolution, race condition prevention)
+  - Task 2: useEntityResolver hook (entity UUID -> name/type/color via cached KG graph) + CitationLink component (clickable file name + locator badge + excerpt) + EntityBadge component (color-coded dot + name + type label)
+  - All 5 files are shared utilities consumed by view-level integration in Plans 02-05
+
 - **Phase 8.1 Complete** (2026-02-09): Geospatial Agent & Map View — 5 plans, 15 commits, 15/15 verified
   - Plan 01: GeocodingService with Google Maps API integration (forward/reverse/batch geocoding + in-memory caching)
   - Plan 02: GeospatialAgentRunner (text-only input from 6 DB sources, Flash model, pipeline Stage 9, auto-geocoding)
@@ -585,6 +590,10 @@ All frontend features need these backend endpoints:
 | Geospatial detail loading | Upfront vs Lazy on-demand | Lazy on marker click | LocationResponse list lightweight (coordinates+counts); detail API heavy (full events/citations arrays); faster initial render |
 | Geospatial entity display | Resolve names vs Show IDs | Show UUIDs only | Entity name resolution requires additional API or preloading; deferred to Phase 10 with KG navigation |
 | Citation excerpt quotes | Literal vs HTML entities | &ldquo; / &rdquo; entities | React react/no-unescaped-entities lint rule rejects literal quotes in JSX text |
+| File lookup map pattern | useRef vs useMemo | useMemo derived from React Query data | React Compiler's react-hooks/refs rule forbids ref mutation during render; useMemo is the correct pattern for derived data |
+| Entity resolution caching | Dedicated endpoint vs Graph endpoint | Graph endpoint (fetchGraph) | All entities already returned by /graph; 5-min stale time cache; avoids new backend endpoint |
+| Unresolved entity fallback | Throw error vs Graceful degradation | Graceful fallback (Unknown Entity, type=other) | Missing entities should not crash UI; fallback allows partial resolution |
+| PDF highlight excerpt length | Full excerpt vs Truncated | Truncated to 100 chars | Shorter text matches more reliably in @react-pdf-viewer/search plugin |
 
 ---
 
@@ -597,9 +606,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8.1 COMPLETE (5/5 plans, 5 commits, 38 min total). Geospatial agent + frontend integration + detail panel complete.
+Stopped at: Phase 10 Plan 01 COMPLETE (2 tasks, 2 commits, 6 min). Shared citation/entity resolution foundation.
 Resume file: None
-Next action: Phase 9 (Chat Interface Backend)
+Next action: Phase 10 Plan 02 (view-level citation + entity wiring)
 
 ---
 

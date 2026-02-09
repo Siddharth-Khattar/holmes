@@ -154,6 +154,7 @@ export function KnowledgeGraphCanvas({
       clearContent();
     }
   }, [
+    caseId,
     selectedEntity,
     selectedEntityRelationships,
     entities,

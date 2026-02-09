@@ -62,9 +62,9 @@ def make_query_knowledge_graph_tool(
 
         Returns:
             Dict with 'entities' list (name, type, description, domain,
-            confidence, connections, aliases, source_finding_ids),
-            'relationships' list (source, target, type, label, evidence,
-            temporal_context), and counts.
+            confidence, connections, aliases, source_citations with file_id,
+            locator, excerpt), 'relationships' list (source, target, type,
+            label, evidence, temporal_context), and counts.
         """
         capped_limit = min(limit, 100)
         session_factory = _get_sessionmaker()
@@ -118,6 +118,34 @@ def make_query_knowledge_graph_tool(
                 for eid, ename in name_result.all():
                     entity_name_map[eid] = ename
 
+            # Two-hop resolution: source_finding_ids → CaseFinding.citations → file refs
+            all_finding_ids: list[UUID] = []
+            for e in entities:
+                if e.source_finding_ids:
+                    all_finding_ids.extend(
+                        UUID(str(fid)) for fid in e.source_finding_ids
+                    )
+
+            # Build a mapping from finding_id → list of file citations
+            finding_citations: dict[str, list[dict[str, str]]] = {}
+            if all_finding_ids:
+                cite_result = await db.execute(
+                    select(CaseFinding.id, CaseFinding.citations).where(
+                        CaseFinding.id.in_(all_finding_ids)
+                    )
+                )
+                for fid, cites in cite_result.all():
+                    if cites and isinstance(cites, list):
+                        finding_citations[str(fid)] = [
+                            {
+                                "file_id": c.get("file_id", ""),
+                                "locator": c.get("locator", ""),
+                                "excerpt": c.get("excerpt", ""),
+                            }
+                            for c in cites
+                            if isinstance(c, dict) and c.get("file_id")
+                        ]
+
         return {
             "entities": [
                 {
@@ -128,8 +156,10 @@ def make_query_knowledge_graph_tool(
                     "confidence": e.confidence,
                     "connections": e.degree,
                     "aliases": e.aliases or [],
-                    "source_finding_ids": [
-                        str(fid) for fid in (e.source_finding_ids or [])
+                    "source_citations": [
+                        cite
+                        for fid in (e.source_finding_ids or [])
+                        for cite in finding_citations.get(str(fid), [])
                     ],
                 }
                 for e in entities
@@ -445,6 +475,15 @@ def make_get_synthesis_tool(
                         ),
                         "event_type": e.event_type or "",
                         "layer": e.layer or "",
+                        "citations": [
+                            {
+                                "file_id": c.get("file_id", ""),
+                                "locator": c.get("locator", ""),
+                                "excerpt": c.get("excerpt", ""),
+                            }
+                            for c in (e.citations or [])
+                            if isinstance(c, dict) and c.get("file_id")
+                        ],
                     }
                     for e in events
                 ]
@@ -462,6 +501,15 @@ def make_get_synthesis_tool(
                         "name": loc.name,
                         "location_type": loc.location_type or "",
                         "coordinates": loc.coordinates or {},
+                        "citations": [
+                            {
+                                "file_id": c.get("file_id", ""),
+                                "locator": c.get("locator", ""),
+                                "excerpt": c.get("excerpt", ""),
+                            }
+                            for c in (loc.citations or [])
+                            if isinstance(c, dict) and c.get("file_id")
+                        ],
                     }
                     for loc in locations
                 ]

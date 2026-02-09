@@ -1262,8 +1262,9 @@ export interface paths {
          * Generate Geospatial Intelligence
          * @description Trigger on-demand geospatial analysis.
          *
-         *     Spawns Geospatial Agent async task. Returns immediately with 202 Accepted.
-         *     Frontend should subscribe to SSE for progress updates.
+         *     Schedules a background task with its own DB session (following the
+         *     pipeline pattern). Returns immediately with 202 Accepted.
+         *     Frontend polls GET /geospatial/status for progress.
          */
         post: operations["generate_geospatial_intelligence_api_cases__case_id__geospatial_generate_post"];
         delete?: never;
@@ -2837,6 +2838,23 @@ export interface components {
             created_at: string;
         };
         /**
+         * GenerateMetadataResponse
+         * @description Schema for generated metadata response.
+         */
+        GenerateMetadataResponse: {
+            /**
+             * Note Id
+             * Format: uuid
+             */
+            note_id: string;
+            /** Title */
+            title: string;
+            /** Subtitle */
+            subtitle: string;
+            /** Content */
+            content?: string | null;
+        };
+        /**
          * GraphResponse
          * @description Full knowledge graph data for a case, containing all entities and relationships.
          */
@@ -2987,6 +3005,138 @@ export interface components {
              * @description Creation timestamp
              */
             created_at: string;
+        };
+        /**
+         * NoteCreate
+         * @description Schema for creating a new note.
+         */
+        NoteCreate: {
+            type: components["schemas"]["NoteType"];
+            /**
+             * Content
+             * @description Text content for text notes
+             */
+            content?: string | null;
+        };
+        /**
+         * NoteExportRequest
+         * @description Schema for exporting a note as evidence.
+         */
+        NoteExportRequest: {
+            /**
+             * Description
+             * @description Optional description for the exported file
+             */
+            description?: string | null;
+        };
+        /**
+         * NoteExportResponse
+         * @description Schema for export response.
+         */
+        NoteExportResponse: {
+            /**
+             * Note Id
+             * Format: uuid
+             */
+            note_id: string;
+            /**
+             * File Id
+             * Format: uuid
+             */
+            file_id: string;
+            /** File Name */
+            file_name: string;
+            /** Message */
+            message: string;
+        };
+        /**
+         * NoteListResponse
+         * @description Schema for listing notes.
+         */
+        NoteListResponse: {
+            /** Notes */
+            notes: components["schemas"]["NoteResponse"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Per Page */
+            per_page: number;
+        };
+        /**
+         * NoteResponse
+         * @description Schema for note response.
+         */
+        NoteResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Case Id
+             * Format: uuid
+             */
+            case_id: string;
+            /** User Id */
+            user_id: string;
+            type: components["schemas"]["NoteType"];
+            /** Content */
+            content?: string | null;
+            /** Audio Storage Path */
+            audio_storage_path?: string | null;
+            /** Audio Duration Seconds */
+            audio_duration_seconds?: number | null;
+            /** Audio Mime Type */
+            audio_mime_type?: string | null;
+            /** Title */
+            title?: string | null;
+            /** Subtitle */
+            subtitle?: string | null;
+            /**
+             * Is Exported
+             * @default false
+             */
+            is_exported: boolean;
+            /** Exported File Id */
+            exported_file_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * NoteType
+         * @description Type of note.
+         * @enum {string}
+         */
+        NoteType: "TEXT" | "AUDIO";
+        /**
+         * NoteUpdate
+         * @description Schema for updating an existing note.
+         */
+        NoteUpdate: {
+            /**
+             * Content
+             * @description Updated text content
+             */
+            content?: string | null;
+            /**
+             * Title
+             * @description Updated title
+             */
+            title?: string | null;
+            /**
+             * Subtitle
+             * @description Updated subtitle
+             */
+            subtitle?: string | null;
         };
         /**
          * OrchestratorOutput

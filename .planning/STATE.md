@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 8 of 12 (Synthesis Agent & Intelligence Layer) — COMPLETE (7/7 plans)
-**Next Phase:** 8.1 (Geospatial Agent & Map View) or 9 (Chat Interface)
+**Current Phase:** 8.1 of 12 (Geospatial Agent & Map View) — COMPLETE (5/5 plans)
+**Next Phase:** 9 (Chat Interface)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -22,7 +22,7 @@
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
-| 8.1 | Geospatial Agent & Map View | NOT_STARTED | - | - | |
+| 8.1 | Geospatial Agent & Map View | COMPLETE | 2026-02-09 | 2026-02-09 | 5 plans (5 commits): GeocodingService, GeospatialAgentRunner + pipeline Stage 9, 6 REST API endpoints, frontend API client + hook + trigger UI, enhanced detail panel with 4 sections |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
@@ -35,7 +35,15 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 7 Complete** (2026-02-07): Knowledge Storage & Domain Agent Enrichment — 6 plans, 11 commits, 8/8 verified
+- **Phase 8.1 Complete** (2026-02-09): Geospatial Agent & Map View — 5 plans, 15 commits, 15/15 verified
+  - Plan 01: GeocodingService with Google Maps API integration (forward/reverse/batch geocoding + in-memory caching)
+  - Plan 02: GeospatialAgentRunner (text-only input from 6 DB sources, Flash model, pipeline Stage 9, auto-geocoding)
+  - Plan 03: 6 REST API endpoints (POST /generate, GET /status, GET /locations, GET /locations/:id, GET /paths, DELETE)
+  - Plan 04: Frontend API client + useGeospatialData hook + trigger UI (Generate/Refresh buttons, status banner, 3-second polling)
+  - Plan 05: Enhanced GeospatialMap with 4-section detail panel (Events, Citations, Temporal Analysis, Related Entities)
+  - Full pipeline: Triage → Orchestrator → Domain → Strategy → HITL → Save Findings → KG Builder → Entity Backfill → Synthesis → Geospatial (on-demand) → Final
+
+**Phase 7 Complete** (2026-02-07): Knowledge Storage & Domain Agent Enrichment — 6 plans, 11 commits, 8/8 verified
   - Plan 01: 9 SQLAlchemy models (KgEntity, KgRelationship, CaseFinding, CaseHypothesis, CaseContradiction, CaseGap, CaseSynthesis, TimelineEvent, Location) + Alembic migration with tsvector GIN indexes
   - Plan 02: 15 Pydantic API schemas (KG + findings) + findings_text added to all 4 domain output models
   - Plan 03: KG Builder service (entity extraction, co-occurrence relationships, exact+fuzzy dedup, degree computation) + Findings service (storage, tsvector search, pagination)
@@ -125,10 +133,58 @@
   - Post-fix 2: `CaseFile.mime_type` (was `.content_type`), timeline date string→datetime parsing, Timeline ref hydration + scroll-position warnings
   - Post-fix 3: Gap entity display uses actual UUIDs (not position indices), `RelatedEntity` model with batch resolution in gaps API, entity name + type badge in GapDetailPanel; `_extract_agent_type` uses rsplit for multi-word prefixes (kg_builder → "kg" bug)
 
+**Phase 8.1 Plan 01 Complete** (2026-02-09): Geocoding Service Foundation -- 2 tasks, 2 commits
+  - Task 1: googlemaps>=4.10.0 dependency added and installed
+  - Task 2: GeocodingService class with forward/reverse/batch geocoding, in-memory caching, async interface via asyncio.to_thread
+  - Capabilities: address → {lat, lng}, {lat, lng} → address, batch geocoding with concurrent execution
+  - Error handling: Returns None on failure, logs warnings, caches failed results to avoid redundant API calls
+  - Type checking passes with googlemaps type ignores for incomplete library stubs
+
+**Phase 8.1 Plan 02 Complete** (2026-02-09): Geospatial Agent Implementation -- 2 tasks, 2 commits (6 min)
+  - Task 1: GeospatialOutput schema (Citation, EventAtLocation, LocationOutput, PathOutput) + GEOSPATIAL_SYSTEM_PROMPT (8-section structure)
+  - Task 2: GeospatialAgentRunner subclass (text-only input from 6 DB sources), write_geospatial_output (clear-and-rebuild + auto-geocoding), Pipeline Stage 9 integration
+  - Flash model with medium thinking for cost efficiency
+  - SSE geospatial-complete event emitted after location data committed
+  - Non-blocking pipeline failure (geospatial failure logs warning, doesn't crash pipeline)
+  - Adapts to existing Location schema (coordinates/temporal_associations JSONB)
+
+**Phase 8.1 Plan 03 Complete** (2026-02-09): Locations API Endpoints -- 2 tasks, 2 commits (7 min)
+  - Task 1: 6 REST endpoints in locations.py (POST generate, GET status, GET list, GET detail, GET paths, DELETE)
+  - Task 2: Router registration in main.py
+  - All endpoints enforce auth via CurrentUser + case ownership via _get_user_case helper
+  - Async task spawning with asyncio.create_task for non-blocking generation
+  - SSE events: emit_agent_started + emit_geospatial_complete
+  - Adapted response structure to actual Location schema (coordinates JSONB, temporal_associations JSONB)
+  - Detail endpoint extracts events and temporal periods from temporal_associations JSONB
+  - Type checking passes (pyright 0 errors)
+
+**Phase 8.1 Plan 04 Complete** (2026-02-09): Geospatial Frontend Integration -- 2 tasks, 2 commits (12 min)
+  - Task 1: geospatial.ts API client (5 functions: status, generate, locations, detail, delete), useGeospatialData hook with polling
+  - Task 2: Geospatial page updated with trigger UI (status banner, generate/refresh buttons), Button/Alert components created
+  - Status banner state machine: not_started → generating → complete
+  - 3-second polling interval during generation until status becomes "complete"
+  - Refresh button with confirmation pattern (click twice to execute)
+  - LocationResponse → Landmark transformation in hook layer
+  - Mock data completely removed from geospatial page
+
+**Phase 8.1 Plan 05 Complete** (2026-02-09): Geospatial Map Detail Panel Enhancement -- 1 plan, 1 commit (4 min)
+  - Enhanced GeospatialMap with 4-section detail panel: Events, Citations, Temporal Analysis, Related Entities
+  - fetchLocationDetail API integration on marker click with loading states
+  - Citations section displays file name, locator, excerpt with View button (Phase 10 integration point)
+  - Temporal Analysis shows date range from temporal_associations JSONB field
+  - Related Entities displays entity UUIDs (names deferred to Phase 10)
+  - Lazy detail loading pattern: fetch on marker click, not during initial map render
+
+**Phase 8.1 COMPLETE** (2026-02-09): Geospatial Agent & Map View -- 5 plans, 5 commits (38 min total)
+  - Backend: GeocodingService (forward/reverse/batch with caching), GeospatialAgentRunner (Flash model, auto-geocoding), 6 REST API endpoints
+  - Frontend: API client + useGeospatialData hook, trigger UI with status tracking, Button/Alert reusable components, enhanced detail panel with 4 sections
+  - Full user flow: Generate button → 3-second polling → location extraction + geocoding → map display → click marker → detailed evidence context
+  - Known limitations: Paths not rendered (v1), no SSE streaming (polling-based), entity names not resolved (UUIDs only)
+
 **What's next:**
-- Phase 8.1 (Geospatial Agent & Map View) -- if location data detected by synthesis
-- Phase 9 (Chat Interface) -- backend API needed
-- Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
+- Phase 9 (Chat Interface) -- backend API + tool integration (query_kg, search_findings, get_synthesis, generate_geospatial, run_domain_agent)
+- Phase 10 (Source Panel) -- wire KG/Geospatial/Timeline citations to source viewers: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
+- Phase 10 geospatial enhancements: entity name resolution (currently shows UUIDs), location filtering, movement path visualization
 
 ---
 
@@ -512,6 +568,23 @@ All frontend features need these backend endpoints:
 | Gap entity referencing | Position indices (0,1,2) vs Entity UUIDs | Entity UUIDs | Position indices are meaningless after storage; UUIDs enable resolution to names/types |
 | Gap entity API resolution | Raw IDs vs Enriched objects | Batch-resolved `RelatedEntity` (id, name, entity_type) | Single DB query resolves all UUIDs; frontend displays human-readable names + type badges |
 | Agent type extraction | `split("_", 1)` vs `rsplit("_", 1)` | `rsplit("_", 1)` | Multi-word prefixes like `kg_builder` need right-split to preserve full prefix before case ID suffix |
+| Geocoding library | googlemaps vs geopy vs requests | googlemaps (official Google client) | Official client with built-in rate limiting, retry logic, production-tested reliability |
+| Geocoding caching | In-memory vs Redis | In-memory for v1 | Simple implementation, sufficient for single-instance deployment; can upgrade to Redis in Phase 9 |
+| Geocoding error handling | Raise exceptions vs Return None | Return None on failure | Graceful degradation allows partial results; agent can mark unmappable locations |
+| Geocoding async pattern | Sync client vs asyncio.to_thread wrapper | asyncio.to_thread wrapper | googlemaps library is synchronous; asyncio.to_thread provides non-blocking async interface |
+| Geospatial agent model | Flash vs Pro | Flash with medium thinking | Location extraction less complex than synthesis; Flash provides cost efficiency |
+| Geospatial Location schema | Add columns vs Adapt to existing | Adapt to existing JSONB | Location model has coordinates/temporal_associations JSONB; no migration needed |
+| Geospatial entity IDs | UUID mapping vs Integer storage | Integer storage | LLM outputs 1,2,3..., stored as-is; UUID resolution deferred to Phase 8.2 or 9 |
+| Geospatial pipeline failure | Blocking vs Non-blocking | Non-blocking | Geospatial optional; failure logs warning, emits error SSE, pipeline continues |
+| Geospatial confidence scale | Percentages vs 0.0-1.0 | 0.0-1.0 scale | Consistent with synthesis agent; avoids 0-1 vs 0-100 confusion |
+| Locations API async pattern | Blocking vs Async task spawn | Async task spawn (asyncio.create_task) | Non-blocking 202 response; SSE events for progress updates |
+| Locations API Query params | Old FastAPI vs Annotated | Annotated[type, Query(...)] = default | Modern FastAPI pattern; avoids syntax errors with dependency injection |
+| Geospatial polling interval | 1s vs 3s vs 5s | 3-second polling | Balance between responsiveness and API load during generation |
+| Geospatial refresh confirmation | Direct action vs Confirmation | Confirmation (click twice) | Prevents accidental deletion + regeneration of expensive analysis |
+| UI component creation | Inline styles vs Reusable components | Reusable Button/Alert components | Benefits entire codebase; consistent UI patterns |
+| Geospatial detail loading | Upfront vs Lazy on-demand | Lazy on marker click | LocationResponse list lightweight (coordinates+counts); detail API heavy (full events/citations arrays); faster initial render |
+| Geospatial entity display | Resolve names vs Show IDs | Show UUIDs only | Entity name resolution requires additional API or preloading; deferred to Phase 10 with KG navigation |
+| Citation excerpt quotes | Literal vs HTML entities | &ldquo; / &rdquo; entities | React react/no-unescaped-entities lint rule rejects literal quotes in JSX text |
 
 ---
 
@@ -524,9 +597,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8 COMPLETE (7/7 plans, 19 commits total). All post-completion bugfixes applied and committed.
+Stopped at: Phase 8.1 COMPLETE (5/5 plans, 5 commits, 38 min total). Geospatial agent + frontend integration + detail panel complete.
 Resume file: None
-Next action: Phase 8.1 (Geospatial Agent) or Phase 9 (Chat Interface backend)
+Next action: Phase 9 (Chat Interface Backend)
 
 ---
 

@@ -41,6 +41,7 @@ class AgentEventType(str, Enum):
     KG_ENTITY_ADDED = "kg-entity-added"
     KG_RELATIONSHIP_ADDED = "kg-relationship-added"
     SYNTHESIS_DATA_READY = "synthesis-data-ready"
+    GEOSPATIAL_COMPLETE = "geospatial-complete"
 
 
 # ---------------------------------------------------------------------------
@@ -623,6 +624,31 @@ async def emit_synthesis_data_ready(
         AgentEventType.SYNTHESIS_DATA_READY,
         {
             "type": AgentEventType.SYNTHESIS_DATA_READY.value,
+            "caseId": case_id,
+            "counts": counts,
+        },
+    )
+
+
+async def emit_geospatial_complete(
+    case_id: str,
+    counts: dict[str, int],
+) -> None:
+    """Emit geospatial-complete event after all geospatial data is committed to DB.
+
+    Fires once after the Geospatial Agent writes all location outputs.
+    The frontend uses this to invalidate React Query caches and refetch
+    geospatial data.
+
+    Args:
+        case_id: UUID string of the case.
+        counts: Dict with counts of written records (locations, paths, unmappable).
+    """
+    await publish_agent_event(
+        case_id,
+        AgentEventType.GEOSPATIAL_COMPLETE,
+        {
+            "type": AgentEventType.GEOSPATIAL_COMPLETE.value,
             "caseId": case_id,
             "counts": counts,
         },

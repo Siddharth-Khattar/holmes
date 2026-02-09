@@ -1129,6 +1129,9 @@ async def run_analysis_workflow(
                 synthesis_counts,
             )
 
+            # Geospatial agent is on-demand only (triggered from Geospatial tab).
+            # Not part of the automatic pipeline.
+
             # ---- Final: Update file statuses to ANALYZED ----
             await db.execute(
                 update(CaseFile)

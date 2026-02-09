@@ -380,3 +380,38 @@ class AgentFactory:
             output_key="synthesis_result",
             callbacks=callbacks,
         )
+
+    @staticmethod
+    def create_geospatial_agent(
+        case_id: str,
+        *,
+        model: str = MODEL_FLASH,
+        publish_fn: PublishFn | None = None,
+    ) -> LlmAgent:
+        """Create a fresh Geospatial Agent for a specific case.
+
+        Uses Flash model (cost efficiency) with HIGH thinking for location
+        extraction and geospatial analysis. Text-only input -- no media
+        resolution needed.
+
+        Args:
+            case_id: Investigation case ID.
+            model: Gemini model ID (default: Flash for cost efficiency).
+            publish_fn: Optional SSE publish function for real-time callbacks.
+
+        Returns:
+            A new LlmAgent instance configured for geospatial analysis.
+        """
+        from app.agents.prompts.geospatial import GEOSPATIAL_SYSTEM_PROMPT
+        from app.schemas.geospatial import GeospatialOutput
+
+        callbacks = create_agent_callbacks(case_id, publish_fn) if publish_fn else None
+        return _create_llm_agent(
+            name=_safe_name("geospatial", case_id),
+            model=model,
+            instruction=GEOSPATIAL_SYSTEM_PROMPT,
+            planner=create_thinking_planner("high"),
+            output_schema=GeospatialOutput,
+            output_key="geospatial_result",
+            callbacks=callbacks,
+        )

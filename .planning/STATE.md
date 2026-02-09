@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 10 of 12 (Source Panel & Entity Resolution) — IN PROGRESS (2/? plans)
-**Next Phase:** Continue 10-03 (Verdict view citation wiring)
+**Current Phase:** 10 of 12 (Source Panel & Entity Resolution) — IN PROGRESS (3/? plans)
+**Next Phase:** Continue 10-04+ (remaining view-level wiring if planned)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -24,7 +24,7 @@
 | 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
 | 8.1 | Geospatial Agent & Map View | COMPLETE | 2026-02-09 | 2026-02-09 | 5 plans (5 commits): GeocodingService, GeospatialAgentRunner + pipeline Stage 9, 6 REST API endpoints, frontend API client + hook + trigger UI, enhanced detail panel with 4 sections |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
-| 10 | Source Panel & Entity Resolution | IN_PROGRESS | 2026-02-09 | - | Plans 01-02 complete (4 commits): shared hooks/components, KG + Geospatial view-level wiring |
+| 10 | Source Panel & Entity Resolution | IN_PROGRESS | 2026-02-09 | - | Plans 01-03 complete (6 commits): shared hooks/components, KG + Geospatial view-level wiring, Verdict + Timeline citation navigation |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
 | 12 | Demo Preparation | NOT_STARTED | - | - | |
 
@@ -35,6 +35,11 @@
 ## Current Context
 
 **What was just completed:**
+- **Phase 10 Plan 03 Complete** (2026-02-09): Verdict & Timeline Source Navigation -- 2 tasks, 2 commits (10 min)
+  - Task 1: Verdict detail panels (hypothesis, contradiction, gap) wired with source navigation. Evidence items and source excerpts clickable with onViewFinding callback threaded through sidebar descriptors. GapDetailPanel uses EntityBadge. SourceViewerModal portal from CC page.
+  - Task 2: Timeline event cards extract citations from metadata.citations (not sourceIds). Expandable citation list with clickable rows. SourceViewerModal portal from TimelineCore. caseId prop threaded through Timeline -> TimelineCore.
+  - 4 of 5 target views now have source citation support (KG, Geospatial, Verdict, Timeline)
+
 - **Phase 10 Plan 02 Complete** (2026-02-09): KG and Geospatial View-Level Source Navigation & Entity Resolution -- 2 tasks, 2 commits (9 min)
   - Task 1: KG entity panel source documents clickable (openFromFinding), EntityTimelineEntry "View source evidence" link, useSourceNavigation wired in KnowledgeGraphCanvas with stable ref pattern, caseId prop added
   - Task 2: GeospatialMap self-contained source navigation (removed onViewSource prop), citations open SourceViewerModal via z-[60] portal, entity UUIDs resolved to names with EntityBadge, file names resolved from cache
@@ -192,9 +197,10 @@
   - Known limitations: Paths not rendered (v1), no SSE streaming (polling-based), entity names not resolved (UUIDs only)
 
 **What's next:**
-- Phase 10 Plans 03-05 -- wire remaining views (Verdict, Timeline, Command Center) to source navigation following the same pattern
+- Phase 10 Plans 04-05 -- wire remaining views (Evidence Library, Command Center agent outputs) to source navigation if planned
 - Phase 9 (Chat Interface) -- backend API + tool integration (query_kg, search_findings, get_synthesis, generate_geospatial, run_domain_agent)
 - Phase 10 geospatial enhancements: location filtering, movement path visualization (entity resolution DONE in Plan 02)
+- Chat message citations deferred to Phase 9+ (backend does not yet produce structured citations)
 
 ---
 
@@ -604,6 +610,9 @@ All frontend features need these backend endpoints:
 | Geospatial file name lookup type | Map<string, string> vs Record<string, string> | Record<string, string> | Map import from @vis.gl/react-google-maps shadows global Map constructor |
 | Geospatial source navigation | Prop-based (onViewSource) vs Self-contained hook | Self-contained useSourceNavigation hook | Component manages its own SourceViewerModal portal; no prop drilling |
 | SourceViewerModal layering in geospatial | Same z-index as dialog vs Higher | z-[60] above z-50 dialog | Source viewer must appear above the detail dialog without closing it |
+| Verdict source navigation wiring | Direct hook in panels vs Callback threading | Callback threading via sidebar descriptors | Detail panels render inside DetailSidebar without caseId access; callback threaded from page through VerdictView -> descriptor props |
+| Timeline citation source | event.sourceIds vs event.metadata.citations | event.metadata.citations | sourceIds contains entity UUIDs (misnamed); metadata.citations has actual file refs (file_id, locator, excerpt) |
+| Timeline citation UX | Modal with all citations vs Expandable list | Expandable list in card | Progressive disclosure; click count to expand, click individual citation to open SourceViewerModal |
 
 ---
 
@@ -616,9 +625,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 10 Plan 02 COMPLETE (2 tasks, 2 commits, 9 min). KG + Geospatial view-level source navigation and entity resolution.
+Stopped at: Phase 10 Plan 03 COMPLETE (2 tasks, 2 commits, 10 min). Verdict + Timeline source navigation and citation wiring.
 Resume file: None
-Next action: Phase 10 Plan 03 (Verdict view citation wiring)
+Next action: Phase 10 Plan 04 (if planned) or next phase
 
 ---
 

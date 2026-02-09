@@ -62,7 +62,7 @@ export default async function AppLayout({
     >
       <Sidebar user={user} />
       <main
-        className="flex-1 min-w-0 overflow-y-auto bg-canvas text-foreground"
+        className="relative flex-1 min-w-0 overflow-y-auto bg-canvas text-foreground"
         style={{
           backgroundColor: "var(--background)",
           color: "var(--foreground)",

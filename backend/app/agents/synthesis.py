@@ -120,7 +120,7 @@ async def assemble_synthesis_input(
 
     # 2. Query file metadata
     file_result = await db.execute(
-        select(CaseFile.original_filename, CaseFile.content_type).where(
+        select(CaseFile.original_filename, CaseFile.mime_type).where(
             CaseFile.case_id == case_uuid
         )
     )

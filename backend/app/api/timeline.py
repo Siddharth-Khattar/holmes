@@ -3,6 +3,7 @@
 
 import logging
 from collections import Counter
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -103,11 +104,19 @@ async def list_timeline_events(
         if layer_list:
             query = query.where(TimelineEvent.layer.in_(layer_list))
 
-    # Date range filters
+    # Date range filters — parse ISO 8601 strings to timezone-aware datetime
     if start_date is not None:
-        query = query.where(TimelineEvent.event_date >= start_date)
+        try:
+            start_dt = datetime.fromisoformat(start_date)
+            query = query.where(TimelineEvent.event_date >= start_dt)
+        except ValueError:
+            logger.warning("Invalid startDate filter: %s", start_date)
     if end_date is not None:
-        query = query.where(TimelineEvent.event_date <= end_date)
+        try:
+            end_dt = datetime.fromisoformat(end_date)
+            query = query.where(TimelineEvent.event_date <= end_dt)
+        except ValueError:
+            logger.warning("Invalid endDate filter: %s", end_date)
 
     # Text search
     if q is not None:

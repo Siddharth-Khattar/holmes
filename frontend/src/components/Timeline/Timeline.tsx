@@ -98,7 +98,7 @@ export function Timeline({
   const totalEvents = timelineData?.events.length || initialEvents.length;
 
   return (
-    <div className={className}>
+    <div className={`relative ${className ?? ""}`}>
       <TimelineHeader
         dateRange={timelineData?.dateRange}
         layerCounts={timelineData?.layerCounts}

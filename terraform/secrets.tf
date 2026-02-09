@@ -57,6 +57,18 @@ resource "google_secret_manager_secret" "google_api_key" {
   depends_on = [google_project_service.secretmanager]
 }
 
+# Google Maps API key for geospatial geocoding (value added manually via GCP Console)
+resource "google_secret_manager_secret" "google_maps_api_key" {
+  project   = var.project_id
+  secret_id = "google-maps-api-key"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.secretmanager]
+}
+
 # Database password for the Cloud SQL "backend" user (used by CI migrations and Cloud Run)
 resource "google_secret_manager_secret" "db_password" {
   project   = var.project_id
@@ -103,6 +115,14 @@ resource "google_secret_manager_secret_iam_member" "frontend_google_client_secre
 resource "google_secret_manager_secret_iam_member" "backend_google_api_key" {
   project   = var.project_id
   secret_id = google_secret_manager_secret.google_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.backend.email}"
+}
+
+# IAM: Allow backend service account to access Google Maps API key
+resource "google_secret_manager_secret_iam_member" "backend_google_maps_api_key" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.google_maps_api_key.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.backend.email}"
 }

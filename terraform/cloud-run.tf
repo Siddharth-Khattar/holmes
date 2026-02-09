@@ -52,6 +52,17 @@ resource "google_cloud_run_v2_service" "backend" {
         }
       }
 
+      # Google Maps API key for geospatial geocoding (from Secret Manager)
+      env {
+        name = "GOOGLE_MAPS_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.google_maps_api_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+
       # Frontend URL for JWKS endpoint and CORS origin
       env {
         name  = "FRONTEND_URL"

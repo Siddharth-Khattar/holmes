@@ -1376,6 +1376,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cases/{case_id}/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Chat with the case investigation assistant
+         * @description Send a message and receive a streaming response via Server-Sent Events. The chat agent has access to all case analysis data (findings, knowledge graph, synthesis, timeline, locations) and responds with citation-backed answers.
+         */
+        post: operations["chat_endpoint_api_cases__case_id__chat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1884,6 +1904,16 @@ export interface components {
              * @description Updated description of the case
              */
             description?: string | null;
+        };
+        /**
+         * ChatRequest
+         * @description Request body for the chat endpoint.
+         */
+        ChatRequest: {
+            /** Message */
+            message: string;
+            /** Session Id */
+            session_id?: string | null;
         };
         /**
          * ComplexityAssessment
@@ -6320,6 +6350,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    chat_endpoint_api_cases__case_id__chat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

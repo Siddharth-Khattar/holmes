@@ -15,6 +15,7 @@ from app.api import (
     agents,
     auth,
     cases,
+    chat,
     confirmations,
     files,
     findings,
@@ -188,3 +189,4 @@ app.include_router(findings.router, tags=["findings"])
 app.include_router(synthesis.router, tags=["synthesis"])
 app.include_router(timeline.router, tags=["timeline"])
 app.include_router(locations.router, tags=["geospatial"])
+app.include_router(chat.router, tags=["chat"])

@@ -1,7 +1,7 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 8.1 of 12 (Geospatial Agent & Map View) — IN PROGRESS (3/4 plans)
+**Current Phase:** 8.1 of 12 (Geospatial Agent & Map View) — COMPLETE (4/4 plans)
 **Next Phase:** 9 (Chat Interface)
 **Current Milestone:** M1 - Holmes v1.0
 
@@ -22,7 +22,7 @@
 | 7.2 | KG Frontend (D3.js Enhancement) | COMPLETE | 2026-02-08 | 2026-02-08 | 5 plans (46 commits): types/config/API, source viewer system, GraphSvg D3 force canvas, FilterPanel/EntityTimeline, page integration + 4 rounds visual polish. Source viewer wiring deferred to Phase 10. |
 | 7.3 | KG Frontend (vis-network) | DEFERRED | - | - | Optional; only if D3.js proves insufficient |
 | 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
-| 8.1 | Geospatial Agent & Map View | IN_PROGRESS | 2026-02-09 | - | Plans 01-03 complete: GeocodingService + GeospatialAgentRunner + 6 REST API endpoints |
+| 8.1 | Geospatial Agent & Map View | COMPLETE | 2026-02-09 | 2026-02-09 | 4 plans (4 commits): GeocodingService, GeospatialAgentRunner + pipeline Stage 9, 6 REST API endpoints, frontend API client + hook + trigger UI |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
 | 10 | Agent Flow & Source Panel | FRONTEND_DONE | - | - | Timeline done, Source viewers pending |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
@@ -150,10 +150,25 @@
   - Detail endpoint extracts events and temporal periods from temporal_associations JSONB
   - Type checking passes (pyright 0 errors)
 
+**Phase 8.1 Plan 04 Complete** (2026-02-09): Geospatial Frontend Integration -- 2 tasks, 2 commits (12 min)
+  - Task 1: geospatial.ts API client (5 functions: status, generate, locations, detail, delete), useGeospatialData hook with polling
+  - Task 2: Geospatial page updated with trigger UI (status banner, generate/refresh buttons), Button/Alert components created
+  - Status banner state machine: not_started → generating → complete
+  - 3-second polling interval during generation until status becomes "complete"
+  - Refresh button with confirmation pattern (click twice to execute)
+  - LocationResponse → Landmark transformation in hook layer
+  - Mock data completely removed from geospatial page
+
+**Phase 8.1 COMPLETE** (2026-02-09): Geospatial Agent & Map View -- 4 plans, 4 commits (34 min total)
+  - Backend: GeocodingService (forward/reverse/batch with caching), GeospatialAgentRunner (Flash model, auto-geocoding), 6 REST API endpoints
+  - Frontend: API client + useGeospatialData hook, trigger UI with status tracking, Button/Alert reusable components
+  - Full user flow: Generate button → 3-second polling → location extraction + geocoding → map display
+  - Known limitations: Paths not rendered (v1), no SSE streaming (polling-based), event details not wired to map popups
+
 **What's next:**
-- Phase 8.1 Plan 04 (Frontend Integration) -- Replace mock data with real API calls, wire SSE events
-- Phase 9 (Chat Interface) -- backend API needed
+- Phase 9 (Chat Interface) -- backend API needed (tools: query_kg, search_findings, get_hypotheses, run_domain_agent)
 - Phase 10 must wire KG Source Viewer: source_finding_ids → case_findings → agent_executions → case_files → signed download URL
+- Phase 10 can wire Geospatial citations to source viewer
 
 ---
 
@@ -548,6 +563,9 @@ All frontend features need these backend endpoints:
 | Geospatial confidence scale | Percentages vs 0.0-1.0 | 0.0-1.0 scale | Consistent with synthesis agent; avoids 0-1 vs 0-100 confusion |
 | Locations API async pattern | Blocking vs Async task spawn | Async task spawn (asyncio.create_task) | Non-blocking 202 response; SSE events for progress updates |
 | Locations API Query params | Old FastAPI vs Annotated | Annotated[type, Query(...)] = default | Modern FastAPI pattern; avoids syntax errors with dependency injection |
+| Geospatial polling interval | 1s vs 3s vs 5s | 3-second polling | Balance between responsiveness and API load during generation |
+| Geospatial refresh confirmation | Direct action vs Confirmation | Confirmation (click twice) | Prevents accidental deletion + regeneration of expensive analysis |
+| UI component creation | Inline styles vs Reusable components | Reusable Button/Alert components | Benefits entire codebase; consistent UI patterns |
 
 ---
 
@@ -560,9 +578,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 8.1 Plan 03 COMPLETE (2/2 tasks, 2 commits, 7 min). 6 REST API endpoints for geospatial data access.
+Stopped at: Phase 8.1 COMPLETE (4/4 plans, 4 commits, 34 min total). Geospatial agent + frontend integration complete.
 Resume file: None
-Next action: Phase 8.1 Plan 04 (Frontend Integration)
+Next action: Phase 9 (Chat Interface Backend)
 
 ---
 

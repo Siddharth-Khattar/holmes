@@ -1171,6 +1171,13 @@ Plans:
 
 **Depends on:** Phase 7 (KG tables), Phase 8 (synthesis tables), Phase 10 (source viewer wiring)
 
+**Plans:** 2 plans in 2 waves
+
+Plans:
+- [ ] 09-01-PLAN.md — Backend: Chat tools (4 DB-query tool factories), system prompt with context injection, chat service, SSE streaming POST endpoint, router registration
+- [ ] 09-02-PLAN.md — Frontend: SSE streaming hook rewrite, markdown rendering, citation chips, tool activity indicators, stop/clear buttons, disabled state
+
+
 **Status:** 🟡 FRONTEND_DONE (Chat UI) — Backend agent + API required
 
 ### Frontend Completed (Yatharth, 2026-02-02)

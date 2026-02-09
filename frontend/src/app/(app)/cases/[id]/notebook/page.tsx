@@ -10,21 +10,21 @@ import { api } from "@/lib/api-client";
 import type { Case } from "@/types/case";
 
 export default function NotebookPage() {
-    const params = useParams();
-    const caseId = params.id as string;
-    const [caseName, setCaseName] = useState<string | undefined>();
+  const params = useParams();
+  const caseId = params.id as string;
+  const [caseName, setCaseName] = useState<string | undefined>();
 
-    useEffect(() => {
-        async function fetchCase() {
-            try {
-                const caseData = await api.get<Case>(`/api/cases/${caseId}`);
-                setCaseName(caseData.name);
-            } catch {
-                // Ignore errors, caseName is optional
-            }
-        }
-        fetchCase();
-    }, [caseId]);
+  useEffect(() => {
+    async function fetchCase() {
+      try {
+        const caseData = await api.get<Case>(`/api/cases/${caseId}`);
+        setCaseName(caseData.name);
+      } catch {
+        // Ignore errors, caseName is optional
+      }
+    }
+    fetchCase();
+  }, [caseId]);
 
-    return <Notebook caseId={caseId} caseName={caseName} />;
+  return <Notebook caseId={caseId} caseName={caseName} />;
 }

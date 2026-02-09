@@ -61,7 +61,8 @@ export function middleware(request: NextRequest) {
       const subPage = caseIdMatch[2];
 
       // Check if user has opted out of mobile view
-      const preferFullSite = request.cookies.get("prefer-full-site")?.value === "true";
+      const preferFullSite =
+        request.cookies.get("prefer-full-site")?.value === "true";
 
       // Redirect mobile users to notebook if they're at the case root or command-center
       // and they haven't opted out of mobile view
@@ -70,9 +71,11 @@ export function middleware(request: NextRequest) {
         !preferFullSite &&
         (!subPage || subPage === "command-center")
       ) {
-        console.log("📱 [MIDDLEWARE] Mobile device detected, redirecting to notebook");
+        console.log(
+          "📱 [MIDDLEWARE] Mobile device detected, redirecting to notebook",
+        );
         return NextResponse.redirect(
-          new URL(`/cases/${caseId}/notebook`, request.url)
+          new URL(`/cases/${caseId}/notebook`, request.url),
         );
       }
     }
@@ -95,4 +98,3 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: ["/cases/:path*", "/login"],
 };
-

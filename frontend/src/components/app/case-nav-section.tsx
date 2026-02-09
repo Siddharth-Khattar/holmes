@@ -4,7 +4,14 @@
 "use client";
 
 import { usePathname, useParams } from "next/navigation";
-import { Terminal, Network, FolderOpen, Clock, Globe, PenLine } from "lucide-react";
+import {
+  Terminal,
+  Network,
+  FolderOpen,
+  Clock,
+  Globe,
+  PenLine,
+} from "lucide-react";
 import { SidebarTabs } from "@/components/ui/sidebar-tabs";
 
 interface CaseNavSectionProps {

@@ -182,4 +182,3 @@ app.include_router(confirmations.router, tags=["confirmations"])
 app.include_router(redaction.router, tags=["redaction"])
 app.include_router(knowledge_graph.router, tags=["knowledge-graph"])
 app.include_router(findings.router, tags=["findings"])
-

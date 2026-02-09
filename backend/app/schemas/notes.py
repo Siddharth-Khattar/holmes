@@ -20,7 +20,9 @@ class NoteBase(BaseModel):
 
     type: NoteType
     content: str | None = Field(None, description="Text content for text notes")
-    title: str | None = Field(None, max_length=255, description="AI-generated or user-provided title")
+    title: str | None = Field(
+        None, max_length=255, description="AI-generated or user-provided title"
+    )
     subtitle: str | None = Field(None, description="AI-generated summary/subtitle")
 
 
@@ -81,7 +83,9 @@ class NoteListResponse(BaseModel):
 class NoteExportRequest(BaseModel):
     """Schema for exporting a note as evidence."""
 
-    description: str | None = Field(None, description="Optional description for the exported file")
+    description: str | None = Field(
+        None, description="Optional description for the exported file"
+    )
 
 
 class NoteExportResponse(BaseModel):

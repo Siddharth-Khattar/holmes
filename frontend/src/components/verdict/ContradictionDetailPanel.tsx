@@ -15,6 +15,7 @@ import type { ContradictionResponse } from "@/types/synthesis";
 
 interface ContradictionDetailPanelProps {
   contradiction: ContradictionResponse;
+  onViewFinding?: (findingId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -53,9 +54,15 @@ interface SourceExcerptProps {
   label: string;
   source: Record<string, unknown> | null;
   accentColor: string;
+  onViewFinding?: (findingId: string) => void;
 }
 
-function SourceExcerpt({ label, source, accentColor }: SourceExcerptProps) {
+function SourceExcerpt({
+  label,
+  source,
+  accentColor,
+  onViewFinding,
+}: SourceExcerptProps) {
   if (!source) return null;
 
   const findingId =
@@ -64,16 +71,44 @@ function SourceExcerpt({ label, source, accentColor }: SourceExcerptProps) {
 
   if (!findingId && !excerpt) return null;
 
+  const isClickable = !!onViewFinding && !!findingId;
+
   return (
-    <div className="rounded-lg bg-charcoal/50 border border-stone/10 p-3">
+    <div
+      className={clsx(
+        "group rounded-lg bg-charcoal/50 border border-stone/10 p-3",
+        isClickable && "cursor-pointer hover:bg-charcoal/70 transition-colors",
+      )}
+      onClick={
+        isClickable ? () => onViewFinding(findingId as string) : undefined
+      }
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={
+        isClickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onViewFinding(findingId as string);
+              }
+            }
+          : undefined
+      }
+    >
       <div className="flex items-center gap-2 mb-1.5">
         <Quote size={12} style={{ color: accentColor }} className="shrink-0" />
         <span className="text-xs font-medium" style={{ color: accentColor }}>
           {label}
         </span>
         {findingId && (
-          <span className="ml-auto text-[10px] text-stone/50 font-mono">
+          <span className="ml-auto flex items-center gap-1 text-[10px] text-stone/50 font-mono">
+            <FileText size={10} className="shrink-0" />
             {findingId.slice(0, 8)}
+            {isClickable && (
+              <span className="hidden group-hover:inline text-[10px] text-stone/70 ml-1">
+                View source
+              </span>
+            )}
           </span>
         )}
       </div>
@@ -92,6 +127,7 @@ function SourceExcerpt({ label, source, accentColor }: SourceExcerptProps) {
 
 export function ContradictionDetailPanel({
   contradiction,
+  onViewFinding,
 }: ContradictionDetailPanelProps) {
   const severityStyle =
     SEVERITY_STYLE[contradiction.severity] ?? SEVERITY_STYLE.minor;
@@ -196,11 +232,13 @@ export function ContradictionDetailPanel({
                 label="Source for Claim A"
                 source={contradiction.source_a}
                 accentColor={severityStyle.color}
+                onViewFinding={onViewFinding}
               />
               <SourceExcerpt
                 label="Source for Claim B"
                 source={contradiction.source_b}
                 accentColor={severityStyle.color}
+                onViewFinding={onViewFinding}
               />
             </div>
           </CollapsibleSection>

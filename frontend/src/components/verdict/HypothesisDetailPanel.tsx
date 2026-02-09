@@ -18,6 +18,7 @@ import type {
 
 interface HypothesisDetailPanelProps {
   hypothesis: HypothesisResponse;
+  onViewFinding?: (findingId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,20 +83,53 @@ const ROLE_CONFIG: Record<
 // EvidenceRow subcomponent
 // ---------------------------------------------------------------------------
 
-function EvidenceRow({ item }: { item: SynthesisEvidenceItem }) {
+function EvidenceRow({
+  item,
+  onViewFinding,
+}: {
+  item: SynthesisEvidenceItem;
+  onViewFinding?: (findingId: string) => void;
+}) {
   const config = ROLE_CONFIG[item.role] ?? ROLE_CONFIG.neutral;
   const Icon = config.icon;
+  const isClickable = !!onViewFinding && !!item.finding_id;
 
   return (
-    <div className="rounded-lg bg-charcoal/50 border border-stone/10 p-3">
+    <div
+      className={clsx(
+        "group rounded-lg bg-charcoal/50 border border-stone/10 p-3",
+        isClickable && "cursor-pointer hover:bg-charcoal/70 transition-colors",
+      )}
+      onClick={
+        isClickable ? () => onViewFinding(item.finding_id as string) : undefined
+      }
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={
+        isClickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onViewFinding(item.finding_id as string);
+              }
+            }
+          : undefined
+      }
+    >
       <div className="flex items-center gap-2 mb-1.5">
         <Icon size={14} style={{ color: config.color }} className="shrink-0" />
         <span className="text-xs font-medium" style={{ color: config.color }}>
           {config.label}
         </span>
         {item.finding_id && (
-          <span className="ml-auto text-[10px] text-stone/50 font-mono">
+          <span className="ml-auto flex items-center gap-1 text-[10px] text-stone/50 font-mono">
+            <FileText size={10} className="shrink-0" />
             {item.finding_id.slice(0, 8)}
+            {isClickable && (
+              <span className="hidden group-hover:inline text-[10px] text-stone/70 ml-1">
+                View source
+              </span>
+            )}
           </span>
         )}
       </div>
@@ -110,6 +144,7 @@ function EvidenceRow({ item }: { item: SynthesisEvidenceItem }) {
 
 export function HypothesisDetailPanel({
   hypothesis,
+  onViewFinding,
 }: HypothesisDetailPanelProps) {
   const confidenceColor = getConfidenceColor(hypothesis.confidence);
   const statusStyle = STATUS_STYLE[hypothesis.status] ?? STATUS_STYLE.PENDING;
@@ -219,7 +254,11 @@ export function HypothesisDetailPanel({
           >
             <div className="space-y-2">
               {supportingEvidence.map((item, idx) => (
-                <EvidenceRow key={`supporting-${idx}`} item={item} />
+                <EvidenceRow
+                  key={`supporting-${idx}`}
+                  item={item}
+                  onViewFinding={onViewFinding}
+                />
               ))}
             </div>
           </CollapsibleSection>
@@ -236,7 +275,11 @@ export function HypothesisDetailPanel({
           >
             <div className="space-y-2">
               {contradictingEvidence.map((item, idx) => (
-                <EvidenceRow key={`contradicting-${idx}`} item={item} />
+                <EvidenceRow
+                  key={`contradicting-${idx}`}
+                  item={item}
+                  onViewFinding={onViewFinding}
+                />
               ))}
             </div>
           </CollapsibleSection>
@@ -252,7 +295,11 @@ export function HypothesisDetailPanel({
           >
             <div className="space-y-2">
               {neutralEvidence.map((item, idx) => (
-                <EvidenceRow key={`neutral-${idx}`} item={item} />
+                <EvidenceRow
+                  key={`neutral-${idx}`}
+                  item={item}
+                  onViewFinding={onViewFinding}
+                />
               ))}
             </div>
           </CollapsibleSection>

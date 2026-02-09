@@ -8,11 +8,15 @@ import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Scale, Workflow } from "lucide-react";
 
+import { createPortal } from "react-dom";
+
 import { CommandCenter } from "@/components/CommandCenter";
 import { ConfirmationModal } from "@/components/CommandCenter/ConfirmationModal";
 import { BatchConfirmationModal } from "@/components/CommandCenter/BatchConfirmationModal";
 import { VerdictView } from "@/components/verdict/VerdictView";
+import { SourceViewerModal } from "@/components/source-viewer/SourceViewerModal";
 import { useAgentStates } from "@/hooks/useAgentStates";
+import { useSourceNavigation } from "@/hooks/useSourceNavigation";
 import { useSynthesis } from "@/hooks/useSynthesisData";
 import { useDetailSidebarDispatch } from "@/hooks";
 import { extractBaseAgentType } from "@/lib/command-center-validation";
@@ -65,6 +69,13 @@ export default function CommandCenterPage() {
     isConnected,
     isReconnecting,
   } = useAgentStates(caseId);
+
+  // Source navigation for verdict evidence citations
+  const {
+    openFromFinding: verdictOpenFromFinding,
+    sourceContent: verdictSourceContent,
+    closeSource: verdictCloseSource,
+  } = useSourceNavigation(caseId);
 
   // Fallback: check if synthesis data already exists (page loaded after analysis)
   const { data: synthesisData } = useSynthesis(caseId);
@@ -224,7 +235,11 @@ export default function CommandCenterPage() {
             className="h-full w-full"
           />
         ) : (
-          <VerdictView caseId={caseId} onOpenDetail={handleOpenVerdictDetail} />
+          <VerdictView
+            caseId={caseId}
+            onOpenDetail={handleOpenVerdictDetail}
+            onViewFinding={verdictOpenFromFinding}
+          />
         )}
       </div>
 
@@ -242,6 +257,23 @@ export default function CommandCenterPage() {
           onResolved={handleConfirmationResolved}
         />
       ) : null}
+
+      {/* Source Viewer Modal for verdict evidence citations */}
+      {verdictSourceContent &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+            style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
+          >
+            <div className="w-full max-w-5xl h-[85vh]">
+              <SourceViewerModal
+                content={verdictSourceContent}
+                onClose={verdictCloseSource}
+              />
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

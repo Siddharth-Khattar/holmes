@@ -4,15 +4,10 @@
 "use client";
 
 import { clsx } from "clsx";
-import {
-  AlertCircle,
-  Lightbulb,
-  HelpCircle,
-  Target,
-  Link2,
-} from "lucide-react";
+import { Lightbulb, HelpCircle, Target, Link2 } from "lucide-react";
 
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
+import { EntityBadge } from "@/components/ui/entity-badge";
 import type { GapResponse } from "@/types/synthesis";
 
 // ---------------------------------------------------------------------------
@@ -149,22 +144,11 @@ export function GapDetailPanel({ gap }: GapDetailPanelProps) {
           >
             <div className="space-y-1.5">
               {gap.related_entities.map((entity) => (
-                <div
+                <EntityBadge
                   key={entity.id}
-                  className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-charcoal/50 border border-stone/10"
-                >
-                  <AlertCircle
-                    size={14}
-                    className="shrink-0"
-                    style={{ color: priorityStyle.color }}
-                  />
-                  <span className="text-xs text-smoke truncate">
-                    {entity.name}
-                  </span>
-                  <span className="ml-auto shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded bg-stone/15 text-stone/80 uppercase tracking-wide">
-                    {entity.entity_type}
-                  </span>
-                </div>
+                  name={entity.name}
+                  entityType={entity.entity_type}
+                />
               ))}
             </div>
           </CollapsibleSection>

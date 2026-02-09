@@ -49,11 +49,17 @@ function renderContent(descriptor: SidebarContentDescriptor): React.ReactNode {
         />
       );
     case "verdict-hypothesis":
-      return <HypothesisDetailPanel hypothesis={descriptor.props.hypothesis} />;
+      return (
+        <HypothesisDetailPanel
+          hypothesis={descriptor.props.hypothesis}
+          onViewFinding={descriptor.props.onViewFinding}
+        />
+      );
     case "verdict-contradiction":
       return (
         <ContradictionDetailPanel
           contradiction={descriptor.props.contradiction}
+          onViewFinding={descriptor.props.onViewFinding}
         />
       );
     case "verdict-gap":

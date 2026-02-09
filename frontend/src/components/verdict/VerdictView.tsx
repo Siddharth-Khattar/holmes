@@ -35,6 +35,7 @@ import { TaskCard } from "./TaskCard";
 interface VerdictViewProps {
   caseId: string;
   onOpenDetail?: (descriptor: SidebarContentDescriptor) => void;
+  onViewFinding?: (findingId: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +92,11 @@ function EmptyState() {
 // VerdictView Component
 // ---------------------------------------------------------------------------
 
-export function VerdictView({ caseId, onOpenDetail }: VerdictViewProps) {
+export function VerdictView({
+  caseId,
+  onOpenDetail,
+  onViewFinding,
+}: VerdictViewProps) {
   // Data fetching via React Query hooks
   const { data: synthesis, isLoading: synthLoading } = useSynthesis(caseId);
   const { data: hypotheses, isLoading: hypLoading } = useHypotheses(caseId);
@@ -118,20 +123,20 @@ export function VerdictView({ caseId, onOpenDetail }: VerdictViewProps) {
     (hypothesis: HypothesisResponse) => {
       onOpenDetail?.({
         type: "verdict-hypothesis",
-        props: { hypothesis },
+        props: { hypothesis, onViewFinding },
       });
     },
-    [onOpenDetail],
+    [onOpenDetail, onViewFinding],
   );
 
   const handleContradictionClick = useCallback(
     (contradiction: ContradictionResponse) => {
       onOpenDetail?.({
         type: "verdict-contradiction",
-        props: { contradiction },
+        props: { contradiction, onViewFinding },
       });
     },
-    [onOpenDetail],
+    [onOpenDetail, onViewFinding],
   );
 
   const handleGapClick = useCallback(

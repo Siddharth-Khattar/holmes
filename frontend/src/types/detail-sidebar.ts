@@ -50,6 +50,7 @@ export interface VerdictHypothesisContent {
   type: "verdict-hypothesis";
   props: {
     hypothesis: HypothesisResponse;
+    onViewFinding?: (findingId: string) => void;
   };
 }
 
@@ -58,6 +59,7 @@ export interface VerdictContradictionContent {
   type: "verdict-contradiction";
   props: {
     contradiction: ContradictionResponse;
+    onViewFinding?: (findingId: string) => void;
   };
 }
 

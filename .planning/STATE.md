@@ -1,8 +1,8 @@
 # Holmes Project State
 
 **Last Updated:** 2026-02-09
-**Current Phase:** 10 of 12 (Source Panel & Entity Resolution) — IN PROGRESS (3/? plans)
-**Next Phase:** Continue 10-04+ (remaining view-level wiring if planned)
+**Current Phase:** 10 of 12 (Source Panel & Entity Resolution) — COMPLETE (3/3 plans)
+**Next Phase:** 11 (Corrections & Refinement)
 **Current Milestone:** M1 - Holmes v1.0
 
 ## Progress Overview
@@ -24,7 +24,7 @@
 | 8 | Synthesis Agent & Intelligence Layer | COMPLETE | 2026-02-08 | 2026-02-09 | 7 plans (16 commits) + 3 bugfix commits: DB models + schemas, agent runner/prompt/factory, pipeline Stage 8, SSE events, 8 API endpoints, frontend types/api/hooks, 7 Verdict components, 3 detail panels, CC tab toggle + SSE synthesis readiness, timeline API wiring, verdict badges. Post-fix: Gemini schema compat, pipeline crash fixes, gap entity resolution with names/types, KG event routing |
 | 8.1 | Geospatial Agent & Map View | COMPLETE | 2026-02-09 | 2026-02-09 | 5 plans (5 commits): GeocodingService, GeospatialAgentRunner + pipeline Stage 9, 6 REST API endpoints, frontend API client + hook + trigger UI, enhanced detail panel with 4 sections |
 | 9 | Chat Interface & Research | FRONTEND_DONE | - | - | Backend API needed |
-| 10 | Source Panel & Entity Resolution | IN_PROGRESS | 2026-02-09 | - | Plans 01-03 complete (6 commits): shared hooks/components, KG + Geospatial view-level wiring, Verdict + Timeline citation navigation |
+| 10 | Source Panel & Entity Resolution | COMPLETE | 2026-02-09 | 2026-02-09 | 3 plans (9 commits), 9/9 verified: shared citation utils + hooks, KG + Geospatial source wiring + entity resolution, Verdict + Timeline citation navigation |
 | 11 | Corrections & Refinement | NOT_STARTED | - | - | |
 | 12 | Demo Preparation | NOT_STARTED | - | - | |
 
@@ -35,20 +35,11 @@
 ## Current Context
 
 **What was just completed:**
-- **Phase 10 Plan 03 Complete** (2026-02-09): Verdict & Timeline Source Navigation -- 2 tasks, 2 commits (10 min)
-  - Task 1: Verdict detail panels (hypothesis, contradiction, gap) wired with source navigation. Evidence items and source excerpts clickable with onViewFinding callback threaded through sidebar descriptors. GapDetailPanel uses EntityBadge. SourceViewerModal portal from CC page.
-  - Task 2: Timeline event cards extract citations from metadata.citations (not sourceIds). Expandable citation list with clickable rows. SourceViewerModal portal from TimelineCore. caseId prop threaded through Timeline -> TimelineCore.
-  - 4 of 5 target views now have source citation support (KG, Geospatial, Verdict, Timeline)
-
-- **Phase 10 Plan 02 Complete** (2026-02-09): KG and Geospatial View-Level Source Navigation & Entity Resolution -- 2 tasks, 2 commits (9 min)
-  - Task 1: KG entity panel source documents clickable (openFromFinding), EntityTimelineEntry "View source evidence" link, useSourceNavigation wired in KnowledgeGraphCanvas with stable ref pattern, caseId prop added
-  - Task 2: GeospatialMap self-contained source navigation (removed onViewSource prop), citations open SourceViewerModal via z-[60] portal, entity UUIDs resolved to names with EntityBadge, file names resolved from cache
-  - KG + Geospatial views fully functional for source navigation and entity resolution
-
-- **Phase 10 Plan 01 Complete** (2026-02-09): Shared Citation & Entity Resolution Foundation -- 2 tasks, 2 commits (6 min)
-  - Task 1: citation-utils.ts (parseLocator, categoryToViewerType, Citation/FindingCitation interfaces, formatLocatorDisplay) + useSourceNavigation hook (citation -> SourceViewerContent with signed URL caching, two-hop finding resolution, race condition prevention)
-  - Task 2: useEntityResolver hook (entity UUID -> name/type/color via cached KG graph) + CitationLink component (clickable file name + locator badge + excerpt) + EntityBadge component (color-coded dot + name + type label)
-  - All 5 files are shared utilities consumed by view-level integration in Plans 02-05
+- **Phase 10 COMPLETE** (2026-02-09): Source Panel & Entity Resolution -- 3 plans, 9 commits, 9/9 verified
+  - Plan 01: Shared foundation (citation-utils, useSourceNavigation, useEntityResolver, CitationLink, EntityBadge)
+  - Plan 02: KG entity panel source docs clickable, EntityTimelineEntry "View source evidence", Geospatial entity resolution + citation-to-source
+  - Plan 03: Verdict hypothesis/contradiction evidence clickable, GapDetailPanel EntityBadge, Timeline expandable citation list
+  - All 4 target views have functional citation-to-source navigation: KG, Geospatial, Verdict, Timeline
 
 - **Phase 8.1 Complete** (2026-02-09): Geospatial Agent & Map View — 5 plans, 15 commits, 15/15 verified
   - Plan 01: GeocodingService with Google Maps API integration (forward/reverse/batch geocoding + in-memory caching)
@@ -197,9 +188,9 @@
   - Known limitations: Paths not rendered (v1), no SSE streaming (polling-based), entity names not resolved (UUIDs only)
 
 **What's next:**
-- Phase 10 Plans 04-05 -- wire remaining views (Evidence Library, Command Center agent outputs) to source navigation if planned
-- Phase 9 (Chat Interface) -- backend API + tool integration (query_kg, search_findings, get_synthesis, generate_geospatial, run_domain_agent)
-- Phase 10 geospatial enhancements: location filtering, movement path visualization (entity resolution DONE in Plan 02)
+- Phase 11 (Corrections & Refinement) -- polish, bug fixes, integration testing
+- Phase 12 (Demo Preparation) -- demo scenarios, sample data, walkthrough
+- Phase 9 (Chat Interface) -- backend API + tool integration still needed
 - Chat message citations deferred to Phase 9+ (backend does not yet produce structured citations)
 
 ---
@@ -625,9 +616,9 @@ None currently.
 ## Session Continuity
 
 Last session: 2026-02-09
-Stopped at: Phase 10 Plan 03 COMPLETE (2 tasks, 2 commits, 10 min). Verdict + Timeline source navigation and citation wiring.
+Stopped at: Phase 10 COMPLETE (3/3 plans, 9 commits, 9/9 verified). Source panel & entity resolution across all views.
 Resume file: None
-Next action: Phase 10 Plan 04 (if planned) or next phase
+Next action: Phase 11 (Corrections & Refinement)
 
 ---
 

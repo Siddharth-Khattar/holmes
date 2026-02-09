@@ -1258,14 +1258,14 @@ Plans:
 
 **Requirements:** REQ-SOURCE-001 (complete), REQ-SOURCE-002 (complete), REQ-SOURCE-003 (complete), REQ-SOURCE-004 (complete)
 
-**Status:** 🟡 PLANNED
+**Status:** ✅ COMPLETE (2026-02-09)
 
-**Plans:** 3 plans in 2 waves
+**Plans:** 3 plans in 3 waves
 
 Plans:
-- [ ] 10-01-PLAN.md -- Shared utilities: citation-utils, useSourceNavigation hook, useEntityResolver hook, CitationLink + EntityBadge components
-- [ ] 10-02-PLAN.md -- Wire KG entity panel, EntityTimelineEntry, and Geospatial detail panel
-- [ ] 10-03-PLAN.md -- Wire Verdict detail panels (hypothesis, contradiction, gap) and Timeline event cards
+- [x] 10-01-PLAN.md -- Shared utilities: citation-utils, useSourceNavigation hook, useEntityResolver hook, CitationLink + EntityBadge components
+- [x] 10-02-PLAN.md -- Wire KG entity panel, EntityTimelineEntry, and Geospatial detail panel
+- [x] 10-03-PLAN.md -- Wire Verdict detail panels (hypothesis, contradiction, gap) and Timeline event cards
 
 **Scope (narrowed from original Phase 10 via CONTEXT.md):**
 - **Track 1 -- Source Viewer Wiring:** Connect citations across ALL views to open SourceViewerModal with real source files at exact page/timestamp locations. Components already built in Phase 7.2 (SourceViewerModal, PdfViewer, AudioViewer, VideoViewer, ImageViewer); only the data pipeline needs wiring.

@@ -146,6 +146,12 @@ export function useGraphSimulation({
   widthRef.current = width;
   heightRef.current = height;
 
+  // Stable boolean that flips once when container dimensions become valid.
+  // Used as a dependency trigger to ensure the simulation is created after
+  // the ResizeObserver provides real measurements (prevents race condition
+  // where data arrives before layout completes).
+  const hasDimensions = width > 0 && height > 0;
+
   const [isSimulationRunning, setIsSimulationRunning] = useState(true);
   const [currentZoomScale, setCurrentZoomScale] = useState(1);
   const manuallyStoppedRef = useRef(false);
@@ -646,8 +652,10 @@ export function useGraphSimulation({
       defs.selectAll("#kg-node-glow-hover").remove();
       defs.selectAll("[id^='kg-grad-']").remove();
     };
+    // hasDimensions ensures the simulation is created once dimensions are valid
+    // (fixes race condition: data can arrive before ResizeObserver measures the container)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entities, relationships]);
+  }, [entities, relationships, hasDimensions]);
 
   // -------------------------------------------------------------------------
   // Separate resize effect: recenters forces without tearing down D3 elements

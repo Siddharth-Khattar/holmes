@@ -43,7 +43,7 @@ export default function KnowledgeGraphPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-200px)]">
+    <div className="h-full">
       <KnowledgeGraphCanvas
         caseId={params.id as string}
         entities={data.entities}

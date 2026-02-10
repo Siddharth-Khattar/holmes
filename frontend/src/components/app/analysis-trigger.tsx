@@ -1,11 +1,11 @@
 // ABOUTME: Button component to start or rerun case analysis.
-// ABOUTME: Shows contextual states (run/analyzing/split-dropdown) based on case status.
+// ABOUTME: Shows contextual states (run/confirm-refresh/analyzing) based on case status.
 
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Play, Loader2, ChevronDown, RefreshCw, FilePlus2 } from "lucide-react";
+import { Play, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { startAnalysis, ApiError, type AnalysisMode } from "@/lib/api/analysis";
@@ -31,7 +31,7 @@ export function AnalysisTrigger({
 }: AnalysisTriggerProps) {
   const router = useRouter();
   const [triggerState, setTriggerState] = useState<TriggerState>("idle");
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [showConfirmRefresh, setShowConfirmRefresh] = useState(false);
 
   // Reset triggerState when caseStatus changes. After the user triggers
   // analysis, triggerState transitions: idle → submitting → navigating.
@@ -52,7 +52,6 @@ export function AnalysisTrigger({
       if (triggerState !== "idle") return;
 
       setTriggerState("submitting");
-      setShowDropdown(false);
 
       try {
         await startAnalysis(caseId, mode);
@@ -84,6 +83,24 @@ export function AnalysisTrigger({
     [caseId, triggerState, onAnalysisStarted, router],
   );
 
+  const handleClick = useCallback(() => {
+    const hasPriorAnalysis =
+      hasAnalysis || caseStatus === "READY" || caseStatus === "ERROR";
+
+    if (!hasPriorAnalysis) {
+      handleStart("rerun_all");
+      return;
+    }
+
+    // Confirm-refresh pattern: first click shows confirmation, second click triggers
+    if (showConfirmRefresh) {
+      handleStart("rerun_all");
+      setShowConfirmRefresh(false);
+    } else {
+      setShowConfirmRefresh(true);
+    }
+  }, [hasAnalysis, caseStatus, showConfirmRefresh, handleStart]);
+
   const isDisabled =
     triggerState !== "idle" || caseStatus === "PROCESSING" || fileCount === 0;
   const isProcessing =
@@ -108,119 +125,33 @@ export function AnalysisTrigger({
     );
   }
 
-  // No prior analysis: simple "Run Analysis" button
-  // Show split button when the case has been analyzed before (any status)
   const hasPriorAnalysis =
     hasAnalysis || caseStatus === "READY" || caseStatus === "ERROR";
-  if (!hasPriorAnalysis) {
-    return (
-      <button
-        onClick={() => handleStart("uploaded_only")}
-        disabled={isDisabled}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        style={{
-          backgroundColor: isDisabled ? "var(--muted)" : "var(--primary)",
-          color: isDisabled
-            ? "var(--muted-foreground)"
-            : "var(--primary-foreground)",
-          cursor: isDisabled ? "not-allowed" : "pointer",
-          opacity: isDisabled ? 0.7 : 1,
-        }}
-      >
-        <Play className="w-4 h-4" />
-        <span>Run Analysis</span>
-      </button>
-    );
-  }
 
-  // Prior analysis exists: split button with dropdown for rerun options
+  // Determine button label and icon based on analysis state
+  const Icon = hasPriorAnalysis ? RefreshCw : Play;
+  const label = hasPriorAnalysis
+    ? showConfirmRefresh
+      ? "Confirm Refresh?"
+      : "Refresh"
+    : "Run Analysis";
+
   return (
-    <div className="relative">
-      <div
-        className="flex items-center rounded-lg overflow-hidden"
-        style={{
-          border: "1px solid var(--border)",
-        }}
-      >
-        {/* Primary action: Analyze New Files */}
-        <button
-          onClick={() => handleStart("uploaded_only")}
-          disabled={isDisabled}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors"
-          style={{
-            backgroundColor: "var(--card)",
-            color: isDisabled ? "var(--muted-foreground)" : "var(--foreground)",
-            cursor: isDisabled ? "not-allowed" : "pointer",
-            opacity: isDisabled ? 0.7 : 1,
-          }}
-        >
-          <FilePlus2 className="w-4 h-4" />
-          <span>Analyze New Files</span>
-        </button>
-
-        {/* Dropdown toggle */}
-        <button
-          onClick={() => setShowDropdown(!showDropdown)}
-          disabled={triggerState !== "idle"}
-          className="flex items-center px-2 py-2 transition-colors"
-          style={{
-            backgroundColor: "var(--card)",
-            color: "var(--muted-foreground)",
-            borderLeft: "1px solid var(--border)",
-            cursor: triggerState !== "idle" ? "not-allowed" : "pointer",
-          }}
-        >
-          <ChevronDown className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Dropdown menu */}
-      {showDropdown && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setShowDropdown(false)}
-          />
-          {/* Menu */}
-          <div
-            className="absolute right-0 mt-2 w-48 z-20 rounded-lg shadow-lg py-1"
-            style={{
-              backgroundColor: "var(--popover)",
-              border: "1px solid var(--border)",
-            }}
-          >
-            <button
-              onClick={() => handleStart("uploaded_only")}
-              className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors"
-              style={{ color: "var(--foreground)" }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.backgroundColor = "var(--muted)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.backgroundColor = "transparent")
-              }
-            >
-              <FilePlus2 className="w-4 h-4" />
-              <span>Analyze New Files</span>
-            </button>
-            <button
-              onClick={() => handleStart("rerun_all")}
-              className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors"
-              style={{ color: "var(--foreground)" }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.backgroundColor = "var(--muted)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.backgroundColor = "transparent")
-              }
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>Rerun All Files</span>
-            </button>
-          </div>
-        </>
-      )}
-    </div>
+    <button
+      onClick={handleClick}
+      disabled={isDisabled}
+      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+      style={{
+        backgroundColor: isDisabled ? "var(--muted)" : "var(--primary)",
+        color: isDisabled
+          ? "var(--muted-foreground)"
+          : "var(--primary-foreground)",
+        cursor: isDisabled ? "not-allowed" : "pointer",
+        opacity: isDisabled ? 0.7 : 1,
+      }}
+    >
+      <Icon className="w-4 h-4" />
+      <span>{label}</span>
+    </button>
   );
 }

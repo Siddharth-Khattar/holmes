@@ -5,7 +5,6 @@ export type AgentType =
   | "orchestrator"
   | "financial"
   | "legal"
-  | "strategy"
   | "evidence"
   | "knowledge-graph"
   | "synthesis";

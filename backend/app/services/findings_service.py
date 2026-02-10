@@ -17,6 +17,85 @@ from app.schemas.agent import DomainAgentOutput
 logger = logging.getLogger(__name__)
 
 
+def _validate_citation_quality(
+    output: DomainAgentOutput,
+    agent_type: str,
+    case_id: UUID,
+) -> None:
+    """Log warnings for findings with missing or low-quality citations.
+
+    Does NOT reject findings — they still have analytical value. Logging enables
+    monitoring and alerting on citation quality trends.
+    """
+    findings_without_citations = 0
+    citations_missing_excerpt = 0
+    citations_missing_file_id = 0
+    total_citations = 0
+
+    for finding in output.findings:
+        if len(finding.citations) == 0:
+            # Strategy agent may have domain-summary-only findings without
+            # direct file citations; log at DEBUG to avoid noise.
+            log_level = logging.DEBUG if agent_type == "strategy" else logging.WARNING
+            logger.log(
+                log_level,
+                "Finding has 0 citations (agent=%s, case=%s, title=%r)",
+                agent_type,
+                case_id,
+                finding.title[:80] if finding.title else "<no title>",
+            )
+            findings_without_citations += 1
+            continue
+
+        for citation in finding.citations:
+            total_citations += 1
+            if not citation.file_id:
+                citations_missing_file_id += 1
+                logger.warning(
+                    "Citation has empty file_id (agent=%s, case=%s, finding=%r)",
+                    agent_type,
+                    case_id,
+                    finding.title[:80] if finding.title else "<no title>",
+                )
+            if not getattr(citation, "excerpt", None):
+                citations_missing_excerpt += 1
+                logger.warning(
+                    "Citation has empty/null excerpt (agent=%s, case=%s, finding=%r)",
+                    agent_type,
+                    case_id,
+                    finding.title[:80] if finding.title else "<no title>",
+                )
+
+    # Aggregate summary line
+    issues = (
+        findings_without_citations
+        + citations_missing_excerpt
+        + citations_missing_file_id
+    )
+    if issues > 0:
+        logger.warning(
+            "Citation quality summary (agent=%s, case=%s): "
+            "%d findings without citations, %d citations missing excerpt, "
+            "%d citations missing file_id (out of %d total citations across %d findings)",
+            agent_type,
+            case_id,
+            findings_without_citations,
+            citations_missing_excerpt,
+            citations_missing_file_id,
+            total_citations,
+            len(output.findings),
+        )
+    else:
+        logger.info(
+            "Citation quality OK (agent=%s, case=%s): "
+            "%d citations across %d findings, all with file_id and excerpt",
+            agent_type,
+            case_id,
+            total_citations,
+            len(output.findings),
+        )
+
+
 async def save_findings_from_output(
     output: DomainAgentOutput,
     agent_type: str,
@@ -53,6 +132,8 @@ async def save_findings_from_output(
         )
         return []
 
+    _validate_citation_quality(output, agent_type, case_id)
+
     created_findings: list[CaseFinding] = []
 
     for finding in output.findings:
@@ -60,7 +141,7 @@ async def save_findings_from_output(
 
         # Serialize citations to JSONB-compatible dicts
         citations_json: list[dict[str, object]] | None = None
-        if finding.citations:
+        if len(finding.citations) > 0:
             citations_json = [c.model_dump(mode="json") for c in finding.citations]
 
         case_finding = CaseFinding(

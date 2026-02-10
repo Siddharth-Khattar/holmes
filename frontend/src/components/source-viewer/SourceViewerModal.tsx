@@ -104,7 +104,7 @@ export function SourceViewerModal({
 
   return (
     <div
-      className={`flex flex-col bg-jet border border-stone/15 shadow-2xl rounded-lg overflow-hidden ${className ?? ""}`}
+      className={`flex flex-col h-full bg-jet border border-stone/15 shadow-2xl rounded-lg overflow-hidden ${className ?? ""}`}
     >
       {/* Header */}
       <div className="flex-none flex items-center justify-between px-4 py-3 border-b border-stone/15">

@@ -332,7 +332,7 @@ function OrchestratorSections({
   );
 }
 
-/** Domain agent-specific sections (financial, legal, strategy) */
+/** Domain agent-specific sections (financial, legal, evidence) */
 function DomainAgentSections({ agentState, outputData }: AgentSectionsProps) {
   const result = agentState.lastResult;
   if (!result) return null;
@@ -547,7 +547,6 @@ function domainHue(domain: string): number {
   const hues: Record<string, number> = {
     financial: 140,
     legal: 220,
-    strategy: 30,
     evidence: 50,
     "knowledge-graph": 270,
   };
@@ -741,7 +740,6 @@ export function NodeDetailsSidebar({
   const isDomainAgent =
     agentType === "financial" ||
     agentType === "legal" ||
-    agentType === "strategy" ||
     agentType === "evidence";
 
   const outputData = executionDetail?.output_data ?? null;

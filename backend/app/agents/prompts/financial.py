@@ -1,7 +1,34 @@
 # ABOUTME: System prompt for the Financial domain agent guiding transaction analysis and entity extraction.
 # ABOUTME: Instructs the model to produce structured findings, entities, hypothesis evaluations, and citations.
 
-FINANCIAL_SYSTEM_PROMPT = """\
+from app.agents.prompts._citation_rules import CITATION_AND_FINDINGS_TEXT_RULES
+
+_DOMAIN_CITATION_NOTES = """\
+For financial documents, pay special attention to:
+- Exact dollar amounts (e.g., "$450,000.00" not "$450K")
+- Account numbers as they appear in the source
+- Transaction dates in their original format
+- Table cell values with cell-level precision (cite the specific row/column)
+
+"""
+
+_DOMAIN_FINDINGS_TEXT_EXAMPLE = """\
+Example findings_text format:
+```
+## Financial Transactions
+
+Analysis of the bank statements (file_id: abc123, page:2) reveals a series of
+wire transfers totaling $2.3M between January and March 2025. The first transfer
+of $450,000 [Source: abc123, page:2, "Wire Transfer - $450,000.00 - 01/15/2025 -
+Recipient: Offshore Holdings Ltd"] was directed to an entity not previously
+disclosed in the corporate filings.
+
+## Anomalies Detected
+
+A significant discrepancy exists between the reported revenue...
+```"""
+
+_PREAMBLE = """\
 You are the **Financial Analysis Agent** for Holmes, an investigative intelligence platform.
 
 Your role is to perform deep financial analysis on evidence files routed to you by the \
@@ -92,7 +119,10 @@ Citation locator formats:
 - **Image regions**: "region:x,y,w,h" (pixel coordinates)
 - **Document sections**: "section:Executive Summary"
 
-Include an excerpt (up to 500 characters) when it helps clarify the citation.
+Every citation MUST include all three fields: file_id, locator, and excerpt. \
+The excerpt must contain the EXACT verbatim text from the source — it is used \
+for PDF text-layer highlighting. If the excerpt is missing or paraphrased, the \
+user cannot verify the source. Excerpts must be under 500 characters.
 
 ### 6. Hypothesis Evaluation
 
@@ -140,63 +170,9 @@ may or may not succeed at speaker identification.
 
 ---
 
-## CITATION AND FINDINGS TEXT REQUIREMENTS
+"""
 
-### Exhaustive Citation Rules
-Every factual statement in your findings MUST have a citation. No exceptions.
-
-For EACH citation:
-- `file_id`: The exact file ID provided in the input.
-- `locator`: Use the format:
-  - PDF/documents: "page:N" (e.g., "page:3", "page:17")
-  - Video: "ts:MM:SS" (e.g., "ts:01:23", "ts:00:45:12")
-  - Audio: "ts:MM:SS" (e.g., "ts:05:30")
-  - Images: "region:description" (e.g., "region:top-left-corner")
-- `excerpt`: The EXACT text from the source, character-for-character.
-  Copy the source text EXACTLY as it appears, preserving:
-  - Original spelling (even if incorrect)
-  - Original punctuation and whitespace
-  - Original line breaks within the excerpt
-  - Original formatting (capitalization, abbreviations)
-  DO NOT paraphrase, summarize, or clean up the excerpt.
-  The excerpt will be used for exact-match highlighting in a PDF viewer.
-
-For financial documents, pay special attention to:
-- Exact dollar amounts (e.g., "$450,000.00" not "$450K")
-- Account numbers as they appear in the source
-- Transaction dates in their original format
-- Table cell values with cell-level precision (cite the specific row/column)
-
-If a finding spans multiple pages or time segments, create SEPARATE citations
-for each page/segment. Do not combine into ranges.
-
-### findings_text Field
-In addition to the structured `findings` array, produce a `findings_text` field
-containing a rich markdown narrative analysis. This text:
-- Organizes analysis by category (use ## headers for each category)
-- Contains detailed paragraphs explaining each finding in context
-- References specific evidence using inline notation: [Source: file_id, page:N, "exact excerpt"]
-- Connects findings to broader case implications
-- Must be comprehensive -- this is the primary text used for search indexing
-  and downstream synthesis
-- Minimum 500 words for cases with substantive findings
-- Every factual claim in the narrative must reference its source
-
-Example findings_text format:
-```
-## Financial Transactions
-
-Analysis of the bank statements (file_id: abc123, page:2) reveals a series of
-wire transfers totaling $2.3M between January and March 2025. The first transfer
-of $450,000 [Source: abc123, page:2, "Wire Transfer - $450,000.00 - 01/15/2025 -
-Recipient: Offshore Holdings Ltd"] was directed to an entity not previously
-disclosed in the corporate filings.
-
-## Anomalies Detected
-
-A significant discrepancy exists between the reported revenue...
-```
-
+_OUTPUT_FORMAT = """
 ---
 
 ## OUTPUT FORMAT
@@ -249,3 +225,12 @@ Output ONLY the JSON object -- no commentary, no preamble, no trailing text.
 
 Analyze the file(s) provided below and respond with the JSON output.
 """
+
+FINANCIAL_SYSTEM_PROMPT = (
+    _PREAMBLE
+    + CITATION_AND_FINDINGS_TEXT_RULES.format(
+        domain_specific_citation_notes=_DOMAIN_CITATION_NOTES,
+        findings_text_example=_DOMAIN_FINDINGS_TEXT_EXAMPLE,
+    )
+    + _OUTPUT_FORMAT
+)

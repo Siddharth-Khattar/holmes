@@ -193,16 +193,6 @@ export default function CaseLayout({
           />
         </div>
 
-        {/* Verdict summary as subtitle (when synthesis is complete) */}
-        {caseData.verdict_summary && (
-          <p
-            className="max-w-2xl text-sm mb-2 truncate"
-            style={{ color: "var(--muted-foreground)" }}
-          >
-            {caseData.verdict_summary}
-          </p>
-        )}
-
         {/* Case description */}
         {caseData.description && (
           <p

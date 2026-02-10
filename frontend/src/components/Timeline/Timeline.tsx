@@ -18,8 +18,6 @@ export function Timeline({
   caseId,
   initialEvents = [],
   onEventClick,
-  onEventUpdate,
-  onEventDelete,
   enableRealtimeUpdates = true,
   className,
 }: TimelineProps) {
@@ -68,18 +66,6 @@ export function Timeline({
   const handleEventClick = (event: TimelineEvent) => {
     setSelectedEvent(event);
     onEventClick?.(event);
-  };
-
-  const handleEventUpdate = async (updatedEvent: TimelineEvent) => {
-    await onEventUpdate?.(updatedEvent);
-    await refetch();
-    setSelectedEvent(null);
-  };
-
-  const handleEventDelete = async (eventId: string) => {
-    await onEventDelete?.(eventId);
-    await refetch();
-    setSelectedEvent(null);
   };
 
   if (isLoading) {
@@ -135,8 +121,6 @@ export function Timeline({
           caseId={caseId}
           event={selectedEvent}
           onClose={() => setSelectedEvent(null)}
-          onUpdate={handleEventUpdate}
-          onDelete={handleEventDelete}
           onViewSource={detailOpenFromFinding}
         />
       )}

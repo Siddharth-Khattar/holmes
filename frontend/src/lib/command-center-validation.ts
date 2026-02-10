@@ -23,7 +23,6 @@ const VALID_AGENT_TYPES: AgentType[] = [
   "orchestrator",
   "financial",
   "legal",
-  "strategy",
   "evidence",
   "knowledge-graph",
   "synthesis",

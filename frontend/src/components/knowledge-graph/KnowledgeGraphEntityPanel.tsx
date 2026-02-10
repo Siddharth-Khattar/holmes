@@ -4,20 +4,17 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import {
-  Search,
-  GitBranch,
-  X,
-  Link2,
-  FileText,
-  ExternalLink,
-} from "lucide-react";
+import { Search, GitBranch, X, Link2, FileText } from "lucide-react";
 
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { EntityTimelineEntry } from "./EntityTimelineEntry";
 import { getEntityColor } from "@/lib/knowledge-graph-config";
 import { useFindingResolver } from "@/hooks/useFindingResolver";
-import { formatLocatorDisplay } from "@/lib/citation-utils";
+import { partitionSources } from "@/lib/source-partition";
+import {
+  FileSourceEntry,
+  ExcerptSourceEntry,
+} from "@/components/ui/source-entries";
 import type {
   EntityResponse,
   RelationshipResponse,
@@ -175,12 +172,13 @@ export function KnowledgeGraphEntityPanel({
     [entity, relationships],
   );
 
-  // Resolve finding IDs to enriched display data (file names, excerpts)
-  const { resolveFindings } = useFindingResolver(caseId);
-  const resolvedSources = useMemo(
-    () => resolveFindings(sourceIds),
-    [resolveFindings, sourceIds],
+  // Resolve and partition sources into file-backed (clickable) and excerpt-only
+  const { getFinding } = useFindingResolver(caseId);
+  const { fileSources, excerptSources } = useMemo(
+    () => partitionSources(sourceIds, getFinding),
+    [sourceIds, getFinding],
   );
+  const totalSources = fileSources.length + excerptSources.length;
 
   const handleFilterChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -358,58 +356,31 @@ export function KnowledgeGraphEntityPanel({
         )}
 
         {/* Source Documents */}
-        {resolvedSources.length > 0 && (
+        {totalSources > 0 && (
           <CollapsibleSection
             title="Source Documents"
             color={entityColor}
             icon={<FileText className="w-3.5 h-3.5" />}
-            badge={resolvedSources.length}
+            badge={totalSources}
           >
             <div className="space-y-1.5">
-              {resolvedSources.map((resolved) => (
-                <button
-                  key={resolved.id}
-                  type="button"
-                  onClick={() => onViewFinding?.(resolved.id)}
-                  disabled={!onViewFinding}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-charcoal/50 border border-stone/10 text-left transition-colors ${
-                    onViewFinding
-                      ? "cursor-pointer hover:bg-charcoal/70"
-                      : "cursor-default"
-                  }`}
-                >
-                  <FileText
-                    size={14}
-                    className="shrink-0"
-                    style={{ color: entityColor }}
-                  />
-                  <div className="flex flex-col min-w-0 flex-1 gap-0.5">
-                    <span className="text-xs text-smoke font-medium truncate">
-                      {resolved.fileName ?? resolved.title}
-                    </span>
-                    {resolved.fileName && resolved.title && (
-                      <span className="text-[11px] text-stone/70 truncate">
-                        {resolved.title}
-                      </span>
-                    )}
-                    {resolved.locator && (
-                      <span className="text-[10px] text-stone/50">
-                        {formatLocatorDisplay(resolved.locator)}
-                      </span>
-                    )}
-                    {resolved.excerpt && (
-                      <span className="text-[10px] text-stone/50 italic line-clamp-1">
-                        {resolved.excerpt}
-                      </span>
-                    )}
-                  </div>
-                  {onViewFinding && (
-                    <ExternalLink
-                      size={12}
-                      className="shrink-0 text-stone/50"
-                    />
-                  )}
-                </button>
+              {fileSources.map(({ sourceId, resolved }) => (
+                <FileSourceEntry
+                  key={sourceId}
+                  sourceId={sourceId}
+                  resolved={resolved}
+                  onViewSource={
+                    onViewFinding ? (id) => onViewFinding(id) : undefined
+                  }
+                  variant="panel"
+                />
+              ))}
+              {excerptSources.map(({ sourceId, resolved }) => (
+                <ExcerptSourceEntry
+                  key={sourceId}
+                  resolved={resolved}
+                  variant="panel"
+                />
               ))}
             </div>
           </CollapsibleSection>

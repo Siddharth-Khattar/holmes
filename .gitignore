@@ -266,3 +266,6 @@ DEVELOPMENT_DOCS/
 CLAUDE.md
 .claude
 OTHER
+.goose
+.codex
+DOCS/reference/epstein-network-ui/Epstein-doc-explorer

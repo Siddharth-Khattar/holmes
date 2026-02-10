@@ -61,7 +61,7 @@ The established libraries/tools for this domain:
 
 | Tool | Version | Purpose | Why Standard |
 |------|---------|---------|--------------|
-| pydantic-to-typescript2 | latest | Pydantic -> TS | Pydantic v2 support |
+| openapi-typescript | latest | OpenAPI -> TS | Matches the HTTP contract; robust, widely used |
 | datamodel-codegen | latest | Alternative generator | More flexible, CI/CD ready |
 
 ### Alternatives Considered
@@ -436,7 +436,7 @@ resource "google_cloud_run_v2_service" "backend" {
   "scripts": {
     "dev:frontend": "bun --cwd frontend dev",
     "build:frontend": "bun --cwd frontend build",
-    "generate-types": "cd backend && uv run pydantic2ts --module app.schemas --output ../packages/types/src/generated/api.ts",
+    "generate-types": "make generate-types",
     "lint": "bun run lint:frontend && bun run lint:backend",
     "lint:frontend": "bun --cwd frontend lint",
     "lint:backend": "cd backend && uv run ruff check .",
@@ -468,7 +468,7 @@ Problems that look simple but have existing solutions:
 | Connection pooling | asyncpg.Pool directly | SQLAlchemy async engine | ORM integration, connection recycling |
 | Python env management | pip + venv | uv | 10-100x faster, lockfile support |
 | Git hooks | shell scripts | Lefthook | Parallel execution, staged file filtering |
-| Type generation | Manual TS interfaces | pydantic2ts/datamodel-codegen | Keeps types in sync automatically |
+| Type generation | Manual TS interfaces | openapi-typescript (from FastAPI OpenAPI) | Keeps types aligned with the API contract |
 
 **Key insight:** Infrastructure code has many edge cases (retries, timeouts, cleanup). The standard tools handle these; custom solutions will rediscover them painfully.
 
@@ -871,7 +871,7 @@ Things that couldn't be fully resolved:
 ### Secondary (MEDIUM confidence)
 - [Cloud Run Streaming Blog](https://cloud.google.com/blog/products/serverless/cloud-run-now-supports-http-grpc-server-streaming) - SSE support announcement
 - [Lefthook GitHub](https://github.com/evilmartians/lefthook) - Git hooks documentation
-- [pydantic-to-typescript2](https://github.com/mukul-mehta/pydantic-to-typescript2) - Type generation tool
+- [openapi-typescript](https://github.com/openapi-ts/openapi-typescript) - Type generation tool
 - [Deploy Next.js to Cloud Run Guide](https://dev.to/rushi-patel/deploy-next-js-app-to-google-cloud-run-with-github-actions-cicd-a-complete-guide-l29) - CI/CD patterns
 
 ### Tertiary (LOW confidence)

@@ -12,6 +12,8 @@ env:
   REGION: europe-west3
   BACKEND_SERVICE: holmes-backend
   FRONTEND_SERVICE: holmes-frontend
+  # Stabilize any generation that may depend on hash iteration order.
+  PYTHONHASHSEED: "0"
 
 jobs:
   # Job 1: Type generation check
@@ -24,6 +26,13 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Cache bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -33,7 +42,7 @@ jobs:
       - name: Install dependencies
         run: |
           bun install
-          cd backend && uv sync --dev
+          cd backend && uv sync --dev --frozen
 
       - name: Generate types
         run: make generate-types
@@ -43,6 +52,14 @@ jobs:
           if [ -n "$(git status --porcelain packages/types/)" ]; then
             echo "Type generation produced changes. Please run 'make generate-types' and commit."
             git diff packages/types/
+            exit 1
+          fi
+
+      - name: Check for unexpected lockfile changes
+        run: |
+          if [ -n "$(git status --porcelain backend/uv.lock)" ]; then
+            echo "uv.lock was modified during CI. Run 'cd backend && uv lock' and commit the updated lockfile."
+            git diff backend/uv.lock
             exit 1
           fi
 
@@ -66,7 +83,7 @@ jobs:
       - name: Install and lint
         run: |
           cd backend
-          uv sync
+          uv sync --dev --frozen
           uv run ruff check .
           uv run ruff format --check .
 
@@ -83,12 +100,21 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push backend image
-        run: |
-          IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend
-          docker build -t $IMAGE:${{ github.sha }} -t $IMAGE:latest ./backend
-          docker push $IMAGE:${{ github.sha }}
-          docker push $IMAGE:latest
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:${{ github.sha }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:latest
+          cache-from: |
+            type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:cache-${{ github.ref_name }}
+            type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:cache-main
+          cache-to: type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:cache-${{ github.ref_name }},mode=max
 
       - name: Deploy backend to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
@@ -97,10 +123,10 @@ jobs:
           region: ${{ env.REGION }}
           image: ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/backend:${{ github.sha }}
 
-  # Job 3: Frontend lint and build
+  # Job 3: Frontend lint and build (runs in parallel with backend)
   frontend:
     runs-on: ubuntu-latest
-    needs: [types, backend] # Backend must deploy first for API URL
+    needs: types
     permissions:
       contents: read
       id-token: write
@@ -112,11 +138,19 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Cache bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
       - name: Install and lint
         run: |
           bun install
           cd frontend
           bun run lint
+          bunx prettier --check src
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -131,23 +165,50 @@ jobs:
       - name: Get backend URL
         id: backend-url
         run: |
-          URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} --region=${{ env.REGION }} --format='value(status.url)')
+          # Fetch existing backend URL (should exist after first deploy)
+          URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} --region=${{ env.REGION }} --format='value(status.url)' 2>/dev/null || echo "")
+          if [ -z "$URL" ]; then
+            echo "::error::Backend service does not exist yet. Deploy backend first."
+            exit 1
+          fi
           echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "Backend URL: $URL"
+
+      - name: Get frontend URL
+        id: frontend-url
+        run: |
+          # Try to get actual URL from existing service, fall back to empty for first deploy
+          ACTUAL_URL=$(gcloud run services describe holmes-frontend --region=${{ env.REGION }} --format='value(status.url)' 2>/dev/null || echo "")
+          if [ -n "$ACTUAL_URL" ]; then
+            echo "url=$ACTUAL_URL" >> $GITHUB_OUTPUT
+          else
+            echo "url=" >> $GITHUB_OUTPUT
+          fi
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push frontend image
-        run: |
-          IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend
-          docker build \
-            --build-arg NEXT_PUBLIC_API_URL=${{ steps.backend-url.outputs.url }} \
-            -f frontend/Dockerfile \
-            -t $IMAGE:${{ github.sha }} \
-            -t $IMAGE:latest \
-            .
-          docker push $IMAGE:${{ github.sha }}
-          docker push $IMAGE:latest
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:${{ github.sha }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:latest
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ steps.backend-url.outputs.url }}
+            NEXT_PUBLIC_VIDEO_URL=https://storage.googleapis.com/${{ vars.GCP_PROJECT_ID }}-media/video.mp4
+            NEXT_PUBLIC_APP_URL=${{ steps.frontend-url.outputs.url }}
+            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ vars.GOOGLE_MAPS_API_KEY }}
+          cache-from: |
+            type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:cache-${{ github.ref_name }}
+            type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:cache-main
+          cache-to: type=registry,ref=${{ env.REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/holmes/frontend:cache-${{ github.ref_name }},mode=max
 
       - name: Deploy frontend to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
@@ -167,6 +228,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -174,13 +252,125 @@ jobs:
           workload_identity_provider: projects/${{ vars.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/github-actions
           service_account: github-actions@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
 
-      - name: Run migrations via Cloud Run job
-        run: |
-          gcloud run jobs execute holmes-migrate --region=${{ env.REGION }} --wait
-        continue-on-error: true # First deploy won't have job yet
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
 
-  # Job 5: Verify deployment
-  verify:
+      - name: Install Cloud SQL Proxy
+        run: |
+          curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.0/cloud-sql-proxy.linux.amd64
+          chmod +x cloud-sql-proxy
+
+      - name: Get database connection info
+        id: db-info
+        run: |
+          # Prefer an explicit connection name configured as a GitHub repo variable.
+          # Example value: project:region:instance (e.g. holmes-gemini-3-hack:europe-west3:holmes-db-prod)
+          CONNECTION_NAME="${{ vars.CLOUDSQL_CONNECTION_NAME }}"
+
+          if [ -z "$CONNECTION_NAME" ]; then
+            # Fallback for hackathon deployments: Terraform names instances as holmes-db-${environment}.
+            # Default environment is "prod"; map branches to envs for future expansion.
+            if [ "${{ github.ref_name }}" = "main" ]; then
+              DB_ENV=prod
+            elif [ "${{ github.ref_name }}" = "development" ]; then
+              DB_ENV=dev
+            else
+              DB_ENV=prod
+            fi
+
+            INSTANCE_NAME="holmes-db-$DB_ENV"
+            CONNECTION_NAME="${{ vars.GCP_PROJECT_ID }}:${{ env.REGION }}:$INSTANCE_NAME"
+          fi
+
+          echo "instance=$CONNECTION_NAME" >> $GITHUB_OUTPUT
+
+      - name: Run migrations
+        run: |
+          set -euo pipefail
+
+          # Prefer GitHub secret override, otherwise fetch from GCP Secret Manager.
+          DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+          if [ -z "$DB_PASSWORD" ]; then
+            SECRET_NAME="${{ vars.DB_PASSWORD_SECRET_NAME }}"
+            if [ -z "$SECRET_NAME" ]; then
+              SECRET_NAME="db-password"
+            fi
+
+            echo "DB_PASSWORD not set in GitHub secrets; fetching from Secret Manager ($SECRET_NAME)."
+            set +e
+            DB_PASSWORD="$(gcloud secrets versions access latest --secret="$SECRET_NAME" 2>/tmp/secret_err)"
+            status=$?
+            set -e
+            if [ $status -ne 0 ]; then
+              echo "Failed to read Secret Manager secret '$SECRET_NAME'."
+              echo "--- gcloud error ---"
+              cat /tmp/secret_err || true
+              echo "--------------------"
+              echo "Fix: apply Terraform so the secret exists, and ensure the GitHub Actions service account has roles/secretmanager.secretAccessor on it."
+              echo "Terraform creates it in terraform/secrets.tf as secret_id='$SECRET_NAME'."
+              exit 1
+            fi
+          fi
+
+          if [ -z "$DB_PASSWORD" ]; then
+            echo "DB password is empty. Ensure either GitHub secret DB_PASSWORD is set (optional override), or Secret Manager secret '$SECRET_NAME' exists and has a latest version."
+            exit 1
+          fi
+
+          # Better Auth migrations need their server config env vars present.
+          echo "Fetching Better Auth and OAuth secrets from Secret Manager."
+          export BETTER_AUTH_SECRET="$(gcloud secrets versions access latest --secret=better-auth-secret)"
+          export GOOGLE_CLIENT_ID="$(gcloud secrets versions access latest --secret=google-client-id)"
+          export GOOGLE_CLIENT_SECRET="$(gcloud secrets versions access latest --secret=google-client-secret)"
+
+          if [ -z "$BETTER_AUTH_SECRET" ]; then
+            echo "BETTER_AUTH_SECRET is empty after fetch; ensure secret 'better-auth-secret' exists with a latest version."
+            exit 1
+          fi
+
+          # Build DB URLs for different runtimes:
+          # - Better Auth uses node-postgres (expects postgresql://)
+          # - Alembic uses SQLAlchemy + asyncpg (postgresql+asyncpg://)
+          DATABASE_URL_PG="postgresql://backend:$DB_PASSWORD@127.0.0.1:5432/holmes"
+          DATABASE_URL_ASYNCPG="postgresql+asyncpg://backend:$DB_PASSWORD@127.0.0.1:5432/holmes"
+
+          # Start Cloud SQL Proxy in background
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 "${{ steps.db-info.outputs.instance }}" &
+
+          # Wait for proxy to accept connections (avoid flaky fixed sleeps)
+          for i in $(seq 1 30); do
+            if python3 -c 'import socket; s=socket.socket(); s.settimeout(1); s.connect(("127.0.0.1", 5432)); s.close()' >/dev/null 2>&1; then
+              echo "Cloud SQL Proxy is ready."
+              break
+            fi
+
+            if [ "$i" -eq 30 ]; then
+              echo "Cloud SQL Proxy did not become ready in time."
+              pkill -f cloud-sql-proxy || true
+              exit 1
+            fi
+
+            sleep 1
+          done
+
+          # Run Better Auth migrations first (creates auth tables like \"user\")
+          bun install --frozen-lockfile
+          cd frontend
+          export DATABASE_URL="$DATABASE_URL_PG"
+          bunx @better-auth/cli migrate --yes --config ./src/lib/auth.ts
+          cd ..
+
+          # Run migrations
+          cd backend
+          export DATABASE_URL="$DATABASE_URL_ASYNCPG"
+          uv sync --frozen
+          uv run alembic upgrade head
+
+          # Stop proxy
+          pkill -f cloud-sql-proxy || true
+
+  # Job 5: Update service env vars
+  update-env:
     runs-on: ubuntu-latest
     needs: [backend, frontend]
     permissions:
@@ -188,10 +378,46 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: projects/${{ vars.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github/providers/github-actions
+          service_account: github-actions@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
 
-      - name: Wait for deployment to stabilize
-        run: sleep 30
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get service URLs
+        id: urls
+        run: |
+          BACKEND_URL=$(gcloud run services describe holmes-backend --region=${{ env.REGION }} --format='value(status.url)')
+          FRONTEND_URL=$(gcloud run services describe holmes-frontend --region=${{ env.REGION }} --format='value(status.url)')
+          echo "backend=$BACKEND_URL" >> $GITHUB_OUTPUT
+          echo "frontend=$FRONTEND_URL" >> $GITHUB_OUTPUT
+
+      - name: Update backend FRONTEND_URL
+        run: |
+          gcloud run services update holmes-backend \
+            --region=${{ env.REGION }} \
+            --update-env-vars="FRONTEND_URL=${{ steps.urls.outputs.frontend }}"
+
+      - name: Update frontend env vars
+        run: |
+          gcloud run services update holmes-frontend \
+            --region=${{ env.REGION }} \
+            --update-env-vars="NEXT_PUBLIC_API_URL=${{ steps.urls.outputs.backend }},BETTER_AUTH_URL=${{ steps.urls.outputs.frontend }}"
+
+  # Job 6: Verify deployment
+  verify:
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, update-env]
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -213,21 +439,33 @@ jobs:
 
       - name: Verify backend health
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.urls.outputs.backend }}/health)
-          if [ "$STATUS" != "200" ]; then
-            echo "Backend health check failed with status $STATUS"
-            exit 1
-          fi
-          echo "Backend healthy at ${{ steps.urls.outputs.backend }}"
+          echo "Waiting for backend to be healthy..."
+          for i in $(seq 1 20); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${{ steps.urls.outputs.backend }}/health" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend healthy at ${{ steps.urls.outputs.backend }}"
+              exit 0
+            fi
+            echo "Attempt $i/20: got status $STATUS, retrying in $((i * 2))s..."
+            sleep $((i * 2))
+          done
+          echo "::error::Backend health check failed after 20 attempts"
+          exit 1
 
-      - name: Verify frontend
+      - name: Verify frontend health
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.urls.outputs.frontend }})
-          if [ "$STATUS" != "200" ]; then
-            echo "Frontend health check failed with status $STATUS"
-            exit 1
-          fi
-          echo "Frontend healthy at ${{ steps.urls.outputs.frontend }}"
+          echo "Waiting for frontend to be healthy..."
+          for i in $(seq 1 20); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "${{ steps.urls.outputs.frontend }}" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Frontend healthy at ${{ steps.urls.outputs.frontend }}"
+              exit 0
+            fi
+            echo "Attempt $i/20: got status $STATUS, retrying in $((i * 2))s..."
+            sleep $((i * 2))
+          done
+          echo "::error::Frontend health check failed after 20 attempts"
+          exit 1
 
       - name: Output URLs
         run: |

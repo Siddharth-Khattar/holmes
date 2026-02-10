@@ -25,9 +25,9 @@ Establish CI/CD pipeline, database, storage, and skeleton services that all othe
 ### Monorepo Structure
 - Bun as package manager with plain workspaces (no Turborepo)
 - Structure: `/frontend` (Next.js), `/backend` (FastAPI), `/packages` (generated TS types)
-- **Python as source of truth:** Pydantic models in backend define all API schemas
-- **Type generation:** CI runs pydantic2ts or datamodel-codegen to generate TypeScript interfaces
-- **Generation flow:** backend/app/schemas/*.py → CI generates → packages/types/src/generated/*.ts
+- **API contract as source of truth:** FastAPI OpenAPI (derived from Pydantic models + route annotations) defines the HTTP contract and shared schemas
+- **Type generation:** CI runs `make generate-types` to generate TypeScript from the backend OpenAPI schema
+- **Generation flow:** FastAPI `app.openapi()` → `openapi-typescript` → packages/types/src/generated/api.ts
 - **Validation:** Pydantic handles validation in backend; frontend uses generated types for type-safety only
 - No hand-written shared types — all derived from Python models
 - Convenience alias scripts in root package.json (e.g., `bun dev:frontend`)
@@ -41,12 +41,12 @@ Establish CI/CD pipeline, database, storage, and skeleton services that all othe
 - TypeScript strict mode with relaxation: allow unused variables during development
 
 ### Type Generation Pipeline
-- Pydantic models in `/backend/app/schemas/` are the single source of truth
+- FastAPI OpenAPI (built from `/backend/app/schemas/` + route annotations) is the single source of truth for generated TypeScript
 - CI job runs after backend changes: generates TS types before frontend build
 - Generated types output to `/packages/types/src/generated/`
 - Frontend imports from `@holmes/types` workspace package
 - Makefile target: `make generate-types` for local development
-- Generation tool: pydantic2ts (or datamodel-codegen --output-model-type typescript)
+- Generation tool: `openapi-typescript` (OpenAPI → TypeScript)
 - Generated files are committed to repo (not gitignored) — ensures frontend can build without running generation
 
 ### Backend Stack

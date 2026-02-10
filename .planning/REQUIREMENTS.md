@@ -43,6 +43,10 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Signed URLs for secure access
 - Maximum file size: 500MB
 - Supported types: PDF, DOCX, MP4, MP3, JPG, PNG, WAV
+- **Tiered agent delivery:**
+  - ≤100MB files: Downloaded from GCS, encoded as inline_data for Gemini
+  - >100MB files: Downloaded from GCS, uploaded to Gemini File API (2GB max, 48hr retention, free)
+  - File API URIs reusable across all pipeline stages
 **Dependencies:** REQ-INF-001
 
 ### REQ-INF-004: SSE Streaming Infrastructure
@@ -167,13 +171,16 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 **Priority:** CRITICAL
 **Description:** Initial agent that classifies files by domain relevance.
 **Acceptance Criteria:**
-- Receives file from GCS (via signed URL or content)
+- Receives files via tiered handling: inline (≤100MB) or File API (>100MB, up to 2GB)
 - Uses Gemini 3 Flash for speed
-- Outputs domain scores: Financial (0-1), Legal (0-1), Strategy (0-1)
-- Outputs complexity score (1-5)
-- Outputs file summary (200 words max)
-- Outputs detected entities (people, orgs, dates, amounts)
-- Processing time < 30 seconds per file
+- Runs in a **fresh stage-isolated ADK session** (no shared context with other stages)
+- Outputs domain scores: Financial (0-100), Legal (0-100), Strategy (0-100), Evidence (0-100)
+- Outputs complexity tier (Low/Medium/High)
+- Outputs file summary: short (1-2 sentences) and detailed (paragraph)
+- Outputs detected entities (people, orgs, dates, locations, amounts, legal terms)
+- `media_resolution: "medium"` for speed (classification, not forensic)
+- Stores TriageOutput in `agent_executions` table for downstream stages
+- Handles multimodal evidence: PDF, video (MP4), audio (MP3/WAV), images (JPG/PNG)
 **Dependencies:** REQ-INF-003, REQ-AGENT-007
 
 ### REQ-AGENT-002: Orchestrator Agent
@@ -198,6 +205,9 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Links to other evidence (temporal, entity-based)
 - Outputs structured findings with span-level citations
 - Gemini 3 Pro for deep analysis
+- Rich markdown `findings_text` output: detailed analysis paragraphs per finding with inline source references
+- Exhaustive span-level citations: EVERY factual statement must reference exact file_id + page/timestamp + verbatim excerpt
+- Dual output: structured entities (for KG tables) + rich text findings (for display, vector search, and synthesis input)
 **Dependencies:** REQ-AGENT-002
 
 ### REQ-AGENT-004: Legal Analysis Agent
@@ -210,6 +220,9 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Links to statutes/regulations mentioned
 - Outputs structured findings with span-level citations
 - Gemini 3 Pro for nuanced legal interpretation
+- Rich markdown `findings_text` output: detailed analysis paragraphs per finding with inline source references
+- Exhaustive span-level citations: EVERY factual statement must reference exact file_id + page/timestamp + verbatim excerpt
+- Dual output: structured entities (for KG tables) + rich text findings (for display, vector search, and synthesis input)
 **Dependencies:** REQ-AGENT-002
 
 ### REQ-AGENT-005: Strategy Analysis Agent
@@ -222,6 +235,9 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Prioritizes evidence by strategic value
 - Outputs strategic recommendations with citations
 - Gemini 3 Pro for complex reasoning
+- Rich markdown `findings_text` output: detailed analysis paragraphs per finding with inline source references
+- Exhaustive span-level citations: EVERY factual statement must reference exact file_id + page/timestamp + verbatim excerpt
+- Dual output: structured entities (for KG tables) + rich text findings (for display, vector search, and synthesis input)
 **Dependencies:** REQ-AGENT-002
 
 ### REQ-AGENT-006: Evidence Analysis Agent
@@ -279,6 +295,9 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Media resolution: `"high"` for document forensics
 - `include_thoughts=True` for audit trail
 - Outputs structured findings with span-level citations
+- Rich markdown `findings_text` output: detailed analysis paragraphs per finding with inline source references
+- Exhaustive span-level citations: EVERY factual statement must reference exact file_id + page/timestamp + verbatim excerpt
+- Dual output: structured entities (for KG tables) + rich text findings (for display, vector search, and synthesis input)
 
 **Dependencies:** REQ-AGENT-002, REQ-AGENT-007c
 
@@ -286,18 +305,26 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 **Priority:** CRITICAL
 **Description:** Google ADK integration for agent orchestration.
 **Acceptance Criteria:**
-- ADK 1.22.x integrated with FastAPI
-- DatabaseSessionService with PostgreSQL
-- Fresh agent instances per workflow (ADK constraint: single parent rule)
+- ADK >=1.22.0 integrated with FastAPI
+- DatabaseSessionService with PostgreSQL (asyncpg)
+- **Stage-isolated sessions**: Each pipeline stage (Triage, Orchestrator, Domain, Synthesis) gets a FRESH ADK session to prevent multimodal file content from bloating downstream contexts
+- Session ID: SHA-256 hash of `case_id:workflow_id:stage` (deterministic, idempotent)
+- Inter-stage data flows via database (`agent_executions` table), not session state
+- Intra-stage data uses ADK `output_key` and `{key}` template injection
+- Fresh agent instances per stage (ADK constraint: single parent rule)
 - State namespacing per user/case with scope prefixes:
   - No prefix: Current session (case-specific data)
   - `user:` prefix: All user sessions (investigator preferences)
   - `app:` prefix: Global application (system configuration)
   - `temp:` prefix: Current invocation only (intermediate processing)
+- **Tiered file handling**: inline (≤100MB) or File API (>100MB, up to 2GB)
+- File API references reusable across pipeline stages (48hr retention)
 - Tool registration and execution
 - Error handling and retry logic
 - GcsArtifactService for evidence and report storage with versioning
 - Thought signature handling for multi-turn function calling (SDK handles automatically)
+- Pipeline orchestration via Python code (NOT a single ADK SequentialAgent across stages)
+- ParallelAgent used WITHIN Stage 3 for concurrent domain agents
 **Dependencies:** REQ-INF-002
 
 ### REQ-AGENT-007a: ADK Limitations Documentation
@@ -320,36 +347,46 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ### REQ-AGENT-007b: Thinking Mode Configuration
 **Priority:** HIGH
-**Description:** Configure appropriate thinking levels per agent type for optimal performance/cost balance.
+**Description:** Configure thinking levels using `BuiltInPlanner` with `ThinkingConfig` (ADK best practice).
 **Acceptance Criteria:**
-- All agents include explicit `thinking_config` in `generate_content_config`
-- Thinking level assignments:
-  - **Triage Agent:** `thinking_level="low"` (speed priority, simple classification)
+- All agents use `BuiltInPlanner(thinking_config=ThinkingConfig(thinking_level=..., include_thoughts=True))`
+- **NOT** using `generate_content_config` directly (use `BuiltInPlanner` instead)
+- **NOT** using `thinking_budget` (that's for Gemini 2.5, not Gemini 3)
+- Thinking level assignments — **ALL agents use HIGH per user preference**:
+  - **Triage Agent:** `thinking_level="high"` (user requested HIGH for all)
   - **Orchestrator Agent:** `thinking_level="high"` (complex routing decisions)
-  - **Financial Agent:** `thinking_level="medium"` (balanced analysis)
-  - **Legal Agent:** `thinking_level="high"` (nuanced legal interpretation)
-  - **Strategy Agent:** `thinking_level="medium"` (balanced synthesis)
+  - **Financial Agent:** `thinking_level="high"`
+  - **Legal Agent:** `thinking_level="high"`
+  - **Strategy Agent:** `thinking_level="high"`
   - **Evidence Agent:** `thinking_level="high"` (forensic-level authenticity analysis)
   - **Synthesis Agent:** `thinking_level="high"` (complex cross-referencing)
-  - **KG Agent:** `thinking_level="medium"` (entity resolution)
-  - **Chat Agent:** `thinking_level="medium"` (responsive Q&A)
+  - **KG Agent:** `thinking_level="high"`
+  - **Chat Agent:** `thinking_level="high"`
   - **Verification Agent:** `thinking_level="high"` (critical accuracy)
 - All agents set `include_thoughts=True` for Agent Flow transparency
 - Thinking traces captured and stored for display in visualization
+- Factory helper: `create_thinking_planner(level="high") -> BuiltInPlanner`
 **Dependencies:** REQ-AGENT-007
 
 ### REQ-AGENT-007c: Media Resolution Configuration
 **Priority:** HIGH
-**Description:** Configure high media resolution for dense legal document processing.
+**Description:** Configure media resolution per agent type for optimal quality/cost balance.
 **Acceptance Criteria:**
-- All domain agents processing documents use `media_resolution="high"` in generation config
-- Enables accurate extraction of:
-  - Small text and fine print
-  - Signatures and initials
-  - Dense tables and financial figures
-  - Watermarks and annotations
-  - Scanned document details
-- Config applied via `generation_config={"media_resolution": "high"}`
+- Gemini 3 `media_resolution` parameter controls tokens per image/video frame:
+  - `low`: 280 tokens/image, 70 tokens/video frame (fast, cheap)
+  - `medium`: 560 tokens/image, 70 tokens/video frame (balanced)
+  - `high`: 1,120 tokens/image, 280 tokens/video frame (detailed, expensive)
+- Per-agent configuration:
+  - **Triage Agent:** `media_resolution="medium"` (classification speed)
+  - **Financial Agent:** `media_resolution="high"` (dense tables, fine figures)
+  - **Legal Agent:** `media_resolution="high"` (fine print, signatures)
+  - **Strategy Agent:** `media_resolution="medium"` (general content)
+  - **Evidence Agent:** `media_resolution="high"` (forensic detail, OCR, manipulation detection)
+  - **Research/Discovery:** `media_resolution="low"` (web content, not evidence)
+- Enables accurate extraction of: small text, signatures, dense tables, watermarks, annotations
+- Config applied via `generation_config={"media_resolution": "high"}` or equivalent
+- Multimodal token rates: Video 263 tok/sec, Audio 32 tok/sec, PDF ~258 tok/page (image)
+- Gemini 3 native PDF text extraction is FREE (only image tokens charged)
 **Dependencies:** REQ-AGENT-007
 
 ### REQ-AGENT-007d: Video/Audio Processing with Metadata
@@ -408,23 +445,26 @@ This document defines formal requirements for Holmes v1. Requirements are derive
   ```
 **Dependencies:** REQ-AGENT-007, REQ-CHAT-001
 
-### REQ-AGENT-007g: Context Compaction for Long Sessions
+### REQ-AGENT-007g: Context Compaction for Chat Sessions Only
 **Priority:** MEDIUM
-**Description:** Implement context compaction to handle long investigation sessions.
+**Description:** Implement context compaction for the Chat Agent's iterative conversation sessions.
 **Acceptance Criteria:**
-- Configure `EventsCompactionConfig` for long-running investigations
+- **NOT used for the analysis pipeline** — pipeline uses stage-isolated sessions (no history to compact)
+- **Only for Chat Agent** (REQ-CHAT) which has iterative multi-turn conversations
+- Configure `EventsCompactionConfig` for Chat Agent sessions
 - Compaction interval: every 5 invocations
 - Overlap size: 2 events preserved in summary
 - Use `LlmEventSummarizer` with Gemini Flash for cost efficiency
-- Prevents context window exhaustion in complex cases
 - Implementation:
   ```python
+  # ONLY for Chat Agent's App configuration
   events_compaction_config=EventsCompactionConfig(
       compaction_interval=5,
       overlap_size=2,
       summarizer=LlmEventSummarizer(llm=Gemini(model="gemini-3-flash-preview"))
   )
   ```
+- **Why not for pipeline?** Each pipeline stage (Triage→Orchestrator→Domain→Synthesis) runs in a fresh session. There's no conversation history to compact. Stage isolation is the primary context management strategy.
 **Dependencies:** REQ-AGENT-007, REQ-CHAT-005
 
 ### REQ-AGENT-007h: Resilient Agent Wrapper
@@ -469,32 +509,60 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ### REQ-AGENT-008: Synthesis Agent
 **Priority:** HIGH
-**Description:** Agent that cross-references all domain findings.
+**Description:** Agent that cross-references all domain findings to produce hypotheses, contradictions, gaps, timeline events, cross-domain conclusions, and case-level summary/verdict.
 **Acceptance Criteria:**
-- Receives outputs from all domain agents
-- Identifies: links between findings, contradictions, gaps
-- Produces: unified findings document, contradiction list, gap list
-- Maintains provenance chain for all assertions
-- Gemini 3 Pro with `thinking_level="high"` for complex synthesis
+- **Two-source DB input assembly:**
+  - Source 1: ALL `case_findings` rows for the case workflow — rich markdown `finding_text` with inline citations, `citations` JSONB (file_id + locator + exact_excerpt), `agent_type` (financial/legal/evidence/strategy), `category`, `confidence`. These are the persisted outputs from all domain agents + strategy agent (pipeline Stage 6).
+  - Source 2: Curated knowledge graph from `kg_entities` (name, entity_type, description_brief, description_detailed, aliases, domains, source_finding_ids) + `kg_relationships` (label, relationship_type, evidence_excerpt, temporal_context, source_finding_ids, confidence). These are the outputs from the LLM KG Builder Agent (pipeline Stage 7).
+  - Additional context: case metadata (name, description, case_type) + file metadata (filenames, types) from `cases` and `case_files` tables.
+- Gemini 3 Pro with `thinking_level="high"` and 1M context window
+- Runs in fresh stage-isolated ADK session (consistent with pipeline pattern)
+- Pipeline position: Stage 8, after LLM KG Builder (Stage 7) + Entity Backfill (Stage 7b) complete
+- Produces structured SynthesisOutput:
+  - `hypotheses`: Case hypotheses with initial confidence + supporting/contradicting evidence references
+  - `contradictions`: Detected contradictions with exact source pairs from both sides, severity classification (minor/significant/critical)
+  - `gaps`: Missing evidence with priority ranking, description of what's needed and why
+  - `cross_modal_links`: Temporal correlations across modalities (video timestamp ↔ document date, audio mention ↔ text entity)
+  - `cross_domain_conclusions`: Insights from combining financial + legal + evidence + strategy findings
+  - `timeline_events`: Chronological events extracted from findings with date/time, type, layer assignment
+  - `case_summary`: Executive summary of the entire case
+  - `case_verdict`: Overall assessment with confidence, key strengths, key weaknesses
+  - `risk_assessment`: Risk factors and mitigation suggestions
+  - `has_location_data`: Boolean trigger flag for Geospatial Agent
+- Timeline events are a byproduct of chronological cross-referencing (no separate timeline agent)
+- Investigation tasks generated from contradictions (resolve_contradiction), gaps (obtain_evidence), pending hypotheses (verify_hypothesis)
+- All outputs stored in dedicated synthesis tables with SSE events signaling data readiness
+- Every statement in synthesis output must reference source case_finding IDs and/or kg_entity IDs
 - Uses `include_thoughts=True` for transparency
-**Dependencies:** REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006
+**Dependencies:** REQ-STORE-001, REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006
 
-### REQ-AGENT-009: Knowledge Graph Agent
+### REQ-AGENT-009: Knowledge Graph Builder Agent (LLM-Based)
 **Priority:** HIGH
-**Description:** Agent that builds entity-relationship graph from synthesis.
+**Description:** LLM-based agent (Gemini Pro) that reads ALL domain agent findings and entities holistically, then produces a curated knowledge graph with deduplicated high-level entities and semantic relationships. Replaces the previous programmatic co-occurrence approach.
 **Acceptance Criteria:**
-- Extracts entities with full domain-specific taxonomy
-- Core types: Person, Organization, Event, Document, Location, Amount
-- Legal types: statute, case_citation, contract, legal_term, court
-- Financial types: monetary_amount, account, transaction, asset
-- Evidence types: communication, alias, vehicle, property, timestamp
-- Identifies relationships with types (e.g., EMPLOYED_BY, SIGNED, WITNESSED)
-- Entity resolution: auto-merge with flag for >85% similarity matches
-- Domain-dependent metadata depth per entity type
-- Incremental updates without full rebuild
-- Stores in PostgreSQL (nodes + edges tables)
-- Links all nodes to source evidence
-**Dependencies:** REQ-AGENT-008
+- Receives ALL case_findings (rich markdown with citations) + all raw DomainEntity lists from agent_executions.output_data + case description
+- Gemini 3 Pro with `thinking_level="high"` and 1M context window
+- Runs in fresh stage-isolated ADK session after ALL domain agents complete
+- Produces curated entity list with investigation-focused taxonomy:
+  - **PERSON** — Named individuals (suspects, witnesses, victims, officers)
+  - **ORGANIZATION** — Companies, agencies, groups, shell entities
+  - **LOCATION** — Physical places, addresses, jurisdictions
+  - **EVENT** — Specific occurrences with dates (transactions, meetings, communications)
+  - **ASSET** — Properties, vehicles, investments, digital wallets
+  - **FINANCIAL_ENTITY** — Bank accounts, transactions, instruments
+  - **COMMUNICATION** — Phone calls, emails, messages, documents exchanged
+  - **DOCUMENT** — Key evidence items referenced across findings
+- Timestamps, monetary amounts, physical objects → metadata on entities/relationships, NOT standalone graph nodes
+- Produces semantic relationships with typed labels (e.g., "employed_by", "transferred_funds_to", "owns") — NOT co-occurrence
+- Entity deduplication handled naturally by LLM seeing all findings together (cross-agent alias resolution)
+- Cross-domain relationship inference (financial finding ↔ legal finding connected when semantically related)
+- Every entity includes aliases array (all known name variants from different agents)
+- Every relationship includes evidence_excerpt (exact source text) and source_finding_ids for traceability
+- Stores curated output in existing kg_entities and kg_relationships tables (clears old data for workflow, writes curated data)
+- Degree computation (connection counts) for frontend node sizing
+- Inline Pro-to-Flash fallback for resilience
+- Raw entities from domain agents preserved in agent_executions.output_data for audit trail
+**Dependencies:** REQ-STORE-001, REQ-AGENT-003, REQ-AGENT-004, REQ-AGENT-005, REQ-AGENT-006
 
 ### REQ-AGENT-010: Incremental Processing
 **Priority:** MEDIUM
@@ -506,6 +574,52 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Affected entities marked for review
 - No reprocessing of unchanged files
 **Dependencies:** REQ-AGENT-008, REQ-AGENT-009
+
+---
+
+## REQ-STORE: Knowledge Storage Infrastructure
+
+### REQ-STORE-001: Structured Knowledge Tables
+**Priority:** CRITICAL
+**Description:** PostgreSQL tables for storing extracted knowledge from domain agents and synthesis.
+**Acceptance Criteria:**
+- `kg_entities` table: id, case_id, name, entity_type, domain, metadata (JSONB), source_execution_id, source_finding_index, merged_into_id, created_at
+- `kg_relationships` table: id, case_id, source_entity_id, target_entity_id, type, label, strength, source_execution_id, metadata (JSONB), created_at
+- `case_findings` table: id, case_id, workflow_id, agent_type, agent_execution_id, file_group_label, category, title, finding_text (markdown with inline citations), confidence, citations (JSONB array of {file_id, locator, exact_excerpt, context}), entity_ids (JSONB), created_at
+- `case_hypotheses` table: id, case_id, workflow_id, claim, status (PENDING/SUPPORTED/REFUTED), confidence, supporting_evidence (JSONB), contradicting_evidence (JSONB), source_agent, reasoning, created_at
+- `case_contradictions` table: id, case_id, workflow_id, claim_a, claim_b, source_a (JSONB with file_id + excerpt), source_b (JSONB with file_id + excerpt), severity (minor/significant/critical), domain, resolution_status, created_at
+- `case_gaps` table: id, case_id, workflow_id, description, what_is_missing, why_needed, priority (low/medium/high/critical), related_entity_ids (JSONB), suggested_actions, created_at
+- `case_synthesis` table: id, case_id, workflow_id, case_summary, case_verdict (JSONB), cross_modal_links (JSONB), cross_domain_conclusions (JSONB), key_findings_summary, risk_assessment, created_at
+- `timeline_events` table: id, case_id, workflow_id, title, description, event_date, event_end_date, event_type, layer, source_entity_ids (JSONB), citations (JSONB), created_at
+- `locations` table: id, case_id, workflow_id, name, coordinates (JSONB), location_type, source_entity_ids (JSONB), temporal_associations (JSONB), created_at
+- All tables indexed on case_id; kg_entities also indexed on name, entity_type
+- Foreign keys: entity→execution, relationship→entities, finding→execution
+- Alembic migrations for all tables
+**Dependencies:** REQ-INF-002
+
+### REQ-STORE-002: Semantic Search Index
+**Priority:** HIGH
+**Description:** Full-text or vector search capability over case findings for Chat Agent queries.
+**Acceptance Criteria:**
+- V1: PostgreSQL full-text search via tsvector/tsquery on case_findings.finding_text
+- V2 (optional upgrade): Vertex AI RAG Engine corpus for vector-based semantic search
+- Search returns ranked results with relevance scores
+- Supports natural language queries ("find evidence about money laundering")
+- Results include finding_id, agent_type, category, relevance_score, excerpt
+- Index updated automatically when findings are committed
+**Dependencies:** REQ-STORE-001
+
+### REQ-STORE-003: Citation Integrity
+**Priority:** CRITICAL
+**Description:** Every factual statement in findings and synthesis outputs must have exact source grounding.
+**Acceptance Criteria:**
+- All citations include: file_id, locator (page number OR timestamp OR region), exact_excerpt (verbatim source text), context (surrounding text for disambiguation)
+- Domain agent prompts reinforced: "Every factual claim must reference the exact source excerpt from the analyzed files"
+- Synthesis outputs reference back to case_finding IDs and kg_entity IDs
+- Citation validation: all file_ids in citations must exist in case_files table
+- No orphaned citations (citations without valid source references)
+- UI displays citations as clickable links to exact source locations
+**Dependencies:** REQ-STORE-001, REQ-CASE-004
 
 ---
 
@@ -565,18 +679,52 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ### REQ-VIS-003: Knowledge Graph View
 **Priority:** HIGH
-**Description:** Force-directed graph displaying entities and relationships.
+**Description:** Premium knowledge graph visualization using D3.js force simulation with Epstein Doc Explorer-inspired layout, physics, filtering panels, entity timeline, and multi-media source viewer — adapted to Holmes's Liquid Glass design system. Filter/control and timeline panels are local to the KG canvas, not in the app-wide sidebar.
 **Acceptance Criteria:**
-- Graph library: evaluate vis-network vs D3.js during Phase 7 implementation
-- Nodes sized by connection count
-- Edges labeled with relationship type
-- Five toggleable layers: Evidence (red), Legal (blue), Strategy (green), Temporal (amber), Hypothesis (pink)
-- Zoom and pan controls
-- Node search and highlight
-- Click node to see details and source links
+- **D3.js** force simulation with 5 forces (link, charge, center, collision, radial) inside React `useRef`/`useEffect`
+- Radial force: high-connection entities near center, low-connection pushed outward (connection-count-based gravity well)
+- Sqrt-scaled node radius (connection count → 5-100px range via `d3.scalePow().exponent(0.5)`)
+- Collision detection using actual circle radius + padding
+- Link distance: constant base (50px) or relationship-type-based
+- Charge repulsion: -400 (tunable)
+- Domain-colored SVG circle nodes (person=orange, org=green, location=blue, event=amber — consistent with Holmes palette)
+- Node labels below circles, entity type indicated by color
+- Click node → highlight node + all connected edges (white), dim unconnected edges; open right sidebar timeline
+- Drag individual nodes (fix position during drag, release on drop)
+- Zoom/pan with `d3.zoom()` (scale extent [0.01, 10])
+- **Left panel — Filters & Controls** (local to KG canvas, NOT in the app-wide sidebar):
+  - Positioned on the left side of the knowledge graph canvas area
+  - Selected entity display with Clear button
+  - Graph stats: entity count, relationship count, domain breakdown
+  - Entity search (debounced text input, highlights matching nodes)
+  - Keyword filter (comma-separated fuzzy match against relationship labels/entity names)
+  - Domain layer toggles (Financial, Legal, Evidence, Strategy) with select/deselect all
+  - Density threshold slider (prune low-connection nodes by percentage of average)
+- **Right panel — Entity Timeline** (local to KG canvas):
+  - Appears when entity is selected
+  - Chronological list of relationships involving selected entity
+  - Each entry: year/date, relationship description (actor → action → target), source citation reference
+  - Source citations list acts as navigation for the source viewer panel (click a citation → jump to that excerpt/timestamp)
+  - Scrollable timeline with entity names highlighted in accent colors
+  - Stays visible when source viewer is open (does not get hidden)
+- **Source viewer panel** (replaces simple "document excerpt modal" — details to be refined during phase discussions):
+  - Multi-media: renders content based on source type (document text, video player, audio player, image viewer)
+  - For documents: full text excerpt with entity names highlighted (selected entity = yellow, related = orange)
+  - For audio/video: playback with timestamp navigation from right panel citations
+  - For images: viewer with annotation overlay capability
+  - Opens alongside (not replacing) the right panel — right panel citations serve as a navigable index
+  - Source metadata header (summary, category, date range)
+  - Close button (X)
+  - NOTE: This component is reusable beyond the KG view (Evidence Library, Timeline, etc.) — full specification during phase discussions
+- Edge deduplication: multiple relationships between same entity pair → single edge with count
+- Edge hover tooltip: relationship label, temporal context, source document
 - Fullscreen capability with maximize button
 - Basic analytics: node count, edge count, most connected entities
-**Dependencies:** REQ-AGENT-009
+- Bottom instruction bar: "Click nodes to explore relationships · Scroll to zoom · Drag to pan"
+- Responsive layout within KG canvas: left panel (320px) | center graph | right panel (384px, appears on select) — all local to the KG page content area, not the app-wide sidebar
+- Intuitive at first glance: a user can understand entity relationships without instruction
+- **Reference:** `DOCS/reference/epstein-network-ui/` for layout, physics, and interaction patterns
+**Dependencies:** REQ-AGENT-009, REQ-STORE-001
 
 ### REQ-VIS-004: Timeline View
 **Priority:** MEDIUM
@@ -687,25 +835,38 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 - Mobile-responsive
 **Dependencies:** REQ-VIS-001
 
-### REQ-CHAT-002: Knowledge-First Query
+### REQ-CHAT-002: Multi-Source Tool-Based Query
 **Priority:** HIGH
-**Description:** Chat queries Knowledge Graph before escalating.
+**Description:** Chat Agent uses tiered tools to query multiple data stores, with fast path for simple questions and escalation for complex analysis.
 **Acceptance Criteria:**
-- Simple questions answered from KG (fast path)
-- Response time < 2 seconds for KG queries
-- Indicates when using cached knowledge
-- Fallback to agent escalation for novel questions
-**Dependencies:** REQ-AGENT-009, REQ-CHAT-001
+- **Fast path tools (SQL, <100ms):**
+  - `query_knowledge_graph`: Entity/relationship lookups from KG tables
+  - `get_case_hypotheses`: Hypothesis status and evidence from case_hypotheses
+  - `get_contradictions`: Pre-computed contradictions from case_contradictions
+  - `get_evidence_gaps`: Evidence gaps from case_gaps
+  - `get_case_synthesis`: Case summary, verdict, conclusions from case_synthesis
+  - `get_finding_details`: Specific finding by ID from case_findings
+- **Semantic search tool (~500ms):**
+  - `search_findings`: Full-text/vector search over case_findings
+- **Deep analysis tool (10-60s, on-demand):**
+  - `run_domain_analysis`: Spawns domain agent for novel questions requiring raw file examination
+- Chat Agent's system prompt includes case_synthesis.case_summary for immediate context (~500-1000 tokens)
+- Prompt includes explicit tool usage strategy: "Try fast lookups first, then search, then escalate"
+- Simple questions answered from KG/synthesis in <2 seconds
+- Indicates data source in response (e.g., "Based on the financial analysis...")
+**Dependencies:** REQ-STORE-001, REQ-STORE-002, REQ-AGENT-008, REQ-CHAT-001
 
 ### REQ-CHAT-003: Agent Escalation
 **Priority:** HIGH
-**Description:** Complex questions escalate to Orchestrator.
+**Description:** Chat Agent self-routes to domain agents for novel analysis when existing knowledge is insufficient.
 **Acceptance Criteria:**
-- Detects when KG is insufficient
-- Routes to Orchestrator for domain agent analysis
-- User sees "Analyzing with agents..." indicator
-- Full agent trace available during processing
-- Results added to KG for future queries
+- Chat Agent decides when to escalate based on tool retrieval confidence (no separate router agent)
+- Escalation triggered when: (1) fast lookup tools return insufficient results, AND (2) user asks for novel analysis or deeper investigation
+- Uses `run_domain_analysis` tool to spawn targeted domain agent
+- User sees "Analyzing with agents..." indicator during escalation
+- Full agent trace available in Command Center during processing
+- Results from escalation added to case findings and KG for future queries
+- Chat Agent prompt includes escalation rules and decision criteria
 **Dependencies:** REQ-AGENT-002, REQ-CHAT-002
 
 ### REQ-CHAT-004: Inline Citations
@@ -1332,6 +1493,7 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 | Authentication | 4 | 0 | 4 | 0 | 0 |
 | Case Management | 5 | 1 | 3 | 1 | 0 |
 | Agents (Core) | 10 | 3 | 6 | 1 | 0 |
+| Knowledge Storage | 3 | 2 | 1 | 0 | 0 |
 | Agents (ADK Config) | 10 | 0 | 6 | 3 | 1 |
 | Visualization | 7 | 1 | 4 | 1 | 1 |
 | Source Panel | 5 | 1 | 3 | 1 | 0 |
@@ -1344,7 +1506,7 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 | Geospatial Intelligence | 11 | 0 | 6 | 4 | 1 |
 | Investigation Tasks | 7 | 0 | 4 | 2 | 1 |
 | Memory (Post-MVP) | 1 | 0 | 0 | 0 | 1 |
-| **TOTAL** | **100** | **10** | **58** | **24** | **6** |
+| **TOTAL** | **103** | **12** | **59** | **24** | **6** |
 
 ---
 
@@ -1352,14 +1514,14 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 | Requirement | Priority | Purpose |
 |-------------|----------|---------|
-| REQ-AGENT-007 | CRITICAL | Core ADK infrastructure with session service, artifact service |
+| REQ-AGENT-007 | CRITICAL | Core ADK infrastructure: stage-isolated sessions, tiered file handling, pipeline orchestration |
 | REQ-AGENT-007a | HIGH | Document and mitigate ADK limitations |
-| REQ-AGENT-007b | HIGH | Thinking mode configuration per agent |
-| REQ-AGENT-007c | HIGH | Media resolution for dense documents |
+| REQ-AGENT-007b | HIGH | Thinking mode: BuiltInPlanner with ThinkingConfig, ALL agents HIGH |
+| REQ-AGENT-007c | HIGH | Media resolution per agent: medium (Triage), high (Domain/Evidence) |
 | REQ-AGENT-007d | HIGH | Video/audio metadata for precise timestamps |
 | REQ-AGENT-007e | HIGH | ADK artifact service with versioning |
-| REQ-AGENT-007f | MEDIUM | Context caching for cost optimization |
-| REQ-AGENT-007g | MEDIUM | Context compaction for long sessions |
+| REQ-AGENT-007f | MEDIUM | Context caching for File API URIs shared across agents |
+| REQ-AGENT-007g | MEDIUM | Context compaction for Chat Agent ONLY (not pipeline) |
 | REQ-AGENT-007h | HIGH | Resilient agent wrapper for graceful degradation |
 | REQ-AGENT-007i | LOW | Deep Research agent for background research |
 | REQ-VIS-001a | HIGH | Frontend HITL confirmation (ADK limitation workaround) |
@@ -1376,6 +1538,336 @@ This document defines formal requirements for Holmes v1. Requirements are derive
 
 ---
 
+## Implementation Status
+
+> **Note:** This section tracks implementation progress. Updated 2026-02-02 after Yatharth's frontend work.
+> See `DEVELOPMENT_DOCS/YATHARTH_WORK_SUMMARY.md` for detailed file paths and TODOs.
+
+### Status Legend
+- ✅ **COMPLETE** — Fully implemented
+- 🟡 **FRONTEND_COMPLETE** — UI done, backend integration pending
+- 🟠 **PARTIAL** — Some sub-criteria met
+- ⏳ **NOT_STARTED** — No implementation yet
+
+---
+
+### REQ-VIS: Visualization & UI
+
+#### REQ-VIS-001: Agent Flow — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| React Flow canvas showing agent nodes | ✅ | @xyflow/react + dagre in `CommandCenter/AgentFlowCanvas.tsx` (Phase 4.1 revamp) |
+| Animated edges during data flow | ✅ | FileRoutingEdge with gray tier system |
+| Color-coded by agent type | ✅ | 7 agent types (incl. evidence, kg_builder) with muted color palette |
+| Click node to expand details panel | ✅ | `NodeDetailsSidebar.tsx` page-level 30% panel with spring animation |
+| Shows model, input, tools, output, duration | ✅ | Real backend data via SSE state-snapshot + agent-complete events |
+| Shows thinking traces | ✅ | Full untruncated text from after_model_callback, JSON normalized |
+| Updates in real-time via SSE | ✅ | `useCommandCenterSSE.ts` with state-snapshot on reconnect |
+| ADK callback-to-SSE mapping | ✅ | THINKING_UPDATE, TOOL_CALLED, agent lifecycle events |
+
+**Backend APIs:** All complete
+- `SSE GET /sse/cases/:caseId/command-center/stream` — Agent lifecycle events
+- `POST /api/cases/:caseId/confirmations/:requestId` — HITL confirmation
+- `GET /api/cases/:caseId/confirmations/pending` — Pending confirmations
+
+**Files:** `frontend/src/components/CommandCenter/`, `frontend/src/hooks/useCommandCenterSSE.ts`, `frontend/src/hooks/useAgentStates.ts`, `frontend/src/hooks/useAgentFlowGraph.ts`
+
+---
+
+#### REQ-VIS-001a: Human-in-the-Loop Confirmation — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Confirmation dialog UI | ✅ | `ConfirmationModal.tsx` with approve/reject + reason input |
+| Routing HITL (batch) | ✅ | Per-agent-type confidence thresholds, batch confirmation modal |
+| Low-confidence finding HITL | ✅ | Findings below threshold trigger confirmation |
+| Strategy standalone HITL | ✅ | User prompted when domain agents fail but strategy has files |
+
+**Files:** `frontend/src/components/CommandCenter/ConfirmationModal.tsx`, `backend/app/services/confirmation.py`
+
+---
+
+#### REQ-VIS-002: Agent Detail View — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Full thinking trace | ✅ | JSON-normalized thinking traces from all agents |
+| Complete input context | ✅ | Input data visible in sidebar |
+| Tool calls with inputs/outputs | ✅ | Tool-called events displayed |
+| Complete output findings | ✅ | Finding counts, entity counts in sidebar |
+| Token usage statistics | ✅ | CollapsibleSection with input/output tokens, model name |
+| Execution timeline | ✅ | Gantt chart showing agent timing overlap |
+
+**Files:** `frontend/src/components/CommandCenter/NodeDetailsSidebar.tsx`, `frontend/src/components/CommandCenter/ExecutionTimeline.tsx`
+
+---
+
+#### REQ-VIS-003: Knowledge Graph View — ✅ COMPLETE (Source viewer wiring deferred to Phase 10)
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| D3.js force simulation (5 forces) | ✅ | useGraphSimulation: link, charge, center, collision, radial (Phase 7.2) |
+| Nodes sized by connection count | ✅ | Sqrt-scaled node radius via d3.scalePow().exponent(0.5) |
+| Edges labeled with relationship type | ✅ | Always-horizontal edge labels with disclosure |
+| Domain layer toggles | ✅ | 4 domain toggles (Financial, Legal, Evidence, Strategy) in FilterPanel |
+| Zoom and pan controls | ✅ | d3.zoom() with scale extent [0.01, 10], zoom/pan/reset buttons |
+| Node search and highlight | ✅ | Debounced search with coral (#E87461) highlight, distinct from selection (white) |
+| Click node for details | ✅ | Opens DetailSidebar with entity panel + EntityTimeline |
+| Left panel (filters/controls, local to KG canvas) | ✅ | FilterPanel: stats, search, keyword filter, domain/type toggles |
+| Right panel (entity timeline, local to KG canvas) | ✅ | EntityTimeline in DetailSidebar: chronological relationships, date range, filter-by-entity |
+| Source viewer panel (multi-media) | 🟡 | Components built (PdfViewer, AudioViewer, VideoViewer, ImageViewer) but NOT wired — deferred to Phase 10 |
+| Density threshold slider | ⏳ | Not implemented |
+| Fullscreen capability | ⏳ | Not implemented |
+| Basic analytics | ✅ | Entity count, relationship count, domain breakdown in FilterPanel |
+
+**Backend APIs:** All complete
+- `GET /api/cases/:caseId/graph` — Full graph visualization data
+- `GET /api/cases/:caseId/entities` — List entities with filters
+- `POST /api/cases/:caseId/entities` — Create entity
+- `PATCH /api/cases/:caseId/entities/:entityId` — Update entity
+- `DELETE /api/cases/:caseId/entities/:entityId` — Delete entity
+- `GET /api/cases/:caseId/relationships` — List relationships with filters
+- `POST /api/cases/:caseId/relationships` — Create relationship
+
+**Files:** `frontend/src/components/knowledge-graph/KnowledgeGraphCanvas.tsx`, `frontend/src/components/knowledge-graph/GraphSvg.tsx`, `frontend/src/components/knowledge-graph/FilterPanel.tsx`, `frontend/src/components/knowledge-graph/EntityTimeline.tsx`, `frontend/src/hooks/useGraphSimulation.ts`, `frontend/src/hooks/useGraphSelection.ts`, `frontend/src/hooks/useGraphFilters.ts`, `frontend/src/hooks/use-case-graph.ts`, `frontend/src/types/knowledge-graph.ts`
+
+---
+
+#### REQ-VIS-004: Timeline View — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Horizontal timeline with zoom | ✅ | Day/week/month/year zoom levels |
+| Events plotted by date/time | ✅ | Grouped by zoom level, real synthesis data |
+| Events linked to source evidence | ✅ | Domain tags, finding references |
+| Filter by entity, event type | ✅ | Layer filtering (evidence/legal/strategy/financial) |
+| Gaps highlighted visually | ✅ | Via synthesis gap detection |
+| Click event for details | ✅ | Opens detail modal |
+
+**Backend APIs:**
+- `GET /api/cases/:caseId/timeline` — Fetch events with filters + aggregation
+- `GET /api/cases/:caseId/timeline/:eventId` — Get single event
+
+**Files:** `frontend/src/components/Timeline/`, `frontend/src/hooks/useTimelineData.ts`, `frontend/src/hooks/useTimelineFilters.ts`, `backend/app/api/timeline.py`
+
+---
+
+#### REQ-VIS-005: Contradictions Panel — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| List of contradiction pairs | ✅ | ContradictionCard with side-by-side claims in VerdictView |
+| Each shows claim A, claim B, sources, severity | ✅ | Severity badge, domain tag, excerpts |
+| Click to navigate to sources | ✅ | Opens ContradictionDetailPanel in DetailSidebar |
+| Filter by severity, entity | ✅ | API supports severity filtering |
+| Resolution status tracking | ✅ | Status field on contradiction records |
+
+**Backend APIs:**
+- `GET /api/cases/:caseId/contradictions` — List with severity filtering
+
+**Files:** `frontend/src/components/verdict/ContradictionCard.tsx`, `frontend/src/components/verdict/ContradictionDetailPanel.tsx`, `backend/app/api/synthesis.py`
+
+---
+
+#### REQ-VIS-006: Evidence Gaps Panel — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| List of evidence gaps | ✅ | GapCard in VerdictView with priority badge |
+| Priority and description | ✅ | Priority badge (critical/high/medium/low), suggested actions |
+| Click for full details | ✅ | Opens GapDetailPanel in DetailSidebar |
+| Filter by priority | ✅ | API supports priority filtering |
+
+**Backend APIs:**
+- `GET /api/cases/:caseId/gaps` — List with priority filtering
+
+**Files:** `frontend/src/components/verdict/GapCard.tsx`, `frontend/src/components/verdict/GapDetailPanel.tsx`, `backend/app/api/synthesis.py`
+
+---
+
+### REQ-CASE: Case Management
+
+#### REQ-CASE-004: Evidence Upload — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Drag-and-drop upload UI | ✅ | Implemented in CaseLibrary.tsx |
+| Multiple file selection | ✅ | Supported via handleDrop |
+| Progress indicator per file | ✅ | Upload progress tracking via useFileUpload hook |
+| Automatic file type detection | ✅ | MIME type validation in backend |
+| Supported file types | ✅ | PDF, DOCX, MP4, MP3, WAV, JPG, PNG |
+| Max 500MB per file | ✅ | MAX_FILE_SIZE enforced in file_service.py |
+| Files stored in GCS with metadata | ✅ | GCS chunked upload + PostgreSQL metadata |
+
+**Backend APIs:**
+- `POST /api/cases/:caseId/files` — Upload file (multipart, chunked GCS streaming)
+
+**Files:** `backend/app/api/files.py`, `backend/app/services/file_service.py`, `frontend/src/hooks/useFileUpload.ts`
+
+---
+
+#### REQ-CASE-005: Case Library View — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Grid or list view toggle | ✅ | List view implemented |
+| File thumbnails | ✅ | Icons implemented (thumbnails deferred) |
+| File metadata display | ✅ | Name, type, size, status shown |
+| Filter by type, status | ✅ | Category filters (all/evidence/legal/strategy/reference) |
+| Select files for batch operations | ✅ | UI connected to real APIs |
+| Delete individual files | ✅ | DELETE endpoint with GCS cleanup |
+
+**Backend APIs:**
+- `GET /api/cases/:caseId/files` — List files with pagination/filters
+- `POST /api/cases/:caseId/files` — Upload file (multipart)
+- `DELETE /api/cases/:caseId/files/:fileId` — Delete file
+- `GET /api/cases/:caseId/files/:fileId/download` — Download via signed URL
+- `SSE /sse/cases/:caseId/files` — Real-time file status updates
+
+**Files:** `frontend/src/components/library/CaseLibrary.tsx`, `frontend/src/lib/api/files.ts`
+
+---
+
+### REQ-CHAT: Contextual Chat
+
+#### REQ-CHAT-001: Chat Interface — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Message input with send button | ✅ | Full input with keyboard support |
+| Message history display | ✅ | Scrollable history with SSE streaming |
+| Streaming response with typing indicator | ✅ | Real-time SSE token streaming via fetchEventSource |
+| Markdown rendering | ✅ | ReactMarkdown + remark-gfm with styled components |
+| Code block formatting | ✅ | Custom pre/code styling in dark theme |
+| Mobile-responsive | ✅ | Responsive design |
+| Inline citation chips | ✅ | [[file_id\|locator\|label]] parsed to clickable chips |
+| Tool activity indicators | ✅ | Expandable "Agent is working..." section |
+| Stop/Clear buttons | ✅ | AbortController cancellation, session reset |
+| Disabled state (no analysis) | ✅ | Overlay message when analysis not run |
+| Error bubbles with retry | ✅ | Red-tinted inline error messages |
+
+**Backend API:** `POST /api/cases/:caseId/chat` (SSE streaming) — DONE
+
+**Files:** `frontend/src/components/app/chatbot.tsx`, `frontend/src/hooks/useChatbot.ts`, `frontend/src/types/chatbot.ts`, `backend/app/api/chat.py`, `backend/app/services/chat_service.py`, `backend/app/agents/chat_tools.py`, `backend/app/agents/prompts/chat.py`
+
+---
+
+### REQ-SOURCE: Source Panel
+
+#### REQ-SOURCE-005: Citation Navigation — ✅ COMPLETE
+
+Citation-to-source navigation wired across all 4 views (KG, Geospatial, Verdict, Timeline). Shared hooks: `useSourceNavigation` (citation -> SourceViewerModal), `useEntityResolver` (UUID -> name/type/color). Reusable components: `CitationLink`, `EntityBadge`.
+
+**Files:** `frontend/src/lib/citation-utils.ts`, `frontend/src/hooks/useSourceNavigation.ts`, `frontend/src/hooks/useEntityResolver.ts`, `frontend/src/components/ui/citation-link.tsx`, `frontend/src/components/ui/entity-badge.tsx`
+
+---
+
+### REQ-AGENT: Agentic Processing Pipeline
+
+#### REQ-AGENT-001: Triage Agent — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| Receives files via tiered handling | ✅ | `build_agent_content()` in `adk_service.py` |
+| Uses Gemini 3 Flash | ✅ | `MODEL_FLASH` in factory |
+| Stage-isolated ADK session | ✅ | `create_stage_runner()` per stage |
+| Domain scores (Financial, Legal, Strategy, Evidence) | ✅ | `DomainScore` schema, 0-100 range |
+| Complexity tier output | ✅ | `ComplexityAssessment` schema |
+| File summary (short + detailed) | ✅ | `FileSummary` schema |
+| Entity extraction | ✅ | `ExtractedEntity` with 6 types |
+| Stores TriageOutput in agent_executions | ✅ | JSONB output_data column |
+
+**Files:** `backend/app/agents/triage.py`, `backend/app/agents/prompts/triage.py`, `backend/app/schemas/agent.py`
+
+---
+
+#### REQ-AGENT-002: Orchestrator Agent — 🟠 PARTIAL
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| LlmAgent with Gemini 3 Pro | ✅ | `MODEL_PRO` in factory |
+| Receives triage results | ✅ | `run_orchestrator(triage_output=...)` |
+| Routes to domain agents | ✅ | `RoutingDecision` schema with reasoning |
+| Manages parallel execution | ⏳ | Stub; domain agents not yet implemented (Phase 6) |
+| Aggregates domain outputs | ⏳ | Not yet; depends on domain agents |
+| Handles agent failures | ⏳ | Not yet; depends on domain agents |
+
+**Files:** `backend/app/agents/orchestrator.py`, `backend/app/agents/prompts/orchestrator.py`
+
+---
+
+#### REQ-AGENT-007: ADK Runner Infrastructure — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| ADK integrated with FastAPI | ✅ | `google-adk>=1.2.0` in pyproject.toml |
+| DatabaseSessionService with PostgreSQL | ✅ | `get_session_service()` in adk_service.py |
+| Stage-isolated sessions | ✅ | `create_stage_runner()` per stage |
+| Session ID deterministic | ✅ | SHA-256 of case_id:workflow_id:stage |
+| Fresh agent instances per stage | ✅ | `AgentFactory` pattern |
+| Tiered file handling | ✅ | `build_agent_content()` inline + File API |
+| GcsArtifactService | ✅ | `get_artifact_service()` configured |
+| Pipeline orchestration via Python | ✅ | `run_analysis_workflow()` in agents.py |
+
+**Files:** `backend/app/services/adk_service.py`, `backend/app/agents/factory.py`
+
+---
+
+#### REQ-AGENT-007a: ADK Limitations Documentation — ✅ COMPLETE
+
+Limitations documented in code comments and mitigated:
+- Tool confirmation → frontend dialogs (noted in factory.py)
+- Single parent rule → AgentFactory fresh instances
+- Temperature at 1.0 → not overridden
+
+---
+
+#### REQ-AGENT-007b: Thinking Mode Configuration — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| BuiltInPlanner with ThinkingConfig | ✅ | `create_thinking_planner()` in base.py |
+| All agents HIGH thinking | ✅ | Factory passes `"high"` for all |
+| include_thoughts=True | ✅ | Set in ThinkingConfig |
+| Thinking traces captured | ✅ | `_extract_thinking_traces()` in triage.py/orchestrator.py |
+| Factory helper function | ✅ | `create_thinking_planner(level)` |
+
+**Files:** `backend/app/agents/base.py`
+
+---
+
+#### REQ-AGENT-007e: ADK Artifact Service — ✅ COMPLETE
+
+| Sub-Criterion | Status | Notes |
+|---------------|--------|-------|
+| GcsArtifactService configured | ✅ | `get_artifact_service()` with dedicated bucket |
+| Runner initialized with artifact_service | ✅ | `create_stage_runner()` includes it |
+
+**Files:** `backend/app/services/adk_service.py`
+
+---
+
+### Summary: Implementation Coverage
+
+| Category | Requirements | Complete | Frontend Done | Partial | Not Started |
+|----------|-------------|----------|---------------|---------|-------------|
+| Visualization (VIS) | 6 | 4 | 1 | 0 | 1 |
+| Case Management (CASE) | 5 | 5 | 0 | 0 | 0 |
+| Chat (CHAT) | 5 | 0 | 1 | 0 | 4 |
+| Source Panel (SOURCE) | 5 | 0 | 0 | 0 | 5 |
+| Agents (Core) | 4 | 3 | 0 | 0 | 1 |
+| Agents (ADK Config) | 4 | 4 | 0 | 0 | 0 |
+| Knowledge Storage (STORE) | 3 | 2 | 0 | 0 | 1 |
+
+*Phase 2 requirements (REQ-CASE-001, 002, 003) completed. Phase 3 requirements (REQ-CASE-004, 005) completed 2026-02-02. Phase 4 requirements (REQ-AGENT-001, 007, 007a, 007b, 007e) completed 2026-02-03. Phase 5 (REQ-VIS-001, 001a, 002) completed 2026-02-05. Phase 6 (REQ-AGENT-002/003/004/005/006) completed 2026-02-06. Phase 7/7.1 (REQ-STORE-001/002, REQ-AGENT-009) completed 2026-02-08. Phase 7.2 (REQ-VIS-003) completed 2026-02-08. Phase 8 (REQ-AGENT-008, REQ-HYPO-001/002/003/004/005/006, REQ-WOW-001/002/003/004, REQ-VIS-004/005/006, REQ-TASK-001/002) completed 2026-02-09.*
+
+---
+
 *Generated: 2026-01-18*
-*Updated: 2026-01-21*
+*Updated: 2026-02-08*
+*Architecture redesign: 2026-02-07 (REQ-STORE added, REQ-AGENT-008/009 rewritten, REQ-CHAT-002/003 updated for tool-based architecture)*
+*Architecture revision: 2026-02-08 (REQ-AGENT-009 revised for LLM-based KG Builder; REQ-VIS-003 updated for D3.js with Epstein-inspired patterns; vis-network deferred)*
 *Status: Complete - Integration features added (REQ-RESEARCH, REQ-HYPO, REQ-GEO, REQ-TASK)*
+*Frontend Status: Partial implementation by Yatharth (see DEVELOPMENT_DOCS/YATHARTH_WORK_SUMMARY.md)*
+*Phase 4 Agent requirements tracked: 2026-02-03*

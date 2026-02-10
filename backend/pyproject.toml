@@ -13,14 +13,24 @@ dependencies = [
     "alembic>=1.14.0",
     "sse-starlette>=2.2.0",
     "google-cloud-storage>=2.19.0",
+    "google-adk>=1.22.0",
     "greenlet>=3.3.0",
+    "PyJWT>=2.10.0",
+    "cryptography>=43.0.0",
+    "python-multipart>=0.0.22",
+    "python-dotenv>=1.0.0",
+    "PyMuPDF>=1.24.0",
+    "google-genai>=0.8.0",
+    "pydub>=0.25.0",
+    "rapidfuzz>=3.14.3",
+    "reportlab>=4.4.9",
+    "googlemaps>=4.10.0",
 ]
 
 [dependency-groups]
 dev = [
     "ruff>=0.14.13",
     "mypy>=1.19.0",
-    "pydantic-to-typescript2>=1.0.6",
 ]
 
 [build-system]

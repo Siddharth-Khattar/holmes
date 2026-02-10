@@ -3,7 +3,9 @@
 
 import logging
 
-from google.cloud import storage
+# google-cloud-storage doesn't ship type stubs (no py.typed marker)
+# See: https://github.com/googleapis/python-storage/issues/393
+from google.cloud import storage  # type: ignore[import-untyped,attr-defined]
 
 from app.config import settings
 

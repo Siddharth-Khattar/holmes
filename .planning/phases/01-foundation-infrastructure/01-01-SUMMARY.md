@@ -56,11 +56,11 @@ key-files:
 
 key-decisions:
   - "Used pydantic-settings for environment configuration with comma-separated CORS parsing"
-  - "Fixed pydantic-to-typescript2 version to 0.0.1 (only available version)"
+  - "Type generation now uses FastAPI OpenAPI -> openapi-typescript (no Python-based generator chain)"
   - "Added hatch.build.targets.wheel config for proper package structure"
 
 patterns-established:
-  - "Python as source of truth: Pydantic models define all API schemas"
+  - "HTTP contract as source of truth: FastAPI OpenAPI defines API schemas"
   - "Type generation: backend schemas -> packages/types/src/generated"
   - "Cross-language orchestration via Makefile"
 
@@ -116,7 +116,7 @@ Each task was committed atomically:
 
 ## Decisions Made
 
-1. **Fixed pydantic-to-typescript2 version:** Plan specified >=0.1.0 but only 0.0.1 exists on PyPI. Used 0.0.1.
+1. **Type generation approach (current):** FastAPI OpenAPI -> openapi-typescript. (Legacy note: earlier plans mentioned a Python-based generator chain, but it is no longer used.)
 
 2. **Added hatch build configuration:** Hatchling requires explicit package location. Added `[tool.hatch.build.targets.wheel]` with `packages = ["app"]`.
 
@@ -126,10 +126,10 @@ Each task was committed atomically:
 
 ### Auto-fixed Issues
 
-**1. [Rule 3 - Blocking] Fixed pydantic-to-typescript2 version constraint**
+**1. [Rule 3 - Blocking] Legacy: Python typegen dependency version constraint**
 - **Found during:** Task 2 (Python backend setup)
-- **Issue:** Plan specified pydantic-to-typescript2>=0.1.0 but only 0.0.1 exists
-- **Fix:** Changed version constraint to >=0.0.1
+- **Issue:** Plan referenced a Python-based typegen dependency version that did not exist on PyPI
+- **Fix:** Adjusted version constraint to the available version (later superseded by OpenAPI -> openapi-typescript)
 - **Files modified:** backend/pyproject.toml
 - **Verification:** uv sync succeeds
 - **Committed in:** f90352a (Task 2 commit)
@@ -159,7 +159,7 @@ None - no external service configuration required. Local development can proceed
 
 - Monorepo structure ready for CI/CD setup (01-02)
 - Python backend ready for FastAPI main.py and API endpoints
-- Types package ready for Pydantic-to-TypeScript generation
+- Types package ready for OpenAPI-to-TypeScript generation
 - Frontend placeholder ready to be replaced with Next.js app
 
 **Blockers:** None

@@ -11,6 +11,27 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: "..",
   },
+
+  // Image optimization for external URLs (OAuth provider avatars)
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "avatars.githubusercontent.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.gravatar.com",
+        pathname: "/**",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

@@ -29,6 +29,11 @@
    make install
    ```
 
+   Install git hooks (recommended)
+   ```bash
+   make hooks
+   ```
+
 4. Start database and run migrations
    ```bash
    make dev-db
@@ -46,14 +51,17 @@
 | Command | Description |
 |---------|-------------|
 | `make install` | Install all dependencies (bun + uv) |
+| `make hooks` | Install git hooks (Lefthook) |
 | `make dev-db` | Start local PostgreSQL via Docker |
 | `make stop-db` | Stop local PostgreSQL |
-| `make migrate` | Run Alembic database migrations |
+| `make adminer` | Start Adminer database UI (port 8081) |
+| `make migrate` | Run all database migrations (auth + app) |
+| `make migrate-auth` | Run Better Auth migrations only |
 | `make dev-backend` | Start FastAPI dev server (port 8080) |
 | `make dev-frontend` | Start Next.js dev server (port 3000) |
 | `make lint` | Run linters (ESLint + Ruff) |
 | `make format` | Format code (Prettier + Ruff) |
-| `make generate-types` | Generate TS types from Pydantic models |
+| `make generate-types` | Generate TS types from FastAPI OpenAPI (via openapi-typescript) |
 
 ## Project Structure
 
@@ -66,7 +74,7 @@ holmes/
 │   └── src/           # Application code
 ├── packages/types/    # Shared TypeScript types (auto-generated)
 ├── terraform/         # GCP infrastructure (Cloud Run, Cloud SQL)
-├── docker-compose.yml # Local PostgreSQL
+├── docker-compose.yml # Local PostgreSQL + Adminer
 └── Makefile           # Development commands
 ```
 
@@ -79,6 +87,7 @@ holmes/
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://postgres:postgres@localhost:5432/holmes` |
 | `CORS_ORIGINS` | Allowed origins (comma-separated) | `http://localhost:3000` |
 | `DEBUG` | Enable debug mode | `true` |
+| `DEV_API_KEY` | API key for Swagger UI testing (requires `DEBUG=true`) | (optional) |
 | `GCS_BUCKET` | GCS bucket for file storage | (optional) |
 
 ### Frontend (`frontend/.env.local`)
@@ -86,6 +95,7 @@ holmes/
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `NEXT_PUBLIC_API_URL` | Backend API URL | `http://localhost:8080` |
+| `NEXT_PUBLIC_VIDEO_URL` | Hero video URL (GCS in prod) | `/video.mp4` |
 
 ## Deployment
 
@@ -126,6 +136,67 @@ uv run alembic revision --autogenerate -m "description"
 make generate-types
 ```
 
+Generated types are committed under `packages/types/`. A pre-push hook will block pushes if generated output differs from what’s committed.
+
+### Database Migrations
+
+The project uses two migration systems:
+
+1. **Better Auth** (frontend) - Creates authentication tables (`user`, `session`, `account`, etc.)
+2. **Alembic** (backend) - Creates application tables (`cases`, etc.)
+
+**Important:** Better Auth migrations must run first because Alembic migrations have foreign keys to auth tables.
+
+```bash
+# Run all migrations (recommended)
+make migrate
+
+# Or run individually in order:
+make migrate-auth     # Better Auth tables first
+cd backend && uv run alembic upgrade head  # Then Alembic
+```
+
+**Troubleshooting:** If you see `relation "user" does not exist`, run Better Auth migrations first:
+```bash
+cd frontend && bunx @better-auth/cli migrate
+```
+
+### Database UI (Adminer)
+
+Adminer provides a web UI for browsing and managing the PostgreSQL database.
+
+```bash
+# Start database + Adminer
+make dev-db && make adminer
+
+# Or start everything at once
+docker compose up -d
+```
+
+Open **http://localhost:8081** and login:
+
+| Field | Value |
+|-------|-------|
+| System | PostgreSQL |
+| Server | postgres |
+| Username | postgres |
+| Password | postgres |
+| Database | holmes |
+
+### Better Auth Tables
+
+Better Auth stores authentication data in PostgreSQL. These tables are managed by Better Auth (not Alembic):
+
+| Table | Contents |
+|-------|----------|
+| `user` | User accounts (id, name, email, emailVerified, image) |
+| `session` | Active sessions (token, userId, expiresAt, ipAddress, userAgent) |
+| `account` | Auth providers & credentials (OAuth tokens, hashed passwords) |
+| `verification` | Email verification tokens |
+| `jwks` | JWT signing keys |
+
+**Note:** The SQLAlchemy models in `backend/app/models/auth.py` use snake_case attribute names but map to Better Auth's camelCase column names (e.g., `email_verified` maps to `emailVerified`).
+
 ### Build for production
 ```bash
 # Backend
@@ -139,3 +210,87 @@ docker build -f frontend/Dockerfile -t holmes-frontend .
 ```bash
 cd backend && uv run uvicorn app.main:app --reload --port 8080
 ```
+
+### Local API Testing (Swagger UI)
+
+Test authenticated API endpoints without the frontend auth flow using a dev API key.
+
+**Setup:**
+
+1. Generate a key and add to `.env`:
+   ```bash
+   # Generate key
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+   # Add to .env
+   DEBUG=true
+   DEV_API_KEY=<your-generated-key>
+   ```
+
+2. Open http://localhost:8080/docs → Click **Authorize** → Enter key in `DevAPIKey` → **Authorize**
+
+All Swagger API calls will now authenticate as `dev@localhost`.
+
+**Safety:** Dev auth only works when both `DEBUG=true` AND `DEV_API_KEY` are set. Warnings are logged if cloud environment is detected.
+
+### Replace Hero Video
+
+The landing page video is served from GCS (not the repo) because Next.js standalone mode doesn't serve `/public` files.
+
+**Bucket:** `gs://{project-id}-media/video.mp4`
+
+**To replace the video:**
+
+1. Upload via GCP Console:
+   - Go to https://console.cloud.google.com/storage/browser
+   - Open the `{project-id}-media` bucket
+   - Upload your new `video.mp4` (overwrites existing)
+
+2. Or via CLI:
+   ```bash
+   gsutil cp path/to/new-video.mp4 gs://holmes-gemini-3-hack-media/video.mp4
+   gsutil setmeta -h "Cache-Control:public, max-age=31536000" gs://holmes-gemini-3-hack-media/video.mp4
+   ```
+
+3. Clear browser cache or wait for CDN propagation
+
+**Local development:** Place video at `frontend/public/video.mp4` (gitignored). The app falls back to this when `NEXT_PUBLIC_VIDEO_URL` is unset.
+
+### Accessing the Deployed Cloud SQL Database
+
+Connect to the production PostgreSQL instance via Cloud SQL Proxy.
+
+**Connection details:**
+
+| Field | Value |
+|-------|-------|
+| Project | `holmes-gemini-3-hack` |
+| Instance | `holmes-db-prod` |
+| Region | `europe-west3` |
+| Database | `holmes` |
+| User | `backend` |
+| Password | Stored in Secret Manager as `db-password` |
+
+**Step 1 — Retrieve the password:**
+
+```bash
+gcloud secrets versions access latest --secret=db-password --project=holmes-gemini-3-hack
+```
+
+**Step 2 — Start Cloud SQL Proxy:**
+
+```bash
+# Install: https://cloud.google.com/sql/docs/postgres/connect-auth-proxy
+cloud-sql-proxy holmes-gemini-3-hack:europe-west3:holmes-db-prod --port=5433
+```
+
+Port 5433 avoids conflicting with any local PostgreSQL on 5432.
+
+**Step 3 — Connect:**
+
+```bash
+# Via psql
+psql "postgresql://backend:<password>@127.0.0.1:5433/holmes"
+```
+
+Or point any PostgreSQL client (TablePlus, DBeaver, Adminer, etc.) at `127.0.0.1:5433` with user `backend` and the password from Step 1.

@@ -1,24 +1,771 @@
 @import "tailwindcss";
 
-:root {
-  --background: #fafafa;
-  --foreground: #18181b;
+/* ============================================================
+   TAILWIND V4 DARK MODE CONFIGURATION
+   ============================================================
+   Configure dark mode to use class selector strategy.
+   Works with next-themes which adds .dark/.light to html element.
+   ============================================================ */
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   DESIGN TOKENS - Holmes Design System
+   ============================================================
+   Core color palette, typography, and glass effect tokens.
+   Uses Tailwind v4's @theme directive for native utility generation.
+   ============================================================ */
+
+@theme {
+  /* Core Color Palette - Dark Mode (Default) */
+  --color-charcoal: #050505;
+  --color-jet: #111111;
+  --color-smoke: #f8f7f4;
+  --color-stone: #8a8a82;
+
+  /* Cream Accent */
+  --color-accent: #f5f4ef;
+  --color-accent-muted: #d4d3ce;
+
+  /* Glass Effect Colors */
+  --color-glass-light: rgba(248, 247, 244, 0.06);
+  --color-glass-dark: rgba(5, 5, 5, 0.8);
+
+  /* Shadows */
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.25);
+  --shadow-glass-hover: 0 12px 40px rgba(0, 0, 0, 0.3);
+  --shadow-glow-accent: 0 0 40px rgba(248, 247, 244, 0.08);
+
+  /* Ethereal Shadow */
+  --color-shadow: rgba(70, 68, 64, 0.85);
+
+  /* Semantic Colors */
+  --color-error: #f87171;
+
+  /* Light Mode Palette - Following LIGHT-MODE-REFERENCE.MD */
+  --color-cream: #faf9f7;
+  --color-warm-white: #f5f4ef;
+  --color-charcoal-light: #1a1816;
+  --color-warm-gray: #6b6560;
+  --color-accent-light: #2a2825;
+  --color-accent-muted-light: #4a4744;
+
+  /* Light Mode Glass Colors */
+  --color-glass-light-mode: rgba(26, 24, 22, 0.04);
+  --color-glass-medium-light: rgba(26, 24, 22, 0.08);
+
+  /* Light Mode Shadows */
+  --shadow-glass-light: 0 8px 32px rgba(26, 24, 22, 0.08);
+  --shadow-glass-hover-light: 0 12px 40px rgba(26, 24, 22, 0.12);
+  --shadow-subtle-light: 0 1px 3px rgba(26, 24, 22, 0.06);
+
+  /* Typography - Font Families */
+  --font-family-serif: var(--font-playfair);
+  --font-family-sans: var(--font-dm-sans);
+
+  /* Letter Spacing */
+  --tracking-body: 0.025em;
+  --tracking-tight: -0.01em;
+  --tracking-wide: 0.05em;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
+/* ============================================================
+   SHADCN/UI CSS VARIABLE MAPPING
+   ============================================================
+   Maps Holmes tokens to Shadcn/ui's expected CSS variable format.
+   These are semantic aliases for component theming.
+   ============================================================ */
+
+:root,
+.dark {
+  /* Background */
+  --background: var(--color-charcoal);
+  --foreground: var(--color-smoke);
+
+  /* Card */
+  --card: var(--color-jet);
+  --card-foreground: var(--color-smoke);
+
+  /* Popover */
+  --popover: var(--color-jet);
+  --popover-foreground: var(--color-smoke);
+
+  /* Primary */
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-charcoal);
+
+  /* Secondary */
+  --secondary: var(--color-stone);
+  --secondary-foreground: var(--color-smoke);
+
+  /* Muted */
+  --muted: var(--color-jet);
+  --muted-foreground: var(--color-stone);
+
+  /* Accent */
+  --accent: var(--color-accent-muted);
+  --accent-foreground: var(--color-charcoal);
+
+  /* Destructive */
+  --destructive: #ef4444;
+  --destructive-foreground: var(--color-smoke);
+
+  /* Border / Input / Ring */
+  --border: rgba(248, 247, 244, 0.1);
+  --input: rgba(248, 247, 244, 0.1);
+  --ring: var(--color-accent);
+
+  /* Focus Ring - for accessibility */
+  --ring-offset: var(--color-charcoal);
+
+  /* Radius */
+  --radius: 0.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #09090b;
-    --foreground: #fafafa;
+/* Override ReactFlow default node border within Command Center */
+.command-center-scope .react-flow__node {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Command Center scoped accent -- does not affect global Holmes palette */
+.command-center-scope {
+  /* Shared accent for non-agent UI (header, footer, file group nodes) */
+  --cc-accent: 180 65% 50%;
+  --cc-accent-glow: 180 65% 55%;
+
+  /* Per-agent color pairs: tint (subtle bg) + accent (bright text/glow) */
+  --cc-triage-tint: 42 40% 20%;
+  --cc-triage-accent: 42 70% 62%;
+
+  --cc-orchestrator-tint: 25 42% 20%;
+  --cc-orchestrator-accent: 25 70% 62%;
+
+  --cc-financial-tint: 155 35% 18%;
+  --cc-financial-accent: 155 60% 55%;
+
+  --cc-legal-tint: 215 32% 22%;
+  --cc-legal-accent: 215 60% 64%;
+
+  --cc-evidence-tint: 350 35% 20%;
+  --cc-evidence-accent: 350 60% 60%;
+
+  --cc-kg-tint: 270 35% 22%;
+  --cc-kg-accent: 270 60% 68%;
+
+  --cc-synthesis-tint: 45 35% 20%;
+  --cc-synthesis-accent: 45 60% 65%;
+}
+
+/* Light mode variant - Following LIGHT-MODE-REFERENCE.MD */
+.light {
+  /* Background & Foreground */
+  --background: var(--color-cream);
+  --foreground: var(--color-charcoal-light);
+
+  /* Card */
+  --card: #ffffff;
+  --card-foreground: var(--color-charcoal-light);
+
+  /* Popover */
+  --popover: #ffffff;
+  --popover-foreground: var(--color-charcoal-light);
+
+  /* Primary */
+  --primary: var(--color-accent-light);
+  --primary-foreground: var(--color-cream);
+
+  /* Secondary */
+  --secondary: var(--color-warm-gray);
+  --secondary-foreground: var(--color-charcoal-light);
+
+  /* Muted */
+  --muted: var(--color-warm-white);
+  --muted-foreground: var(--color-warm-gray);
+
+  /* Accent */
+  --accent: var(--color-accent-muted-light);
+  --accent-foreground: var(--color-cream);
+
+  /* Destructive */
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  /* Border & Input */
+  --border: rgba(26, 24, 22, 0.1);
+  --input: rgba(26, 24, 22, 0.1);
+  --ring: var(--color-accent-light);
+
+  /* Focus Ring - for accessibility */
+  --ring-offset: var(--color-cream);
+}
+
+/* ============================================================
+   TYPOGRAPHY UTILITIES
+   ============================================================
+   Custom letter-spacing and font size utilities.
+   ============================================================ */
+
+@layer utilities {
+  /* Letter spacing presets */
+  .tracking-body {
+    letter-spacing: var(--tracking-body);
+  }
+
+  .tracking-wide {
+    letter-spacing: var(--tracking-wide);
+  }
+
+  /* Dotted canvas background pattern */
+  .bg-canvas {
+    background-image: radial-gradient(
+      circle,
+      rgba(138, 138, 130, 0.15) 1px,
+      transparent 1px
+    );
+    background-size: 26px 26px;
+  }
+
+  /* Light mode canvas pattern - visible dots on cream background */
+  .light .theme-scope .bg-canvas {
+    background-image: radial-gradient(
+      circle,
+      rgba(26, 24, 22, 0.06) 1px,
+      transparent 1px
+    );
+    background-size: 26px 26px;
+  }
+
+  /* Theme-aware color utilities */
+  .bg-warm-gray\/8 {
+    background-color: rgba(107, 101, 96, 0.08);
+  }
+
+  .bg-warm-gray\/12 {
+    background-color: rgba(107, 101, 96, 0.12);
+  }
+
+  .bg-warm-gray\/15 {
+    background-color: rgba(107, 101, 96, 0.15);
+  }
+
+  .bg-warm-gray\/25 {
+    background-color: rgba(107, 101, 96, 0.25);
+  }
+
+  .bg-white\/95 {
+    background-color: rgba(255, 255, 255, 0.95);
+  }
+
+  .border-warm-gray\/12 {
+    border-color: rgba(107, 101, 96, 0.12);
+  }
+
+  .border-warm-gray\/15 {
+    border-color: rgba(107, 101, 96, 0.15);
+  }
+
+  .border-warm-gray\/20 {
+    border-color: rgba(107, 101, 96, 0.2);
+  }
+
+  .border-warm-gray\/25 {
+    border-color: rgba(107, 101, 96, 0.25);
+  }
+
+  .dark .bg-stone\/10 {
+    background-color: rgba(138, 138, 130, 0.1);
+  }
+
+  .dark .border-stone\/15 {
+    border-color: rgba(138, 138, 130, 0.15);
+  }
+
+  .dark .border-stone\/30 {
+    border-color: rgba(138, 138, 130, 0.3);
+  }
+
+  .dark .bg-charcoal {
+    background-color: var(--color-charcoal);
+  }
+}
+
+/* ============================================================
+   GLASS COMPONENT UTILITIES
+   ============================================================
+   Reusable glass panel styles for cards and navigation.
+   Subtle elegance - glass is felt more than seen.
+   ============================================================ */
+
+@layer components {
+  /* Light glass for cards and content panels */
+  .glass-panel {
+    background: var(--color-glass-light);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-glass);
+    transition:
+      box-shadow 0.3s ease,
+      transform 0.3s ease;
+  }
+
+  .glass-panel:hover {
+    box-shadow: var(--shadow-glass-hover);
+  }
+
+  /* Darker glass for navigation and overlays */
+  .glass-nav {
+    background: var(--color-glass-dark);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: var(--shadow-glass);
+  }
+
+  /* --------------------------------------------------------
+     Liquid Glass Effect - Apple-inspired layered glass
+     --------------------------------------------------------
+     Layers: filter → overlay → specular → content
+     Creates depth through layered blur, tint, and highlights.
+     -------------------------------------------------------- */
+
+  .liquid-glass {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Layer 1: Backdrop blur with saturation boost */
+  .liquid-glass-filter {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    backdrop-filter: blur(24px) saturate(180%) brightness(1.1);
+    -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.1);
+  }
+
+  /* Layer 2: Semi-transparent tinted overlay */
+  .liquid-glass-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    background: linear-gradient(
+      180deg,
+      rgba(248, 247, 244, 0.08) 0%,
+      rgba(5, 5, 5, 0.7) 100%
+    );
+  }
+
+  /* Layer 3: Specular highlights (edge shine via inset shadows only) */
+  .liquid-glass-specular {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: inherit;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+    pointer-events: none;
+  }
+
+  /* Layer 4: Content sits on top */
+  .liquid-glass-content {
+    position: relative;
+    z-index: 4;
+  }
+
+  /* --------------------------------------------------------
+     Liquid Glass Variants
+     --------------------------------------------------------
+     Different intensities for cards, modals, and subtle UI.
+     -------------------------------------------------------- */
+
+  /* Card glass - frosted liquid glass effect for content cards */
+  .liquid-glass-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 24px;
+    border: none;
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      0 2px 8px rgba(0, 0, 0, 0.15);
+    transition:
+      box-shadow 0.4s ease,
+      transform 0.4s ease;
+  }
+
+  .liquid-glass-card:hover {
+    box-shadow:
+      0 12px 48px rgba(0, 0, 0, 0.35),
+      0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .liquid-glass-card > .liquid-glass-filter {
+    backdrop-filter: blur(40px) saturate(200%) brightness(1.15) contrast(1.05);
+    -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.15)
+      contrast(1.05);
+  }
+
+  .liquid-glass-card > .liquid-glass-overlay {
+    background:
+      radial-gradient(
+        ellipse 80% 50% at 50% -20%,
+        rgba(255, 255, 255, 0.15) 0%,
+        transparent 50%
+      ),
+      linear-gradient(
+        175deg,
+        rgba(255, 255, 255, 0.12) 0%,
+        rgba(180, 180, 180, 0.06) 20%,
+        rgba(40, 40, 40, 0.88) 100%
+      );
+    filter: url(#liquid-glass-filter);
+  }
+
+  .liquid-glass-card > .liquid-glass-specular {
+    background: radial-gradient(
+      ellipse 100% 40% at 50% 0%,
+      rgba(255, 255, 255, 0.08) 0%,
+      transparent 60%
+    );
+    box-shadow: none;
+  }
+
+  /* Modal glass - more prominent for dialogs and overlays */
+  .liquid-glass-modal {
+    position: relative;
+    overflow: hidden;
+    border-radius: 24px;
+    border: none;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  }
+
+  .liquid-glass-modal > .liquid-glass-filter {
+    backdrop-filter: blur(32px) saturate(200%) brightness(1.15);
+    -webkit-backdrop-filter: blur(32px) saturate(200%) brightness(1.15);
+  }
+
+  .liquid-glass-modal > .liquid-glass-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(248, 247, 244, 0.06) 0%,
+      rgba(5, 5, 5, 0.85) 100%
+    );
+  }
+
+  .liquid-glass-modal > .liquid-glass-specular {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  /* Nav glass - for navigation bars */
+  .liquid-glass-nav {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .liquid-glass-nav > .liquid-glass-filter {
+    backdrop-filter: blur(24px) saturate(180%) brightness(1.1);
+    -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.1);
+  }
+
+  .liquid-glass-nav > .liquid-glass-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(248, 247, 244, 0.08) 0%,
+      rgba(5, 5, 5, 0.7) 100%
+    );
+  }
+
+  /* Subtle glass - minimal, for small UI elements like tooltips/dropdowns */
+  .liquid-glass-subtle {
+    position: relative;
+    background: rgba(248, 247, 244, 0.03);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: none;
+    border-radius: 8px;
+  }
+
+  /* Animated glass panels need will-change for performance */
+  .liquid-glass-animated {
+    will-change: transform;
+  }
+
+  /* --------------------------------------------------------
+     Light Mode Glass Variants (Scoped to .theme-scope)
+     --------------------------------------------------------
+     Following LIGHT-MODE-REFERENCE.MD specifications
+     -------------------------------------------------------- */
+
+  /* Light mode - glass panel */
+  .light .theme-scope .glass-panel {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 24px rgba(26, 24, 22, 0.06);
+  }
+
+  .light .theme-scope .glass-panel:hover {
+    box-shadow: 0 8px 32px rgba(26, 24, 22, 0.12);
+  }
+
+  /* Light mode - glass nav */
+  .light .theme-scope .glass-nav {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 4px 24px rgba(26, 24, 22, 0.06);
+  }
+
+  /* Light mode - liquid glass card */
+  .light .theme-scope .liquid-glass-card {
+    box-shadow:
+      0 8px 32px rgba(26, 24, 22, 0.06),
+      0 2px 8px rgba(26, 24, 22, 0.04);
+  }
+
+  .light .theme-scope .liquid-glass-card:hover {
+    box-shadow:
+      0 12px 48px rgba(26, 24, 22, 0.1),
+      0 4px 12px rgba(26, 24, 22, 0.06);
+  }
+
+  .light .theme-scope .liquid-glass-card > .liquid-glass-filter {
+    backdrop-filter: blur(40px) saturate(180%) brightness(1.02) contrast(1.02);
+    -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.02)
+      contrast(1.02);
+  }
+
+  .light .theme-scope .liquid-glass-card > .liquid-glass-overlay {
+    background:
+      radial-gradient(
+        ellipse 80% 50% at 50% -20%,
+        rgba(255, 255, 255, 0.8) 0%,
+        transparent 50%
+      ),
+      linear-gradient(
+        175deg,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(250, 249, 247, 0.9) 20%,
+        rgba(245, 244, 239, 0.85) 100%
+      );
+  }
+
+  .light .theme-scope .liquid-glass-card > .liquid-glass-specular {
+    background: radial-gradient(
+      ellipse 100% 40% at 50% 0%,
+      rgba(255, 255, 255, 0.6) 0%,
+      transparent 60%
+    );
+    box-shadow: none;
+  }
+
+  /* Light mode - liquid glass modal */
+  .light .theme-scope .liquid-glass-modal {
+    box-shadow: 0 24px 64px rgba(26, 24, 22, 0.12);
+  }
+
+  .light .theme-scope .liquid-glass-modal > .liquid-glass-filter {
+    backdrop-filter: blur(32px) saturate(180%) brightness(1.02);
+    -webkit-backdrop-filter: blur(32px) saturate(180%) brightness(1.02);
+  }
+
+  .light .theme-scope .liquid-glass-modal > .liquid-glass-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(250, 249, 247, 0.9) 100%
+    );
+  }
+
+  .light .theme-scope .liquid-glass-modal > .liquid-glass-specular {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  /* Light mode - liquid glass nav */
+  .light .theme-scope .liquid-glass-nav > .liquid-glass-filter {
+    backdrop-filter: blur(24px) saturate(180%) brightness(1.02);
+    -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.02);
+  }
+
+  .light .theme-scope .liquid-glass-nav > .liquid-glass-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(250, 249, 247, 0.85) 100%
+    );
+  }
+
+  /* Light mode - subtle glass */
+  .light .theme-scope .liquid-glass-subtle {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(26, 24, 22, 0.04);
+  }
+}
+
+/* ============================================================
+   LIQUID GLASS BUTTON
+   ============================================================
+   Premium glass button with layered effect and glow.
+   Placed outside @layer for proper specificity.
+   ============================================================ */
+
+.liquid-glass-button {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(
+    180deg,
+    rgba(248, 247, 244, 0.12) 0%,
+    rgba(248, 247, 244, 0.06) 100%
+  );
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.2s ease,
+    background 0.3s ease;
+}
+
+.liquid-glass-button:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(248, 247, 244, 0.18) 0%,
+    rgba(248, 247, 244, 0.1) 100%
+  );
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.25),
+    0 0 32px rgba(248, 247, 244, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.liquid-glass-button:active {
+  transform: scale(0.98);
+}
+
+/* Light mode variant - uses dark accent for visibility (scoped to app UI) */
+.light .theme-scope .liquid-glass-button {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(250, 249, 247, 0.8) 100%
+  );
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  color: var(--color-charcoal-light);
+  box-shadow:
+    0 4px 16px rgba(26, 24, 22, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+}
+
+.light .theme-scope .liquid-glass-button:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(250, 249, 247, 0.9) 100%
+  );
+  box-shadow:
+    0 8px 24px rgba(26, 24, 22, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* ============================================================
+   ACCESSIBILITY - REDUCED MOTION
+   ============================================================
+   Respect user preferences for reduced motion.
+   ============================================================ */
+
+/* ============================================================
+   SCAN OVERLAY ANIMATIONS
+   ============================================================
+   GPU-composited keyframes for the redaction scan effect.
+   Uses transform (not top/left) to avoid layout thrashing.
+   ============================================================ */
+
+@keyframes scan-sweep {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(calc(var(--scan-height) - 2px));
+  }
+}
+
+@keyframes scan-particle {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-60px) scale(0);
+    opacity: 0;
+  }
+}
+
+@keyframes scan-shimmer {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
+/* Tailwind v4: Restore cursor-pointer for interactive elements */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
   }
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
+  font-size: 18px;
+  line-height: 1.6;
+  letter-spacing: var(--tracking-body);
+}
+
+/* Theme-aware logo - darkens cream/white logo in light mode (scoped to app UI) */
+.light .theme-scope .logo-themed {
+  filter: brightness(0);
 }
